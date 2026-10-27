@@ -14,6 +14,8 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     env: { VITE_API_URL: "http://localhost:8000" },
     exclude: ["node_modules", "dist", "e2e/**"],
+    // axe checks in jsdom are slow when many workers run in parallel (CI, coverage).
+    testTimeout: 20_000,
     coverage: {
       provider: "v8",
       include: ["src/**"],
