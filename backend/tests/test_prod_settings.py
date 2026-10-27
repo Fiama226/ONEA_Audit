@@ -31,6 +31,9 @@ print(json.dumps({
     "csrf": settings.CSRF_TRUSTED_ORIGINS,
     "db_host": settings.DATABASES["default"]["HOST"],
     "email_host": settings.EMAIL_HOST,
+    "email_ssl": getattr(settings, "EMAIL_USE_SSL", False),
+    "email_tls": getattr(settings, "EMAIL_USE_TLS", False),
+    "email_timeout": settings.EMAIL_TIMEOUT,
     "hsts": settings.SECURE_HSTS_SECONDS,
     "hsts_sub": settings.SECURE_HSTS_INCLUDE_SUBDOMAINS,
     "ssl_redirect": settings.SECURE_SSL_REDIRECT,
@@ -83,6 +86,34 @@ def test_prod_settings_load_and_are_hardened() -> None:
     assert data["proxy_header"] == ["HTTP_X_FORWARDED_PROTO", "https"]
     assert data["admin"] is False
     assert data["debug"] is False
+
+
+@pytest.mark.parametrize(
+    ("url", "ssl", "tls"),
+    [
+        ("smtps://u:p@smtp.onea.bf:465", True, False),
+        ("smtp+ssl://u:p@smtp.onea.bf:465", True, False),
+        ("smtp+tls://u:p@smtp.onea.bf:587", False, True),
+        ("smtp://smtp.onea.bf:25", False, False),
+    ],
+)
+def test_prod_email_transport_security_and_timeout(url: str, ssl: bool, tls: bool) -> None:
+    data = probe({**PROD_ENV, "EMAIL_URL": url})
+    assert data["email_ssl"] is ssl
+    assert data["email_tls"] is tls
+    assert data["email_timeout"] == 10
+
+
+def test_prod_refuses_http_oidc_base_url() -> None:
+    result = load_prod({**PROD_ENV, "OIDC_OP_BASE_URL": "http://sso.onea.bf/realms/onea"})
+    assert result.returncode != 0
+    assert "https" in result.stderr
+
+
+def test_prod_refuses_disabled_oidc_ssl_verification() -> None:
+    result = load_prod({**PROD_ENV, "OIDC_VERIFY_SSL": "false"})
+    assert result.returncode != 0
+    assert "OIDC_VERIFY_SSL" in result.stderr
 
 
 def test_prod_admin_can_be_enabled_explicitly() -> None:

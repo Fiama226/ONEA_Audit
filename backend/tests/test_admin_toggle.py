@@ -23,6 +23,6 @@ def test_admin_is_not_mounted_when_disabled(reload_urls: Callable[[], ModuleType
     with override_settings(DJANGO_ADMIN_ENABLED=False):
         module = reload_urls()
         with pytest.raises(Resolver404):
-            resolve("/admin/login/", urlconf=module)
+            resolve("/admin/login/", urlconf=module.__name__)
         # API routes stay available
-        assert resolve("/api/v1/health/", urlconf=module)
+        assert resolve("/api/v1/health/", urlconf=module.__name__)

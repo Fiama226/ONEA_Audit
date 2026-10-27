@@ -22,7 +22,11 @@ EMAIL_HOST = _email.get("EMAIL_HOST", "")
 EMAIL_PORT = _email.get("EMAIL_PORT", 25)
 EMAIL_HOST_USER = _email.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = _email.get("EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = _email.get("EMAIL_USE_TLS", False)
+# django-environ maps smtps:// to STARTTLS; on a smtps:// URL (implicit TLS, usually port
+# 465) Django needs EMAIL_USE_SSL instead. The two are mutually exclusive.
+EMAIL_USE_SSL = _email.get("EMAIL_USE_SSL", False) or env("EMAIL_URL").startswith("smtps://")
+EMAIL_USE_TLS = _email.get("EMAIL_USE_TLS", False) and not EMAIL_USE_SSL
+EMAIL_TIMEOUT = 10  # seconds; a dead relay must not hang a worker
 
 if not env("OIDC_OP_BASE_URL").startswith("https://"):  # required in production, no default
     raise ImproperlyConfigured("OIDC_OP_BASE_URL must be an https:// URL in production")
@@ -37,6 +41,9 @@ REST_FRAMEWORK = {
 # /admin/ is off unless DJANGO_ADMIN_ENABLED=true.
 DJANGO_ADMIN_ENABLED = env.bool("DJANGO_ADMIN_ENABLED", default=False)
 
+# Security headers (CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy, HSTS at the
+# edge) are owned by nginx (docker/nginx/prod.conf). Django keeps only the SECURE_* settings
+# that are needed for correctness (redirect, proxy header, cookies, HSTS for direct access).
 # TLS terminates at nginx. SECURE_PROXY_SSL_HEADER trusts X-Forwarded-Proto, which is only
 # safe because docker/nginx/prod.conf OVERWRITES that header on every proxied request and
 # the web container publishes no host port. Never expose gunicorn directly.
