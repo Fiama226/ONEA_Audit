@@ -38,8 +38,7 @@ lint:
 	cd frontend && npm run lint && npx prettier --check .
 
 gen-api:
-	cd backend && python manage.py spectacular --file ../frontend/openapi.yaml
-	cd frontend && npm run gen-api
+	sh scripts/gen-api.sh
 
 check:
 	bash scripts/check-services.sh $(STORAGE_FLAG)

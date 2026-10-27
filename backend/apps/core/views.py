@@ -5,7 +5,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-VERSION = "0.1.0"
+from config import __version__
 
 
 @extend_schema(
@@ -17,4 +17,4 @@ VERSION = "0.1.0"
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health(request: Request) -> Response:
-    return Response({"status": "ok", "version": VERSION})
+    return Response({"status": "ok", "version": __version__})

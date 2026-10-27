@@ -3,6 +3,8 @@ from pathlib import Path
 import environ
 from celery.schedules import crontab
 
+from config import __version__
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env()
@@ -24,6 +26,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
+    "drf_spectacular_sidecar",
     "corsheaders",
     "django_filters",
     "auditlog",
@@ -107,11 +110,19 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "ONEA Audit API",
-    "DESCRIPTION": "Plateforme de digitalisation de l'audit interne ONEA",
-    "VERSION": "0.1.0",
+    "TITLE": "API Audit Interne ONEA",
+    "DESCRIPTION": (
+        "API de la plateforme de digitalisation de l'audit interne de l'ONEA. "
+        "Les erreurs suivent le format {detail, errors} (composant ApiError)."
+    ),
+    "VERSION": __version__,
+    "COMPONENT_SPLIT_REQUEST": True,
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],
+    # On-site deployment without Internet: serve Swagger UI/Redoc assets locally.
+    "SWAGGER_UI_DIST": "SIDECAR",
+    "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+    "REDOC_DIST": "SIDECAR",
 }
 
 # --- Templates: project-level templates (email/*) ---
