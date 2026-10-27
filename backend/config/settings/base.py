@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import environ
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -107,3 +108,29 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],
 }
+
+# --- Templates: project-level templates (email/*) ---
+TEMPLATES[0]["DIRS"] = [BASE_DIR / "templates"]
+
+# --- Celery (namespace CELERY; broker/backend are set from REDIS_URL above) ---
+CELERY_TIMEZONE = "Africa/Ouagadougou"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TASK_ALWAYS_EAGER = False
+CELERY_BEAT_SCHEDULE = {
+    "heartbeat": {
+        "task": "core.tasks.heartbeat",
+        "schedule": crontab(hour=6, minute=0),
+    },
+}
+
+# --- Email: EMAIL_URL = smtp://mailpit:1025 in compose, smtp://localhost:1025 on host ---
+_email = env.email_url("EMAIL_URL", default="smtp://mailpit:1025")
+EMAIL_BACKEND = _email["EMAIL_BACKEND"]
+EMAIL_HOST = _email.get("EMAIL_HOST", "")
+EMAIL_PORT = _email.get("EMAIL_PORT", 25)
+EMAIL_HOST_USER = _email.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = _email.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = _email.get("EMAIL_USE_TLS", False)
+DEFAULT_FROM_EMAIL = "audit-interne@onea.bf"
