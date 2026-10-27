@@ -5,7 +5,7 @@ name: CI
 
 on:
   push:
-    branches: [main, "feat/**", "fix/**"]
+    branches: [main]
   pull_request:
 
 permissions:
@@ -13,11 +13,13 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Superseded runs of a branch/PR are cancelled; runs on the default branch never are.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:16
@@ -63,6 +65,7 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
@@ -83,6 +86,7 @@ jobs:
   api-fresh:
     # Fails when frontend/src/api/schema.d.ts is stale w.r.t. the backend OpenAPI schema.
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -105,6 +109,7 @@ jobs:
   images:
     # Build only (no push) to prove both production images build.
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -125,8 +130,9 @@ jobs:
             VITE_OIDC_AUTHORITY=https://sso.example.org/realms/onea
 
   e2e:
-    # Not blocking yet: becomes a required check once Task 9 (application shell) lands and the
-    # "Tableau de bord" assertions in frontend/e2e/login.spec.ts are enabled.
+    # Runs the same way as the local verification (dev compose db/redis/keycloak + Django dev
+    # server + Vite through Playwright's webServer) but has not been exercised on a real
+    # runner yet: keep it non-blocking until its first green run, then remove this line.
     continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -165,6 +171,9 @@ jobs:
           uv pip install --system -r pyproject.toml
           python manage.py migrate --noinput
           nohup python manage.py runserver 8000 --noreload > ../api.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://localhost:8000/api/v1/health/ && exit 0; sleep 2; done
+          cat ../api.log
+          exit 1
       - run: npm ci --no-audit --no-fund
         working-directory: frontend
       - run: npx playwright install --with-deps chromium
