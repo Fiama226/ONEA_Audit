@@ -39,6 +39,7 @@ x-backend-env: &backend-env
   CSRF_TRUSTED_ORIGINS: https://${PUBLIC_HOST}
   OIDC_OP_BASE_URL: https://${SSO_HOST:?SSO_HOST is required}/realms/onea
   OIDC_RP_CLIENT_ID: onea-backend
+  # Unused by the Bearer path; mozilla-django-oidc reads it at init, hence required.
   OIDC_RP_CLIENT_SECRET: ${OIDC_RP_CLIENT_SECRET:?OIDC_RP_CLIENT_SECRET is required}
   DJANGO_ADMIN_ENABLED: ${DJANGO_ADMIN_ENABLED:-false}
   MEILI_URL: http://meilisearch:7700

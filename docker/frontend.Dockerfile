@@ -17,6 +17,8 @@ ARG VITE_OIDC_CLIENT_ID=onea-frontend
 ENV VITE_API_URL=$VITE_API_URL \
     VITE_OIDC_AUTHORITY=$VITE_OIDC_AUTHORITY \
     VITE_OIDC_CLIENT_ID=$VITE_OIDC_CLIENT_ID
+# Fail fast: an empty authority would bake a SPA that can never log in.
+RUN test -n "$VITE_OIDC_AUTHORITY"
 RUN npm run build
 
 FROM nginx:1.27-alpine AS runtime
