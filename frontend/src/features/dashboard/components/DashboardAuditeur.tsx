@@ -38,23 +38,35 @@ export function DashboardAuditeur() {
                   {phase.name}{" "}
                   <span className="text-xs font-normal text-text-muted">{phase.range}</span>
                 </p>
-                <ol className="mt-3 flex gap-[3px]">
+                <ol className="mt-3 flex flex-wrap gap-1">
                   {phase.steps.map((step) => (
                     <li
                       key={step}
-                      className={cn(
-                        "flex h-6 flex-1 items-center justify-center border border-border bg-surface text-[10px] text-text-muted tabular-nums",
-                        MILESTONES.includes(step) ? "rounded-[2px] font-semibold" : "rounded-full",
-                      )}
+                      className="relative flex size-6 items-center justify-center text-[10px] text-text-muted tabular-nums"
                     >
-                      {step}
+                      <span
+                        className={cn(
+                          "absolute border border-border bg-surface",
+                          MILESTONES.includes(step)
+                            ? "size-[17px] rotate-45 rounded-[2px]"
+                            : "size-6 rounded-full",
+                        )}
+                      />
+                      <span
+                        className={cn("relative", MILESTONES.includes(step) && "font-semibold")}
+                      >
+                        {step}
+                      </span>
                     </li>
                   ))}
                 </ol>
               </div>
             ))}
           </div>
-          <p className="px-5 py-2 text-xs text-text-muted">◆ {d.milestoneLegend}</p>
+          <p className="flex items-center gap-2 px-5 py-2 text-xs text-text-muted">
+            <span className="size-2.5 rotate-45 rounded-[2px] border border-text-muted bg-surface" />
+            {d.milestoneLegend}
+          </p>
           <SkeletonTable
             columns={[
               { label: d.colMission, width: 90 },

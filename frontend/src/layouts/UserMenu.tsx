@@ -10,41 +10,34 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/auth/useAuth";
 import { fr } from "@/i18n/fr";
+import { initialsOf } from "./initials";
 
-function initialsOf(first: string, last: string, fallback: string): string {
-  const letters = `${first.charAt(0)}${last.charAt(0)}`.trim();
-  return (letters || fallback.slice(0, 2)).toUpperCase();
-}
+const ROLE_BADGE = "h-5 rounded-sm bg-background px-1.5 text-xs font-normal text-foreground";
 
 export function UserMenu() {
   const { me, logout } = useAuth();
   if (!me) return null;
 
-  const fullName = `${me.first_name} ${me.last_name}`.trim() || me.username;
+  const fullName = `${me.first_name ?? ""} ${me.last_name ?? ""}`.trim() || me.username;
   const initials = initialsOf(me.first_name, me.last_name, me.username);
-  const shortRole = fr.rolesShort[me.role];
-  const longRole = fr.roles[me.role];
 
+  // Le nom accessible commence par le texte visible (WCAG 2.5.3) ; sous 1024 px le texte
+  // visible se réduit à l'avatar, nom et rôle restent lus.
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        aria-label={`${fr.shell.userMenu} : ${fullName}, ${longRole}`}
-        className="flex h-10 items-center gap-2 rounded-md px-1 text-sm outline-offset-2 transition-colors hover:bg-surface-subtle focus-visible:outline-2 focus-visible:outline-ring data-[state=open]:bg-surface-subtle lg:px-1.5"
-      >
+      <DropdownMenuTrigger className="flex h-10 items-center gap-2 rounded-md px-1 text-sm transition-colors hover:bg-surface-subtle data-[state=open]:bg-surface-subtle lg:px-1.5">
         <Initials initials={initials} />
-        <span className="hidden font-medium lg:inline">{fullName}</span>
-        <Badge
-          variant="outline"
-          className="hidden h-5 rounded-sm bg-background px-1.5 text-xs font-normal text-foreground lg:inline-flex"
-        >
-          {shortRole}
-        </Badge>
-        <ChevronDown className="hidden size-4 text-text-muted lg:block" aria-hidden />
+        <span className="font-medium max-lg:sr-only">{fullName}</span>{" "}
+        <Badge variant="outline" className={`${ROLE_BADGE} max-lg:sr-only`}>
+          {fr.rolesShort[me.role]}
+        </Badge>{" "}
+        <span className="sr-only">{`— ${fr.shell.userMenu}`}</span>
+        <ChevronDown className="size-4 text-text-muted max-lg:hidden" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        sideOffset={4}
-        className="w-[296px] rounded-lg bg-surface p-1 shadow-floating"
+        sideOffset={12}
+        className="w-[296px] rounded-lg bg-surface p-1"
       >
         <div className="flex items-center gap-3 px-3 py-3">
           <Initials initials={initials} large />
@@ -55,11 +48,8 @@ export function UserMenu() {
         </div>
         <div className="flex items-center justify-between gap-3 px-3 pb-3 text-xs text-text-muted">
           <span>{fr.shell.role}</span>
-          <Badge
-            variant="outline"
-            className="h-5 rounded-sm bg-background px-1.5 text-xs font-normal text-foreground"
-          >
-            {longRole}
+          <Badge variant="outline" className={ROLE_BADGE}>
+            {fr.roles[me.role]}
           </Badge>
         </div>
         <DropdownMenuSeparator />

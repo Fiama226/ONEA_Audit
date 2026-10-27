@@ -4,7 +4,6 @@ import {
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { fr } from "@/i18n/fr";
@@ -37,9 +36,9 @@ export function Breadcrumbs() {
           return (
             <BreadcrumbItem key={crumb.to} className="gap-2">
               {last ? (
-                <BreadcrumbPage className="font-medium text-foreground">
+                <span aria-current="page" className="font-medium text-foreground">
                   {crumb.label}
-                </BreadcrumbPage>
+                </span>
               ) : (
                 <BreadcrumbLink
                   asChild

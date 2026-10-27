@@ -1,35 +1,51 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-export const SIDEBAR_STORAGE_KEY = "onea.sidebar";
+const STORAGE_KEY = "onea.sidebar";
+const WIDE_QUERY = "(min-width: 1280px)";
 
-function readInitial(): boolean {
+type Choice = "collapsed" | "expanded";
+
+function readStored(): Choice | null {
   try {
-    const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-    if (stored === "collapsed") return true;
-    if (stored === "expanded") return false;
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored === "collapsed" || stored === "expanded" ? stored : null;
   } catch {
-    // stockage indisponible (navigation privée, accès refusé) : valeur par défaut
+    return null; // stockage indisponible (navigation privée, accès refusé)
   }
-  // Sans choix mémorisé : repliée entre 1024 et 1279 px, dépliée au-delà.
-  if (typeof window.matchMedia === "function") {
-    return !window.matchMedia("(min-width: 1280px)").matches;
-  }
-  return false;
 }
 
-/** État replié de la barre latérale, mémorisé dans localStorage (sans jamais échouer). */
+function matchesWide(): boolean | null {
+  return typeof window.matchMedia === "function" ? window.matchMedia(WIDE_QUERY).matches : null;
+}
+
+/**
+ * État replié de la barre latérale. Sans choix de l'utilisateur, il suit la largeur d'écran
+ * (repliée entre 1024 et 1279 px) ; dès qu'il bascule, son choix prime et est mémorisé dans
+ * localStorage (sans jamais échouer).
+ */
 export function useSidebarCollapsed(): [boolean, () => void] {
-  const [collapsed, setCollapsed] = useState<boolean>(readInitial);
-  const toggle = useCallback(() => {
-    setCollapsed((current) => {
-      const next = !current;
-      try {
-        localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? "collapsed" : "expanded");
-      } catch {
-        // le choix n'est alors pas mémorisé
-      }
-      return next;
-    });
+  const [choice, setChoice] = useState<Choice | null>(readStored);
+  const [wide, setWide] = useState<boolean | null>(matchesWide);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia(WIDE_QUERY);
+    const onChange = (e: MediaQueryListEvent) => setWide(e.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
   }, []);
+
+  const collapsed = choice ? choice === "collapsed" : wide === false;
+
+  const toggle = useCallback(() => {
+    const next: Choice = collapsed ? "expanded" : "collapsed";
+    setChoice(next);
+    try {
+      localStorage.setItem(STORAGE_KEY, next);
+    } catch {
+      // le choix n'est alors pas mémorisé
+    }
+  }, [collapsed]);
+
   return [collapsed, toggle];
 }

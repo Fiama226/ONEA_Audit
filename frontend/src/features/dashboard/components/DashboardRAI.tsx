@@ -3,6 +3,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { RiskMatrix } from "@/components/RiskMatrix";
 import { fr } from "@/i18n/fr";
 import { cn } from "@/lib/utils";
+import { programmeLabel } from "../year";
 import { MILESTONES, PHASES } from "../phases";
 import { PageHeader, PreviewCard, PreviewSection, SkeletonTable } from "./preview";
 
@@ -24,12 +25,7 @@ export function DashboardRAI() {
         action={{ label: d.raiAction, icon: Plus, note: `${d.availableAtLot} ${d.raiLot}` }}
       />
       <PreviewSection>
-        <PreviewCard
-          title={d.missionsByPhase}
-          meta={`${d.programme} 2026`}
-          span={8}
-          bodyClassName="p-5"
-        >
+        <PreviewCard title={d.missionsByPhase} meta={programmeLabel()} span={8} bodyClassName="p-5">
           <div className="grid gap-x-6 gap-y-6 sm:grid-cols-[10fr_4fr_4fr]">
             {PHASES.map((phase) => (
               <div key={phase.name}>

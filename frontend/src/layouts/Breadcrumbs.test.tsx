@@ -18,4 +18,13 @@ describe("Breadcrumbs", () => {
     expect(within(nav).getByRole("link", { name: fr.nav.dashboard })).toHaveAttribute("href", "/");
     expect(within(nav).getByText(fr.nav.missions)).toHaveAttribute("aria-current", "page");
   });
+
+  it("marks the current crumb as a plain span, not a disabled link", () => {
+    renderWithAuth(<Breadcrumbs />, "RAI", "/missions");
+    const current = screen.getByText(fr.nav.missions);
+    expect(current.tagName).toBe("SPAN");
+    expect(current).not.toHaveAttribute("role");
+    expect(current).not.toHaveAttribute("aria-disabled");
+    expect(screen.queryByRole("link", { name: fr.nav.missions })).not.toBeInTheDocument();
+  });
 });

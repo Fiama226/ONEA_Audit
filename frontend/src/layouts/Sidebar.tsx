@@ -67,7 +67,7 @@ function NavItemLink({
       onClick={onNavigate}
       className={({ isActive }) =>
         cn(
-          "relative flex items-center rounded-md text-sm font-medium transition-colors outline-offset-2 hover:bg-surface-subtle hover:[&_svg]:text-foreground focus-visible:outline-2 focus-visible:outline-ring",
+          "relative flex items-center rounded-md text-sm font-medium transition-colors hover:bg-surface-subtle hover:[&_svg]:text-foreground",
           collapsed ? "size-10 justify-center" : "h-9 gap-3 px-3",
           isActive
             ? "bg-primary/10 font-semibold text-primary hover:bg-primary/10"
@@ -112,7 +112,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
     <TooltipProvider>
       <aside
         className={cn(
-          "flex h-full shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-150",
+          "flex h-full shrink-0 flex-col border-r border-border bg-surface",
           collapsed ? "w-16" : "w-[260px]",
         )}
       >
@@ -134,17 +134,24 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
           )}
         >
           {!collapsed && <span className="text-xs text-text-muted">{fr.shell.version}</span>}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={toggleLabel}
-            aria-expanded={!collapsed}
-            onClick={onToggle}
-            className="text-text-muted hover:text-foreground"
-          >
-            <ToggleIcon className="size-5" strokeWidth={1.5} aria-hidden />
-          </Button>
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={fr.shell.toggleMenu}
+                aria-expanded={!collapsed}
+                onClick={onToggle}
+                className="text-text-muted hover:text-foreground"
+              >
+                <ToggleIcon className="size-5" strokeWidth={1.5} aria-hidden />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={12}>
+              {toggleLabel}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </aside>
     </TooltipProvider>

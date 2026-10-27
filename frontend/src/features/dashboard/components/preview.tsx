@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { Role } from "@/auth/types";
 import { fr } from "@/i18n/fr";
 import { cn } from "@/lib/utils";
+import { programmeLabel } from "../year";
 
 const dateFormat = new Intl.DateTimeFormat("fr-FR", {
   weekday: "long",
@@ -16,22 +17,14 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-export function PageHeader({
-  title,
-  userRole,
-  now = new Date(),
-}: {
-  title: string;
-  userRole: Role;
-  now?: Date;
-}) {
-  const year = now.getFullYear();
+export function PageHeader({ title, userRole }: { title: string; userRole: Role }) {
+  const now = new Date();
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
       <div>
         <h1 className="text-2xl font-semibold tracking-[-0.012em]">{title}</h1>
         <p className="mt-1 text-sm text-text-muted">
-          {fr.roles[userRole]} · {fr.dashboard.programme} {year}
+          {fr.roles[userRole]} · {programmeLabel(now)}
         </p>
       </div>
       <p className="flex items-center gap-2 text-xs text-text-muted">
@@ -46,7 +39,7 @@ export function PageHeader({
 export function PreviewSection({ children }: { children: ReactNode }) {
   return (
     <>
-      <div className="mt-12 mb-4 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+      <div className="mt-12 mb-4 flex print:hidden flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <h2 className="text-base font-semibold">{fr.dashboard.preview}</h2>
         <p className="text-xs text-text-muted">{fr.dashboard.previewNote}</p>
       </div>
@@ -63,7 +56,7 @@ const SPANS = {
   4: "col-span-12 lg:col-span-4",
 } as const;
 
-export type Span = keyof typeof SPANS;
+type Span = keyof typeof SPANS;
 
 /** Carte d'aperçu ; `decorative` la masque aux technologies d'assistance (aucune donnée réelle). */
 export function PreviewCard({
@@ -86,7 +79,7 @@ export function PreviewCard({
       aria-hidden={decorative || undefined}
       className={cn(
         "rounded-lg border border-border",
-        decorative ? "bg-background" : "bg-surface",
+        decorative ? "bg-background print:hidden" : "bg-surface",
         SPANS[span],
       )}
     >
@@ -100,7 +93,7 @@ export function PreviewCard({
 }
 
 /** Squelette : barre grisée, sans animation. */
-export function Bar({ width, opacity }: { width: number | string; opacity?: number }) {
+function Bar({ width, opacity }: { width: number | string; opacity?: number }) {
   return (
     <span
       className="inline-block h-2 rounded-[2px] bg-border/75 align-middle"
@@ -109,7 +102,7 @@ export function Bar({ width, opacity }: { width: number | string; opacity?: numb
   );
 }
 
-export type Column = { label: string; numeric?: boolean; width: number };
+type Column = { label: string; numeric?: boolean; width: number };
 
 /** Tableau d'aperçu : en-têtes réels, trois lignes de squelette (opacités 100 / 70 / 40 %). */
 export function SkeletonTable({ columns }: { columns: Column[] }) {
@@ -149,14 +142,14 @@ export function SkeletonTable({ columns }: { columns: Column[] }) {
   );
 }
 
-export type Indicator = { label: string; foot: string };
+type Indicator = { label: string; foot: string };
 
 /** Bandeau d'indicateurs : une seule carte, trois cellules séparées par des filets. */
 export function StatStrip({ items }: { items: Indicator[] }) {
   return (
     <div
       aria-hidden="true"
-      className="mt-0 grid grid-cols-1 divide-y divide-border rounded-lg border border-border bg-background sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+      className="grid grid-cols-1 divide-y divide-border rounded-lg border border-border bg-background print:hidden sm:grid-cols-3 sm:divide-x sm:divide-y-0"
     >
       {items.map((item) => (
         <div key={item.label} className="px-5 py-4">

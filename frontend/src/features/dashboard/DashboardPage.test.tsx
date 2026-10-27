@@ -1,6 +1,6 @@
-import { screen } from "@testing-library/react";
+import { configure, screen } from "@testing-library/react";
 import { axe } from "vitest-axe";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { Role } from "@/auth/types";
 import { fr } from "@/i18n/fr";
 import { renderWithAuth } from "@/test/shell";
@@ -13,6 +13,12 @@ const CASES: [Role, string, string, string][] = [
   ["DG", fr.dashboard.dgTitle, fr.dashboard.dgAction, "Disponible au lot 7"],
   ["ADMIN", fr.shell.adminTitle, fr.dashboard.adminAction, "Disponible au lot 8"],
 ];
+
+// Les contrôles axe sont lents sous jsdom.
+beforeAll(() => {
+  vi.setConfig({ testTimeout: 20000 });
+  configure({ asyncUtilTimeout: 4000 });
+});
 
 describe("DashboardPage", () => {
   it.each(CASES)("renders the %s dashboard", (role, title, action, note) => {
@@ -31,7 +37,7 @@ describe("DashboardPage", () => {
 
   it("renders the real 5x5 criticality scale for the RAI", () => {
     renderWithAuth(<DashboardPage />, "RAI");
-    const matrix = screen.getByRole("group", { name: fr.dashboard.matrixLabel });
+    const matrix = screen.getByRole("table", { name: fr.dashboard.matrixLabel });
     expect(matrix.querySelectorAll("[data-level]")).toHaveLength(25);
     expect(matrix.querySelectorAll('[data-level="high"]')).toHaveLength(6);
   });

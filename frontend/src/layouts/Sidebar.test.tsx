@@ -61,9 +61,10 @@ describe("Sidebar", () => {
     expect(nav.getByRole("link", { name: fr.nav.dashboard })).not.toHaveAttribute("aria-current");
   });
 
-  it("keeps accessible labels when collapsed and offers to expand", () => {
+  it("keeps accessible labels when collapsed and exposes the state once", () => {
     renderWithAuth(<Sidebar collapsed onToggle={() => {}} />, "ADMIN");
     expect(screen.getByRole("link", { name: fr.nav.missions })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: fr.shell.expandMenu })).toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: fr.shell.toggleMenu });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
   });
 });

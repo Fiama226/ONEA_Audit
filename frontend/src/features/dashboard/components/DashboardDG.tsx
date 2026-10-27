@@ -1,6 +1,7 @@
 import { FileText } from "lucide-react";
 import { EmptyState } from "@/components/EmptyState";
 import { fr } from "@/i18n/fr";
+import { programmeLabel } from "../year";
 import { PageHeader, PreviewCard, PreviewSection, SkeletonTable, StatStrip } from "./preview";
 
 const d = fr.dashboard;
@@ -25,7 +26,7 @@ export function DashboardDG() {
         <div className="col-span-12">
           <StatStrip
             items={[
-              { label: d.reportsPublished, foot: `${d.programme} 2026` },
+              { label: d.reportsPublished, foot: programmeLabel() },
               { label: d.recommendationsIssued, foot: d.allEntities },
               { label: d.recommendationsLate, foot: d.overdue },
             ]}

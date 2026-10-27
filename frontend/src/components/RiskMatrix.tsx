@@ -24,9 +24,22 @@ const TINT: Record<RiskLevel, string> = {
   high: "bg-risk-high",
 };
 
+const LEVEL_NAME: Record<RiskLevel, string> = {
+  low: fr.dashboard.riskLow,
+  medium: fr.dashboard.riskMedium,
+  high: fr.dashboard.riskHigh,
+};
+
+const LEGEND: [RiskLevel, string][] = [
+  ["low", fr.dashboard.levelLow],
+  ["medium", fr.dashboard.levelMedium],
+  ["high", fr.dashboard.levelHigh],
+];
+
 /**
  * Matrice de criticité 5 × 5. Sans `cells`, affiche l'échelle (score = probabilité × impact) ;
  * avec `cells`, une case renseignée affiche son nombre de risques à la place du score.
+ * Tableau sémantique : lignes = probabilité, colonnes = impact.
  */
 export function RiskMatrix({
   cells = [],
@@ -36,66 +49,78 @@ export function RiskMatrix({
   className?: string;
 }) {
   const counts = new Map(cells.map((c) => [`${c.probability}-${c.impact}`, c.count]));
+  const impact = fr.dashboard.impact.toLowerCase();
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <span className="text-xs text-text-muted [text-orientation:mixed] [writing-mode:vertical-rl] rotate-180">
+      <span aria-hidden className="rotate-180 text-xs text-text-muted [writing-mode:vertical-rl]">
         {fr.dashboard.probability}
       </span>
       <div className="min-w-0 flex-1">
-        <div
-          role="group"
+        <table
           aria-label={fr.dashboard.matrixLabel}
-          className="print-exact grid max-w-[272px] grid-cols-[16px_repeat(5,1fr)] items-center gap-[3px]"
+          className="print-exact w-full max-w-[272px] border-separate [border-spacing:3px]"
         >
-          {[...SCALE].reverse().map((p) => (
-            <MatrixRow key={p} probability={p} counts={counts} />
-          ))}
-          <span />
-          {SCALE.map((i) => (
-            <span key={i} className="pt-1 text-center text-xs text-text-muted tabular-nums">
-              {i}
-            </span>
-          ))}
-        </div>
-        <p className="mt-1 text-center text-xs text-text-muted">{fr.dashboard.impact}</p>
+          <tbody>
+            {[...SCALE].reverse().map((p) => (
+              <tr key={p}>
+                <th
+                  scope="row"
+                  className="w-4 pr-1 text-right text-xs font-normal text-text-muted tabular-nums"
+                >
+                  <span className="sr-only">{fr.dashboard.probability} </span>
+                  {p}
+                </th>
+                {SCALE.map((i) => {
+                  const score = p * i;
+                  const level = riskLevel(score);
+                  const count = counts.get(`${p}-${i}`);
+                  const shown = count ?? score;
+                  const unit = count === undefined ? "" : ` ${fr.dashboard.riskCount}`;
+                  return (
+                    <td
+                      key={i}
+                      data-level={level}
+                      aria-label={`${fr.dashboard.probability} ${p}, ${impact} ${i} : ${shown}${unit}, ${LEVEL_NAME[level]}`}
+                      className={cn(
+                        "aspect-square rounded-[3px] text-center text-xs font-medium text-risk-foreground tabular-nums",
+                        TINT[level],
+                      )}
+                    >
+                      {shown}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td aria-hidden="true" />
+              {SCALE.map((i) => (
+                <th
+                  key={i}
+                  scope="col"
+                  className="pt-1 text-center text-xs font-normal text-text-muted tabular-nums"
+                >
+                  <span className="sr-only">{fr.dashboard.impact} </span>
+                  {i}
+                </th>
+              ))}
+            </tr>
+          </tfoot>
+        </table>
+        <p aria-hidden className="mt-1 text-center text-xs text-text-muted">
+          {fr.dashboard.impact}
+        </p>
         <ul className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-text-muted">
-          {(["low", "medium", "high"] as const).map((level) => (
+          {LEGEND.map(([level, label]) => (
             <li key={level} className="flex items-center gap-1.5">
               <span className={cn("size-2.5 rounded-[2px]", TINT[level])} aria-hidden />
-              {level === "low"
-                ? fr.dashboard.levelLow
-                : level === "medium"
-                  ? fr.dashboard.levelMedium
-                  : fr.dashboard.levelHigh}
+              {label}
             </li>
           ))}
         </ul>
       </div>
     </div>
-  );
-}
-
-function MatrixRow({ probability, counts }: { probability: number; counts: Map<string, number> }) {
-  return (
-    <>
-      <span className="text-right text-xs text-text-muted tabular-nums">{probability}</span>
-      {SCALE.map((impact) => {
-        const score = probability * impact;
-        const level = riskLevel(score);
-        const count = counts.get(`${probability}-${impact}`);
-        return (
-          <span
-            key={impact}
-            data-level={level}
-            className={cn(
-              "flex aspect-square items-center justify-center rounded-[3px] text-xs font-medium text-risk-foreground tabular-nums",
-              TINT[level],
-            )}
-          >
-            {count ?? score}
-          </span>
-        );
-      })}
-    </>
   );
 }

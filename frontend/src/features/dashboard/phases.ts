@@ -8,17 +8,17 @@ export type Phase = { name: string; range: string; steps: string[] };
 export const PHASES: Phase[] = [
   {
     name: fr.dashboard.phasePlanning,
-    range: `${fr.dashboard.stepsRange} I à X`,
+    range: fr.dashboard.rangePlanning,
     steps: ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"],
   },
   {
     name: fr.dashboard.phaseFieldwork,
-    range: `${fr.dashboard.stepsRange} XI à XIV`,
+    range: fr.dashboard.rangeFieldwork,
     steps: ["XI", "XII", "XIII", "XIV"],
   },
   {
     name: fr.dashboard.phaseReporting,
-    range: `${fr.dashboard.stepsRange} XV à XVIII`,
+    range: fr.dashboard.rangeReporting,
     steps: ["XV", "XVI", "XVII", "XVIII"],
   },
 ];

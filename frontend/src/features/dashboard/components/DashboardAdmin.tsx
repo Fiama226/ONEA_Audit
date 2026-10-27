@@ -13,7 +13,7 @@ export function DashboardAdmin() {
         action={{
           label: fr.dashboard.adminAction,
           icon: ScrollText,
-          note: fr.dashboard.adminNote,
+          note: `${fr.dashboard.availableAtLot} ${fr.dashboard.adminLot}`,
         }}
       />
     </>
