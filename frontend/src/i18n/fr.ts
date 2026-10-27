@@ -18,10 +18,14 @@ export const fr = {
     username: "Identifiant",
     password: "Mot de passe",
     sessionExpired: "Votre session a expiré. Veuillez vous reconnecter.",
+    loginPrompt: "Connectez-vous avec votre compte ONEA pour accéder à la plateforme.",
   },
   errors: {
     generic: "Une erreur est survenue. Veuillez réessayer.",
     network: "Le serveur est injoignable. Vérifiez votre connexion.",
+    unreachableTitle: "Service indisponible",
+    unreachable:
+      "Le serveur ou le service d'authentification est injoignable. Veuillez réessayer dans quelques instants.",
     unauthorized: "Vous devez être connecté pour accéder à cette page.",
     forbidden: "Vous n'avez pas les droits nécessaires pour cette action.",
     notFound: "La ressource demandée est introuvable.",
