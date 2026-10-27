@@ -25,3 +25,4 @@ media/
 playwright-report/
 test-results/
 .superpowers/
+.claude/worktrees/
