@@ -68,12 +68,14 @@ def test_docs_page_loads_assets_locally(api_client: APIClient) -> None:
 
 
 def test_cookie_auth_extension_targets_existing_class(api_client: APIClient) -> None:
-    # drf-spectacular resolves the dotted path to the class when the extension is declared:
-    # a rename of SessionAuthentication401 makes that import (and this module) fail.
-    target: object = SessionAuthentication401Scheme.target_class
-    assert target is SessionAuthentication401
+    # drf-spectacular keeps target_class a dotted string until schema generation resolves
+    # it to the class, so generate the schema first, then check the resolved class.
     schemes = _schema(api_client)["components"]["securitySchemes"]
     assert "cookieAuth" in schemes
+    target: object = SessionAuthentication401Scheme.target_class
+    assert target is SessionAuthentication401
+    dotted = f"{SessionAuthentication401.__module__}.{SessionAuthentication401.__qualname__}"
+    assert dotted == "apps.users.authentication.SessionAuthentication401"
 
 
 def test_version_has_a_single_source() -> None:
