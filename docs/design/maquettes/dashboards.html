@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tableaux de bord par rôle</title>
+<style>
+/* === Tokens : copie conforme de frontend/src/styles/tokens.css === */
+:root {
+  /* Charte : clair */
+  --primary: #0b4f8a;
+  --primary-foreground: #ffffff;
+  --brand-accent: #0ea5b7;
+  --background: #f7f9fb;
+  --surface: #ffffff;
+  --foreground: #1b2733;
+  --text-muted: #5b6b7a;
+  --surface-subtle: #ebf0f4;
+  --border: #d9e1e8;
+  --success: #1e8e5a;
+  --warning: #c47a00;
+  --danger: #b42318;
+  --risk-low: #cfe8d8;
+  --risk-medium: #ffe8b3;
+  --risk-high: #f8c9c4;
+
+  --destructive-foreground: #ffffff;
+  --radius: 0.375rem; /* 6 px : boutons et champs ; cartes 8 px via --radius-lg */
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+.dark {
+  --primary: #5ba4e6;
+  --primary-foreground: #06243f;
+  --brand-accent: #22c3d6;
+  --background: #0f1720;
+  --surface: #16212c;
+  --foreground: #e6edf3;
+  --text-muted: #93a3b3;
+  --surface-subtle: #1f2c39;
+  --border: #2a3745;
+  --success: #3ccb86;
+  --warning: #f0b23c;
+  --danger: #f0655c;
+  /* La charte ne définit pas de variantes sombres du risque : teintes claires conservées. */
+  --risk-low: #cfe8d8;
+  --risk-medium: #ffe8b3;
+  --risk-high: #f8c9c4;
+  --destructive-foreground: #06243f;
+}
+
+/* Mapping shadcn : résolu sur l'élément qui porte .dark comme sur :root */
+:root,
+.dark {
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface);
+  --popover-foreground: var(--foreground);
+  --secondary: var(--background);
+  --secondary-foreground: var(--foreground);
+  /* --accent et --muted de shadcn = fonds neutres discrets (survol, sélection, skeleton) */
+  --muted: var(--surface-subtle);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--surface-subtle);
+  --accent-foreground: var(--foreground);
+  --destructive: var(--danger);
+  --input: var(--border);
+  --ring: var(--primary);
+}
+
+/* === Tokens proposés (absents de tokens.css, voir README) === */
+:root {
+  --shadow-floating: 0 1px 2px rgb(16 24 40 / 0.06), 0 12px 32px -8px rgb(16 24 40 / 0.18);
+  --risk-foreground: #1b2733;
+  --overlay: rgb(15 23 32 / 0.48);
+}
+.dark {
+  --shadow-floating: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px -8px rgb(0 0 0 / 0.6);
+  --risk-foreground: #1b2733;
+  --overlay: rgb(0 0 0 / 0.6);
+}
+
+/* === Base === */
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: 14px; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  color: var(--foreground);
+  background: var(--surface-subtle);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3 { line-height: 1.25; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* === Page de documentation (hors application) === */
+.doc { max-width: 1360px; margin: 0 auto; padding: 48px 40px 96px; }
+.doc-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; padding-bottom: 24px; margin-bottom: 40px; border-bottom: 1px solid var(--border); }
+.doc-head h1 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.012em; }
+.doc-head p { margin: 4px 0 0; color: var(--text-muted); }
+.doc-toc { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.doc-toc a { display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 6px; font-size: 12px; font-weight: 500; text-decoration: none; color: var(--foreground); background: var(--surface); border: 1px solid var(--border); transition: border-color 150ms; }
+.doc-toc a:hover { border-color: var(--text-muted); }
+.variant { margin: 0 0 64px; scroll-margin-top: 24px; }
+.variant-cap { display: flex; justify-content: space-between; align-items: baseline; gap: 32px; margin-bottom: 12px; }
+.variant-cap h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.variant-cap p { margin: 0; max-width: 88ch; font-size: 12px; color: var(--text-muted); text-align: right; }
+.stage { overflow-x: auto; padding-bottom: 4px; }
+.frame { width: 1280px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.frame.w-768 { width: 768px; }
+.frame.w-a4 { width: 794px; border-radius: 2px; }
+.pair { display: flex; gap: 32px; align-items: flex-start; }
+
+/* === Application === */
+.app { position: relative; display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 800px; background: var(--background); color: var(--foreground); font-size: 14px; }
+.app.is-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
+.app.is-tablet { grid-template-columns: minmax(0, 1fr); min-height: 720px; }
+
+/* Barre latérale */
+.sidebar { display: flex; flex-direction: column; min-width: 0; background: var(--surface); border-right: 1px solid var(--border); }
+.brand { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 20px; border-bottom: 1px solid var(--border); flex: none; }
+.brand-mark { flex: none; display: block; }
+.bm-tile { fill: var(--primary); }
+.bm-drop { fill: var(--primary-foreground); }
+.bm-wave { fill: none; stroke: var(--brand-accent); stroke-width: 1.6; stroke-linecap: round; }
+.brand-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.brand-name { font-size: 16px; font-weight: 700; letter-spacing: 0.08em; }
+.brand-sub { margin-top: 2px; font-size: 12px; color: var(--text-muted); }
+.brand-close { margin-left: auto; }
+.nav { flex: 1; padding: 12px 12px 16px; overflow: auto; }
+.nav-group + .nav-group { margin-top: 12px; }
+.nav-label { margin: 0; padding: 12px 12px 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.nav-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.nav-list li { position: relative; }
+.nav-item { position: relative; display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 12px; border-radius: 6px; font-weight: 500; text-decoration: none; color: var(--foreground); transition: background-color 150ms, color 150ms; }
+.nav-item .icon { width: 20px; height: 20px; color: var(--text-muted); transition: color 150ms; }
+.nav-item:hover, .nav-item.is-hover { background: var(--surface-subtle); }
+.nav-item:hover .icon, .nav-item.is-hover .icon { color: var(--foreground); }
+.nav-item[aria-current="page"] { background: color-mix(in srgb, var(--primary) 10%, var(--surface)); color: var(--primary); font-weight: 600; }
+.nav-item[aria-current="page"] .icon { color: var(--primary); }
+.nav-item[aria-current="page"]::before { content: ""; position: absolute; left: -12px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 2px 2px 0; background: var(--brand-accent); }
+.nav-sep { height: 1px; margin: 4px 8px 10px; background: var(--border); }
+.sb-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 56px; padding: 0 12px; border-top: 1px solid var(--border); flex: none; }
+.sb-version { padding-left: 12px; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.btn-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--text-muted); cursor: pointer; transition: background-color 150ms, color 150ms; flex: none; }
+.btn-icon .icon { width: 20px; height: 20px; }
+.btn-icon:hover { background: var(--surface-subtle); color: var(--foreground); }
+.btn-icon:disabled { cursor: not-allowed; background: transparent; color: var(--text-muted); }
+
+/* Barre latérale repliée */
+.is-collapsed .brand { justify-content: center; padding: 0; }
+.is-collapsed .nav { padding: 12px 12px 16px; overflow: visible; }
+.is-collapsed .nav-item { justify-content: center; width: 40px; height: 40px; padding: 0; }
+.is-collapsed .nav-item[aria-current="page"]::before { left: -12px; top: 10px; bottom: 10px; }
+.is-collapsed .nav-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.is-collapsed .nav-group + .nav-group { margin-top: 0; }
+.is-collapsed .sb-foot { justify-content: center; padding: 0; }
+.tooltip { position: absolute; z-index: 4; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; white-space: nowrap; color: var(--surface); background: var(--foreground); box-shadow: var(--shadow-floating); }
+.tooltip-right { left: calc(100% + 12px); top: 50%; transform: translateY(-50%); }
+
+/* En-tête */
+.main-col { display: flex; flex-direction: column; min-width: 0; }
+.topbar { position: relative; display: flex; align-items: center; gap: 16px; height: 56px; padding: 0 24px 0 32px; background: var(--surface); border-bottom: 1px solid var(--border); flex: none; }
+.is-tablet .topbar { padding: 0 16px 0 12px; gap: 8px; }
+.topbar-end { display: flex; align-items: center; gap: 16px; margin-left: auto; }
+.is-tablet .topbar-end { gap: 8px; }
+.brand-inline { display: flex; align-items: center; gap: 10px; }
+.brand-inline .brand-name { font-size: 14px; }
+.crumbs ol { display: flex; align-items: center; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.crumbs li { display: flex; align-items: center; gap: 8px; }
+.crumbs a { color: var(--text-muted); text-decoration: none; transition: color 150ms; }
+.crumbs a:hover { color: var(--foreground); text-decoration: underline; text-underline-offset: 3px; }
+.crumbs [aria-current] { font-weight: 500; }
+.crumb-sep { color: var(--text-muted); }
+.search { display: flex; align-items: center; gap: 8px; width: 320px; height: 36px; padding: 0 12px; border: 1px solid transparent; border-radius: 6px; background: var(--surface-subtle); color: var(--text-muted); cursor: not-allowed; }
+.search input { flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: transparent; font: inherit; color: inherit; cursor: not-allowed; }
+.search input::placeholder { color: var(--text-muted); opacity: 1; }
+.vr { width: 1px; height: 24px; background: var(--border); }
+.user { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 8px 0 4px; border: 0; border-radius: 6px; background: transparent; font: inherit; color: inherit; cursor: pointer; transition: background-color 150ms; }
+.user:hover, .user.is-open { background: var(--surface-subtle); }
+.user-compact { padding: 0 4px; }
+.user-name { font-weight: 500; white-space: nowrap; }
+.user-chev { color: var(--text-muted); }
+.avatar { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; flex: none; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 18%, transparent); }
+.avatar-lg { width: 40px; height: 40px; font-size: 14px; }
+.role { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--background); font-size: 12px; font-weight: 500; line-height: 1; white-space: nowrap; color: var(--foreground); }
+.menu { position: absolute; z-index: 5; top: 52px; right: 24px; width: 296px; padding: 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow-floating); }
+.menu-head { display: flex; align-items: center; gap: 12px; padding: 12px 12px 8px; }
+.menu-id { min-width: 0; }
+.menu-name { font-weight: 600; }
+.menu-mail { font-size: 12px; color: var(--text-muted); }
+.menu-role { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 12px 12px; }
+.menu-k { font-size: 12px; color: var(--text-muted); }
+.menu-sep { height: 1px; margin: 4px -4px; background: var(--border); }
+.menu-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: 4px; text-decoration: none; color: var(--foreground); transition: background-color 150ms; }
+.menu-item .icon { color: var(--text-muted); }
+.menu-item:hover, .menu-item.is-highlight { background: var(--surface-subtle); }
+.menu-meta { margin: 0; padding: 6px 12px 8px; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* Tiroir (tablette) */
+.scrim { position: absolute; inset: 0; z-index: 6; background: var(--overlay); }
+.sheet { position: absolute; z-index: 7; top: 0; bottom: 0; left: 0; width: 280px; display: flex; box-shadow: var(--shadow-floating); }
+.sheet .sidebar { width: 100%; border-right: 1px solid var(--border); }
+
+/* Zone principale */
+.main { flex: 1; padding: 32px 32px 48px; }
+.is-tablet .main { padding: 24px 24px 40px; }
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+.page-title { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.012em; text-wrap: balance; }
+.page-sub { margin: 4px 0 0; color: var(--text-muted); }
+.page-meta { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+/* État vide */
+.empty { display: grid; grid-template-columns: minmax(0, 1fr) 320px; align-items: center; gap: 48px; padding: 40px 48px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.is-tablet .empty { grid-template-columns: minmax(0, 1fr); padding: 32px; }
+.is-tablet .illus { display: none; }
+.empty-title { margin: 0 0 8px; font-size: 20px; font-weight: 600; letter-spacing: -0.006em; }
+.empty-text { max-width: 58ch; margin: 0 0 24px; color: var(--text-muted); text-wrap: pretty; }
+.empty-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.illus { width: 320px; height: auto; display: block; color: var(--primary); }
+.illus ellipse, .illus path { fill: none; stroke: currentColor; stroke-width: 1.25; }
+.illus .r1 { stroke-opacity: 0.5; }
+.illus .r2 { stroke-opacity: 0.32; }
+.illus .r3 { stroke-opacity: 0.18; }
+.illus .r4 { stroke-opacity: 0.09; }
+.illus .drop { fill: var(--surface); stroke-width: 1.5; }
+.illus .drop-wave { stroke-opacity: 0.55; }
+.illus .drop-hl { stroke-opacity: 0.35; }
+
+/* Boutons */
+.btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border: 1px solid transparent; border-radius: 6px; font: inherit; font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color 150ms, border-color 150ms, color 150ms; }
+.btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.btn-primary:hover { background: color-mix(in srgb, var(--primary) 88%, var(--foreground)); }
+.btn:disabled { background: var(--surface-subtle); border-color: var(--border); color: var(--text-muted); cursor: not-allowed; }
+.soon { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border: 1px dashed var(--border); border-radius: 4px; font-size: 12px; font-weight: 500; color: var(--text-muted); background: var(--background); }
+
+/* Aperçu structurel */
+.preview-head { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; margin: 40px 0 16px; }
+.section-title { margin: 0; font-size: 16px; font-weight: 600; }
+.section-note { margin: 0; font-size: 12px; color: var(--text-muted); }
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; align-items: start; }
+.is-tablet .preview-head { flex-direction: column; gap: 4px; }
+.is-tablet .track { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.span-4 { grid-column: span 4; } .span-5 { grid-column: span 5; } .span-7 { grid-column: span 7; } .span-8 { grid-column: span 8; } .span-12 { grid-column: span 12; }
+.is-tablet .grid > * { grid-column: span 12; }
+.card { min-width: 0; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.card.is-preview { background: transparent; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 52px; padding: 0 20px; border-bottom: 1px solid var(--border); }
+.card-title { margin: 0; font-size: 14px; font-weight: 600; }
+.card-meta { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.card-body { padding: 20px; }
+.sk { display: block; max-width: 100%; height: 8px; border-radius: 2px; background: color-mix(in srgb, var(--border) 75%, var(--background)); }
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: 8px; }
+.kpi { padding: 16px 20px; }
+.kpi + .kpi { border-left: 1px solid var(--border); }
+.kpi-label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+.kpi-value { margin-top: 4px; font-size: 24px; font-weight: 600; line-height: 1.25; font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.kpi-foot { margin-top: 2px; font-size: 12px; color: var(--text-muted); }
+.tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.tbl-card .tbl { table-layout: auto; }
+.tbl-card .tbl td { white-space: nowrap; }
+.tbl th { height: 40px; padding: 0 20px; border-bottom: 1px solid var(--border); text-align: left; font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+.tbl td { height: 44px; padding: 0 20px; border-bottom: 1px solid var(--border); }
+.tbl tbody tr:last-child td { border-bottom: 0; }
+.tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl .num .sk { margin-left: auto; }
+.tbl tbody tr:nth-child(2) .sk { opacity: 0.7; }
+.tbl tbody tr:nth-child(3) .sk { opacity: 0.4; }
+.card-body + .tbl { border-top: 1px solid var(--border); }
+
+/* RAI : phases, jalons, matrice */
+.phases { display: grid; grid-template-columns: 10fr 4fr 4fr; gap: 32px; }
+.phase-name { font-weight: 500; }
+.phase-range { font-size: 12px; color: var(--text-muted); }
+.phase-value { margin: 12px 0 12px; font-size: 32px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text-muted); }
+.ticks { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; }
+.ticks i { height: 6px; border-radius: 1px; background: color-mix(in srgb, var(--border) 75%, var(--background)); }
+.ticks i.is-jalon { background: color-mix(in srgb, var(--text-muted) 45%, var(--background)); }
+.list { margin: 0; padding: 0; list-style: none; }
+.list li { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 20px; }
+.list li + li { border-top: 1px solid var(--border); }
+.step-code { display: inline-grid; place-items: center; min-width: 48px; height: 22px; padding: 0 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--text-muted); }
+.list-lbl { flex: 1; min-width: 0; }
+.list-val { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.mx-wrap { display: flex; align-items: stretch; gap: 8px; max-width: 272px; margin: 0 auto; }
+.mx-wrap + .legend { justify-content: center; gap: 6px 12px; }
+.mx-ylabel { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 12px; color: var(--text-muted); padding-bottom: 28px; }
+.mx-wrap > div { flex: 1; }
+.mx { display: grid; grid-template-columns: 16px repeat(5, minmax(0, 1fr)); gap: 3px; }
+.mx-axis { display: grid; place-items: center; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.mx-cell { display: grid; place-items: center; aspect-ratio: 1; border-radius: 3px; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--risk-foreground); }
+.risk-low { background: var(--risk-low); } .risk-medium { background: var(--risk-medium); } .risk-high { background: var(--risk-high); }
+.mx-xlabel { margin-top: 4px; padding-left: 19px; text-align: center; font-size: 12px; color: var(--text-muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 16px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--text-muted); }
+.legend li { display: inline-flex; align-items: center; gap: 6px; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; }
+
+/* AUDITEUR : frise des 18 étapes */
+.track { display: grid; grid-template-columns: 10fr 4fr 4fr; gap: 24px; }
+.track-head { display: flex; align-items: baseline; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.track-head .phase-name { font-size: 12px; font-weight: 600; }
+.steps { position: relative; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); margin: 14px 0 0; padding: 0; list-style: none; }
+.steps::before { content: ""; position: absolute; top: 5px; left: calc(50% / var(--n)); right: calc(50% / var(--n)); height: 1px; background: var(--border); }
+.step { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--text-muted) 55%, var(--background)); background: var(--background); }
+.step.is-jalon .dot { width: 10px; height: 10px; margin-top: 0.5px; border-radius: 1.5px; transform: rotate(45deg); border-color: var(--text-muted); }
+.step-n { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.legend-inline { margin-top: 20px; }
+.lg-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--text-muted) 55%, var(--background)); }
+.lg-dot.is-jalon { border-radius: 1.5px; transform: rotate(45deg); border-color: var(--text-muted); width: 8px; height: 8px; }
+
+/* AUDITE : rôle dans le suivi */
+.howto { margin: 0; padding: 8px 20px 20px; list-style: none; display: grid; gap: 4px; }
+.howto li { display: flex; gap: 12px; padding-top: 12px; }
+.howto-n { display: inline-grid; place-items: center; width: 24px; height: 24px; flex: none; border-radius: 50%; border: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--primary); font-variant-numeric: tabular-nums; }
+
+/* DG : taux de mise en œuvre */
+.rate { display: flex; align-items: baseline; gap: 4px; color: var(--text-muted); }
+.rate-value { font-size: 32px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.rate-unit { font-size: 20px; font-weight: 600; }
+.rate-note { margin: 8px 0 20px; font-size: 12px; color: var(--text-muted); }
+.meter { display: flex; gap: 2px; height: 8px; }
+.meter i { border-radius: 1px; }
+.m-ok { background: color-mix(in srgb, var(--success) 32%, var(--background)); }
+.m-run { background: color-mix(in srgb, var(--primary) 32%, var(--background)); }
+.m-todo { background: color-mix(in srgb, var(--border) 80%, var(--background)); }
+.m-late { background: color-mix(in srgb, var(--danger) 32%, var(--background)); }
+
+/* Spécification de grille (shell) */
+.gridspec { position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; height: 520px; }
+.gridspec span { border-radius: 4px; background: color-mix(in srgb, var(--brand-accent) 7%, transparent); border: 1px dashed color-mix(in srgb, var(--brand-accent) 45%, transparent); }
+.gridspec-note { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 12px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 12px; color: var(--text-muted); text-align: center; line-height: 1.6; }
+.gridspec-note strong { display: block; font-size: 14px; color: var(--foreground); font-weight: 600; }
+
+/* Tableau indicatif (variante sombre) */
+.tbl-card { overflow: hidden; }
+.tbl-card .tbl td { color: var(--foreground); }
+.tbl-card .tbl tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-subtle) 45%, transparent); }
+.tbl-card .tbl tbody tr:hover td { background: var(--surface-subtle); }
+.muted { color: var(--text-muted); }
+.status { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 500; background: color-mix(in srgb, var(--success) 14%, var(--surface)); color: var(--foreground); }
+.status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+.status.is-off { background: var(--surface-subtle); }
+.status.is-off::before { background: var(--text-muted); }
+
+/* Impression (PrintLayout) */
+.a4 { display: flex; flex-direction: column; height: 1123px; padding: 76px 76px 60px; background: var(--surface); color: var(--foreground); font-size: 12px; }
+.a4-head { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 10px; border-bottom: 1px solid var(--foreground); }
+.a4-org { display: flex; align-items: center; gap: 10px; }
+.a4-org strong { display: block; font-size: 12px; letter-spacing: 0.08em; }
+.a4-org span { font-size: 11px; }
+.a4-ref { text-align: right; font-size: 11px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.a4-body { flex: 1; padding-top: 28px; }
+.a4-body h1 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
+.a4-body p { margin: 0 0 24px; font-size: 11px; color: var(--text-muted); }
+.a4-lines span { display: block; height: 6px; margin-bottom: 10px; border-radius: 1px; background: var(--surface-subtle); }
+.a4-foot { display: flex; justify-content: space-between; gap: 16px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 10px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.a4-foot strong { color: var(--foreground); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.a4 .bm-tile { fill: var(--foreground); }
+.a4 .bm-wave { stroke: var(--foreground); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-dashboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></symbol>
+  <symbol id="i-briefcase" viewBox="0 0 24 24"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect x="2" y="6" width="20" height="14" rx="2"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/><path d="M10 2v8l3-3 3 3V2"/></symbol>
+  <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-chevronRight" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-chevronDown" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+  <symbol id="i-panelClose" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></symbol>
+  <symbol id="i-panelOpen" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+</svg>
+<div class="doc">
+  <header class="doc-head">
+    <div><h1>Tableaux de bord par rôle</h1><p>Plateforme Audit interne ONEA · lot 1, tâche 9 · état « aucune mission » · 27/10/2026</p></div>
+    <ul class="doc-toc"><li><a href="#rai">RAI</a></li><li><a href="#auditeur">Auditeur</a></li><li><a href="#audite">Audité</a></li><li><a href="#dg">DG</a></li></ul>
+  </header>
+<section class="variant" id="rai"><div class="variant-cap"><h2>RAI · Responsable de l'audit interne</h2><p>Entrées visibles : Tableau de bord, Missions, Référentiel, Recommandations, Documents. Action principale : Créer une mission (lot 3).</p></div><div class="stage"><div class="frame"><div class="app"><aside class="sidebar" aria-label="Navigation principale"><div class="brand"><svg class="brand-mark" width="28" height="28" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
+  <rect width="28" height="28" rx="6" class="bm-tile"/>
+  <path class="bm-drop" d="M14 5.25c0 0-6.25 6.9-6.25 11.1a6.25 6.25 0 0 0 12.5 0C20.25 12.15 14 5.25 14 5.25Z"/>
+  <path class="bm-wave" d="M8.9 17.1c1.27-1.1 2.55-1.1 3.82 0s2.55 1.1 3.82 0 1.9-.85 2.55-.55"/>
+</svg><div class="brand-text"><span class="brand-name">ONEA</span><span class="brand-sub">Audit interne</span></div></div><nav class="nav" aria-label="Menu principal"><div class="nav-group"><ul class="nav-list"><li><a class="nav-item" href="#" aria-current="page"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-dashboard"/></svg><span class="nav-text">Tableau de bord</span></a></li></ul></div><div class="nav-group"><h3 class="nav-label">Conduite des missions</h3><ul class="nav-list"><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-briefcase"/></svg><span class="nav-text">Missions</span></a></li><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-book"/></svg><span class="nav-text">Référentiel</span></a></li></ul></div><div class="nav-group"><h3 class="nav-label">Suivi</h3><ul class="nav-list"><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-clipboard"/></svg><span class="nav-text">Recommandations</span></a></li><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-file"/></svg><span class="nav-text">Documents</span></a></li></ul></div></nav><div class="sb-foot"><span class="sb-version">Version 0.1 · lot 1</span><button class="btn-icon" type="button" aria-label="Replier le menu" aria-expanded="true"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-panelClose"/></svg></button></div></aside><div class="main-col"><header class="topbar"><nav class="crumbs" aria-label="Fil d'Ariane"><ol><li><span aria-current="page">Tableau de bord</span></li></ol></nav><div class="topbar-end"><label class="search" title="Recherche disponible au lot 8"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-search"/></svg><span class="sr-only">Rechercher</span><input type="search" disabled placeholder="Recherche disponible au lot 8"></label><span class="vr" aria-hidden="true"></span><button class="user" type="button" aria-haspopup="menu" aria-expanded="false"><span class="avatar" aria-hidden="true">AO</span><span class="user-name">Awa Ouédraogo</span><span class="role">RAI</span><svg class="icon user-chev" aria-hidden="true" focusable="false"><use href="#i-chevronDown"/></svg></button></div></header><main class="main" id="contenu"><div class="page-head"><div><h1 class="page-title">Pilotage de l'audit interne</h1><p class="page-sub">Responsable de l'audit interne · Programme 2026</p></div><p class="page-meta"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-calendar"/></svg><span>Mardi 27 octobre 2026</span></p></div><section class="empty" aria-labelledby="vide-rai">
+    <div class="empty-body">
+      <h2 class="empty-title" id="vide-rai">Aucune mission pour le moment</h2>
+      <p class="empty-text">Créez la première mission du programme annuel : vous suivrez ici son avancement par phase, les jalons à valider et les recommandations en retard.</p>
+      <div class="empty-actions">
+        <button class="btn btn-primary" type="button" disabled aria-describedby="vide-rai-lot"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-plus"/></svg>Créer une mission</button>
+        <span class="soon" id="vide-rai-lot"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-clock"/></svg>Disponible au lot 3</span>
+      </div>
+    </div>
+    <svg class="illus" viewBox="0 0 320 176" aria-hidden="true" focusable="false">
+  <ellipse cx="160" cy="138" rx="154" ry="30" class="r4"/>
+  <ellipse cx="160" cy="138" rx="116" ry="22.5" class="r3"/>
+  <ellipse cx="160" cy="138" rx="76" ry="15" class="r2"/>
+  <ellipse cx="160" cy="138" rx="36" ry="7" class="r1"/>
+  <path class="drop" d="M160 26c0 0-25 28.5-25 46.5a25 25 0 0 0 50 0C185 54.5 160 26 160 26Z"/>
+  <path class="drop-wave" d="M141.5 78c4.6-3.9 9.2-3.9 13.8 0s9.2 3.9 13.8 0 7.6-3.1 10.4-1.9"/>
+  <path class="drop-hl" d="M148.5 66.5c1.2-5.2 4-9.6 7.2-13.4"/>
+</svg>
+  </section><div class="preview-head"><h2 class="section-title">Ce que vous suivrez ici</h2><p class="section-note">Aperçu de la mise en page. Les indicateurs se rempliront avec les premières missions.</p></div><div class="grid">
+      <section class="card is-preview span-8" aria-hidden="true"><header class="card-head"><h3 class="card-title">Missions par phase</h3><span class="card-meta">Programme 2026</span></header><div class="card-body"><div class="phases"><div class="phase"><div class="phase-name">Planification</div><div class="phase-range">Étapes I à X</div><div class="phase-value">—</div><div class="ticks"><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class=""></i><i class="is-jalon"></i><i class=""></i><i class=""></i><i class=""></i><i class="is-jalon"></i></div></div><div class="phase"><div class="phase-name">Accomplissement</div><div class="phase-range">Étapes XI à XIV</div><div class="phase-value">—</div><div class="ticks"><i class=""></i><i class=""></i><i class="is-jalon"></i><i class=""></i></div></div><div class="phase"><div class="phase-name">Communication</div><div class="phase-range">Étapes XV à XVIII</div><div class="phase-value">—</div><div class="ticks"><i class=""></i><i class=""></i><i class=""></i><i class="is-jalon"></i></div></div></div></div></section>
+      <section class="card is-preview span-4" aria-hidden="true"><header class="card-head"><h3 class="card-title">Jalons à valider</h3><span class="card-meta">Validation RAI</span></header><ul class="list"><li><span class="step-code">VI</span><span class="list-lbl">Référentiel d'audit</span><span class="list-val">—</span></li><li><span class="step-code">X</span><span class="list-lbl">Organisation de la mission</span><span class="list-val">—</span></li><li><span class="step-code">XIII</span><span class="list-lbl">Validation des preuves</span><span class="list-val">—</span></li><li><span class="step-code">XVIII</span><span class="list-lbl">Rapport d'audit</span><span class="list-val">—</span></li></ul></section>
+      <section class="card is-preview span-8" aria-hidden="true"><header class="card-head"><h3 class="card-title">Recommandations en retard</h3><span class="card-meta">Échéance dépassée</span></header><table class="tbl"><thead><tr><th scope="col">Recommandation</th><th scope="col">Mission</th><th scope="col">Entité</th><th scope="col">Échéance</th><th scope="col" class="num">Retard (j)</th></tr></thead><tbody><tr><td><span class="sk" style="width:150px"></span></td><td><span class="sk" style="width:80px"></span></td><td><span class="sk" style="width:100px"></span></td><td><span class="sk" style="width:72px"></span></td><td class="num"><span class="sk" style="width:28px"></span></td></tr><tr><td><span class="sk" style="width:calc(150px * .8)"></span></td><td><span class="sk" style="width:calc(80px * .8)"></span></td><td><span class="sk" style="width:calc(100px * .8)"></span></td><td><span class="sk" style="width:calc(72px * .8)"></span></td><td class="num"><span class="sk" style="width:calc(28px * .8)"></span></td></tr><tr><td><span class="sk" style="width:calc(150px * .9)"></span></td><td><span class="sk" style="width:calc(80px * .9)"></span></td><td><span class="sk" style="width:calc(100px * .9)"></span></td><td><span class="sk" style="width:calc(72px * .9)"></span></td><td class="num"><span class="sk" style="width:calc(28px * .9)"></span></td></tr></tbody></table></section>
+      <section class="card span-4"><header class="card-head"><h3 class="card-title">Échelle de criticité</h3><span class="card-meta">Matrice 5 × 5</span></header><div class="card-body"><div class="mx-wrap"><span class="mx-ylabel">Probabilité</span><div><div class="mx"><span class="mx-axis">5</span><span class="mx-cell risk-low">5</span><span class="mx-cell risk-medium">10</span><span class="mx-cell risk-high">15</span><span class="mx-cell risk-high">20</span><span class="mx-cell risk-high">25</span><span class="mx-axis">4</span><span class="mx-cell risk-low">4</span><span class="mx-cell risk-medium">8</span><span class="mx-cell risk-medium">12</span><span class="mx-cell risk-high">16</span><span class="mx-cell risk-high">20</span><span class="mx-axis">3</span><span class="mx-cell risk-low">3</span><span class="mx-cell risk-low">6</span><span class="mx-cell risk-medium">9</span><span class="mx-cell risk-medium">12</span><span class="mx-cell risk-high">15</span><span class="mx-axis">2</span><span class="mx-cell risk-low">2</span><span class="mx-cell risk-low">4</span><span class="mx-cell risk-low">6</span><span class="mx-cell risk-medium">8</span><span class="mx-cell risk-medium">10</span><span class="mx-axis">1</span><span class="mx-cell risk-low">1</span><span class="mx-cell risk-low">2</span><span class="mx-cell risk-low">3</span><span class="mx-cell risk-low">4</span><span class="mx-cell risk-low">5</span><span></span><span class="mx-axis">1</span><span class="mx-axis">2</span><span class="mx-axis">3</span><span class="mx-axis">4</span><span class="mx-axis">5</span></div><div class="mx-xlabel">Impact</div></div></div>
+  <ul class="legend"><li><span class="swatch risk-low"></span>Faible · 1 à 7</li><li><span class="swatch risk-medium"></span>Moyen · 8 à 14</li><li><span class="swatch risk-high"></span>Élevé · 15 à 25</li></ul></div></section>
+    </div></main></div></div></div></div></section>
+<section class="variant" id="auditeur"><div class="variant-cap"><h2>AUDITEUR · Auditeur interne</h2><p>Entrées visibles : Tableau de bord, Missions, Référentiel, Recommandations, Documents. Action principale : Consulter mes missions (lot 3).</p></div><div class="stage"><div class="frame"><div class="app"><aside class="sidebar" aria-label="Navigation principale"><div class="brand"><svg class="brand-mark" width="28" height="28" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
+  <rect width="28" height="28" rx="6" class="bm-tile"/>
+  <path class="bm-drop" d="M14 5.25c0 0-6.25 6.9-6.25 11.1a6.25 6.25 0 0 0 12.5 0C20.25 12.15 14 5.25 14 5.25Z"/>
+  <path class="bm-wave" d="M8.9 17.1c1.27-1.1 2.55-1.1 3.82 0s2.55 1.1 3.82 0 1.9-.85 2.55-.55"/>
+</svg><div class="brand-text"><span class="brand-name">ONEA</span><span class="brand-sub">Audit interne</span></div></div><nav class="nav" aria-label="Menu principal"><div class="nav-group"><ul class="nav-list"><li><a class="nav-item" href="#" aria-current="page"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-dashboard"/></svg><span class="nav-text">Tableau de bord</span></a></li></ul></div><div class="nav-group"><h3 class="nav-label">Conduite des missions</h3><ul class="nav-list"><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-briefcase"/></svg><span class="nav-text">Missions</span></a></li><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-book"/></svg><span class="nav-text">Référentiel</span></a></li></ul></div><div class="nav-group"><h3 class="nav-label">Suivi</h3><ul class="nav-list"><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-clipboard"/></svg><span class="nav-text">Recommandations</span></a></li><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-file"/></svg><span class="nav-text">Documents</span></a></li></ul></div></nav><div class="sb-foot"><span class="sb-version">Version 0.1 · lot 1</span><button class="btn-icon" type="button" aria-label="Replier le menu" aria-expanded="true"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-panelClose"/></svg></button></div></aside><div class="main-col"><header class="topbar"><nav class="crumbs" aria-label="Fil d'Ariane"><ol><li><span aria-current="page">Tableau de bord</span></li></ol></nav><div class="topbar-end"><label class="search" title="Recherche disponible au lot 8"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-search"/></svg><span class="sr-only">Rechercher</span><input type="search" disabled placeholder="Recherche disponible au lot 8"></label><span class="vr" aria-hidden="true"></span><button class="user" type="button" aria-haspopup="menu" aria-expanded="false"><span class="avatar" aria-hidden="true">IS</span><span class="user-name">Issouf Sawadogo</span><span class="role">Auditeur</span><svg class="icon user-chev" aria-hidden="true" focusable="false"><use href="#i-chevronDown"/></svg></button></div></header><main class="main" id="contenu"><div class="page-head"><div><h1 class="page-title">Mes travaux d'audit</h1><p class="page-sub">Auditeur interne · Programme 2026</p></div><p class="page-meta"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-calendar"/></svg><span>Mardi 27 octobre 2026</span></p></div><section class="empty" aria-labelledby="vide-auditeur">
+    <div class="empty-body">
+      <h2 class="empty-title" id="vide-auditeur">Aucune mission pour le moment</h2>
+      <p class="empty-text">Dès qu'une mission vous sera affectée, vous retrouverez ici vos étapes en cours, les livrables attendus et les éléments soumis à validation.</p>
+      <div class="empty-actions">
+        <button class="btn btn-primary" type="button" disabled aria-describedby="vide-auditeur-lot"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-briefcase"/></svg>Consulter mes missions</button>
+        <span class="soon" id="vide-auditeur-lot"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-clock"/></svg>Disponible au lot 3</span>
+      </div>
+    </div>
+    <svg class="illus" viewBox="0 0 320 176" aria-hidden="true" focusable="false">
+  <ellipse cx="160" cy="138" rx="154" ry="30" class="r4"/>
+  <ellipse cx="160" cy="138" rx="116" ry="22.5" class="r3"/>
+  <ellipse cx="160" cy="138" rx="76" ry="15" class="r2"/>
+  <ellipse cx="160" cy="138" rx="36" ry="7" class="r1"/>
+  <path class="drop" d="M160 26c0 0-25 28.5-25 46.5a25 25 0 0 0 50 0C185 54.5 160 26 160 26Z"/>
+  <path class="drop-wave" d="M141.5 78c4.6-3.9 9.2-3.9 13.8 0s9.2 3.9 13.8 0 7.6-3.1 10.4-1.9"/>
+  <path class="drop-hl" d="M148.5 66.5c1.2-5.2 4-9.6 7.2-13.4"/>
+</svg>
+  </section><div class="preview-head"><h2 class="section-title">Ce que vous suivrez ici</h2><p class="section-note">Aperçu de la mise en page. Les indicateurs se rempliront avec les premières missions.</p></div><div class="grid">
+      <div class="kpis span-12" aria-hidden="true"><div class="kpi"><div class="kpi-label">Étapes en cours</div><div class="kpi-value">—</div><div class="kpi-foot">Toutes missions</div></div><div class="kpi"><div class="kpi-label">Livrables à produire</div><div class="kpi-value">—</div><div class="kpi-foot">Cette semaine</div></div><div class="kpi"><div class="kpi-label">En attente de validation</div><div class="kpi-value">—</div><div class="kpi-foot">Soumis au RAI</div></div></div>
+      <section class="card is-preview span-12" aria-hidden="true"><header class="card-head"><h3 class="card-title">Mes étapes en cours</h3><span class="card-meta">18 étapes IFACI</span></header><div class="card-body"><div class="track"><div class="track-phase" style="--n:10"><div class="track-head"><span class="phase-name">Planification</span><span class="phase-range">Étapes I à X</span></div><ol class="steps"><li class="step"><span class="dot"></span><span class="step-n">I</span></li><li class="step"><span class="dot"></span><span class="step-n">II</span></li><li class="step"><span class="dot"></span><span class="step-n">III</span></li><li class="step"><span class="dot"></span><span class="step-n">IV</span></li><li class="step"><span class="dot"></span><span class="step-n">V</span></li><li class="step is-jalon"><span class="dot"></span><span class="step-n">VI</span></li><li class="step"><span class="dot"></span><span class="step-n">VII</span></li><li class="step"><span class="dot"></span><span class="step-n">VIII</span></li><li class="step"><span class="dot"></span><span class="step-n">IX</span></li><li class="step is-jalon"><span class="dot"></span><span class="step-n">X</span></li></ol></div><div class="track-phase" style="--n:4"><div class="track-head"><span class="phase-name">Accomplissement</span><span class="phase-range">Étapes XI à XIV</span></div><ol class="steps"><li class="step"><span class="dot"></span><span class="step-n">XI</span></li><li class="step"><span class="dot"></span><span class="step-n">XII</span></li><li class="step is-jalon"><span class="dot"></span><span class="step-n">XIII</span></li><li class="step"><span class="dot"></span><span class="step-n">XIV</span></li></ol></div><div class="track-phase" style="--n:4"><div class="track-head"><span class="phase-name">Communication</span><span class="phase-range">Étapes XV à XVIII</span></div><ol class="steps"><li class="step"><span class="dot"></span><span class="step-n">XV</span></li><li class="step"><span class="dot"></span><span class="step-n">XVI</span></li><li class="step"><span class="dot"></span><span class="step-n">XVII</span></li><li class="step is-jalon"><span class="dot"></span><span class="step-n">XVIII</span></li></ol></div></div>
+  <ul class="legend legend-inline"><li><span class="lg-dot"></span>Étape</li><li><span class="lg-dot is-jalon"></span>Jalon validé par le responsable de l'audit interne</li></ul></div><table class="tbl"><thead><tr><th scope="col">Mission</th><th scope="col">Étape</th><th scope="col">Phase</th><th scope="col">Livrable attendu</th><th scope="col">Échéance</th></tr></thead><tbody><tr><td><span class="sk" style="width:160px"></span></td><td><span class="sk" style="width:44px"></span></td><td><span class="sk" style="width:96px"></span></td><td><span class="sk" style="width:180px"></span></td><td><span class="sk" style="width:72px"></span></td></tr><tr><td><span class="sk" style="width:calc(160px * .8)"></span></td><td><span class="sk" style="width:calc(44px * .8)"></span></td><td><span class="sk" style="width:calc(96px * .8)"></span></td><td><span class="sk" style="width:calc(180px * .8)"></span></td><td><span class="sk" style="width:calc(72px * .8)"></span></td></tr><tr><td><span class="sk" style="width:calc(160px * .9)"></span></td><td><span class="sk" style="width:calc(44px * .9)"></span></td><td><span class="sk" style="width:calc(96px * .9)"></span></td><td><span class="sk" style="width:calc(180px * .9)"></span></td><td><span class="sk" style="width:calc(72px * .9)"></span></td></tr></tbody></table></section>
+    </div></main></div></div></div></div></section>
+<section class="variant" id="audite"><div class="variant-cap"><h2>AUDITE · Responsable d'entité auditée</h2><p>Référentiel et Administration masqués. Action principale : Consulter mes recommandations (lot 8).</p></div><div class="stage"><div class="frame"><div class="app"><aside class="sidebar" aria-label="Navigation principale"><div class="brand"><svg class="brand-mark" width="28" height="28" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
+  <rect width="28" height="28" rx="6" class="bm-tile"/>
+  <path class="bm-drop" d="M14 5.25c0 0-6.25 6.9-6.25 11.1a6.25 6.25 0 0 0 12.5 0C20.25 12.15 14 5.25 14 5.25Z"/>
+  <path class="bm-wave" d="M8.9 17.1c1.27-1.1 2.55-1.1 3.82 0s2.55 1.1 3.82 0 1.9-.85 2.55-.55"/>
+</svg><div class="brand-text"><span class="brand-name">ONEA</span><span class="brand-sub">Audit interne</span></div></div><nav class="nav" aria-label="Menu principal"><div class="nav-group"><ul class="nav-list"><li><a class="nav-item" href="#" aria-current="page"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-dashboard"/></svg><span class="nav-text">Tableau de bord</span></a></li></ul></div><div class="nav-group"><h3 class="nav-label">Conduite des missions</h3><ul class="nav-list"><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-briefcase"/></svg><span class="nav-text">Missions</span></a></li></ul></div><div class="nav-group"><h3 class="nav-label">Suivi</h3><ul class="nav-list"><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-clipboard"/></svg><span class="nav-text">Recommandations</span></a></li><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-file"/></svg><span class="nav-text">Documents</span></a></li></ul></div></nav><div class="sb-foot"><span class="sb-version">Version 0.1 · lot 1</span><button class="btn-icon" type="button" aria-label="Replier le menu" aria-expanded="true"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-panelClose"/></svg></button></div></aside><div class="main-col"><header class="topbar"><nav class="crumbs" aria-label="Fil d'Ariane"><ol><li><span aria-current="page">Tableau de bord</span></li></ol></nav><div class="topbar-end"><label class="search" title="Recherche disponible au lot 8"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-search"/></svg><span class="sr-only">Rechercher</span><input type="search" disabled placeholder="Recherche disponible au lot 8"></label><span class="vr" aria-hidden="true"></span><button class="user" type="button" aria-haspopup="menu" aria-expanded="false"><span class="avatar" aria-hidden="true">MC</span><span class="user-name">Mariam Compaoré</span><span class="role">Audité</span><svg class="icon user-chev" aria-hidden="true" focusable="false"><use href="#i-chevronDown"/></svg></button></div></header><main class="main" id="contenu"><div class="page-head"><div><h1 class="page-title">Mes constats et actions</h1><p class="page-sub">Responsable d'entité auditée · Programme 2026</p></div><p class="page-meta"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-calendar"/></svg><span>Mardi 27 octobre 2026</span></p></div><section class="empty" aria-labelledby="vide-audite">
+    <div class="empty-body">
+      <h2 class="empty-title" id="vide-audite">Aucune mission pour le moment</h2>
+      <p class="empty-text">Lorsqu'une mission portera sur votre entité, vous retrouverez ici les constats soumis à votre avis et les actions de votre plan d'actions.</p>
+      <div class="empty-actions">
+        <button class="btn btn-primary" type="button" disabled aria-describedby="vide-audite-lot"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-clipboard"/></svg>Consulter mes recommandations</button>
+        <span class="soon" id="vide-audite-lot"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-clock"/></svg>Disponible au lot 8</span>
+      </div>
+    </div>
+    <svg class="illus" viewBox="0 0 320 176" aria-hidden="true" focusable="false">
+  <ellipse cx="160" cy="138" rx="154" ry="30" class="r4"/>
+  <ellipse cx="160" cy="138" rx="116" ry="22.5" class="r3"/>
+  <ellipse cx="160" cy="138" rx="76" ry="15" class="r2"/>
+  <ellipse cx="160" cy="138" rx="36" ry="7" class="r1"/>
+  <path class="drop" d="M160 26c0 0-25 28.5-25 46.5a25 25 0 0 0 50 0C185 54.5 160 26 160 26Z"/>
+  <path class="drop-wave" d="M141.5 78c4.6-3.9 9.2-3.9 13.8 0s9.2 3.9 13.8 0 7.6-3.1 10.4-1.9"/>
+  <path class="drop-hl" d="M148.5 66.5c1.2-5.2 4-9.6 7.2-13.4"/>
+</svg>
+  </section><div class="preview-head"><h2 class="section-title">Ce que vous suivrez ici</h2><p class="section-note">Aperçu de la mise en page. Les indicateurs se rempliront avec les premières missions.</p></div><div class="grid">
+      <div class="kpis span-12" aria-hidden="true"><div class="kpi"><div class="kpi-label">Constats adressés</div><div class="kpi-value">—</div><div class="kpi-foot">Soumis à votre avis</div></div><div class="kpi"><div class="kpi-label">Actions en cours</div><div class="kpi-value">—</div><div class="kpi-foot">Plan d'actions</div></div><div class="kpi"><div class="kpi-label">Actions échues</div><div class="kpi-value">—</div><div class="kpi-foot">Échéance dépassée</div></div></div>
+      <section class="card is-preview span-8" aria-hidden="true"><header class="card-head"><h3 class="card-title">Mes constats et actions</h3><span class="card-meta">Périmètre de votre entité</span></header><table class="tbl"><thead><tr><th scope="col">Constat</th><th scope="col">Recommandation</th><th scope="col">Action</th><th scope="col">Échéance</th><th scope="col">Statut de suivi</th></tr></thead><tbody><tr><td><span class="sk" style="width:120px"></span></td><td><span class="sk" style="width:130px"></span></td><td><span class="sk" style="width:110px"></span></td><td><span class="sk" style="width:72px"></span></td><td><span class="sk" style="width:80px"></span></td></tr><tr><td><span class="sk" style="width:calc(120px * .8)"></span></td><td><span class="sk" style="width:calc(130px * .8)"></span></td><td><span class="sk" style="width:calc(110px * .8)"></span></td><td><span class="sk" style="width:calc(72px * .8)"></span></td><td><span class="sk" style="width:calc(80px * .8)"></span></td></tr><tr><td><span class="sk" style="width:calc(120px * .9)"></span></td><td><span class="sk" style="width:calc(130px * .9)"></span></td><td><span class="sk" style="width:calc(110px * .9)"></span></td><td><span class="sk" style="width:calc(72px * .9)"></span></td><td><span class="sk" style="width:calc(80px * .9)"></span></td></tr></tbody></table></section>
+      <section class="card span-4"><header class="card-head"><h3 class="card-title">Votre rôle dans le suivi</h3></header><ol class="howto">
+    <li><span class="howto-n">1</span><span>Vous donnez votre avis sur les constats qui vous sont soumis.</span></li>
+    <li><span class="howto-n">2</span><span>Vous vous engagez sur un plan d'actions : un responsable et une échéance par action.</span></li>
+    <li><span class="howto-n">3</span><span>Vous rendez compte de l'avancement jusqu'à la clôture de chaque action.</span></li>
+  </ol></section>
+    </div></main></div></div></div></div></section>
+<section class="variant" id="dg"><div class="variant-cap"><h2>DG · Direction générale</h2><p>Référentiel et Administration masqués. Action principale : Consulter les rapports diffusés (lot 7).</p></div><div class="stage"><div class="frame"><div class="app"><aside class="sidebar" aria-label="Navigation principale"><div class="brand"><svg class="brand-mark" width="28" height="28" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
+  <rect width="28" height="28" rx="6" class="bm-tile"/>
+  <path class="bm-drop" d="M14 5.25c0 0-6.25 6.9-6.25 11.1a6.25 6.25 0 0 0 12.5 0C20.25 12.15 14 5.25 14 5.25Z"/>
+  <path class="bm-wave" d="M8.9 17.1c1.27-1.1 2.55-1.1 3.82 0s2.55 1.1 3.82 0 1.9-.85 2.55-.55"/>
+</svg><div class="brand-text"><span class="brand-name">ONEA</span><span class="brand-sub">Audit interne</span></div></div><nav class="nav" aria-label="Menu principal"><div class="nav-group"><ul class="nav-list"><li><a class="nav-item" href="#" aria-current="page"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-dashboard"/></svg><span class="nav-text">Tableau de bord</span></a></li></ul></div><div class="nav-group"><h3 class="nav-label">Conduite des missions</h3><ul class="nav-list"><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-briefcase"/></svg><span class="nav-text">Missions</span></a></li></ul></div><div class="nav-group"><h3 class="nav-label">Suivi</h3><ul class="nav-list"><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-clipboard"/></svg><span class="nav-text">Recommandations</span></a></li><li><a class="nav-item" href="#"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-file"/></svg><span class="nav-text">Documents</span></a></li></ul></div></nav><div class="sb-foot"><span class="sb-version">Version 0.1 · lot 1</span><button class="btn-icon" type="button" aria-label="Replier le menu" aria-expanded="true"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-panelClose"/></svg></button></div></aside><div class="main-col"><header class="topbar"><nav class="crumbs" aria-label="Fil d'Ariane"><ol><li><span aria-current="page">Tableau de bord</span></li></ol></nav><div class="topbar-end"><label class="search" title="Recherche disponible au lot 8"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-search"/></svg><span class="sr-only">Rechercher</span><input type="search" disabled placeholder="Recherche disponible au lot 8"></label><span class="vr" aria-hidden="true"></span><button class="user" type="button" aria-haspopup="menu" aria-expanded="false"><span class="avatar" aria-hidden="true">BZ</span><span class="user-name">Boukary Zongo</span><span class="role">DG</span><svg class="icon user-chev" aria-hidden="true" focusable="false"><use href="#i-chevronDown"/></svg></button></div></header><main class="main" id="contenu"><div class="page-head"><div><h1 class="page-title">Synthèse de l'audit interne</h1><p class="page-sub">Direction générale · Programme 2026</p></div><p class="page-meta"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-calendar"/></svg><span>Mardi 27 octobre 2026</span></p></div><section class="empty" aria-labelledby="vide-dg">
+    <div class="empty-body">
+      <h2 class="empty-title" id="vide-dg">Aucune mission pour le moment</h2>
+      <p class="empty-text">Les rapports validés et diffusés, ainsi que le taux de mise en œuvre des recommandations, s'afficheront ici dès la première diffusion.</p>
+      <div class="empty-actions">
+        <button class="btn btn-primary" type="button" disabled aria-describedby="vide-dg-lot"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-file"/></svg>Consulter les rapports diffusés</button>
+        <span class="soon" id="vide-dg-lot"><svg class="icon " aria-hidden="true" focusable="false"><use href="#i-clock"/></svg>Disponible au lot 7</span>
+      </div>
+    </div>
+    <svg class="illus" viewBox="0 0 320 176" aria-hidden="true" focusable="false">
+  <ellipse cx="160" cy="138" rx="154" ry="30" class="r4"/>
+  <ellipse cx="160" cy="138" rx="116" ry="22.5" class="r3"/>
+  <ellipse cx="160" cy="138" rx="76" ry="15" class="r2"/>
+  <ellipse cx="160" cy="138" rx="36" ry="7" class="r1"/>
+  <path class="drop" d="M160 26c0 0-25 28.5-25 46.5a25 25 0 0 0 50 0C185 54.5 160 26 160 26Z"/>
+  <path class="drop-wave" d="M141.5 78c4.6-3.9 9.2-3.9 13.8 0s9.2 3.9 13.8 0 7.6-3.1 10.4-1.9"/>
+  <path class="drop-hl" d="M148.5 66.5c1.2-5.2 4-9.6 7.2-13.4"/>
+</svg>
+  </section><div class="preview-head"><h2 class="section-title">Ce que vous suivrez ici</h2><p class="section-note">Aperçu de la mise en page. Les indicateurs se rempliront avec les premières missions.</p></div><div class="grid">
+      <div class="kpis span-12" aria-hidden="true"><div class="kpi"><div class="kpi-label">Rapports diffusés</div><div class="kpi-value">—</div><div class="kpi-foot">Programme 2026</div></div><div class="kpi"><div class="kpi-label">Recommandations émises</div><div class="kpi-value">—</div><div class="kpi-foot">Toutes entités</div></div><div class="kpi"><div class="kpi-label">Recommandations en retard</div><div class="kpi-value">—</div><div class="kpi-foot">Échéance dépassée</div></div></div>
+      <section class="card is-preview span-5" aria-hidden="true"><header class="card-head"><h3 class="card-title">Taux de mise en œuvre</h3><span class="card-meta">Recommandations</span></header><div class="card-body"><div class="rate"><span class="rate-value">—</span><span class="rate-unit">%</span></div>
+    <p class="rate-note">Recommandations réalisées rapportées aux recommandations émises.</p>
+    <div class="meter"><i style="flex:46" class="m-ok"></i><i style="flex:28" class="m-run"></i><i style="flex:16" class="m-todo"></i><i style="flex:10" class="m-late"></i></div>
+    <ul class="legend"><li><span class="swatch m-ok"></span>Réalisées</li><li><span class="swatch m-run"></span>En cours</li><li><span class="swatch m-todo"></span>Non démarrées</li><li><span class="swatch m-late"></span>En retard</li></ul></div></section>
+      <section class="card is-preview span-7" aria-hidden="true"><header class="card-head"><h3 class="card-title">Derniers rapports diffusés</h3><span class="card-meta">Rapports validés</span></header><table class="tbl"><thead><tr><th scope="col">Rapport</th><th scope="col">Entité auditée</th><th scope="col">Diffusé le</th><th scope="col" class="num">Recomm.</th></tr></thead><tbody><tr><td><span class="sk" style="width:150px"></span></td><td><span class="sk" style="width:110px"></span></td><td><span class="sk" style="width:72px"></span></td><td class="num"><span class="sk" style="width:24px"></span></td></tr><tr><td><span class="sk" style="width:calc(150px * .8)"></span></td><td><span class="sk" style="width:calc(110px * .8)"></span></td><td><span class="sk" style="width:calc(72px * .8)"></span></td><td class="num"><span class="sk" style="width:calc(24px * .8)"></span></td></tr><tr><td><span class="sk" style="width:calc(150px * .9)"></span></td><td><span class="sk" style="width:calc(110px * .9)"></span></td><td><span class="sk" style="width:calc(72px * .9)"></span></td><td class="num"><span class="sk" style="width:calc(24px * .9)"></span></td></tr></tbody></table></section>
+    </div></main></div></div></div></div></section>
+</div>
+</body>
+</html>
