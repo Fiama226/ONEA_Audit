@@ -15,6 +15,13 @@ else
   PY=python
 fi
 
+# No query runs during schema generation; the URL is only needed to load settings.
+DATABASE_URL=${DATABASE_URL:-postgres://onea:onea@127.0.0.1:5432/onea}
+export DATABASE_URL
+
+# Note: field descriptions come from Django translations (settings are fr). The committed
+# schema.d.ts must be regenerated with the pinned Django/DRF versions to stay reproducible.
+
 # A Windows-native python needs a native path for --file.
 OUT="$TMP/schema.yml"
 if command -v cygpath >/dev/null 2>&1; then
@@ -22,5 +29,5 @@ if command -v cygpath >/dev/null 2>&1; then
 fi
 
 (cd "$ROOT/backend" && "$PY" manage.py spectacular --file "$OUT" --settings=config.settings.test --urlconf=config.urls)
-(cd "$ROOT/frontend" && npx openapi-typescript "$TMP/schema.yml" -o src/api/schema.d.ts)
+(cd "$ROOT/frontend" && npx --no-install openapi-typescript "$TMP/schema.yml" -o src/api/schema.d.ts)
 echo "Generated frontend/src/api/schema.d.ts"

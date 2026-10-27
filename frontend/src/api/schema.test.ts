@@ -8,14 +8,24 @@ type ApiErrorBody = components["schemas"]["ApiError"];
 // Type-level contract tests: a backend drift regenerates schema.d.ts and breaks `tsc`.
 describe("generated OpenAPI types", () => {
   it("exposes the Me component with the expected fields", () => {
-    expectTypeOf<Me>().toHaveProperty("id").toEqualTypeOf<number>();
-    expectTypeOf<Me>().toHaveProperty("username").toEqualTypeOf<string>();
-    expectTypeOf<Me>().toHaveProperty("email").toEqualTypeOf<string>();
-    expectTypeOf<Me>().toHaveProperty("first_name").toEqualTypeOf<string>();
-    expectTypeOf<Me>().toHaveProperty("last_name").toEqualTypeOf<string>();
-    expectTypeOf<Me>().toHaveProperty("role");
-    expectTypeOf<Me>().toHaveProperty("direction_code").toEqualTypeOf<string>();
-    expectTypeOf<Me>().toHaveProperty("fonction").toEqualTypeOf<string>();
+    expectTypeOf<Me["id"]>().toEqualTypeOf<number>();
+    expectTypeOf<Me["username"]>().toEqualTypeOf<string>();
+    expectTypeOf<Me["email"]>().toEqualTypeOf<string>();
+    expectTypeOf<Me["first_name"]>().toEqualTypeOf<string>();
+    expectTypeOf<Me["last_name"]>().toEqualTypeOf<string>();
+    expectTypeOf<Me["role"]>().toEqualTypeOf<components["schemas"]["RoleEnum"]>();
+    expectTypeOf<Me["direction_code"]>().toEqualTypeOf<string>();
+    expectTypeOf<Me["fonction"]>().toEqualTypeOf<string>();
+    expectTypeOf<keyof Me>().toEqualTypeOf<
+      | "id"
+      | "username"
+      | "email"
+      | "first_name"
+      | "last_name"
+      | "role"
+      | "direction_code"
+      | "fonction"
+    >();
   });
 
   it("exposes the ApiError component mirroring the API error format", () => {

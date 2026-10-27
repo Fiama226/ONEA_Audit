@@ -1,11 +1,18 @@
+import re
 import tomllib
 from pathlib import Path
 from typing import Any
 
 import yaml
+from django.conf import settings
+from django.contrib.staticfiles import finders
 from rest_framework.test import APIClient
 
+from apps.core.schema import SessionAuthentication401Scheme
+from apps.users.authentication import SessionAuthentication401
 from config import __version__
+
+_ASSET_REF = re.compile(r"""<(?:script|link)\s[^>]*?\b(?:src|href)=["']([^"']+)["']""")
 
 
 def _schema(api_client: APIClient) -> dict[str, Any]:
@@ -47,12 +54,26 @@ def test_schema_exposes_api_error_component_on_me(api_client: APIClient) -> None
         assert ref == "#/components/schemas/ApiError"
 
 
-def test_docs_page_does_not_use_a_cdn(api_client: APIClient) -> None:
+def test_docs_page_loads_assets_locally(api_client: APIClient) -> None:
     r = api_client.get("/api/docs/")
     assert r.status_code == 200
     html = r.content.decode()
-    assert "cdn.jsdelivr.net" not in html
-    assert "swagger-ui" in html
+    refs = _ASSET_REF.findall(html)
+    assert refs
+    assert not [ref for ref in refs if re.match(r"(?:https?:)?//", ref)]
+    assert "/static/drf_spectacular_sidecar/" in html
+    bundle = next(ref for ref in refs if "swagger-ui" in ref and ref.endswith(".js"))
+    relative = bundle.removeprefix(settings.STATIC_URL)
+    assert finders.find(relative), f"{relative} not found by staticfiles finders"
+
+
+def test_cookie_auth_extension_targets_existing_class(api_client: APIClient) -> None:
+    # drf-spectacular resolves the dotted path to the class when the extension is declared:
+    # a rename of SessionAuthentication401 makes that import (and this module) fail.
+    target: object = SessionAuthentication401Scheme.target_class
+    assert target is SessionAuthentication401
+    schemes = _schema(api_client)["components"]["securitySchemes"]
+    assert "cookieAuth" in schemes
 
 
 def test_version_has_a_single_source() -> None:
