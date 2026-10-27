@@ -8,6 +8,7 @@ urlpatterns = [
     path("validation/", views.validation),
     path("validation-plate/", views.validation_plate),
     path("exemples/<uuid:pk>/", views.exemple_detail),
+    path("ecrire-exemple/", views.ecrire_exemple),
     path("interdit/", views.interdit),
     path("interdit-drf/", views.interdit_drf),
     path("reserve-rai/", views.reserve_rai),
