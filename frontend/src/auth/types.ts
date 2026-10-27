@@ -1,20 +1,20 @@
+import type { components } from "../api/schema";
+
+export type Me = components["schemas"]["Me"];
+export type Role = components["schemas"]["RoleEnum"];
+
+/** Runtime list of roles; the type check below keeps it in sync with the generated RoleEnum. */
 export const ROLES = ["ADMIN", "RAI", "AUDITEUR", "AUDITE", "DG"] as const;
-export type Role = (typeof ROLES)[number];
+
+type Equals<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+  ? true
+  : false;
+// Compile error if ROLES and RoleEnum diverge (in either direction).
+const rolesMatchSchema: Equals<(typeof ROLES)[number], Role> = true;
+void rolesMatchSchema;
 
 /** Rôle appliqué par défaut quand le serveur renvoie une valeur inconnue (moindre privilège). */
 export const DEFAULT_ROLE: Role = "AUDITE";
-
-// Type local en attendant les types OpenAPI générés (Task 9).
-export type Me = {
-  id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: Role;
-  direction_code: string;
-  fonction: string;
-};
 
 export function toRole(value: unknown): Role {
   return ROLES.find((r) => r === value) ?? DEFAULT_ROLE;

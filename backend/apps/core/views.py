@@ -8,6 +8,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
+from apps.core.schema import ERROR_400, ERROR_RESPONSES
 from apps.users.permissions import IsRAIOrAdmin
 from config import __version__
 
@@ -27,29 +28,15 @@ def health(request: Request) -> Response:
     return Response({"status": "ok", "version": __version__})
 
 
-ApiErrorResponse = inline_serializer(
-    "ApiErrorResponse",
-    {
-        "detail": serializers.CharField(),
-        "errors": serializers.DictField(child=serializers.ListField(child=serializers.CharField())),
-    },
-)
-ERROR_RESPONSES = {
-    400: ApiErrorResponse,
-    401: ApiErrorResponse,
-    403: ApiErrorResponse,
-}
-
-
 @extend_schema_view(
     list=extend_schema(
         operation_id="audit_log_list",
         summary="Piste d'audit (ADMIN, RAI)",
-        responses={200: AuditLogSerializer(many=True), **ERROR_RESPONSES},
+        responses={200: AuditLogSerializer(many=True), **ERROR_400, **ERROR_RESPONSES},
     ),
     retrieve=extend_schema(
         operation_id="audit_log_retrieve",
-        responses={200: AuditLogSerializer, 401: ApiErrorResponse, 403: ApiErrorResponse},
+        responses={200: AuditLogSerializer, **ERROR_RESPONSES},
     ),
 )
 class AuditLogViewSet(ReadOnlyModelViewSet[LogEntry]):

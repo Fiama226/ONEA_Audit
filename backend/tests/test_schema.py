@@ -8,8 +8,8 @@ from django.conf import settings
 from django.contrib.staticfiles import finders
 from rest_framework.test import APIClient
 
-from apps.core.schema import SessionAuthentication401Scheme
-from apps.users.authentication import SessionAuthentication401
+from apps.core.schema import OIDCBearerAuthenticationScheme, SessionAuthentication401Scheme
+from apps.users.authentication import OIDCBearerAuthentication, SessionAuthentication401
 from config import __version__
 
 _ASSET_REF = re.compile(r"""<(?:script|link)\s[^>]*?\b(?:src|href)=["']([^"']+)["']""")
@@ -54,6 +54,33 @@ def test_schema_exposes_api_error_component_on_me(api_client: APIClient) -> None
         assert ref == "#/components/schemas/ApiError"
 
 
+def test_schema_has_a_single_error_component(api_client: APIClient) -> None:
+    schemas = _schema(api_client)["components"]["schemas"]
+    assert "ApiError" in schemas
+    assert "ApiErrorResponse" not in schemas
+    assert [name for name in schemas if name.startswith("ApiError")] == ["ApiError"]
+
+
+def test_audit_log_endpoints_reference_api_error(api_client: APIClient) -> None:
+    paths = _schema(api_client)["paths"]
+    expected = "#/components/schemas/ApiError"
+
+    def ref(path: str, code: str) -> str:
+        responses = paths[path]["get"]["responses"]
+        return str(responses[code]["content"]["application/json"]["schema"]["$ref"])
+
+    for code in ("400", "401", "403"):
+        assert ref("/api/v1/audit-log/", code) == expected
+    for code in ("401", "403"):
+        assert ref("/api/v1/audit-log/{id}/", code) == expected
+
+
+def test_me_documents_auth_service_unavailable(api_client: APIClient) -> None:
+    responses = _schema(api_client)["paths"]["/api/v1/me/"]["get"]["responses"]
+    ref = responses["503"]["content"]["application/json"]["schema"]["$ref"]
+    assert ref == "#/components/schemas/ApiError"
+
+
 def test_docs_page_loads_assets_locally(api_client: APIClient) -> None:
     r = api_client.get("/api/docs/")
     assert r.status_code == 200
@@ -76,6 +103,18 @@ def test_cookie_auth_extension_targets_existing_class(api_client: APIClient) -> 
     assert target is SessionAuthentication401
     dotted = f"{SessionAuthentication401.__module__}.{SessionAuthentication401.__qualname__}"
     assert dotted == "apps.users.authentication.SessionAuthentication401"
+
+
+def test_bearer_auth_extension_targets_existing_class(api_client: APIClient) -> None:
+    # Same as the cookie guard: generate the schema first so the dotted target is resolved.
+    schemes = _schema(api_client)["components"]["securitySchemes"]
+    assert schemes["bearerAuth"]["type"] == "http"
+    assert schemes["bearerAuth"]["scheme"] == "bearer"
+    assert schemes["bearerAuth"]["bearerFormat"] == "JWT"
+    target: object = OIDCBearerAuthenticationScheme.target_class
+    assert target is OIDCBearerAuthentication
+    dotted = f"{OIDCBearerAuthentication.__module__}.{OIDCBearerAuthentication.__qualname__}"
+    assert dotted == "apps.users.authentication.OIDCBearerAuthentication"
 
 
 def test_version_has_a_single_source() -> None:
