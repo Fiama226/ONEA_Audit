@@ -1,0 +1,40 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: end-of-file-fixer
+        exclude: ^frontend/src/api/schema\.d\.ts$
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (backend)
+        entry: sh -c 'cd backend && mypy .'
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+        stages: [pre-push]
+      - id: eslint
+        name: eslint (frontend)
+        entry: sh -c 'cd frontend && npm run lint'
+        language: system
+        pass_filenames: false
+        files: ^frontend/.*\.(ts|tsx|js)$
+      - id: prettier
+        name: prettier (frontend)
+        entry: sh -c 'cd frontend && npx prettier --check .'
+        language: system
+        pass_filenames: false
+        files: ^frontend/
