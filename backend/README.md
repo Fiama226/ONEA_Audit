@@ -17,8 +17,14 @@ or from the process environment:
 | `EMAIL_URL` | default `smtp://mailpit:1025` (compose network); `smtp://localhost:1025` on the host |
 | `OIDC_OP_BASE_URL` | Keycloak realm URL, default `http://localhost:8080/realms/onea`; auth/token/userinfo/JWKS endpoints derive from it |
 | `OIDC_RP_CLIENT_ID` | default `onea-backend` |
-| `OIDC_RP_CLIENT_SECRET` | client secret; no default, required in prod |
-| `OIDC_VERIFY_SSL` | default `true` |
+| `OIDC_ALLOWED_AZP` | comma-separated Keycloak clients whose tokens are accepted (`azp`), default `onea-frontend` (`onea-dev-cli` added in dev/test) |
+| `OIDC_RP_CLIENT_SECRET` | optional, unused by the bearer path (empty default) |
+| `OIDC_VERIFY_SSL` | default `true`; prod refuses `false` |
+
+In prod, `OIDC_OP_BASE_URL` is required and must start with `https://`.
+
+If Keycloak is unreachable or answers 5xx, protected endpoints answer 503 (not 401), so
+clients do not drop their session during an outage.
 
 The API accepts `Authorization: Bearer <Keycloak access token>` (verified via the userinfo
 endpoint). The local role comes only from the `roles` claim (ADMIN > RAI > AUDITEUR > DG >

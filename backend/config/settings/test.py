@@ -8,6 +8,7 @@ SPECTACULAR_SETTINGS = {
     **SPECTACULAR_SETTINGS,
     "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
 }
+OIDC_ALLOWED_AZP = ["onea-frontend", "onea-dev-cli"]
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"

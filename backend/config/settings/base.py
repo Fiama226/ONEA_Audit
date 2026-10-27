@@ -154,10 +154,12 @@ OIDC_RP_SIGN_ALGO = "RS256"
 OIDC_RP_SCOPES = "openid email profile"
 OIDC_VERIFY_SSL: bool = env.bool("OIDC_VERIFY_SSL", default=True)
 OIDC_TIMEOUT = 5  # seconds; Keycloak calls must never hang a request worker
-AUTHENTICATION_BACKENDS = [
-    "apps.users.oidc.OneaOIDCBackend",
-    "django.contrib.auth.backends.ModelBackend",
-]
+# Accepted `azp` (issuing client) of bearer access tokens; other realm clients are refused.
+OIDC_ALLOWED_AZP: list[str] = env.list("OIDC_ALLOWED_AZP", default=["onea-frontend"])
+# The OIDC backend is wired for the DRF bearer path only, NOT in AUTHENTICATION_BACKENDS,
+# so that django authenticate() (admin/session) can never trigger a code-flow exchange.
+OIDC_DRF_AUTH_BACKEND = "apps.users.oidc.OneaOIDCBackend"
+AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
 REST_FRAMEWORK = {
     **REST_FRAMEWORK,
     "DEFAULT_AUTHENTICATION_CLASSES": [
