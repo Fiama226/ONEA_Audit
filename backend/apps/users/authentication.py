@@ -10,7 +10,7 @@ from django.db import DatabaseError
 from mozilla_django_oidc.contrib.drf import OIDCAuthentication
 from rest_framework import status
 from rest_framework.authentication import SessionAuthentication
-from rest_framework.exceptions import APIException, AuthenticationFailed
+from rest_framework.exceptions import APIException, AuthenticationFailed, PermissionDenied
 from rest_framework.request import Request
 
 logger = logging.getLogger(__name__)
@@ -93,5 +93,5 @@ class OIDCBearerAuthentication(OIDCAuthentication):  # type: ignore[misc]
             logger.exception("Unexpected error while validating a bearer token")
             raise AuthenticationFailed(INVALID_TOKEN) from None
         if result is not None and not result[0].is_active:  # type: ignore[attr-defined]
-            raise AuthenticationFailed(ACCOUNT_DISABLED)
+            raise PermissionDenied(ACCOUNT_DISABLED)
         return result
