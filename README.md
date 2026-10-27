@@ -11,9 +11,18 @@ fonctionnalité IA dans le produit.
 - [x] Stack technique validée (`CLAUDE.md`)
 - [x] Harnais de développement : agents, skills, MCP (`.claude/`, `.mcp.json`)
 - [x] Charte graphique (`docs/design/charte-graphique.md`)
-- [ ] Document de conception approuvé (`docs/superpowers/specs/`)
-- [ ] Plan d'implémentation (`docs/superpowers/plans/`)
-- [ ] Lot 1 : socle technique
+- [x] Document de conception approuvé (`docs/superpowers/specs/`)
+- [x] Plan d'implémentation (`docs/superpowers/plans/`)
+- [x] Lot 1 : socle technique
+
+## Démarrage rapide
+
+```
+cp .env.example .env
+make up                      # ou : docker compose --env-file .env -f docker/compose.yml -f docker/compose.dev.yml up -d
+make backend                 # voir backend/README.md (venv, migrations)
+cp frontend/.env.example frontend/.env && make frontend
+```
 
 ## Démarrer avec Claude Code
 

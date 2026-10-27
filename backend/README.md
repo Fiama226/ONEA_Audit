@@ -18,7 +18,7 @@ or from the process environment:
 | `OIDC_OP_BASE_URL` | Keycloak realm URL, default `http://localhost:8080/realms/onea`; auth/token/userinfo/JWKS endpoints derive from it |
 | `OIDC_RP_CLIENT_ID` | default `onea-backend` |
 | `OIDC_ALLOWED_AZP` | comma-separated Keycloak clients whose tokens are accepted (`azp`), default `onea-frontend` (`onea-dev-cli` added in dev/test) |
-| `OIDC_RP_CLIENT_SECRET` | optional, unused by the bearer path (empty default) |
+| `OIDC_RP_CLIENT_SECRET` | unused by the Bearer path (userinfo + JWKS); only required because mozilla-django-oidc reads it at init (empty default in dev/test, mandatory in prod) |
 | `OIDC_VERIFY_SSL` | default `true`; prod refuses `false` |
 
 In prod, `OIDC_OP_BASE_URL` is required and must start with `https://`.
