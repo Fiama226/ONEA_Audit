@@ -1,0 +1,270 @@
+# ONEA audit platform - PRODUCTION definition (standalone: do not combine with compose.yml
+# or compose.dev.yml). See docs/deploy.md.
+#
+#   docker compose --env-file .env.prod -f docker/compose.prod.yml up -d --build
+#   docker compose --env-file .env.prod -f docker/compose.prod.yml --profile storage up -d
+#
+# Every secret is REQUIRED (${VAR:?}); copy .env.prod.example to .env.prod and fill it in.
+# Only nginx publishes host ports (80/443); everything else lives on the private network.
+name: ${COMPOSE_PROJECT_NAME:-onea-prod}
+
+x-backend-env: &backend-env
+  DJANGO_SETTINGS_MODULE: config.settings.prod
+  SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required (see .env.prod.example)}
+  DATABASE_URL: postgres://${POSTGRES_USER:-onea}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-onea}
+  REDIS_URL: redis://redis:6379/0
+  EMAIL_URL: ${EMAIL_URL:?EMAIL_URL is required (e.g. smtp://user:pass@smtp.example.org:587)}
+  ALLOWED_HOSTS: ${PUBLIC_HOST:?PUBLIC_HOST is required}
+  CORS_ALLOWED_ORIGINS: https://${PUBLIC_HOST}
+  CSRF_TRUSTED_ORIGINS: https://${PUBLIC_HOST}
+  OIDC_OP_BASE_URL: https://${SSO_HOST:?SSO_HOST is required}/realms/onea
+  OIDC_RP_CLIENT_ID: onea-backend
+  OIDC_RP_CLIENT_SECRET: ${OIDC_RP_CLIENT_SECRET:?OIDC_RP_CLIENT_SECRET is required}
+  DJANGO_ADMIN_ENABLED: ${DJANGO_ADMIN_ENABLED:-false}
+  MEILI_URL: http://meilisearch:7700
+  MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required}
+  GOTENBERG_URL: http://gotenberg:3000
+
+services:
+  # --- Application ---
+  web:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    image: onea-backend:${ONEA_VERSION:-latest}
+    environment:
+      <<: *backend-env
+      RUN_MIGRATIONS: "true"
+      COLLECT_STATIC: "true"
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-3}
+    volumes:
+      - static:/app/staticfiles
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    image: onea-backend:${ONEA_VERSION:-latest}  # built by the `web` service
+    command: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=2"]
+    environment: *backend-env
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME -t 5 >/dev/null 2>&1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      web:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  beat:
+    image: onea-backend:${ONEA_VERSION:-latest}  # built by the `web` service
+    command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule", "/tmp/celerybeat-schedule"]
+    environment: *backend-env
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/celerybeat-schedule || test -f /tmp/celerybeat-schedule.db"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    depends_on:
+      web:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        VITE_API_URL: https://${PUBLIC_HOST:?PUBLIC_HOST is required}
+        VITE_OIDC_AUTHORITY: https://${SSO_HOST:?SSO_HOST is required}/realms/onea
+        VITE_OIDC_CLIENT_ID: onea-frontend
+    image: onea-frontend:${ONEA_VERSION:-latest}
+    restart: unless-stopped
+
+  # --- Edge: the only service with host ports ---
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?PUBLIC_HOST is required}
+      SSO_HOST: ${SSO_HOST:?SSO_HOST is required}
+      NGINX_ENVSUBST_FILTER: "^(PUBLIC|SSO)_"
+    volumes:
+      - ./nginx/prod.conf:/etc/nginx/templates/default.conf.template:ro
+      - ${TLS_CERT_DIR:?TLS_CERT_DIR is required (directory with fullchain.pem and privkey.pem)}:/etc/nginx/certs:ro
+      - static:/var/www/static:ro
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t >/dev/null 2>&1 && wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      web:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+      keycloak:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Infrastructure (no host ports) ---
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-onea}
+      POSTGRES_USER: ${POSTGRES_USER:-onea}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: valkey/valkey:7
+    command: ["valkey-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required}
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meili-data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    command: ["gotenberg", "--api-port=3000"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # Keycloak has its own PostgreSQL instance (separate database, credentials and volume).
+  keycloak-db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # PRODUCTION mode: `start`, no realm import, no dev realm, no test users.
+  # The realm is created by hand (docs/deploy.md). TLS terminates at nginx, which forwards
+  # X-Forwarded-*; KC_HOSTNAME is the public https URL and Keycloak is not reachable
+  # from outside the Docker network except through nginx over https.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}
+      KC_HOSTNAME: https://${SSO_HOST:?SSO_HOST is required}
+      KC_HOSTNAME_STRICT: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      JAVA_OPTS_KC_HEAP: "-XX:MaxRAMPercentage=65 -XX:InitialRAMPercentage=25"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    healthcheck:
+      # No curl in the image: raw HTTP on the management port through bash.
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.0\r\n\r\n' >&3 &&
+          grep -q '"status": "UP"' <&3
+      interval: 15s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    restart: unless-stopped
+
+  # --- S3 storage: NOT started by default (compose profile "storage"). ---
+  # No vetted image has been chosen yet (project owner's decision); see docs/infra-minio.md.
+  minio:
+    profiles: ["storage"]
+    image: ${MINIO_IMAGE:-minio-image-not-chosen:replace-me}
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  minio-init:
+    profiles: ["storage"]
+    image: ${MINIO_MC_IMAGE:-minio-image-not-chosen:replace-me}
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+      MINIO_BUCKET: ${MINIO_BUCKET:-onea-documents}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
+        mc mb --ignore-existing "local/$$MINIO_BUCKET"
+    restart: "no"
+
+volumes:
+  db-data:
+  keycloak-db-data:
+  redis-data:
+  meili-data:
+  minio-data:
+  static:

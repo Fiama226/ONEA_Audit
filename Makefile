@@ -46,3 +46,15 @@ check:
 .PHONY: worker
 worker:
 	$(COMPOSE) up -d worker beat
+
+.PHONY: check-api images prod-config
+check-api:
+	sh scripts/check-api-fresh.sh
+
+images:
+	docker build -f docker/backend.Dockerfile -t onea-backend:local .
+	docker build -f docker/frontend.Dockerfile -t onea-frontend:local --build-arg VITE_API_URL=https://audit.example.org --build-arg VITE_OIDC_AUTHORITY=https://sso.example.org/realms/onea .
+
+# Validate the production compose file against the placeholder env file.
+prod-config:
+	docker compose --env-file .env.prod.example -f docker/compose.prod.yml config -q

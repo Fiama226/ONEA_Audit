@@ -1,5 +1,5 @@
 # Development overlay: publishes host ports, adds Keycloak (start-dev, test realm)
-# and Mailpit. DEV ONLY - production Keycloak is defined separately (later task).
+# and Mailpit. DEV ONLY - production is docker/compose.prod.yml.
 # Every host port can be overridden (see .env.example) when it is already taken.
 services:
   db:
@@ -75,13 +75,14 @@ services:
     ports:
       - "${NGINX_PORT:-8081}:80"
 
-  # --- Celery worker/beat (DEV ONLY stopgap) ---
-  # No backend Dockerfile exists yet (Task 11 owns it). Until it lands, run the
-  # stock python image with ./backend bind-mounted and pip-install the
-  # dependencies from pyproject.toml at start. Replace `image` + `command` prefix by `build: ../backend` later.
+  # --- Celery worker/beat: built from the production backend image ---
+  # The image comes from docker/backend.Dockerfile; ../backend is bind-mounted over /app so
+  # code changes are picked up on restart (dev settings).
   worker:
-    image: python:3.12-slim
-    working_dir: /app
+    build: &backend_build
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+    image: onea-backend:dev
     volumes:
       - ../backend:/app
     environment: &celery_env
@@ -89,12 +90,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-onea}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required (see .env.example)}@db:5432/${POSTGRES_DB:-onea}
       REDIS_URL: redis://redis:6379/0
       EMAIL_URL: smtp://mailpit:1025
-    command:
-      - sh
-      - -c
-      - >-
-        python -c "import tomllib;print(chr(10).join(tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']))" > /tmp/req.txt && pip install -q --no-cache-dir -r /tmp/req.txt &&
-        celery -A config worker -l info
+    command: ["celery", "-A", "config", "worker", "-l", "info"]
     depends_on:
       redis:
         condition: service_healthy
@@ -103,17 +99,12 @@ services:
     restart: unless-stopped
 
   beat:
-    image: python:3.12-slim
-    working_dir: /app
+    build: *backend_build
+    image: onea-backend:dev
     volumes:
       - ../backend:/app
     environment: *celery_env
-    command:
-      - sh
-      - -c
-      - >-
-        python -c "import tomllib;print(chr(10).join(tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']))" > /tmp/req.txt && pip install -q --no-cache-dir -r /tmp/req.txt &&
-        celery -A config beat -l info --schedule /tmp/celerybeat-schedule
+    command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule", "/tmp/celerybeat-schedule"]
     depends_on:
       redis:
         condition: service_healthy
