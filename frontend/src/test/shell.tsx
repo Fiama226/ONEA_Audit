@@ -1,7 +1,7 @@
-import { render } from "@testing-library/react";
+import { act, configure, render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { createMemoryRouter, RouterProvider, type RouteObject } from "react-router-dom";
-import { vi } from "vitest";
+import { beforeAll, vi } from "vitest";
 import { AuthContext, type AuthContextValue } from "@/auth/useAuth";
 import type { Me, Role } from "@/auth/types";
 
@@ -52,4 +52,52 @@ export function renderRoutes(
 
 export function renderWithAuth(ui: ReactElement, role: Role, path = "/") {
   return renderRoutes([{ path: "*", element: ui }], role, { path });
+}
+
+/** Simule `window.matchMedia` ; `set` bascule une requête et notifie ses écouteurs. */
+export function mockMatchMedia(initial: Record<string, boolean> = {}) {
+  type Listener = (e: MediaQueryListEvent) => void;
+  const state = new Map(Object.entries(initial));
+  const listeners = new Map<string, Set<Listener>>();
+  vi.stubGlobal("matchMedia", (query: string): MediaQueryList => {
+    const set = listeners.get(query) ?? new Set<Listener>();
+    listeners.set(query, set);
+    return {
+      get matches() {
+        return state.get(query) ?? false;
+      },
+      media: query,
+      onchange: null,
+      addEventListener: (_: string, cb: EventListenerOrEventListenerObject) => {
+        set.add(cb as Listener);
+      },
+      removeEventListener: (_: string, cb: EventListenerOrEventListenerObject) => {
+        set.delete(cb as Listener);
+      },
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    };
+  });
+  return {
+    set(query: string, matches: boolean) {
+      state.set(query, matches);
+      act(() => {
+        for (const cb of listeners.get(query) ?? []) {
+          cb({ matches, media: query } as MediaQueryListEvent);
+        }
+      });
+    },
+  };
+}
+
+/**
+ * À appeler en tête d'un fichier de tests qui monte le shell complet (lent sous jsdom) :
+ * élargit les délais pour ce fichier seulement.
+ */
+export function allowSlowShell() {
+  beforeAll(() => {
+    vi.setConfig({ testTimeout: 20000 });
+    configure({ asyncUtilTimeout: 4000 });
+  });
 }

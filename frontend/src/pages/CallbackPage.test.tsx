@@ -2,6 +2,9 @@ import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { fr } from "@/i18n/fr";
 import { fakeUser, mockOidc, renderApp, serveMe } from "@/test/auth";
+import { allowSlowShell } from "@/test/shell";
+
+allowSlowShell();
 
 describe("CallbackPage", () => {
   it("redirige vers le chemin mémorisé", async () => {

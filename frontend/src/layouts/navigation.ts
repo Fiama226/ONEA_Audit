@@ -10,12 +10,23 @@ import {
 import type { Role } from "@/auth/types";
 import { fr } from "@/i18n/fr";
 
+/**
+ * Source unique des restrictions par route : la barre latérale et les gardes de routes
+ * (routes.tsx) lisent cette table. Absent = tout utilisateur authentifié.
+ */
+const ROUTE_ROLES: Readonly<Record<string, readonly Role[]>> = {
+  "/referentiel": ["ADMIN", "RAI", "AUDITEUR"],
+  "/administration": ["ADMIN"],
+};
+
+export function rolesFor(path: string): readonly Role[] | undefined {
+  return ROUTE_ROLES[path];
+}
+
 export type NavItem = {
   to: string;
   label: string;
   icon: LucideIcon;
-  /** Rôles autorisés ; absent = tout utilisateur authentifié. */
-  roles?: readonly Role[];
 };
 
 export type NavGroup = { title?: string; items: NavItem[] };
@@ -30,7 +41,6 @@ export const NAV_GROUPS: NavGroup[] = [
         to: "/referentiel",
         label: fr.nav.referentiel,
         icon: BookMarked,
-        roles: ["ADMIN", "RAI", "AUDITEUR"],
       },
     ],
   },
@@ -48,7 +58,6 @@ export const NAV_GROUPS: NavGroup[] = [
         to: "/administration",
         label: fr.nav.administration,
         icon: SlidersHorizontal,
-        roles: ["ADMIN"],
       },
     ],
   },
@@ -59,7 +68,7 @@ export function navFor(role: Role | null): NavGroup[] {
   if (role === null) return [];
   return NAV_GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter((i) => !i.roles || i.roles.includes(role)),
+    items: g.items.filter((i) => rolesFor(i.to)?.includes(role) ?? true),
   })).filter((g) => g.items.length > 0);
 }
 

@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { fr } from "@/i18n/fr";
 import { fakeMe, fakeUser, mockOidc, serveMe } from "@/test/auth";
@@ -20,7 +21,11 @@ function Probe() {
 }
 
 function wrap(children: ReactNode) {
-  render(<AuthProvider userManager={mockOidc(fakeUser())}>{children}</AuthProvider>);
+  render(
+    <MemoryRouter>
+      <AuthProvider userManager={mockOidc(fakeUser())}>{children}</AuthProvider>
+    </MemoryRouter>,
+  );
 }
 
 describe("useRole", () => {
@@ -47,7 +52,7 @@ describe("RequireRole", () => {
   it("rend le message d'interdiction sinon", async () => {
     serveMe(fakeMe({ role: "AUDITE" }));
     wrap(<RequireRole roles={["RAI"]}>contenu secret</RequireRole>);
-    expect(await screen.findByText(fr.errors.forbidden)).toBeInTheDocument();
+    expect(await screen.findByText(fr.errors.forbiddenText)).toBeInTheDocument();
     expect(screen.queryByText("contenu secret")).not.toBeInTheDocument();
   });
 });

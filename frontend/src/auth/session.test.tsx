@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import { fr } from "@/i18n/fr";
 import { capturedHandler, fakeUser, mockOidc, renderApp, serveMe } from "@/test/auth";
 import { safeReturnPath } from "./safePath";
+import { allowSlowShell } from "@/test/shell";
+
+allowSlowShell();
 
 describe("expiration de session", () => {
   it.each([

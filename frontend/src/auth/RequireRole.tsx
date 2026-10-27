@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
+import { ForbiddenView } from "@/components/ForbiddenView";
 import { fr } from "@/i18n/fr";
 import type { Role } from "./types";
 import { useAuth } from "./useAuth";
 import { useRole } from "./useRole";
 
-export function RequireRole({ roles, children }: { roles: Role[]; children: ReactNode }) {
+export function RequireRole({ roles, children }: { roles: readonly Role[]; children: ReactNode }) {
   const { status } = useAuth();
   const { is } = useRole();
 
@@ -17,11 +18,7 @@ export function RequireRole({ roles, children }: { roles: Role[]; children: Reac
   }
   if (status !== "authenticated") return null;
   if (!is(...roles)) {
-    return (
-      <p role="alert" className="p-6 text-destructive">
-        {fr.errors.forbidden}
-      </p>
-    );
+    return <ForbiddenView />;
   }
   return <>{children}</>;
 }

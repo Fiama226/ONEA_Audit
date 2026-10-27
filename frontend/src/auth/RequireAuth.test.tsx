@@ -4,6 +4,9 @@ import { describe, expect, it } from "vitest";
 import { fr } from "@/i18n/fr";
 import { fakeUser, mockOidc, renderApp, serveMe } from "@/test/auth";
 import { API_URL, server } from "@/test/msw";
+import { allowSlowShell } from "@/test/shell";
+
+allowSlowShell();
 
 describe("RequireAuth", () => {
   it("redirige un anonyme vers /connexion", async () => {
