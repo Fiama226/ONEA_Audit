@@ -15,6 +15,14 @@ or from the process environment:
 | `DATABASE_URL` | e.g. `postgres://onea:onea@localhost:5432/onea` (tests need PostgreSQL) |
 | `REDIS_URL` | e.g. `redis://localhost:6379/0` (Celery broker and result backend) |
 | `EMAIL_URL` | default `smtp://mailpit:1025` (compose network); `smtp://localhost:1025` on the host |
+| `OIDC_OP_BASE_URL` | Keycloak realm URL, default `http://localhost:8080/realms/onea`; auth/token/userinfo/JWKS endpoints derive from it |
+| `OIDC_RP_CLIENT_ID` | default `onea-backend` |
+| `OIDC_RP_CLIENT_SECRET` | client secret; no default, required in prod |
+| `OIDC_VERIFY_SSL` | default `true` |
+
+The API accepts `Authorization: Bearer <Keycloak access token>` (verified via the userinfo
+endpoint). The local role comes only from the `roles` claim (ADMIN > RAI > AUDITEUR > DG >
+AUDITE, default AUDITE) and is re-synced on every request.
 
 API schema and docs (`/api/schema/`, `/api/docs/`) are anonymous in dev/test and admin-only in prod.
 

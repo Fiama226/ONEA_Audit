@@ -139,3 +139,29 @@ EMAIL_HOST_USER = _email.get("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = _email.get("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = _email.get("EMAIL_USE_TLS", False)
 DEFAULT_FROM_EMAIL = "audit-interne@onea.bf"
+
+# --- Keycloak / OIDC bearer authentication (Task 5) ---
+OIDC_OP_BASE_URL: str = env("OIDC_OP_BASE_URL", default="http://localhost:8080/realms/onea").rstrip(
+    "/"
+)
+OIDC_OP_AUTHORIZATION_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/auth"
+OIDC_OP_TOKEN_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/token"
+OIDC_OP_USER_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/userinfo"
+OIDC_OP_JWKS_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/certs"
+OIDC_RP_CLIENT_ID: str = env("OIDC_RP_CLIENT_ID", default="onea-backend")
+OIDC_RP_CLIENT_SECRET: str = env("OIDC_RP_CLIENT_SECRET", default="")  # required in prod
+OIDC_RP_SIGN_ALGO = "RS256"
+OIDC_RP_SCOPES = "openid email profile"
+OIDC_VERIFY_SSL: bool = env.bool("OIDC_VERIFY_SSL", default=True)
+OIDC_TIMEOUT = 5  # seconds; Keycloak calls must never hang a request worker
+AUTHENTICATION_BACKENDS = [
+    "apps.users.oidc.OneaOIDCBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+REST_FRAMEWORK = {
+    **REST_FRAMEWORK,
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.users.authentication.OIDCBearerAuthentication",
+        "apps.users.authentication.SessionAuthentication401",
+    ],
+}
