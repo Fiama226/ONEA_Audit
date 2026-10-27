@@ -14,11 +14,12 @@ visuelle publique (bleu eau). Si une charte officielle existe, ses valeurs rempl
 |---|---|---|---|
 | `--primary` | #0B4F8A (bleu eau profond) | #5BA4E6 | actions principales, liens, en-têtes actifs |
 | `--primary-foreground` | #FFFFFF | #06243F | texte sur primaire |
-| `--accent` | #0EA5B7 (cyan eau) | #22C3D6 | accents, graphiques, étape courante |
+| `--brand-accent` | #0EA5B7 (cyan eau) | #22C3D6 | accents, graphiques, étape courante |
 | `--background` | #F7F9FB | #0F1720 | fond de page |
 | `--surface` | #FFFFFF | #16212C | cartes, tableaux |
 | `--foreground` | #1B2733 | #E6EDF3 | texte principal |
-| `--muted` | #5B6B7A | #93A3B3 | texte secondaire, libellés |
+| `--text-muted` | #5B6B7A | #93A3B3 | texte secondaire, libellés |
+| `--surface-subtle` | #EBF0F4 | #1F2C39 | survol, sélection, squelettes (mappé sur `--accent`/`--muted` de shadcn) |
 | `--border` | #D9E1E8 | #2A3745 | bordures, séparateurs |
 | `--success` | #1E8E5A | #3CCB86 | validé, clôturé |
 | `--warning` | #C47A00 | #F0B23C | en attente, échéance proche |

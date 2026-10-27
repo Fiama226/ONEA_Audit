@@ -39,6 +39,8 @@ export const fr = {
     loading: "Chargement en cours",
     empty: "Aucun élément à afficher.",
     close: "Fermer",
+    more: "Plus",
+    breadcrumb: "Fil d'Ariane",
     actions: "Actions",
     yes: "Oui",
     no: "Non",

@@ -28,6 +28,9 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-brand-accent: var(--brand-accent);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-text-muted: var(--text-muted);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);

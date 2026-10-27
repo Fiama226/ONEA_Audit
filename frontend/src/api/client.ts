@@ -31,6 +31,12 @@ function toFieldErrors(value: unknown): Record<string, string[]> {
   return out;
 }
 
+const STATUS_DETAIL: Record<number, string> = {
+  401: fr.errors.unauthorized,
+  403: fr.errors.forbidden,
+  404: fr.errors.notFound,
+};
+
 async function toApiError(response: Response): Promise<ApiError> {
   let payload: unknown = null;
   try {
@@ -39,7 +45,8 @@ async function toApiError(response: Response): Promise<ApiError> {
     payload = null;
   }
   const body = isRecord(payload) ? payload : {};
-  const detail = typeof body.detail === "string" ? body.detail : fr.errors.generic;
+  const fallback = STATUS_DETAIL[response.status] ?? fr.errors.generic;
+  const detail = typeof body.detail === "string" ? body.detail : fallback;
   // DRF renvoie soit {errors: {...}} (gestionnaire personnalisé) soit {champ: [...]}.
   const errors =
     "errors" in body
@@ -56,13 +63,23 @@ export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> 
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const response = await fetch(`${baseUrl()}${path}`, {
-    ...rest,
-    headers,
-    body: json !== undefined ? JSON.stringify(json) : rest.body,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl()}${path}`, {
+      ...rest,
+      headers,
+      body: json !== undefined ? JSON.stringify(json) : rest.body,
+    });
+  } catch {
+    throw new ApiError(0, fr.errors.network);
+  }
 
   if (!response.ok) throw await toApiError(response);
   if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
+  try {
+    return (await response.json()) as T;
+  } catch {
+    // 2xx non JSON (ex. page HTML d'un mauvais VITE_API_URL)
+    throw new ApiError(response.status, fr.errors.generic);
+  }
 }
