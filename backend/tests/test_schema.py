@@ -8,8 +8,8 @@ from django.conf import settings
 from django.contrib.staticfiles import finders
 from rest_framework.test import APIClient
 
-from apps.core.schema import SessionAuthentication401Scheme
-from apps.users.authentication import SessionAuthentication401
+from apps.core.schema import OIDCBearerAuthenticationScheme, SessionAuthentication401Scheme
+from apps.users.authentication import OIDCBearerAuthentication, SessionAuthentication401
 from config import __version__
 
 _ASSET_REF = re.compile(r"""<(?:script|link)\s[^>]*?\b(?:src|href)=["']([^"']+)["']""")
@@ -103,6 +103,18 @@ def test_cookie_auth_extension_targets_existing_class(api_client: APIClient) -> 
     assert target is SessionAuthentication401
     dotted = f"{SessionAuthentication401.__module__}.{SessionAuthentication401.__qualname__}"
     assert dotted == "apps.users.authentication.SessionAuthentication401"
+
+
+def test_bearer_auth_extension_targets_existing_class(api_client: APIClient) -> None:
+    # Same as the cookie guard: generate the schema first so the dotted target is resolved.
+    schemes = _schema(api_client)["components"]["securitySchemes"]
+    assert schemes["bearerAuth"]["type"] == "http"
+    assert schemes["bearerAuth"]["scheme"] == "bearer"
+    assert schemes["bearerAuth"]["bearerFormat"] == "JWT"
+    target: object = OIDCBearerAuthenticationScheme.target_class
+    assert target is OIDCBearerAuthentication
+    dotted = f"{OIDCBearerAuthentication.__module__}.{OIDCBearerAuthentication.__qualname__}"
+    assert dotted == "apps.users.authentication.OIDCBearerAuthentication"
 
 
 def test_version_has_a_single_source() -> None:
