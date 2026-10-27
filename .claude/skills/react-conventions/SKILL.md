@@ -46,7 +46,7 @@ Hook `useRole()` ; les actions interdites sont masquées, pas seulement désacti
 sauf quand l'utilisateur doit comprendre pourquoi (alors désactivée + tooltip).
 
 ## Style
-Tailwind avec tokens CSS de la charte (`--primary`, `--accent`, …) déclarés dans
+Tailwind avec tokens CSS de la charte (`--primary`, `--brand-accent`, …) déclarés dans
 `styles/tokens.css`. Jamais de couleur hexadécimale dans un composant. Lucide pour les icônes.
 Impression : classes `print:` et `PrintLayout` pour les documents consultables à l'écran.
 
