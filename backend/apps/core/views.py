@@ -9,11 +9,10 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from apps.users.permissions import IsRAIOrAdmin
+from config import __version__
 
 from .filters import AuditLogFilter
 from .serializers import AuditLogSerializer
-
-VERSION = "0.1.0"
 
 
 @extend_schema(
@@ -25,7 +24,7 @@ VERSION = "0.1.0"
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health(request: Request) -> Response:
-    return Response({"status": "ok", "version": VERSION})
+    return Response({"status": "ok", "version": __version__})
 
 
 ApiErrorResponse = inline_serializer(
