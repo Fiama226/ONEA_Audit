@@ -8,3 +8,6 @@ SPECTACULAR_SETTINGS = {
     **SPECTACULAR_SETTINGS,
     "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
 }
+
+INSTALLED_APPS = [*INSTALLED_APPS, "tests.testapp"]  # noqa: F405
+ROOT_URLCONF = "tests.testapp.root_urls"
