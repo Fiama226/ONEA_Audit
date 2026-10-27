@@ -75,6 +75,24 @@ def test_django_permission_denied_403_single_format(api_client: APIClient) -> No
     assert r.json() == {"detail": "Accès refusé.", "errors": {}}
 
 
+def test_custom_permission_denied_message_passes_through(api_client: APIClient) -> None:
+    r = api_client.get("/api/v1/_test/interdit-custom/")
+    assert r.status_code == 403
+    assert r.json() == {"detail": "Seul le chef de mission peut valider.", "errors": {}}
+
+
+def test_permission_class_message_passes_through(auth_client: APIClient) -> None:
+    r = auth_client.get("/api/v1/_test/reserve-rai/")
+    assert r.status_code == 403
+    assert r.json() == {"detail": "Réservé au RAI.", "errors": {}}
+
+
+def test_custom_404_message_passes_through(api_client: APIClient) -> None:
+    r = api_client.get("/api/v1/_test/introuvable-custom/")
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Mission introuvable.", "errors": {}}
+
+
 def test_drf_permission_denied_403_french(api_client: APIClient) -> None:
     r = api_client.get("/api/v1/_test/interdit-drf/")
     assert r.status_code == 403

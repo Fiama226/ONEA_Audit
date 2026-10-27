@@ -1,9 +1,11 @@
+import re
 from typing import Any
 
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from rest_framework import status
-from rest_framework.exceptions import APIException, ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import exception_handler, set_rollback
 
@@ -39,6 +41,20 @@ def _detail_message(data: Any) -> str:
     return " ".join(messages) or INVALID_DATA
 
 
+_DJANGO_404 = re.compile(r"^No .+ matches the given query\.$")
+
+
+def _localized(exc: Exception, detail: str) -> str:
+    """Use the French default only when the message is a framework default."""
+    if isinstance(exc, NotFound | Http404):
+        if detail == str(NotFound.default_detail) or _DJANGO_404.match(detail):
+            return NOT_FOUND
+    elif isinstance(exc, DRFPermissionDenied | PermissionDenied):
+        if detail == str(DRFPermissionDenied.default_detail):
+            return FORBIDDEN
+    return detail
+
+
 def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response | None:
     if isinstance(exc, RegleMetierError):
         set_rollback()
@@ -51,17 +67,6 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
         return None
     if isinstance(exc, ValidationError):
         response.data = {"detail": INVALID_DATA, "errors": _flatten(exc.detail)}
-    elif isinstance(exc, Http404):
-        response.data = {"detail": NOT_FOUND, "errors": {}}
-    elif isinstance(exc, PermissionDenied):
-        response.data = {"detail": FORBIDDEN, "errors": {}}
-    elif isinstance(exc, APIException):
-        detail = _detail_message(response.data)
-        if response.status_code == status.HTTP_403_FORBIDDEN and exc.get_codes() == (
-            "permission_denied"
-        ):
-            detail = FORBIDDEN
-        response.data = {"detail": detail, "errors": {}}
     else:
-        response.data = {"detail": _detail_message(response.data), "errors": {}}
+        response.data = {"detail": _localized(exc, _detail_message(response.data)), "errors": {}}
     return response

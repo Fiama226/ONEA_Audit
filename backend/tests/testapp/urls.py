@@ -10,4 +10,7 @@ urlpatterns = [
     path("exemples/<uuid:pk>/", views.exemple_detail),
     path("interdit/", views.interdit),
     path("interdit-drf/", views.interdit_drf),
+    path("reserve-rai/", views.reserve_rai),
+    path("interdit-custom/", views.interdit_custom),
+    path("introuvable-custom/", views.introuvable_custom),
 ]
