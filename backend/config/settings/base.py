@@ -5,8 +5,10 @@ import environ
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env()
-if (BASE_DIR / ".env").exists():
-    environ.Env.read_env(str(BASE_DIR / ".env"))
+# .env lives at the repository root (shared with docker compose)
+ENV_FILE = BASE_DIR.parent / ".env"
+if ENV_FILE.exists():
+    environ.Env.read_env(str(ENV_FILE))
 
 SECRET_KEY = env("SECRET_KEY", default="insecure-dev-key-change-me")  # noqa: S105
 DEBUG = False
@@ -88,6 +90,7 @@ CORS_ALLOWED_ORIGINS: list[str] = env.list(
 )
 
 REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 25,
@@ -102,4 +105,5 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Plateforme de digitalisation de l'audit interne ONEA",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],
 }
