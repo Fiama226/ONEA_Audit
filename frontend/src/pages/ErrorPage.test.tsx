@@ -14,7 +14,7 @@ describe("ErrorPage", () => {
 
     server.use(http.get(`${API_URL}/api/v1/me/`, () => HttpResponse.json(fakeMe())));
     await userEvent.click(screen.getByRole("button", { name: fr.common.retry }));
-    expect(await screen.findByText(fr.app.tagline)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: fr.dashboard.raiTitle })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/");
   });
 

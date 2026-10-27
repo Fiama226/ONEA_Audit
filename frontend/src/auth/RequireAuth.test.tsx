@@ -15,7 +15,7 @@ describe("RequireAuth", () => {
   it("affiche la page protégée pour un utilisateur authentifié", async () => {
     serveMe();
     const router = renderApp("/", mockOidc(fakeUser()));
-    expect(await screen.findByText(fr.app.tagline)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: fr.dashboard.raiTitle })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/");
   });
 
