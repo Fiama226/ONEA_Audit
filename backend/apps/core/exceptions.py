@@ -5,3 +5,12 @@ class RegleMetierError(Exception):
         super().__init__(message)
         self.message = message
         self.errors: dict[str, list[str]] = errors or {}
+
+
+class SuppressionPhysiqueInterditeError(RuntimeError):
+    """Raised on any attempt to physically delete a business object."""
+
+    def __init__(
+        self, message: str = "Suppression physique interdite : utiliser soft_delete()."
+    ) -> None:
+        super().__init__(message)

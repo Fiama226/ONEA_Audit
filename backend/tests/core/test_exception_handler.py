@@ -1,5 +1,8 @@
 from rest_framework.test import APIClient
 
+from apps.users.models import User
+from tests.testapp.models import Exemple
+
 
 def test_regle_metier_error_becomes_422(api_client: APIClient) -> None:
     r = api_client.get("/api/v1/_test/regle-metier/")
@@ -50,3 +53,29 @@ def test_other_api_errors_keep_detail_and_get_errors_key(api_client: APIClient) 
     assert r.status_code == 401
     assert set(r.json()) == {"detail", "errors"}
     assert r.json()["errors"] == {}
+
+
+def test_missing_object_404_uses_single_format(api_client: APIClient, db: None) -> None:
+    r = api_client.get("/api/v1/_test/exemples/3f2b8c1e-0000-4000-8000-000000000000/")
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Non trouvé.", "errors": {}}
+
+
+def test_soft_deleted_object_404(api_client: APIClient, user: User) -> None:
+    e = Exemple.objects.create(nom="x")
+    e.soft_delete(by=user)
+    r = api_client.get(f"/api/v1/_test/exemples/{e.pk}/")
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Non trouvé.", "errors": {}}
+
+
+def test_django_permission_denied_403_single_format(api_client: APIClient) -> None:
+    r = api_client.get("/api/v1/_test/interdit/")
+    assert r.status_code == 403
+    assert r.json() == {"detail": "Accès refusé.", "errors": {}}
+
+
+def test_drf_permission_denied_403_french(api_client: APIClient) -> None:
+    r = api_client.get("/api/v1/_test/interdit-drf/")
+    assert r.status_code == 403
+    assert r.json() == {"detail": "Accès refusé.", "errors": {}}

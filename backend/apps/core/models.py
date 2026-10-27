@@ -1,11 +1,13 @@
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+from auditlog.context import set_actor
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from .managers import SoftDeleteManager
+from .exceptions import SuppressionPhysiqueInterditeError
+from .managers import AllObjectsManager, SoftDeleteManager
 
 if TYPE_CHECKING:
     from apps.users.models import User
@@ -32,13 +34,27 @@ class BaseModel(models.Model):
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     objects = SoftDeleteManager()
-    all_objects = models.Manager()  # noqa: DJ012
+    all_objects = AllObjectsManager()  # noqa: DJ012
 
     class Meta:
         abstract = True
 
     def soft_delete(self, by: "User") -> None:
         """Logical deletion: never remove the row, keep the audit trail."""
+        if self.deleted_at is not None:
+            return
         self.deleted_at = timezone.now()
         self.updated_by = by
-        self.save(update_fields=["deleted_at", "updated_by", "updated_at"])
+        # set_actor records the actor even outside a request (services, Celery).
+        with set_actor(by):
+            self.save(update_fields=["deleted_at", "updated_by", "updated_at"])
+
+    def delete(self, *args: Any, **kwargs: Any) -> tuple[int, dict[str, int]]:
+        raise SuppressionPhysiqueInterditeError
+
+    def hard_delete(self) -> None:
+        """Physical deletion escape hatch for tests/admin maintenance.
+
+        Must NEVER be called from request code (CLAUDE.md rule 4).
+        """
+        super().delete()
