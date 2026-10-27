@@ -37,6 +37,12 @@
   --color-risk-low: var(--risk-low);
   --color-risk-medium: var(--risk-medium);
   --color-risk-high: var(--risk-high);
+  --color-risk-foreground: var(--risk-foreground);
+  --color-input-border: var(--input-border);
+  --color-success-text: var(--success-text);
+  --color-warning-text: var(--warning-text);
+  --color-overlay: var(--overlay);
+  --shadow-floating: var(--shadow-floating);
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
@@ -59,5 +65,29 @@
   h2,
   h3 {
     line-height: 1.25;
+  }
+}
+
+/* Impression A4 (PrintLayout) : marges de page et pagination via compteurs CSS. */
+@page {
+  size: A4 portrait;
+  margin: 20mm 20mm 16mm;
+  @bottom-right {
+    content: "Page " counter(page) " sur " counter(pages);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+}
+
+@media print {
+  html {
+    print-color-adjust: economy;
+  }
+  body {
+    background: var(--surface);
+    color: var(--foreground);
+  }
+  .print-exact {
+    print-color-adjust: exact;
   }
 }
