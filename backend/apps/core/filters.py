@@ -1,4 +1,5 @@
 import datetime as dt
+import re
 from typing import Any
 
 import django_filters
@@ -33,20 +34,57 @@ class ModelLabelFilter(django_filters.CharFilter):
     field_class = ModelLabelField
 
 
+ISO_DATE = ["%Y-%m-%d"]
+UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$")
+MAX_ACTOR_ID = 2**31 - 1
+
+
+class IntegerFilter(django_filters.Filter):
+    field_class = forms.IntegerField
+
+
 def _start_of_day(value: dt.date) -> dt.datetime:
     return timezone.make_aware(dt.datetime.combine(value, dt.time.min))
 
 
+class BoundedDateField(forms.DateField):
+    """ISO date within a range where day arithmetic and tz conversion cannot overflow."""
+
+    def clean(self, value: Any) -> Any:
+        parsed = super().clean(value)
+        if parsed is not None and not (dt.date(1900, 1, 1) <= parsed <= dt.date(9998, 12, 31)):
+            raise forms.ValidationError("Date hors limites (1900-01-01 à 9998-12-31).")
+        return parsed
+
+
+class IsoDateFilter(django_filters.DateFilter):
+    field_class = BoundedDateField
+
+
 class AuditLogFilter(django_filters.FilterSet):
     model = ModelLabelFilter(method="filter_model", help_text="app_label.model, e.g. users.user")
-    object_id = django_filters.CharFilter(field_name="object_pk")
-    actor = django_filters.NumberFilter(field_name="actor_id")
-    action = django_filters.ChoiceFilter(
-        choices=[(name, name) for name in ACTIONS], method="filter_action"
+    object_id = django_filters.CharFilter(
+        method="filter_object_id",
+        help_text="Primary key of the audited object (UUIDs case-insensitive)",
     )
-    date_from = django_filters.DateFilter(method="filter_date_from", help_text="ISO date")
-    date_to = django_filters.DateFilter(
-        method="filter_date_to", help_text="ISO date, inclusive of the whole day"
+    actor = IntegerFilter(
+        field_name="actor_id",
+        min_value=1,
+        max_value=MAX_ACTOR_ID,
+        help_text="Id of the user who made the change",
+    )
+    action = django_filters.ChoiceFilter(
+        choices=[(name, name) for name in ACTIONS],
+        method="filter_action",
+        help_text="create, update or delete",
+    )
+    date_from = IsoDateFilter(
+        method="filter_date_from", input_formats=ISO_DATE, help_text="ISO date YYYY-MM-DD"
+    )
+    date_to = IsoDateFilter(
+        method="filter_date_to",
+        input_formats=ISO_DATE,
+        help_text="ISO date YYYY-MM-DD, inclusive of the whole day (Africa/Ouagadougou)",
     )
 
     class Meta:
@@ -59,6 +97,11 @@ class AuditLogFilter(django_filters.FilterSet):
         app_label, model_name = value.split(".", 1)
         return queryset.filter(content_type__app_label=app_label, content_type__model=model_name)
 
+    def filter_object_id(
+        self, queryset: QuerySet[LogEntry], name: str, value: str
+    ) -> QuerySet[LogEntry]:
+        return queryset.filter(object_pk=value.lower() if UUID_RE.match(value) else value)
+
     def filter_action(
         self, queryset: QuerySet[LogEntry], name: str, value: str
     ) -> QuerySet[LogEntry]:
@@ -67,9 +110,11 @@ class AuditLogFilter(django_filters.FilterSet):
     def filter_date_from(
         self, queryset: QuerySet[LogEntry], name: str, value: dt.date
     ) -> QuerySet[LogEntry]:
-        return queryset.filter(timestamp__gte=_start_of_day(value))
+        start = _start_of_day(value)
+        return queryset.filter(timestamp__gte=start)
 
     def filter_date_to(
         self, queryset: QuerySet[LogEntry], name: str, value: dt.date
     ) -> QuerySet[LogEntry]:
-        return queryset.filter(timestamp__lt=_start_of_day(value + dt.timedelta(days=1)))
+        end = _start_of_day(value + dt.timedelta(days=1))
+        return queryset.filter(timestamp__lt=end)

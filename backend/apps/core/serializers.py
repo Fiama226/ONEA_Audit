@@ -1,8 +1,35 @@
+import logging
 from typing import Any
 
 from auditlog.models import LogEntry
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+
+logger = logging.getLogger(__name__)
+
+CHANGES_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "description": (
+        "Per field: [before, after] (values are strings as stored by django-auditlog; on "
+        "creation before is the string 'None', on deletion after is the string 'None'), or an "
+        "m2m object, or {'raw': value} for an unexpected stored shape."
+    ),
+    "additionalProperties": {
+        "oneOf": [
+            {"type": "array", "items": {}, "minItems": 2, "maxItems": 2},
+            {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": ["m2m"]},
+                    "operation": {"type": "string"},
+                    "objects": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["type", "operation", "objects"],
+            },
+            {"type": "object", "properties": {"raw": {}}, "required": ["raw"]},
+        ]
+    },
+}
 
 ACTION_NAMES: dict[int, str] = {
     LogEntry.Action.CREATE: "create",
@@ -29,19 +56,29 @@ class AuditLogSerializer(serializers.Serializer[LogEntry]):
     object_repr = serializers.CharField(read_only=True)
     changes = serializers.SerializerMethodField()
 
-    @extend_schema_field(serializers.ChoiceField(choices=["create", "update", "delete", "access"]))
+    @extend_schema_field(
+        serializers.ChoiceField(choices=["create", "update", "delete", "access", "unknown"])
+    )
     def get_action(self, obj: LogEntry) -> str:
-        return ACTION_NAMES[obj.action]
+        return ACTION_NAMES.get(obj.action, "unknown")
 
     @extend_schema_field(serializers.CharField(help_text="app_label.model, e.g. users.user"))
     def get_model(self, obj: LogEntry) -> str:
         return f"{obj.content_type.app_label}.{obj.content_type.model}"
 
-    @extend_schema_field(
-        serializers.DictField(
-            child=serializers.ListField(),
-            help_text="{field: [before, after]}; empty for deletions.",
-        )
-    )
+    @extend_schema_field(CHANGES_SCHEMA)
     def get_changes(self, obj: LogEntry) -> dict[str, Any]:
-        return obj.changes if isinstance(obj.changes, dict) else {}
+        raw = obj.changes_dict
+        if not isinstance(raw, dict):
+            logger.warning("Unexpected audit changes payload on entry %s", obj.pk)
+            return {"raw": raw}
+        out: dict[str, Any] = {}
+        for field, value in raw.items():
+            if isinstance(value, list | tuple) or (
+                isinstance(value, dict) and value.get("type") == "m2m"
+            ):
+                out[field] = value
+            else:
+                logger.warning("Unexpected audit change shape on entry %s (%s)", obj.pk, field)
+                out[field] = {"raw": value}
+        return out

@@ -28,9 +28,30 @@ def health(request: Request) -> Response:
     return Response({"status": "ok", "version": VERSION})
 
 
+ApiErrorResponse = inline_serializer(
+    "ApiErrorResponse",
+    {
+        "detail": serializers.CharField(),
+        "errors": serializers.DictField(child=serializers.ListField(child=serializers.CharField())),
+    },
+)
+ERROR_RESPONSES = {
+    400: ApiErrorResponse,
+    401: ApiErrorResponse,
+    403: ApiErrorResponse,
+}
+
+
 @extend_schema_view(
-    list=extend_schema(operation_id="audit_log_list", summary="Piste d'audit (ADMIN, RAI)"),
-    retrieve=extend_schema(operation_id="audit_log_retrieve"),
+    list=extend_schema(
+        operation_id="audit_log_list",
+        summary="Piste d'audit (ADMIN, RAI)",
+        responses={200: AuditLogSerializer(many=True), **ERROR_RESPONSES},
+    ),
+    retrieve=extend_schema(
+        operation_id="audit_log_retrieve",
+        responses={200: AuditLogSerializer, 401: ApiErrorResponse, 403: ApiErrorResponse},
+    ),
 )
 class AuditLogViewSet(ReadOnlyModelViewSet[LogEntry]):
     """Immutable, read-only view of the audit trail."""
