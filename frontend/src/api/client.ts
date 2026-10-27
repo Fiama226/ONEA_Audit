@@ -5,7 +5,7 @@ type TokenProvider = () => string | null | undefined;
 
 let getAccessToken: TokenProvider = () => null;
 
-/** Injecte la source du jeton d'accès (OIDC en production, session locale en dev). */
+/** Injecte la source du jeton d'accès (jeton Bearer Keycloak via OIDC ; la SPA n'utilise pas d'autre authentification). */
 export function setTokenProvider(fn: TokenProvider): void {
   getAccessToken = fn;
 }

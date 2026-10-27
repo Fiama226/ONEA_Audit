@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import { createBrowserRouter, type RouteObject } from "react-router-dom";
+import { Link, createBrowserRouter, type RouteObject } from "react-router-dom";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
+import { EmptyState } from "@/components/EmptyState";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { fr } from "@/i18n/fr";
 import { AppShell } from "@/layouts/AppShell";
@@ -18,7 +19,21 @@ function guarded(path: string, element: ReactNode): ReactNode {
 }
 
 function NotFound() {
-  return <p>{fr.errors.notFound}</p>;
+  return (
+    <>
+      <EmptyState
+        title={fr.errors.pageNotFoundTitle}
+        description={fr.errors.pageNotFound}
+        illustration={false}
+      />
+      <Link
+        to="/"
+        className="mt-4 inline-block text-sm font-medium text-primary underline-offset-[3px] hover:underline"
+      >
+        {fr.errors.backToDashboard}
+      </Link>
+    </>
+  );
 }
 
 export const appRoutes: RouteObject[] = [

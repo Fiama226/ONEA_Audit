@@ -29,3 +29,18 @@ describe("ErrorPage", () => {
     expect(await screen.findByText(fr.errors.unreachable)).toBeInTheDocument();
   });
 });
+
+describe("ErrorPage compte désactivé", () => {
+  it("affiche le détail du serveur sur 403 sans retourner à la connexion", async () => {
+    const detail = "Votre compte est désactivé.";
+    server.use(
+      http.get(`${API_URL}/api/v1/me/`, () => HttpResponse.json({ detail }, { status: 403 })),
+    );
+    const oidc = mockOidc(fakeUser());
+    const router = renderApp("/", oidc);
+    expect(await screen.findByText(detail)).toBeInTheDocument();
+    expect(screen.getByText(fr.errors.accountDisabledTitle)).toBeInTheDocument();
+    expect(router.state.location.pathname).not.toBe("/connexion");
+    expect(oidc.removeUser).not.toHaveBeenCalled();
+  });
+});

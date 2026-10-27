@@ -81,12 +81,16 @@ export function RiskMatrix({
                       key={i}
                       data-level={level}
                       aria-label={`${fr.dashboard.probability} ${p}, ${impact} ${i} : ${shown}${unit}, ${LEVEL_NAME[level]}`}
-                      className={cn(
-                        "aspect-square rounded-[3px] text-center text-xs font-medium text-risk-foreground tabular-nums",
-                        TINT[level],
-                      )}
+                      className="p-0"
                     >
-                      {shown}
+                      <div
+                        className={cn(
+                          "flex aspect-square items-center justify-center rounded-[3px] text-center text-xs font-medium text-risk-foreground tabular-nums",
+                          TINT[level],
+                        )}
+                      >
+                        {shown}
+                      </div>
                     </td>
                   );
                 })}

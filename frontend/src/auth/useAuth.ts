@@ -4,6 +4,8 @@ import type { AuthStatus, Me } from "./types";
 export type AuthContextValue = {
   status: AuthStatus;
   me?: Me;
+  /** Message du serveur (403 sur /me : compte désactivé) ; vide pour une indisponibilité technique. */
+  errorDetail?: string;
   /** Vrai quand la session a expiré (jeton expiré ou renouvellement échoué). */
   sessionExpired: boolean;
   /** Lance la connexion ; `returnTo` est restitué après le retour de Keycloak. */
