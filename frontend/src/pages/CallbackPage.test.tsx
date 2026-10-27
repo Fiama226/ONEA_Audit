@@ -2,6 +2,9 @@ import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { fr } from "@/i18n/fr";
 import { fakeUser, mockOidc, renderApp, serveMe } from "@/test/auth";
+import { allowSlowShell } from "@/test/shell";
+
+allowSlowShell();
 
 describe("CallbackPage", () => {
   it("redirige vers le chemin mémorisé", async () => {
@@ -9,7 +12,9 @@ describe("CallbackPage", () => {
     const oidc = mockOidc(null);
     oidc.signinRedirectCallback = async () => fakeUser({ state: { returnTo: "/missions" } });
     const router = renderApp("/callback", oidc);
-    expect(await screen.findByText(fr.errors.notFound)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: fr.nav.missions }),
+    ).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/missions");
   });
 
@@ -18,7 +23,7 @@ describe("CallbackPage", () => {
     const oidc = mockOidc(null);
     oidc.signinRedirectCallback = async () => fakeUser();
     const router = renderApp("/callback", oidc);
-    expect(await screen.findByText(fr.app.tagline)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: fr.dashboard.raiTitle })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/");
   });
 });

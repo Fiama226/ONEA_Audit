@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import { fr } from "@/i18n/fr";
 import { capturedHandler, fakeUser, mockOidc, renderApp, serveMe } from "@/test/auth";
 import { safeReturnPath } from "./safePath";
+import { allowSlowShell } from "@/test/shell";
+
+allowSlowShell();
 
 describe("expiration de session", () => {
   it.each([
@@ -12,7 +15,7 @@ describe("expiration de session", () => {
     serveMe();
     const oidc = mockOidc(fakeUser());
     const router = renderApp("/", oidc);
-    expect(await screen.findByText(fr.app.tagline)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: fr.dashboard.raiTitle })).toBeInTheDocument();
 
     const handler = capturedHandler<[Error?]>(pick(oidc));
     await act(async () => {
@@ -27,7 +30,7 @@ describe("expiration de session", () => {
     serveMe();
     const oidc = mockOidc(fakeUser());
     renderApp("/", oidc);
-    await screen.findByText(fr.app.tagline);
+    await screen.findByRole("heading", { name: fr.dashboard.raiTitle });
     cleanup();
     expect(oidc.events.removeAccessTokenExpired).toHaveBeenCalled();
     expect(oidc.events.removeSilentRenewError).toHaveBeenCalled();
@@ -51,7 +54,7 @@ describe("chemin de retour", () => {
     const oidc = mockOidc(null);
     oidc.signinRedirectCallback = async () => fakeUser({ state: { returnTo: "//evil.com" } });
     const router = renderApp("/callback", oidc);
-    expect(await screen.findByText(fr.app.tagline)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: fr.dashboard.raiTitle })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/");
   });
 

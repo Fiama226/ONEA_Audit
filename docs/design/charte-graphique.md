@@ -27,6 +27,12 @@ visuelle publique (bleu eau). Si une charte officielle existe, ses valeurs rempl
 | `--risk-low` | #CFE8D8 | — | cellules matrice, score 1–7 |
 | `--risk-medium` | #FFE8B3 | — | score 8–14 |
 | `--risk-high` | #F8C9C4 | — | score 15–25 |
+| `--risk-foreground` | #1B2733 | #1B2733 | texte des cellules de risque (les teintes restent claires en sombre) |
+| `--input-border` | #7F8F9E | #5F7385 | contour des champs de saisie (3:1, WCAG 1.4.11) |
+| `--success-text` | #16794C | = `--success` | texte de statut « succès » (4,5:1 sur blanc) |
+| `--warning-text` | #8F5A00 | = `--warning` | texte de statut « alerte » (4,5:1 sur blanc) |
+| `--shadow-floating` | 0 1px 2px / 0 12px 32px -8px, noir 6 % / 18 % | noir 50 % / 60 % | unique ombre : menus, infobulles, tiroir, dialogues |
+| `--overlay` | rgb(15 23 32 / .48) | rgb(0 0 0 / .6) | voile du tiroir et des dialogues |
 
 Contraste minimum AA (4.5:1) pour tout texte. Le cyan n'est jamais utilisé pour du texte sur fond clair.
 

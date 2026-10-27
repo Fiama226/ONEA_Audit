@@ -4,6 +4,9 @@ import { describe, expect, it } from "vitest";
 import { fr } from "@/i18n/fr";
 import { fakeUser, mockOidc, renderApp, serveMe } from "@/test/auth";
 import { API_URL, server } from "@/test/msw";
+import { allowSlowShell } from "@/test/shell";
+
+allowSlowShell();
 
 describe("RequireAuth", () => {
   it("redirige un anonyme vers /connexion", async () => {
@@ -15,7 +18,7 @@ describe("RequireAuth", () => {
   it("affiche la page protégée pour un utilisateur authentifié", async () => {
     serveMe();
     const router = renderApp("/", mockOidc(fakeUser()));
-    expect(await screen.findByText(fr.app.tagline)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: fr.dashboard.raiTitle })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/");
   });
 
