@@ -21,30 +21,45 @@
   --risk-low: #cfe8d8;
   --risk-medium: #ffe8b3;
   --risk-high: #f8c9c4;
+  --risk-foreground: #1b2733; /* texte des cellules de risque */
+  --input-border: #7f8f9e; /* contour de champ, 3:1 minimum (WCAG 1.4.11) */
+  --success-text: #16794c; /* texte de statut, 4,5:1 minimum sur surface */
+  --warning-text: #8f5a00;
+  --shadow-floating: 0 1px 2px rgb(16 24 40 / 0.06), 0 12px 32px -8px rgb(16 24 40 / 0.18);
+  --overlay: rgb(15 23 32 / 0.48);
 
   --destructive-foreground: #ffffff;
   --radius: 0.375rem; /* 6 px : boutons et champs ; cartes 8 px via --radius-lg */
   --font-sans: "Inter", system-ui, sans-serif;
 }
 
-.dark {
-  --primary: #5ba4e6;
-  --primary-foreground: #06243f;
-  --brand-accent: #22c3d6;
-  --background: #0f1720;
-  --surface: #16212c;
-  --foreground: #e6edf3;
-  --text-muted: #93a3b3;
-  --surface-subtle: #1f2c39;
-  --border: #2a3745;
-  --success: #3ccb86;
-  --warning: #f0b23c;
-  --danger: #f0655c;
-  /* La charte ne définit pas de variantes sombres du risque : teintes claires conservées. */
-  --risk-low: #cfe8d8;
-  --risk-medium: #ffe8b3;
-  --risk-high: #f8c9c4;
-  --destructive-foreground: #06243f;
+/* Jamais de theme sombre a l impression : le papier reste noir sur blanc. */
+@media not print {
+  .dark {
+    --primary: #5ba4e6;
+    --primary-foreground: #06243f;
+    --brand-accent: #22c3d6;
+    --background: #0f1720;
+    --surface: #16212c;
+    --foreground: #e6edf3;
+    --text-muted: #93a3b3;
+    --surface-subtle: #1f2c39;
+    --border: #2a3745;
+    --success: #3ccb86;
+    --warning: #f0b23c;
+    --danger: #f0655c;
+    /* La charte ne définit pas de variantes sombres du risque : teintes claires conservées. */
+    --risk-low: #cfe8d8;
+    --risk-medium: #ffe8b3;
+    --risk-high: #f8c9c4;
+    --risk-foreground: #1b2733;
+    --input-border: #5f7385;
+    --success-text: var(--success);
+    --warning-text: var(--warning);
+    --shadow-floating: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px -8px rgb(0 0 0 / 0.6);
+    --overlay: rgb(0 0 0 / 0.6);
+    --destructive-foreground: #06243f;
+  }
 }
 
 /* Mapping shadcn : résolu sur l'élément qui porte .dark comme sur :root */
