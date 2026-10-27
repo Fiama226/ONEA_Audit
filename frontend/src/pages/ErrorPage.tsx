@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fr } from "@/i18n/fr";
 
 export function ErrorPage() {
-  const { status, retry } = useAuth();
+  const { status, retry, errorDetail } = useAuth();
   // Sur /erreur, une fois la reprise réussie on retourne à l'application.
   if (status === "authenticated" || status === "anonymous") return <Navigate to="/" replace />;
 
@@ -13,10 +13,12 @@ export function ErrorPage() {
     <main className="mx-auto flex min-h-screen max-w-md items-center p-6">
       <Card className="w-full">
         <CardHeader>
-          <CardTitle>{fr.errors.unreachableTitle}</CardTitle>
+          <CardTitle>
+            {errorDetail ? fr.errors.accountDisabledTitle : fr.errors.unreachableTitle}
+          </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <p role="alert">{fr.errors.unreachable}</p>
+          <p role="alert">{errorDetail ?? fr.errors.unreachable}</p>
           <Button onClick={() => void retry()}>{fr.common.retry}</Button>
         </CardContent>
       </Card>

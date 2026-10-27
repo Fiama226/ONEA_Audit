@@ -58,14 +58,14 @@ export function RiskMatrix({
       <div className="min-w-0 flex-1">
         <table
           aria-label={fr.dashboard.matrixLabel}
-          className="print-exact w-full max-w-[272px] border-separate [border-spacing:3px]"
+          className="print-exact w-full max-w-[272px] table-fixed border-separate [border-spacing:3px]"
         >
           <tbody>
             {[...SCALE].reverse().map((p) => (
               <tr key={p}>
                 <th
                   scope="row"
-                  className="w-4 pr-1 text-right text-xs font-normal text-text-muted tabular-nums"
+                  className="w-6 pr-1 text-right text-xs font-normal text-text-muted tabular-nums"
                 >
                   <span className="sr-only">{fr.dashboard.probability} </span>
                   {p}
@@ -81,12 +81,16 @@ export function RiskMatrix({
                       key={i}
                       data-level={level}
                       aria-label={`${fr.dashboard.probability} ${p}, ${impact} ${i} : ${shown}${unit}, ${LEVEL_NAME[level]}`}
-                      className={cn(
-                        "aspect-square rounded-[3px] text-center text-xs font-medium text-risk-foreground tabular-nums",
-                        TINT[level],
-                      )}
+                      className="p-0"
                     >
-                      {shown}
+                      <div
+                        className={cn(
+                          "flex aspect-square items-center justify-center rounded-[3px] text-center text-xs font-medium text-risk-foreground tabular-nums",
+                          TINT[level],
+                        )}
+                      >
+                        {shown}
+                      </div>
                     </td>
                   );
                 })}

@@ -97,7 +97,7 @@ function Bar({ width, opacity }: { width: number | string; opacity?: number }) {
   return (
     <span
       className="inline-block h-2 rounded-[2px] bg-border/75 align-middle"
-      style={{ width, opacity }}
+      style={{ width, maxWidth: "100%", opacity }}
     />
   );
 }
@@ -108,8 +108,8 @@ type Column = { label: string; numeric?: boolean; width: number };
 export function SkeletonTable({ columns }: { columns: Column[] }) {
   const fades = [1, 0.7, 0.4];
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left">
+    <div>
+      <table className="w-full table-fixed border-collapse text-left">
         <thead>
           <tr className="h-10 border-b border-border">
             {columns.map((c) => (
@@ -117,7 +117,7 @@ export function SkeletonTable({ columns }: { columns: Column[] }) {
                 key={c.label}
                 scope="col"
                 className={cn(
-                  "px-5 text-xs font-semibold whitespace-nowrap text-text-muted",
+                  "px-4 text-xs font-semibold text-text-muted",
                   c.numeric && "text-right",
                 )}
               >
@@ -130,7 +130,7 @@ export function SkeletonTable({ columns }: { columns: Column[] }) {
           {fades.map((fade, row) => (
             <tr key={row} className="h-11 border-b border-border last:border-b-0">
               {columns.map((c) => (
-                <td key={c.label} className={cn("px-5", c.numeric && "text-right")}>
+                <td key={c.label} className={cn("px-4", c.numeric && "text-right")}>
                   <Bar width={c.width * (1 - row * 0.1)} opacity={fade} />
                 </td>
               ))}

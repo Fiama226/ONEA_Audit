@@ -74,3 +74,14 @@ describe("sidebar and routes agree", () => {
     }
   });
 });
+
+describe("page introuvable", () => {
+  it("affiche une vue en français avec un lien vers l'accueil", () => {
+    renderRoutes(appRoutes, "RAI", { path: "/inexistant" });
+    expect(screen.getByRole("heading", { name: fr.errors.pageNotFoundTitle })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: fr.errors.backToDashboard })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  });
+});

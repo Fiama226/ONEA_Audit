@@ -20,6 +20,7 @@ export function AuthProvider({ children, userManager }: Props) {
   const [oidc] = useState<OidcClient>(() => userManager ?? createUserManager());
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [me, setMe] = useState<Me | undefined>(undefined);
+  const [errorDetail, setErrorDetail] = useState<string | undefined>(undefined);
   const [sessionExpired, setSessionExpired] = useState(false);
   const tokenRef = useRef<string | null>(null);
 
@@ -60,12 +61,15 @@ export function AuthProvider({ children, userManager }: Props) {
   const loadMe = useCallback(async () => {
     try {
       const data = await apiFetch<Me>("/api/v1/me/");
+      setErrorDetail(undefined);
       setMe({ ...data, role: toRole(data.role) });
       setStatus("authenticated");
     } catch (e) {
       if (isApiError(e) && e.status === 401) {
         await goAnonymous();
       } else {
+        // 403 : compte désactivé. Ce n'est pas une session expirée, donc pas de retour vers la connexion.
+        setErrorDetail(isApiError(e) && e.status === 403 ? e.detail : undefined);
         setMe(undefined);
         setStatus("error");
       }
@@ -132,8 +136,8 @@ export function AuthProvider({ children, userManager }: Props) {
   }, [oidc, loadMe]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, me, sessionExpired, login, logout, retry: init, completeLogin }),
-    [status, me, sessionExpired, login, logout, init, completeLogin],
+    () => ({ status, me, errorDetail, sessionExpired, login, logout, retry: init, completeLogin }),
+    [status, me, errorDetail, sessionExpired, login, logout, init, completeLogin],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
