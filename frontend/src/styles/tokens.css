@@ -1,0 +1,61 @@
+/*
+ * Tokens de la charte graphique ONEA (docs/design/charte-graphique.md).
+ * Seul fichier autorisé à contenir des couleurs hexadécimales.
+ * Les variables shadcn (--card, --ring, ...) sont mappées sur les tokens de la charte.
+ */
+
+:root {
+  /* Charte : clair */
+  --primary: #0b4f8a;
+  --primary-foreground: #ffffff;
+  --accent: #0ea5b7;
+  --background: #f7f9fb;
+  --surface: #ffffff;
+  --foreground: #1b2733;
+  --muted: #5b6b7a;
+  --border: #d9e1e8;
+  --success: #1e8e5a;
+  --warning: #c47a00;
+  --danger: #b42318;
+  --risk-low: #cfe8d8;
+  --risk-medium: #ffe8b3;
+  --risk-high: #f8c9c4;
+
+  /* Mapping shadcn */
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface);
+  --popover-foreground: var(--foreground);
+  --secondary: var(--background);
+  --secondary-foreground: var(--foreground);
+  --muted-foreground: var(--muted);
+  --accent-foreground: #ffffff;
+  --destructive: var(--danger);
+  --destructive-foreground: #ffffff;
+  --input: var(--border);
+  --ring: var(--primary);
+
+  --radius: 0.375rem; /* 6 px : boutons et champs ; cartes 8 px via --radius-lg */
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+.dark {
+  --primary: #5ba4e6;
+  --primary-foreground: #06243f;
+  --accent: #22c3d6;
+  --background: #0f1720;
+  --surface: #16212c;
+  --foreground: #e6edf3;
+  --muted: #93a3b3;
+  --border: #2a3745;
+  --success: #3ccb86;
+  --warning: #f0b23c;
+  --danger: #f0655c;
+  /* La charte ne définit pas de variantes sombres du risque : teintes claires conservées. */
+  --risk-low: #cfe8d8;
+  --risk-medium: #ffe8b3;
+  --risk-high: #f8c9c4;
+
+  --accent-foreground: #06243f;
+  --destructive-foreground: #06243f;
+}
