@@ -4,6 +4,43 @@
  */
 
 export interface paths {
+    "/api/v1/audit-log/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Piste d'audit (ADMIN, RAI)
+         * @description Immutable, read-only view of the audit trail.
+         */
+        get: operations["audit_log_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-log/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Immutable, read-only view of the audit trail. */
+        get: operations["audit_log_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/": {
         parameters: {
             query?: never;
@@ -40,11 +77,47 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description * `create` - create
+         *     * `update` - update
+         *     * `delete` - delete
+         *     * `access` - access
+         *     * `unknown` - unknown
+         * @enum {string}
+         */
+        ActionEnum: "create" | "update" | "delete" | "access" | "unknown";
         /** @description Error body returned by the API exception handler (see apps.core.handlers). */
         ApiError: {
             detail: string;
             errors: {
                 [key: string]: string[];
+            };
+        };
+        AuditActor: {
+            id: number;
+            username: string;
+        };
+        /** @description Read-only representation of an auditlog entry. */
+        AuditLog: {
+            readonly id: number;
+            /** Format: date-time */
+            readonly timestamp: string;
+            readonly actor: components["schemas"]["AuditActor"] | null;
+            readonly action: components["schemas"]["ActionEnum"];
+            /** @description app_label.model, e.g. users.user */
+            readonly model: string;
+            readonly object_id: string;
+            readonly object_repr: string;
+            /** @description Per field: [before, after] (values are strings as stored by django-auditlog; on creation before is the string 'None', on deletion after is the string 'None'), or an m2m object, or {'raw': value} for an unexpected stored shape. */
+            readonly changes: {
+                [key: string]: unknown[] | {
+                    /** @enum {string} */
+                    type: "m2m";
+                    operation: string;
+                    objects: string[];
+                } | {
+                    raw: unknown;
+                };
             };
         };
         Health: {
@@ -71,6 +144,21 @@ export interface components {
             readonly direction_code: string;
             readonly fonction: string;
         };
+        PaginatedAuditLogList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["AuditLog"][];
+        };
         /**
          * @description * `ADMIN` - Administrateur
          *     * `RAI` - Responsable de l'audit interne
@@ -89,6 +177,108 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    audit_log_list: {
+        parameters: {
+            query?: {
+                /**
+                 * @description create, update or delete
+                 *
+                 *     * `create` - create
+                 *     * `update` - update
+                 *     * `delete` - delete
+                 */
+                action?: "create" | "delete" | "update";
+                /** @description Id of the user who made the change */
+                actor?: number | null;
+                /** @description ISO date YYYY-MM-DD */
+                date_from?: string;
+                /** @description ISO date YYYY-MM-DD, inclusive of the whole day (Africa/Ouagadougou) */
+                date_to?: string;
+                /** @description app_label.model, e.g. users.user */
+                model?: string;
+                /** @description Primary key of the audited object (UUIDs case-insensitive) */
+                object_id?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAuditLogList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    audit_log_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) valeur entière unique identifiant ce(cette) entrée d’historique. */
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLog"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_health_retrieve: {
         parameters: {
             query?: never;
@@ -134,6 +324,14 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
