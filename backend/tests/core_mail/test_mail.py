@@ -1,7 +1,8 @@
 from typing import Any
 
+import pytest
 from django.core import mail
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import BadHeaderError, EmailMultiAlternatives
 
 from apps.core.mail import send_mail_template
 from apps.core.tasks import heartbeat, send_mail_task
@@ -44,4 +45,24 @@ def test_beat_schedule_has_daily_heartbeat(settings: Any) -> None:
 def test_heartbeat_logs_one_line(caplog: Any) -> None:
     with caplog.at_level("INFO"):
         heartbeat()
-    assert len(caplog.records) == 1
+    assert [r.getMessage() for r in caplog.records if r.name == "apps.core.tasks"] == [
+        "celery beat heartbeat"
+    ]
+
+
+def test_text_body_is_not_escaped_but_html_is() -> None:
+    send_mail_template(["a@onea.bf"], "Test", "test", {"name": "O'Brien & fils", "message": "x"})
+
+    msg = mail.outbox[0]
+    assert isinstance(msg, EmailMultiAlternatives)
+    assert "O'Brien & fils" in msg.body
+    assert "&amp;" not in msg.body
+    html = msg.alternatives[0][0]
+    assert isinstance(html, str)
+    assert "O&#x27;Brien &amp; fils" in html
+
+
+def test_subject_with_newline_is_rejected() -> None:
+    with pytest.raises(BadHeaderError):
+        send_mail_template(["a@onea.bf"], "Test\nBcc: x@evil.com", "test", CONTEXT)
+    assert mail.outbox == []

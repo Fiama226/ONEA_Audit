@@ -17,3 +17,10 @@ or from the process environment:
 | `EMAIL_URL` | default `smtp://mailpit:1025` (compose network); `smtp://localhost:1025` on the host |
 
 API schema and docs (`/api/schema/`, `/api/docs/`) are anonymous in dev/test and admin-only in prod.
+
+## Celery and email
+
+`send_mail_task.delay(...)` raises `kombu.exceptions.OperationalError` to the caller when
+the broker (Redis) is down. Callers (services) must catch it and decide: fail the business
+action or log and continue. Plain-text email parts are rendered without HTML escaping; HTML
+parts stay autoescaped.
