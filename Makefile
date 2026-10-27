@@ -43,3 +43,7 @@ gen-api:
 
 check:
 	bash scripts/check-services.sh $(STORAGE_FLAG)
+
+.PHONY: worker
+worker:
+	$(COMPOSE) up -d worker beat
