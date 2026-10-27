@@ -13,5 +13,11 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     env: { VITE_API_URL: "http://localhost:8000" },
+    exclude: ["node_modules", "dist", "e2e/**"],
+    coverage: {
+      provider: "v8",
+      include: ["src/**"],
+      exclude: ["src/api/schema.d.ts", "src/test/**", "**/*.test.*"],
+    },
   },
 });

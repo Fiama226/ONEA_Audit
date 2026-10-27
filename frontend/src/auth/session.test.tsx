@@ -60,8 +60,8 @@ describe("chemin de retour", () => {
     renderApp({ pathname: "/connexion", state: { from: "/\\evil.com" } }, oidc);
     const btn = await screen.findByRole("button", { name: fr.auth.login });
     await act(async () => btn.click());
-    const arg = (oidc.signinRedirect as unknown as { mock: { calls: { state: unknown }[][] } })
-      .mock.calls[0]?.[0];
+    const arg = (oidc.signinRedirect as unknown as { mock: { calls: { state: unknown }[][] } }).mock
+      .calls[0]?.[0];
     expect(arg).toEqual({ state: { returnTo: "/" } });
   });
 });
