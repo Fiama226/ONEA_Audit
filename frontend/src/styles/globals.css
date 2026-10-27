@@ -61,10 +61,24 @@
   body {
     @apply bg-background text-foreground;
   }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
   h1,
   h2,
   h3 {
     line-height: 1.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
@@ -73,6 +87,8 @@
   size: A4 portrait;
   margin: 20mm 20mm 16mm;
   @bottom-right {
+    /* Exception documentee : les marges de page ne lisent pas les variables CSS du document.
+       Ce libelle doit rester identique a fr.print.page / fr.print.of (verifie par test). */
     content: "Page " counter(page) " sur " counter(pages);
     font-size: 10px;
     color: var(--text-muted);
