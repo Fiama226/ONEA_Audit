@@ -7,6 +7,7 @@
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
+  "bruteForceProtected": true,
   "resetPasswordAllowed": false,
   "internationalizationEnabled": true,
   "supportedLocales": [
@@ -14,7 +15,7 @@
   ],
   "defaultLocale": "fr",
   "attributes": {
-    "unmanagedAttributePolicy": "ENABLED"
+    "unmanagedAttributePolicy": "ADMIN_EDIT"
   },
   "roles": {
     "realm": [
@@ -208,7 +209,7 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "${OIDC_RP_CLIENT_SECRET}",
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "fullScopeAllowed": true,
       "redirectUris": [
@@ -274,7 +275,7 @@
       "protocol": "openid-connect",
       "publicClient": true,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "fullScopeAllowed": true,
       "redirectUris": [
         "http://localhost:5173/*"
@@ -286,6 +287,67 @@
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:5173/*"
       },
+      "protocolMappers": [
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true",
+            "claim.name": "roles",
+            "multivalued": "true",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "direction",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true",
+            "user.attribute": "direction",
+            "claim.name": "direction",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "fonction",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true",
+            "user.attribute": "fonction",
+            "claim.name": "fonction",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "onea-dev-cli",
+      "name": "DEV ONLY - curl token checks (password grant)",
+      "description": "Development only. Never import this client in production.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "fullScopeAllowed": true,
+      "redirectUris": [],
+      "webOrigins": [],
       "protocolMappers": [
         {
           "name": "realm-roles",

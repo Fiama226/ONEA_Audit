@@ -1,9 +1,32 @@
 #!/usr/bin/env bash
-# Probe every infrastructure service; exit 1 if any is down.
-# Host ports can be overridden with the same variables as docker/compose.dev.yml.
+# Probe the infrastructure services; exit 1 if any is down.
+# Usage: check-services.sh [--with-storage]   (or WITH_STORAGE=1)
+# Reads the repo-root .env (KEY=VALUE lines, parsed, never sourced).
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE=(docker compose -f "$ROOT/docker/compose.yml" -f "$ROOT/docker/compose.dev.yml")
-if [ -f "$ROOT/.env" ]; then set -a; . "$ROOT/.env"; set +a; fi
+
+WITH_STORAGE="${WITH_STORAGE:-0}"
+for arg in "$@"; do
+  case "$arg" in
+    --with-storage) WITH_STORAGE=1 ;;
+    *) echo "unknown argument: $arg" >&2; exit 2 ;;
+  esac
+done
+
+# Safe .env loader: only KEY=VALUE lines, optional surrounding quotes, no expansion.
+# Variables already set in the environment win.
+ENV_ARGS=()
+if [ -f "$ROOT/.env" ]; then
+  ENV_ARGS=(--env-file "$ROOT/.env")
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    [[ "$line" =~ ^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]] || continue
+    key="${BASH_REMATCH[1]}"; val="${BASH_REMATCH[2]}"
+    if [[ "$val" =~ ^\"(.*)\"$ || "$val" =~ ^\'(.*)\'$ ]]; then val="${BASH_REMATCH[1]}"; fi
+    [ -z "${!key+x}" ] && export "$key=$val"
+  done < "$ROOT/.env"
+fi
+
+COMPOSE=(docker compose "${ENV_ARGS[@]}" -f "$ROOT/docker/compose.yml" -f "$ROOT/docker/compose.dev.yml")
 
 KC_PORT="${KEYCLOAK_PORT:-8080}"
 MINIO_API="${MINIO_API_PORT:-9000}"
@@ -20,9 +43,11 @@ check() { # name, command...
 check db "${COMPOSE[@]}" exec -T db pg_isready -U "${POSTGRES_USER:-onea}" -d "${POSTGRES_DB:-onea}"
 check redis "${COMPOSE[@]}" exec -T redis valkey-cli ping
 check keycloak curl -fsS "http://localhost:${KC_PORT}/realms/onea"
-check minio curl -fsS "http://localhost:${MINIO_API}/minio/health/live"
 check meilisearch curl -fsS "http://localhost:${MEILI}/health"
 check gotenberg curl -fsS "http://localhost:${GOTENBERG}/health"
 check mailpit curl -fsS "http://localhost:${MAILPIT_UI}/livez"
+if [ "$WITH_STORAGE" = "1" ]; then
+  check minio curl -fsS "http://localhost:${MINIO_API}/minio/health/live"
+fi
 
 exit $fail

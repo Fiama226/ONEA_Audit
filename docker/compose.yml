@@ -1,5 +1,7 @@
-# ONEA audit platform - infrastructure services (base file).
-# Host ports are published by docker/compose.dev.yml.
+# ONEA audit platform - base infrastructure services (no dev-only material here).
+# Secrets are REQUIRED (no defaults): provide them through the repo-root .env
+# (docker compose --env-file .env ...). Dev values live in .env.example.
+# Host ports, Keycloak and Mailpit are defined in docker/compose.dev.yml.
 name: ${COMPOSE_PROJECT_NAME:-onea}
 
 services:
@@ -8,7 +10,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-onea}
       POSTGRES_USER: ${POSTGRES_USER:-onea}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-onea}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required (see .env.example)}
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -29,71 +31,11 @@ services:
       retries: 20
     restart: unless-stopped
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.0
-    command: ["start-dev", "--import-realm"]
-    environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      KC_HEALTH_ENABLED: "true"
-      KC_HOSTNAME_STRICT: "false"
-      KC_HTTP_ENABLED: "true"
-      # Substituted into realm-onea.json (${OIDC_RP_CLIENT_SECRET}) at import time.
-      OIDC_RP_CLIENT_SECRET: ${OIDC_RP_CLIENT_SECRET:-onea-dev-secret}
-    volumes:
-      - ./keycloak/realm-onea.json:/opt/keycloak/data/import/realm-onea.json:ro
-    healthcheck:
-      # No curl in the image: raw HTTP on the management port through bash.
-      test:
-        - CMD-SHELL
-        - >-
-          exec 3<>/dev/tcp/127.0.0.1/9000 &&
-          printf 'GET /health/ready HTTP/1.0\r\n\r\n' >&3 &&
-          grep -q '"status": "UP"' <&3
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 40s
-    restart: unless-stopped
-
-  minio:
-    # Upstream minio/minio images are no longer published; pgsty/minio is the AGPL community fork.
-    image: ${MINIO_IMAGE:-pgsty/minio}
-    command: ["server", "/data", "--console-address", ":9001"]
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-onea-minio}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-onea-minio-secret}
-    volumes:
-      - minio-data:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    restart: unless-stopped
-
-  minio-init:
-    image: ${MINIO_MC_IMAGE:-pgsty/mc}
-    depends_on:
-      minio:
-        condition: service_healthy
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-onea-minio}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-onea-minio-secret}
-      MINIO_BUCKET: ${MINIO_BUCKET:-onea-documents}
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >-
-        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
-        mc mb --ignore-existing "local/$$MINIO_BUCKET"
-    restart: "no"
-
   meilisearch:
     image: getmeili/meilisearch:v1.12
     environment:
-      MEILI_ENV: development
-      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-onea-meili-master-key}
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required (see .env.example)}
       MEILI_NO_ANALYTICS: "true"
     volumes:
       - meili-data:/meili_data
@@ -113,6 +55,42 @@ services:
       timeout: 5s
       retries: 20
     restart: unless-stopped
+
+  # --- S3 storage: NOT started by default (compose profile "storage"). ---
+  # No vetted image has been chosen yet; see docs/infra-minio.md.
+  minio:
+    profiles: ["storage"]
+    image: ${MINIO_IMAGE:-minio-image-not-chosen:replace-me}
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required (see .env.example)}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required (see .env.example)}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  minio-init:
+    profiles: ["storage"]
+    image: ${MINIO_MC_IMAGE:-minio-image-not-chosen:replace-me}
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required (see .env.example)}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required (see .env.example)}
+      MINIO_BUCKET: ${MINIO_BUCKET:-onea-documents}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >-
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
+        mc mb --ignore-existing "local/$$MINIO_BUCKET"
+    restart: "no"
 
 volumes:
   db-data:
