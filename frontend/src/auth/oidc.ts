@@ -17,6 +17,10 @@ export interface OidcClient {
   events: {
     addUserLoaded(cb: (user: OidcUser) => void): void;
     removeUserLoaded(cb: (user: OidcUser) => void): void;
+    addAccessTokenExpired(cb: () => void): void;
+    removeAccessTokenExpired(cb: () => void): void;
+    addSilentRenewError(cb: (error: Error) => void): void;
+    removeSilentRenewError(cb: (error: Error) => void): void;
   };
 }
 

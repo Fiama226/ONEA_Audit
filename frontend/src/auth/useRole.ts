@@ -1,10 +1,11 @@
 import { useCallback } from "react";
-import { DEFAULT_ROLE, type Role } from "./types";
+import type { Role } from "./types";
 import { useAuth } from "./useAuth";
 
-export function useRole(): { role: Role; is: (...roles: Role[]) => boolean } {
+/** `role` est null tant qu'aucun utilisateur n'est chargé : aucun droit n'est alors accordé. */
+export function useRole(): { role: Role | null; is: (...roles: Role[]) => boolean } {
   const { me } = useAuth();
-  const role = me?.role ?? DEFAULT_ROLE;
-  const is = useCallback((...roles: Role[]) => roles.includes(role), [role]);
+  const role = me?.role ?? null;
+  const is = useCallback((...roles: Role[]) => role !== null && roles.includes(role), [role]);
   return { role, is };
 }
