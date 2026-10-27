@@ -1,8 +1,20 @@
 # Déploiement en production
 
 Ce document décrit l'installation de la plateforme sur un serveur Linux avec Docker Compose
-(`docker/compose.prod.yml`). Seul `nginx` publie des ports (80 et 443) ; tous les autres
-services vivent sur le réseau privé Docker.
+(`docker/compose.prod.yml`). Seul `nginx` publie des ports (80 et 443).
+
+Réseaux Docker :
+
+| Réseau | Type | Services |
+|---|---|---|
+| `edge` | standard (accès sortant : SMTP, LDAP) | nginx, web, worker, frontend, keycloak |
+| `backend` | `internal` (aucune route vers l'extérieur) | web, worker, beat, migrate, db, redis, meilisearch, gotenberg, minio |
+| `kc` | `internal` | keycloak, keycloak-db |
+
+`nginx` porte l'alias réseau `${SSO_HOST}` sur `edge` : `web` résout le nom du SSO vers
+`nginx` directement, sans passer par l'adresse publique. `worker` est aussi sur `edge`
+pour envoyer les courriels ; `gotenberg` n'a aucune route sortante. Redis (Valkey) exige un
+mot de passe (`REDIS_PASSWORD`).
 
 ## 1. Prérequis
 
@@ -35,8 +47,10 @@ chmod 600 .env.prod
 ```
 
 Remplacer **toutes** les valeurs `CHANGE_ME` par des secrets aléatoires (URL-safe, sans
-`@ : / ? # %`), par exemple `openssl rand -hex 32`. Le fichier n'est jamais commité
-(`.gitignore`). Vérification :
+`@ : / ? # %`), par exemple `openssl rand -hex 32`. Exceptions : `OIDC_RP_CLIENT_SECRET`
+reste un **espace réservé** (n'importe quelle valeur non vide) jusqu'à l'étape 5.6, où le
+vrai secret du client `onea-backend` est collé ; `APP_VERSION` est l'étiquette des images
+(ex. `1.0.0`). Le fichier n'est jamais commité (`.gitignore`). Vérification :
 
 ```
 docker compose --env-file .env.prod -f docker/compose.prod.yml config -q
@@ -45,6 +59,20 @@ docker compose --env-file .env.prod -f docker/compose.prod.yml config -q
 Sans fichier d'environnement complet, la commande échoue en nommant la variable manquante.
 Le fichier contient des secrets : le sauvegarder dans un coffre, pas dans le dépôt.
 
+Note : les secrets sont transmis aux conteneurs par variables d'environnement. Toute
+personne pouvant exécuter `docker inspect` (groupe `docker`, donc équivalent root sur le
+serveur) les lit : limiter strictement l'accès au groupe `docker` et à `.env.prod`.
+
+### Autorité de certification interne (facultatif)
+
+Si le certificat du SSO est signé par une autorité interne, le backend doit lui faire
+confiance pour joindre Keycloak (validation des jetons). Créer un fichier
+`certs/ca-bundle.pem` à la racine du dépôt contenant **les autorités publiques de confiance
+puis l'autorité interne** (la variable remplace le magasin par défaut de Python), puis
+renseigner dans `.env.prod` : `SSO_CA_BUNDLE_PATH=/etc/onea/ca/ca-bundle.pem`. Le
+répertoire `certs/` est monté en lecture seule dans `web` et `worker`
+(`REQUESTS_CA_BUNDLE`). Laisser la variable vide pour un certificat d'autorité publique.
+
 ## 4. Premier démarrage
 
 ```
@@ -52,7 +80,10 @@ docker compose --env-file .env.prod -f docker/compose.prod.yml up -d --build
 docker compose --env-file .env.prod -f docker/compose.prod.yml ps
 ```
 
-Le service `web` applique les migrations et rassemble les fichiers statiques au démarrage.
+Le service à usage unique `migrate` (`restart: "no"`) applique les migrations et rassemble
+les fichiers statiques dans le volume partagé avec `nginx` ; `web`, `worker` et `beat`
+attendent sa fin réussie (`service_completed_successfully`). Si `migrate` échoue, rien
+d'autre ne démarre : consulter `docker compose ... logs migrate`.
 `https://audit.onea.bf/api/v1/health/` doit répondre `{"status":"ok",...}`. Tant que le
 realm Keycloak n'existe pas (section suivante), la connexion à l'application n'est pas
 possible.
@@ -72,7 +103,15 @@ développement, sans utilisateur de test**. Le realm de développement
 `docker/keycloak/realm-onea.json` ne doit jamais être importé en production (il contient
 des mots de passe de test et un client à accès direct par mot de passe).
 
-1. Se connecter à `https://sso.onea.bf/` (console d'administration) avec `KEYCLOAK_ADMIN` /
+0. **Accès à la console d'administration.** `nginx` n'expose publiquement que les
+   endpoints OIDC (`/realms/<realm>/`, `/resources/`, `/js/`) ; la console (`/admin/`), le
+   realm `master`, `/metrics` et `/health` répondent **404** sauf depuis les adresses
+   listées dans `ADMIN_ALLOW_CIDR` (IP ou CIDR séparés par des virgules, par exemple
+   `10.20.0.0/16,192.0.2.7` ; vide = personne). Renseigner `ADMIN_ALLOW_CIDR` avec le
+   réseau d'administration puis recréer `nginx`
+   (`docker compose ... up -d nginx`). Alternative sans rien ouvrir : un tunnel SSH vers une
+   machine du réseau d'administration autorisé, qui présente l'adresse allouée.
+1. Se connecter à `https://sso.onea.bf/admin/` avec `KEYCLOAK_ADMIN` /
    `KEYCLOAK_ADMIN_PASSWORD`. Créer immédiatement un compte administrateur nominatif
    permanent, puis supprimer l'administrateur temporaire d'amorçage.
 2. **Créer le realm** `onea` : nom d'affichage « ONEA - Audit interne », langue par défaut
@@ -99,7 +138,8 @@ des mots de passe de test et un client à accès direct par mot de passe).
    `https://audit.onea.bf/callback`, URI de redirection après déconnexion
    `https://audit.onea.bf/`, *Web origins* `https://audit.onea.bf`.
 6. **Client `onea-backend`** : confidentiel (*Client authentication* activée), standard flow,
-   pas d'accès direct. Copier son secret dans `OIDC_RP_CLIENT_SECRET` de `.env.prod` puis
+   pas d'accès direct. Copier son secret (onglet *Credentials*) dans `OIDC_RP_CLIENT_SECRET`
+   de `.env.prod` (en remplacement de l'espace réservé) puis
    `docker compose ... up -d web worker beat`. Le backend ne vérifie que des jetons
    porteurs émis pour `onea-frontend` (`OIDC_ALLOWED_AZP`).
 7. **Mappers** (identiques au realm de développement) sur **chacun** des deux clients, de
@@ -113,7 +153,8 @@ des mots de passe de test et un client à accès direct par mot de passe).
    | `fonction` | User Attribute (String) | attribut `fonction` | `fonction` |
 
 8. **Protection contre la force brute** (*Realm settings > Security defenses > Brute force
-   detection*) : activée, verrouillage temporaire après 5 échecs, durée croissante.
+   detection*) : activée, verrouillage temporaire après 5 échecs, durée croissante - **sur
+   le realm `onea` et aussi sur le realm `master`** (celui des administrateurs).
    Politique de mots de passe : longueur minimale 12.
 9. **Annuaire AD/LDAP** (si l'ONEA fédère ses comptes) : *User federation > Add LDAP
    provider*, mode lecture seule, import des utilisateurs, synchronisation périodique ;
@@ -135,10 +176,12 @@ docker compose --env-file .env.prod -f docker/compose.prod.yml build
 docker compose --env-file .env.prod -f docker/compose.prod.yml up -d
 ```
 
-`web` applique les migrations au démarrage. **Sauvegarder avant** toute mise à jour
+Le service `migrate` rejoue les migrations puis la collecte des fichiers statiques à
+chaque déploiement, avant le redémarrage de `web`/`worker`/`beat` (modifier `APP_VERSION`
+pour changer d'étiquette d'images). **Sauvegarder avant** toute mise à jour
 (`sh scripts/backup.sh`). Pour revenir en arrière : réinstaller la version précédente du
 code, reconstruire, et restaurer la sauvegarde si une migration a modifié le schéma. Les
-images portent l'étiquette `ONEA_VERSION` (par défaut `latest`).
+images portent l'étiquette `APP_VERSION`.
 
 ## 7. Sauvegardes et restauration
 
@@ -173,6 +216,10 @@ restauration). Tester la restauration régulièrement sur un serveur de recette.
 | `PUBLIC_HOST` | nom DNS de l'application (ALLOWED_HOSTS, CORS, CSRF, redirections) |
 | `SSO_HOST` | nom DNS de Keycloak (`KC_HOSTNAME`, issuer OIDC) |
 | `TLS_CERT_DIR` | répertoire hôte contenant `fullchain.pem` et `privkey.pem` |
+| `ADMIN_ALLOW_CIDR` | adresses autorisées pour la console Keycloak (vide = aucune) |
+| `SSO_CA_BUNDLE_PATH` | bundle d'AC interne dans le conteneur (`/etc/onea/ca/ca-bundle.pem`), facultatif |
+| `APP_VERSION` | étiquette des images `onea-backend` / `onea-frontend` (obligatoire) |
+| `REDIS_PASSWORD` | mot de passe Valkey (intégré dans `REDIS_URL` : sans caractères spéciaux) |
 | `SECRET_KEY` | clé secrète Django (≥ 50 caractères aléatoires) |
 | `DJANGO_ADMIN_ENABLED` | `false` par défaut ; `true` expose `/admin/` |
 | `EMAIL_URL` | relais SMTP, ex. `smtp://user:mdp@smtp.onea.bf:587` |
@@ -183,20 +230,26 @@ restauration). Tester la restauration régulièrement sur un serveur de recette.
 | `MEILI_MASTER_KEY` | clé maître Meilisearch |
 | `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET` | stockage objet (profil `storage`, en attente) |
 | `MINIO_IMAGE`, `MINIO_MC_IMAGE` | images du stockage objet, à fixer après décision |
-| `COMPOSE_PROJECT_NAME`, `ONEA_VERSION`, `WEB_CONCURRENCY` | optionnels |
+| `COMPOSE_PROJECT_NAME`, `WEB_CONCURRENCY` | optionnels |
 
 Le backend en production refuse de démarrer si `SECRET_KEY`, `DATABASE_URL`, `EMAIL_URL`,
 `ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` ou `OIDC_OP_BASE_URL`
-(en `https://`) manquent : aucune valeur par défaut de développement n'est utilisée.
+(en `https://`) manquent, ou si `OIDC_VERIFY_SSL=false` : aucune valeur par défaut de développement n'est utilisée.
 
 ## 9. Notes de sécurité
 
 - TLS est terminé par `nginx` ; Django fait confiance à `X-Forwarded-Proto` uniquement parce
   que `nginx` écrase cet en-tête à chaque requête et que `web` ne publie aucun port. Ne
   jamais exposer gunicorn directement.
-- Keycloak écoute en HTTP sur le réseau privé Docker (terminaison TLS à `nginx`,
+- Keycloak écoute en HTTP sur les réseaux privés Docker (terminaison TLS à `nginx`,
   `KC_PROXY_HEADERS=xforwarded`) ; il n'est joignable de l'extérieur qu'en HTTPS via
-  `nginx`. Pour restreindre la console d'administration Keycloak (`/admin/`) à un réseau
-  interne, ajouter un `location /admin/ { allow ...; deny all; }` dans le bloc `SSO_HOST` de
-  `docker/nginx/prod.conf`.
+  `nginx`, qui n'expose que les endpoints OIDC (voir étape 5.0).
+- Les en-têtes de sécurité (HSTS, CSP, X-Frame-Options, Referrer-Policy...) sont définis
+  **uniquement par nginx** ; ceux émis par Django sont masqués. Django garde les réglages
+  `SECURE_*` nécessaires à son bon fonctionnement (redirection HTTPS, en-tête proxy, cookies).
+- Limitation de débit : 20 requêtes/s par adresse sur `/api/` (rafale 40), 5/s sur les
+  endpoints d'authentification Keycloak (réponse 429).
+- Le code des images est en lecture seule pour l'utilisateur applicatif (non root) ;
+  seul `/app/staticfiles` est inscriptible. Les conteneurs tournent avec
+  `no-new-privileges` et sans capacités Linux superflues.
 - HSTS (1 an, sous-domaines inclus) est actif : ne pas déployer sans certificat valide.

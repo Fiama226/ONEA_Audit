@@ -1,25 +1,38 @@
 #!/bin/sh
 # Dump the application and Keycloak PostgreSQL databases of the production stack.
 #   sh scripts/backup.sh [backup-dir]        (default: ./backups)
-# Run from the repository root on the server; reads .env.prod for the database names.
+# Run from the repository root on the server. Dumps are written to a .tmp file first and
+# renamed only when pg_dump succeeded, so a failed run never leaves a truncated dump.
 # Restore: see docs/deploy.md ("Sauvegardes et restauration").
 set -eu
+umask 077
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 DEST=${1:-"$ROOT/backups"}
 ENV_FILE=${ENV_FILE:-"$ROOT/.env.prod"}
-COMPOSE="docker compose --env-file $ENV_FILE -f $ROOT/docker/compose.prod.yml"
 STAMP=$(date +%Y%m%d-%H%M%S)
 
 [ -f "$ENV_FILE" ] || { echo "ERREUR : $ENV_FILE introuvable." >&2; exit 1; }
 mkdir -p "$DEST"
-umask 077
 
-# POSTGRES_USER / POSTGRES_DB are read inside the container, so no secret leaves it.
-$COMPOSE exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' \
-  > "$DEST/onea-$STAMP.dump"
-$COMPOSE exec -T keycloak-db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' \
-  > "$DEST/keycloak-$STAMP.dump"
+compose() {
+  docker compose --env-file "$ENV_FILE" -f "$ROOT/docker/compose.prod.yml" "$@"
+}
+
+dump() { # <service> <output-prefix>
+  tmp="$DEST/$2-$STAMP.dump.tmp"
+  # POSTGRES_USER / POSTGRES_DB are read inside the container: no secret leaves it.
+  if compose exec -T "$1" sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' > "$tmp"; then
+    mv "$tmp" "$DEST/$2-$STAMP.dump"
+  else
+    rm -f "$tmp"
+    echo "ERREUR : la sauvegarde de $1 a échoué." >&2
+    exit 1
+  fi
+}
+
+dump db onea
+dump keycloak-db keycloak
 
 # Keep the 14 most recent dumps of each database.
 for prefix in onea keycloak; do

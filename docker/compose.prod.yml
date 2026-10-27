@@ -5,15 +5,35 @@
 #   docker compose --env-file .env.prod -f docker/compose.prod.yml --profile storage up -d
 #
 # Every secret is REQUIRED (${VAR:?}); copy .env.prod.example to .env.prod and fill it in.
-# Only nginx publishes host ports (80/443); everything else lives on the private network.
+# Only nginx publishes host ports (80/443).
+#
+# Networks:
+#   edge     nginx, web, worker, frontend, keycloak (outbound access: SMTP, LDAP, ...)
+#   backend  internal (no route out): web, worker, beat, migrate, db, redis, meilisearch,
+#            gotenberg, minio
+#   kc       internal (no route out): keycloak, keycloak-db
+# nginx carries the network alias ${SSO_HOST} on `edge`, so web resolves the SSO host to
+# nginx directly (no hairpin through the public address).
 name: ${COMPOSE_PROJECT_NAME:-onea-prod}
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-hardening: &hardening
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: ["ALL"]
+  logging: *logging
+  restart: unless-stopped
 
 x-backend-env: &backend-env
   DJANGO_SETTINGS_MODULE: config.settings.prod
   SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required (see .env.prod.example)}
   DATABASE_URL: postgres://${POSTGRES_USER:-onea}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-onea}
-  REDIS_URL: redis://redis:6379/0
-  EMAIL_URL: ${EMAIL_URL:?EMAIL_URL is required (e.g. smtp://user:pass@smtp.example.org:587)}
+  REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
+  EMAIL_URL: ${EMAIL_URL:?EMAIL_URL is required (e.g. smtp+tls://user:pass@smtp.example.org:587)}
   ALLOWED_HOSTS: ${PUBLIC_HOST:?PUBLIC_HOST is required}
   CORS_ALLOWED_ORIGINS: https://${PUBLIC_HOST}
   CSRF_TRUSTED_ORIGINS: https://${PUBLIC_HOST}
@@ -24,19 +44,23 @@ x-backend-env: &backend-env
   MEILI_URL: http://meilisearch:7700
   MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required}
   GOTENBERG_URL: http://gotenberg:3000
+  # Internal CA: path (inside the container) of a PEM bundle under /etc/onea/ca, see
+  # docs/deploy.md. Empty = Python's default trust store.
+  REQUESTS_CA_BUNDLE: ${SSO_CA_BUNDLE_PATH:-}
+
+x-ca-volume: &ca-volume ../certs:/etc/onea/ca:ro
 
 services:
-  # --- Application ---
-  web:
+  # --- One-shot: migrations + static files (restart "no"); app services wait for it ---
+  migrate:
+    <<: *hardening
+    restart: "no"
     build:
       context: ..
       dockerfile: docker/backend.Dockerfile
-    image: onea-backend:${ONEA_VERSION:-latest}
-    environment:
-      <<: *backend-env
-      RUN_MIGRATIONS: "true"
-      COLLECT_STATIC: "true"
-      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-3}
+    image: onea-backend:${APP_VERSION:?APP_VERSION is required (e.g. 1.0.0)}
+    command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput"]
+    environment: *backend-env
     volumes:
       - static:/app/staticfiles
     depends_on:
@@ -44,12 +68,29 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    restart: unless-stopped
+    networks: [backend]
+
+  # --- Application ---
+  web:
+    <<: *hardening
+    image: onea-backend:${APP_VERSION:?APP_VERSION is required (e.g. 1.0.0)}
+    environment:
+      <<: *backend-env
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-3}
+    volumes:
+      - *ca-volume
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [edge, backend]
 
   worker:
-    image: onea-backend:${ONEA_VERSION:-latest}  # built by the `web` service
+    <<: *hardening
+    image: onea-backend:${APP_VERSION:?APP_VERSION is required (e.g. 1.0.0)}
     command: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=2"]
     environment: *backend-env
+    volumes:
+      - *ca-volume
     healthcheck:
       test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME -t 5 >/dev/null 2>&1"]
       interval: 60s
@@ -57,14 +98,14 @@ services:
       retries: 3
       start_period: 40s
     depends_on:
-      web:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
+      migrate:
+        condition: service_completed_successfully
+    # edge: the worker sends mail through the organisation's SMTP relay.
+    networks: [backend, edge]
 
   beat:
-    image: onea-backend:${ONEA_VERSION:-latest}  # built by the `web` service
+    <<: *hardening
+    image: onea-backend:${APP_VERSION:?APP_VERSION is required (e.g. 1.0.0)}
     command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule", "/tmp/celerybeat-schedule"]
     environment: *backend-env
     healthcheck:
@@ -74,13 +115,14 @@ services:
       retries: 3
       start_period: 30s
     depends_on:
-      web:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
+      migrate:
+        condition: service_completed_successfully
+    networks: [backend]
 
   frontend:
+    <<: *hardening
+    # nginx master needs to bind port 80 and drop to the nginx user.
+    cap_add: [CHOWN, SETUID, SETGID, NET_BIND_SERVICE, DAC_OVERRIDE]
     build:
       context: ..
       dockerfile: docker/frontend.Dockerfile
@@ -88,12 +130,14 @@ services:
         VITE_API_URL: https://${PUBLIC_HOST:?PUBLIC_HOST is required}
         VITE_OIDC_AUTHORITY: https://${SSO_HOST:?SSO_HOST is required}/realms/onea
         VITE_OIDC_CLIENT_ID: onea-frontend
-    image: onea-frontend:${ONEA_VERSION:-latest}
-    restart: unless-stopped
+    image: onea-frontend:${APP_VERSION:?APP_VERSION is required (e.g. 1.0.0)}
+    networks: [edge]
 
   # --- Edge: the only service with host ports ---
   nginx:
-    image: nginx:1.27-alpine
+    <<: *hardening
+    cap_add: [CHOWN, SETUID, SETGID, NET_BIND_SERVICE, DAC_OVERRIDE]
+    image: nginx:1.27.5-alpine
     ports:
       - "80:80"
       - "443:443"
@@ -101,12 +145,15 @@ services:
       PUBLIC_HOST: ${PUBLIC_HOST:?PUBLIC_HOST is required}
       SSO_HOST: ${SSO_HOST:?SSO_HOST is required}
       NGINX_ENVSUBST_FILTER: "^(PUBLIC|SSO)_"
+      # Addresses allowed to reach the Keycloak admin console / master realm (empty = none)
+      ADMIN_ALLOW_CIDR: ${ADMIN_ALLOW_CIDR:-}
     volumes:
       - ./nginx/prod.conf:/etc/nginx/templates/default.conf.template:ro
+      - ./nginx/10-admin-allow.sh:/docker-entrypoint.d/10-admin-allow.sh:ro
       - ${TLS_CERT_DIR:?TLS_CERT_DIR is required (directory with fullchain.pem and privkey.pem)}:/etc/nginx/certs:ro
       - static:/var/www/static:ro
     healthcheck:
-      test: ["CMD-SHELL", "nginx -t >/dev/null 2>&1 && wget -q --spider http://127.0.0.1/ || exit 1"]
+      test: ["CMD-SHELL", "nginx -t >/dev/null 2>&1 && wget -q --spider --no-check-certificate https://127.0.0.1/ || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -117,11 +164,16 @@ services:
         condition: service_started
       keycloak:
         condition: service_healthy
-    restart: unless-stopped
+    networks:
+      edge:
+        aliases:
+          - ${SSO_HOST}
 
   # --- Infrastructure (no host ports) ---
   db:
-    image: postgres:16
+    <<: *hardening
+    cap_add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
+    image: postgres:16.14
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-onea}
       POSTGRES_USER: ${POSTGRES_USER:-onea}
@@ -133,22 +185,27 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    restart: unless-stopped
+    networks: [backend]
 
   redis:
-    image: valkey/valkey:7
-    command: ["valkey-server", "--appendonly", "yes"]
+    <<: *hardening
+    cap_add: [SETUID, SETGID, CHOWN]
+    image: valkey/valkey:7.2.15
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command: ["sh", "-c", "exec valkey-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      test: ["CMD-SHELL", "valkey-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
       interval: 10s
       timeout: 3s
       retries: 10
-    restart: unless-stopped
+    networks: [backend]
 
   meilisearch:
-    image: getmeili/meilisearch:v1.12
+    <<: *hardening
+    image: getmeili/meilisearch:v1.12.8
     environment:
       MEILI_ENV: production
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required}
@@ -160,21 +217,25 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    restart: unless-stopped
+    networks: [backend]
 
   gotenberg:
-    image: gotenberg/gotenberg:8
+    <<: *hardening
+    image: gotenberg/gotenberg:8.37.0
     command: ["gotenberg", "--api-port=3000"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
       interval: 15s
       timeout: 5s
       retries: 10
-    restart: unless-stopped
+    # backend only: no route out for document conversion.
+    networks: [backend]
 
   # Keycloak has its own PostgreSQL instance (separate database, credentials and volume).
   keycloak-db:
-    image: postgres:16
+    <<: *hardening
+    cap_add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
+    image: postgres:16.14
     environment:
       POSTGRES_DB: keycloak
       POSTGRES_USER: keycloak
@@ -186,14 +247,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-    restart: unless-stopped
+    networks: [kc]
 
   # PRODUCTION mode: `start`, no realm import, no dev realm, no test users.
   # The realm is created by hand (docs/deploy.md). TLS terminates at nginx, which forwards
-  # X-Forwarded-*; KC_HOSTNAME is the public https URL and Keycloak is not reachable
-  # from outside the Docker network except through nginx over https.
+  # X-Forwarded-*; KC_HOSTNAME is the public https URL.
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0
+    <<: *hardening
+    image: quay.io/keycloak/keycloak:26.8.1
     command: ["start"]
     environment:
       KC_DB: postgres
@@ -223,7 +284,7 @@ services:
       timeout: 5s
       retries: 30
       start_period: 60s
-    restart: unless-stopped
+    networks: [edge, kc]
 
   # --- S3 storage: NOT started by default (compose profile "storage"). ---
   # No vetted image has been chosen yet (project owner's decision); see docs/infra-minio.md.
@@ -242,6 +303,8 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
+    logging: *logging
+    networks: [backend]
 
   minio-init:
     profiles: ["storage"]
@@ -260,6 +323,15 @@ services:
         mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
         mc mb --ignore-existing "local/$$MINIO_BUCKET"
     restart: "no"
+    logging: *logging
+    networks: [backend]
+
+networks:
+  edge: {}
+  backend:
+    internal: true
+  kc:
+    internal: true
 
 volumes:
   db-data:

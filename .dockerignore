@@ -12,8 +12,11 @@
 **/dist
 **/playwright-report
 **/test-results
-.env
-.env.*
-!.env.example
+**/.env*
+**/.coverage
+**/*.sqlite3
+certs
+backups
+frontend/e2e/screens
 backend/staticfiles
 docs

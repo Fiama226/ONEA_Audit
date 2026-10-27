@@ -27,15 +27,18 @@ RUN groupadd --gid 10001 onea \
 COPY --from=builder /opt/venv /opt/venv
 
 WORKDIR /app
-COPY --chown=onea:onea backend/ /app/
-COPY --chown=onea:onea docker/backend/entrypoint.sh docker/backend/healthcheck.py /usr/local/bin/
+# Code stays owned by root and not writable by the app user (image immutability); only
+# /app/staticfiles (a volume shared with nginx) belongs to `onea`.
+COPY backend/ /app/
+COPY docker/backend/entrypoint.sh docker/backend/healthcheck.py /usr/local/bin/
 RUN chmod 0555 /usr/local/bin/entrypoint.sh /usr/local/bin/healthcheck.py \
-    && rm -rf /app/.venv /app/tests /app/.pytest_cache \
-    && mkdir -p /app/staticfiles && chown onea:onea /app/staticfiles
+    && rm -rf /app/.venv /app/tests /app/.pytest_cache /app/.coverage \
+    && chmod -R go-w /app \
+    && mkdir -p /app/staticfiles
 
 # Collect static files at build time (admin, DRF, Swagger sidecar). Build-only settings:
-# production settings need runtime secrets that do not exist at build time. The entrypoint
-# re-collects into the shared static volume on every start so nginx never serves stale files.
+# production settings need runtime secrets that do not exist at build time. The one-shot
+# `migrate` service refreshes the shared static volume at every deployment.
 RUN DJANGO_SETTINGS_MODULE=config.settings.base python manage.py collectstatic --noinput \
     && chown -R onea:onea /app/staticfiles
 
@@ -46,4 +49,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD ["python", "/usr/local/bin/healthcheck.py"]
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--access-logfile", "-", "--forwarded-allow-ips", "*"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--timeout", "120", "--max-requests", "1000", "--max-requests-jitter", "100", "--access-logfile", "-", "--forwarded-allow-ips", "*"]

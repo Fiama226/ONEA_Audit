@@ -91,6 +91,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       EMAIL_URL: smtp://mailpit:1025
     command: ["celery", "-A", "config", "worker", "-l", "info"]
+    healthcheck:
+      disable: true  # the image HEALTHCHECK targets gunicorn, not celery
     depends_on:
       redis:
         condition: service_healthy
@@ -105,6 +107,8 @@ services:
       - ../backend:/app
     environment: *celery_env
     command: ["celery", "-A", "config", "beat", "-l", "info", "--schedule", "/tmp/celerybeat-schedule"]
+    healthcheck:
+      disable: true
     depends_on:
       redis:
         condition: service_healthy
