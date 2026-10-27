@@ -544,5 +544,5 @@ def test_inactive_user_rejected(api_client: APIClient) -> None:
     make_user(Role.RAI, keycloak_id=uuid.UUID(SUB), is_active=False)
     with mock.patch.object(OneaOIDCBackend, "get_userinfo", return_value=claims()):
         r = _bearer(api_client).get("/api/v1/me/")
-    assert r.status_code == 401
+    assert r.status_code == 403
     assert r.json() == {"detail": "Compte désactivé.", "errors": {}}

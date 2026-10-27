@@ -140,7 +140,9 @@ des mots de passe de test et un client à accès direct par mot de passe).
 6. **Client `onea-backend`** : confidentiel (*Client authentication* activée), standard flow,
    pas d'accès direct. Copier son secret (onglet *Credentials*) dans `OIDC_RP_CLIENT_SECRET`
    de `.env.prod` (en remplacement de l'espace réservé) puis
-   `docker compose ... up -d web worker beat`. Le backend ne vérifie que des jetons
+   `docker compose ... up -d web worker beat`. Le secret n'est pas utilisé pour valider les jetons (userinfo + JWKS) : il est exigé
+   uniquement car mozilla-django-oidc le lit à l'initialisation ; le client reste confidentiel
+   par prudence. Le backend ne vérifie que des jetons
    porteurs émis pour `onea-frontend` (`OIDC_ALLOWED_AZP`).
 7. **Mappers** (identiques au realm de développement) sur **chacun** des deux clients, de
    type *User Realm Role* / *User Attribute*, ajoutés à l'access token, l'ID token et
@@ -226,7 +228,7 @@ restauration). Tester la restauration régulièrement sur un serveur de recette.
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | base applicative |
 | `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | administrateur d'amorçage Keycloak |
 | `KEYCLOAK_DB_PASSWORD` | mot de passe de la base Keycloak (instance dédiée) |
-| `OIDC_RP_CLIENT_SECRET` | secret du client confidentiel `onea-backend` |
+| `OIDC_RP_CLIENT_SECRET` | secret du client confidentiel `onea-backend` ; non utilisé par le chemin Bearer, requis seulement car mozilla-django-oidc le lit à l'initialisation |
 | `MEILI_MASTER_KEY` | clé maître Meilisearch |
 | `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET` | stockage objet (profil `storage`, en attente) |
 | `MINIO_IMAGE`, `MINIO_MC_IMAGE` | images du stockage objet, à fixer après décision |

@@ -95,3 +95,12 @@ def interdit_custom(request: Request) -> Response:
 @permission_classes([AllowAny])
 def introuvable_custom(request: Request) -> Response:
     raise Http404("Mission introuvable.")
+
+
+@api_view(["POST"])
+def ecrire_exemple(request: Request) -> Response:
+    """Authenticated write: create then update an Exemple within one request."""
+    obj = Exemple.objects.create(nom="a")
+    obj.nom = "b"
+    obj.save()
+    return Response({"id": str(obj.pk)})

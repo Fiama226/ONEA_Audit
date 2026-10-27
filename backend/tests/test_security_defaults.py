@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 from django.urls import path
 from rest_framework.decorators import api_view
@@ -26,3 +28,12 @@ def test_schema_is_anonymous_under_test_settings(api_client: APIClient) -> None:
 
 def test_health_stays_anonymous(api_client: APIClient) -> None:
     assert api_client.get("/api/v1/health/").status_code == 200
+
+
+def test_logging_is_configured() -> None:
+    from django.conf import settings
+
+    logging_conf: Any = settings.LOGGING
+    assert logging_conf["root"]["level"] == "INFO"
+    assert "console" in logging_conf["root"]["handlers"]
+    assert logging_conf["loggers"]["django.request"]["level"] == "ERROR"

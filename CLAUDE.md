@@ -12,7 +12,8 @@ Maître d'œuvre : IKA SOLUTION LTD. Langue de travail et de l'interface : **fra
 1. **Aucune fonctionnalité IA dans le produit.** Pas d'appel LLM, pas d'embedding, pas de
    « génération assistée », pas de chatbot. L'IA sert uniquement à construire le logiciel.
 2. **100 % open source.** Toute dépendance doit être sous licence MIT, BSD, Apache 2.0,
-   PostgreSQL, LGPL ou AGPL. Aucun SaaS payant, aucun service propriétaire.
+   PostgreSQL, LGPL, AGPL ou MPL-2.0 (mozilla-django-oidc). Licences permissives équivalentes
+   acceptées : ISC, OFL-1.1, 0BSD, BlueOak, CC0, CC-BY-4.0, Python-2.0. Aucun SaaS payant, aucun service propriétaire.
 3. **Français partout** dans l'interface, les messages, les documents générés et la doc
    fonctionnelle. Le code (identifiants, commits) est en anglais.
 4. **Piste d'audit complète** : toute création, modification, validation est historisée
@@ -31,7 +32,7 @@ Maître d'œuvre : IKA SOLUTION LTD. Langue de travail et de l'interface : **fra
 | Documents | docxtpl (remplissage des gabarits Word ONEA), Gotenberg (docx → PDF) |
 | Recherche | Meilisearch |
 | Fichiers | MinIO (S3) via django-storages |
-| Auth | Keycloak (OIDC) via mozilla-django-oidc ; fallback auth Django locale en dev |
+| Auth | Keycloak (OIDC) via mozilla-django-oidc ; la SPA n'utilise que Keycloak (pas d'auth Django locale ; admin Django en session, hors SPA) |
 | Tests | pytest + pytest-django + factory_boy ; Vitest + Testing Library ; Playwright (e2e) |
 | Qualité | ruff, mypy, ESLint, Prettier, pre-commit |
 | Infra | Docker Compose, Nginx, Gitea Actions (ou GitHub Actions) |
@@ -73,7 +74,7 @@ Les agents fixent déjà leur modèle dans leur frontmatter ; ne pas le surcharg
 ## Commandes
 
 ```
-make up            # docker compose up (postgres, redis, meilisearch, minio, gotenberg, keycloak)
+make up            # docker compose up (postgres, redis, meilisearch, gotenberg, keycloak ; MinIO via WITH_STORAGE=1, profil storage)
 make backend       # python manage.py runserver
 make frontend      # npm run dev
 make test          # pytest + vitest

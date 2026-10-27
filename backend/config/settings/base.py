@@ -45,7 +45,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "auditlog.middleware.AuditlogMiddleware",
+    "apps.core.middleware.LazyActorAuditlogMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -163,7 +163,9 @@ OIDC_OP_TOKEN_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/token"
 OIDC_OP_USER_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/userinfo"
 OIDC_OP_JWKS_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/certs"
 OIDC_RP_CLIENT_ID: str = env("OIDC_RP_CLIENT_ID", default="onea-backend")
-OIDC_RP_CLIENT_SECRET: str = env("OIDC_RP_CLIENT_SECRET", default="")  # required in prod
+# Unused by the Bearer path (userinfo + JWKS only); required in prod only because
+# mozilla-django-oidc reads it when the backend is instantiated.
+OIDC_RP_CLIENT_SECRET: str = env("OIDC_RP_CLIENT_SECRET", default="")
 OIDC_RP_SIGN_ALGO = "RS256"
 OIDC_RP_SCOPES = "openid email profile"
 OIDC_VERIFY_SSL: bool = env.bool("OIDC_VERIFY_SSL", default=True)
@@ -180,4 +182,23 @@ REST_FRAMEWORK = {
         "apps.users.authentication.OIDCBearerAuthentication",
         "apps.users.authentication.SessionAuthentication401",
     ],
+}
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "plain": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+            "formatter": "plain",
+        },
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "django.request": {"handlers": [], "level": "ERROR", "propagate": True},
+    },
 }
