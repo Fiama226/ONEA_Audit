@@ -193,7 +193,7 @@ services:
     image: valkey/valkey:7.2.15
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-    command: ["sh", "-c", "exec valkey-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    command: ["valkey-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
     volumes:
       - redis-data:/data
     healthcheck:

@@ -222,7 +222,7 @@ restauration). Tester la restauration régulièrement sur un serveur de recette.
 | `REDIS_PASSWORD` | mot de passe Valkey (intégré dans `REDIS_URL` : sans caractères spéciaux) |
 | `SECRET_KEY` | clé secrète Django (≥ 50 caractères aléatoires) |
 | `DJANGO_ADMIN_ENABLED` | `false` par défaut ; `true` expose `/admin/` |
-| `EMAIL_URL` | relais SMTP, ex. `smtp://user:mdp@smtp.onea.bf:587` |
+| `EMAIL_URL` | relais SMTP, ex. `smtp+tls://user:mdp@smtp.onea.bf:587` |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | base applicative |
 | `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | administrateur d'amorçage Keycloak |
 | `KEYCLOAK_DB_PASSWORD` | mot de passe de la base Keycloak (instance dédiée) |
