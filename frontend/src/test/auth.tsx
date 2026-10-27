@@ -47,9 +47,7 @@ export function mockOidc(user: OidcUser | null = null): OidcClient {
 }
 
 /** Récupère le dernier callback enregistré via la méthode d'événement `name`. */
-export function capturedHandler<A extends unknown[]>(
-  fn: unknown,
-): (...args: A) => void {
+export function capturedHandler<A extends unknown[]>(fn: unknown): (...args: A) => void {
   const calls = (fn as { mock: { calls: unknown[][] } }).mock.calls;
   const cb = calls[calls.length - 1]?.[0];
   if (typeof cb !== "function") throw new Error("aucun callback enregistré");

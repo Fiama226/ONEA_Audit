@@ -12,9 +12,7 @@ describe("CallbackPage", () => {
     const oidc = mockOidc(null);
     oidc.signinRedirectCallback = async () => fakeUser({ state: { returnTo: "/missions" } });
     const router = renderApp("/callback", oidc);
-    expect(
-      await screen.findByRole("heading", { name: fr.nav.missions }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: fr.nav.missions })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/missions");
   });
 

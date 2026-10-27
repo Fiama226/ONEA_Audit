@@ -10,7 +10,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env()
 # .env lives at the repository root (shared with docker compose)
 ENV_FILE = BASE_DIR.parent / ".env"
-if ENV_FILE.exists():
+if ENV_FILE.exists() and not env.bool("ONEA_IGNORE_DOTENV", default=False):
     environ.Env.read_env(str(ENV_FILE))
 
 SECRET_KEY = env("SECRET_KEY", default="insecure-dev-key-change-me")  # noqa: S105
@@ -90,7 +90,10 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = env("STATIC_ROOT", default=str(BASE_DIR / "staticfiles"))
+
+# Django admin (/admin/) is mounted only when enabled; prod.py defaults it to False.
+DJANGO_ADMIN_ENABLED: bool = env.bool("DJANGO_ADMIN_ENABLED", default=True)
 
 CORS_ALLOWED_ORIGINS: list[str] = env.list(
     "CORS_ALLOWED_ORIGINS", default=["http://localhost:5173"]
