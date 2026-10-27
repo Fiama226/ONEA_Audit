@@ -28,7 +28,10 @@ INSTALLED_APPS = [
     "django_filters",
     "auditlog",
     "apps.core",
+    "apps.users",
 ]
+
+AUTH_USER_MODEL = "users.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -91,6 +94,8 @@ CORS_ALLOWED_ORIGINS: list[str] = env.list(
 )
 
 REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "apps.core.handlers.api_exception_handler",
+    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.users.authentication.SessionAuthentication401"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",

@@ -11,3 +11,7 @@ SPECTACULAR_SETTINGS = {
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+
+INSTALLED_APPS = [*INSTALLED_APPS, "tests.testapp"]  # noqa: F405
+ROOT_URLCONF = "tests.testapp.root_urls"
