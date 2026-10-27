@@ -11,11 +11,16 @@ class ApiErrorSerializer(serializers.Serializer[dict[str, object]]):
     errors = serializers.DictField(child=serializers.ListField(child=serializers.CharField()))  # type: ignore[assignment]
 
 
+# One entry per status code, so each endpoint documents only what it can really return.
+ERROR_400 = {400: ApiErrorSerializer}
+ERROR_401 = {401: ApiErrorSerializer}
+ERROR_403 = {403: ApiErrorSerializer}
+ERROR_404 = {404: ApiErrorSerializer}
+ERROR_422 = {422: ApiErrorSerializer}
+ERROR_503 = {503: ApiErrorSerializer}
+
 # Default error responses for authenticated endpoints.
-ERROR_RESPONSES = {
-    401: ApiErrorSerializer,
-    403: ApiErrorSerializer,
-}
+ERROR_RESPONSES = {**ERROR_401, **ERROR_403}
 
 
 class SessionAuthentication401Scheme(OpenApiAuthenticationExtension):  # type: ignore[no-untyped-call]
