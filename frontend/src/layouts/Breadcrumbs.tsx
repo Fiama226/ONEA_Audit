@@ -9,7 +9,10 @@ import {
 import { fr } from "@/i18n/fr";
 import { SEGMENT_LABELS } from "./navigation";
 
-type Crumb = { to: string; label: string };
+type Crumb = { to: string; label: string; linkable: boolean };
+
+/** Segments sans page propre : affichés dans le fil mais non cliquables. */
+const NON_LINK_SEGMENTS = new Set(["risques"]);
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -19,7 +22,7 @@ function labelFor(segment: string): string {
 }
 
 function crumbsFor(pathname: string): Crumb[] {
-  const root: Crumb = { to: "/", label: fr.nav.dashboard };
+  const root: Crumb = { to: "/", label: fr.nav.dashboard, linkable: true };
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length === 0) return [root];
   const crumbs: Crumb[] = [root];
@@ -27,6 +30,7 @@ function crumbsFor(pathname: string): Crumb[] {
     crumbs.push({
       to: `/${segments.slice(0, i + 1).join("/")}`,
       label: labelFor(segment),
+      linkable: !NON_LINK_SEGMENTS.has(segment),
     });
   });
   return crumbs;
@@ -46,6 +50,8 @@ export function Breadcrumbs() {
                 <span aria-current="page" className="font-medium text-foreground">
                   {crumb.label}
                 </span>
+              ) : !crumb.linkable ? (
+                <span className="text-text-muted">{crumb.label}</span>
               ) : (
                 <BreadcrumbLink
                   asChild

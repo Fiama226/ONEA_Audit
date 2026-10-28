@@ -48,6 +48,21 @@ describe("DataTable", () => {
     expect(props.onPageChange).toHaveBeenCalledWith(1);
   });
 
+  it("keeps the header sticky: no scroll container between thead and the page", () => {
+    setup();
+    const table = screen.getByRole("table");
+    expect(table.parentElement).toHaveClass("overflow-x-clip");
+    for (let el = table.parentElement; el; el = el.parentElement) {
+      expect(el).not.toHaveClass("overflow-x-auto");
+    }
+    expect(table.querySelector("thead")).toHaveClass("sticky");
+  });
+
+  it("agrees singular and plural in the result count", () => {
+    setup({ total: 1, data: [data[0]!] });
+    expect(screen.getByText("1 résultat")).toBeInTheDocument();
+  });
+
   it("disables previous on the first page", () => {
     setup({ page: 1 });
     expect(screen.getByRole("button", { name: "Page précédente" })).toBeDisabled();

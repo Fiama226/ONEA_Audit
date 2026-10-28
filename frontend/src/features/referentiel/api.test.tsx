@@ -4,7 +4,15 @@ import { http, HttpResponse } from "msw";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { API_URL, server } from "@/test/msw";
-import { exportRiskMap, referentielKeys, useRiskMapComparison, useRisks, useSaveRisk } from "./api";
+import {
+  exportRiskMap,
+  referentielKeys,
+  useRiskMapComparison,
+  useRisks,
+  useSaveAuditableObject,
+  useSaveRisk,
+  useUpdateRiskMap,
+} from "./api";
 
 function wrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -73,19 +81,88 @@ describe("referentiel api hooks", () => {
     expect(keys).toContain(JSON.stringify(referentielKeys.riskMaps()));
   });
 
-  it("exportRiskMap requests the export action with ?type=csv", async () => {
-    let search = "";
+  describe("exportRiskMap", () => {
+    function spyDownload() {
+      const originalCreate = URL.createObjectURL;
+      const originalRevoke = URL.revokeObjectURL;
+      URL.createObjectURL = () => "blob:x";
+      URL.revokeObjectURL = () => {};
+      const names: string[] = [];
+      const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+        this: HTMLAnchorElement,
+      ) {
+        names.push(this.download);
+      });
+      return {
+        names,
+        restore() {
+          click.mockRestore();
+          URL.createObjectURL = originalCreate;
+          URL.revokeObjectURL = originalRevoke;
+        },
+      };
+    }
+
+    it("requests the export action with ?type=csv and saves under the server filename", async () => {
+      let search = "";
+      server.use(
+        http.get(`${API_URL}/api/v1/risk-maps/v9/export/`, ({ request }) => {
+          search = new URL(request.url).search;
+          return new HttpResponse("a", {
+            headers: { "Content-Disposition": 'attachment; filename="c.csv"' },
+          });
+        }),
+      );
+      const spy = spyDownload();
+      try {
+        await exportRiskMap("v9", "csv");
+        expect(search).toBe("?type=csv");
+        expect(spy.names).toEqual(["c.csv"]);
+      } finally {
+        spy.restore();
+      }
+    });
+
+    it("falls back to cartographie.<type> when the filename header is unreadable", async () => {
+      server.use(http.get(`${API_URL}/api/v1/risk-maps/v9/export/`, () => new HttpResponse("a")));
+      const spy = spyDownload();
+      try {
+        await exportRiskMap("v9", "xlsx");
+        expect(spy.names).toEqual(["cartographie.xlsx"]);
+      } finally {
+        spy.restore();
+      }
+    });
+  });
+
+  it.each([
+    ["useSaveAuditableObject", "auditable-objects", "POST"],
+    ["useUpdateRiskMap", "risk-maps/m1", "PATCH"],
+  ] as const)("%s also invalidates risks", async (name, path, method) => {
     server.use(
-      http.get(`${API_URL}/api/v1/risk-maps/v9/export/`, ({ request }) => {
-        search = new URL(request.url).search;
-        return new HttpResponse("a", {
-          headers: { "Content-Disposition": 'attachment; filename="c.csv"' },
-        });
-      }),
+      http.post(`${API_URL}/api/v1/${path}/`, () =>
+        HttpResponse.json({ id: "x" }, { status: 201 }),
+      ),
+      http.patch(`${API_URL}/api/v1/${path}/`, () => HttpResponse.json({ id: "x" })),
     );
-    URL.createObjectURL = () => "blob:x";
-    URL.revokeObjectURL = () => {};
-    await exportRiskMap("v9", "csv");
-    expect(search).toBe("?type=csv");
+    const { Wrapper, client } = wrapper();
+    const spy = vi.spyOn(client, "invalidateQueries");
+    if (name === "useSaveAuditableObject") {
+      const { result } = renderHook(() => useSaveAuditableObject(), { wrapper: Wrapper });
+      await act(() =>
+        result.current.mutateAsync({
+          data: { processus: "p", nature: "DOMAINE", libelle: "d" },
+        }),
+      );
+    } else {
+      const { result } = renderHook(() => useUpdateRiskMap(), { wrapper: Wrapper });
+      await act(() => result.current.mutateAsync({ id: "m1", data: { libelle: "v" } }));
+    }
+    expect(method).toBeTruthy();
+    const keys = spy.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
+    expect(keys).toContain(JSON.stringify(referentielKeys.risks()));
+    if (name === "useUpdateRiskMap") {
+      expect(keys.some((k) => k.includes("comparisons"))).toBe(true);
+    }
   });
 });

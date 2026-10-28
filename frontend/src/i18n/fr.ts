@@ -78,6 +78,7 @@ export const fr = {
     riskMedium: "moyen",
     riskHigh: "élevé",
     riskCount: "risques",
+    riskCountOne: "risque",
     raiTitle: "Pilotage de l'audit interne",
     raiText:
       "Créez la première mission du programme annuel : vous suivrez ici son avancement par phase, les jalons à valider et les recommandations en retard.",
@@ -215,6 +216,7 @@ export const fr = {
     nextPage: "Page suivante",
     page: "Page",
     of: "sur",
+    result: "résultat",
     results: "résultats",
   },
   referentiel: {
@@ -225,6 +227,7 @@ export const fr = {
     tabDirections: "Directions",
     tabObjets: "Objets auditables",
     detail: "Détail",
+    risques: "Risques",
     newItem: "Nouveau",
     compare: "Comparaison",
     pageCartographies: "Cartographies",

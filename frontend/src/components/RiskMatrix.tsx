@@ -88,7 +88,10 @@ export function RiskMatrix({
                   const level = riskLevel(score);
                   const count = counts.get(`${p}-${i}`);
                   const shown = count ?? score;
-                  const unit = count === undefined ? "" : ` ${fr.dashboard.riskCount}`;
+                  const unit =
+                    count === undefined
+                      ? ""
+                      : ` ${count === 1 ? fr.dashboard.riskCountOne : fr.dashboard.riskCount}`;
                   const label = `${fr.dashboard.probability} ${p}, ${impact} ${i} : ${shown}${unit}, ${LEVEL_NAME[level]}`;
                   const box = cn(
                     "flex aspect-square items-center justify-center rounded-[3px] text-center font-medium text-risk-foreground tabular-nums",

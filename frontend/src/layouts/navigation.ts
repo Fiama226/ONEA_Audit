@@ -80,7 +80,7 @@ export const SEGMENT_LABELS: Record<string, string> = {
   documents: fr.nav.documents,
   administration: fr.nav.administration,
   cartographies: fr.referentiel.tabCartographies,
-  risques: fr.nav.risques,
+  risques: fr.referentiel.risques,
   processus: fr.referentiel.tabProcessus,
   directions: fr.referentiel.tabDirections,
   "objets-auditables": fr.referentiel.tabObjets,

@@ -41,4 +41,16 @@ describe("Breadcrumbs", () => {
         .map((li) => li.textContent),
     ).toEqual(["Tableau de bord", "Référentiel", "Cartographies", "Détail"]);
   });
+
+  it("does not link the risques segment, which has no page of its own", () => {
+    renderWithAuth(
+      <Breadcrumbs />,
+      "RAI",
+      "/referentiel/risques/3f2b8c1e-8a4d-4c55-9a0e-1b2c3d4e5f60",
+    );
+    const nav = screen.getByRole("navigation", { name: fr.common.breadcrumb });
+    expect(within(nav).getByText("Risques").tagName).toBe("SPAN");
+    expect(within(nav).queryByRole("link", { name: "Risques" })).not.toBeInTheDocument();
+    expect(within(nav).getByRole("link", { name: "Référentiel" })).toBeInTheDocument();
+  });
 });

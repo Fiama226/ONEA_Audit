@@ -6,7 +6,7 @@ import {
   type QueryKey,
 } from "@tanstack/react-query";
 import type { components, operations } from "@/api/schema";
-import { apiDownload, apiFetch } from "@/api/client";
+import { apiDownload, apiFetch, DEFAULT_DOWNLOAD_NAME } from "@/api/client";
 import { toQuery } from "@/api/query";
 import { downloadBlob } from "@/lib/download";
 import type {
@@ -170,7 +170,7 @@ export function useSaveAuditableObject() {
   return useMutation({
     mutationFn: (vars: SaveVars<ObjetAuditableInput>) =>
       save<ObjetAuditableInput, ObjetAuditable>("auditable-objects", vars),
-    onSuccess: () => invalidate(client, f.tree.all, f.objects.all),
+    onSuccess: () => invalidate(client, f.tree.all, f.objects.all, f.risks.all),
   });
 }
 
@@ -178,7 +178,7 @@ export function useDeleteAuditableObject() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => remove("auditable-objects", id),
-    onSuccess: () => invalidate(client, f.tree.all, f.objects.all),
+    onSuccess: () => invalidate(client, f.tree.all, f.objects.all, f.risks.all),
   });
 }
 
@@ -214,7 +214,7 @@ export function useUpdateRiskMap() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<CartographieVersionInput> }) =>
       apiFetch<CartographieVersion>(`${BASE}/risk-maps/${id}/`, { method: "PATCH", json: data }),
-    onSuccess: () => invalidate(client, f.riskMaps.all),
+    onSuccess: () => invalidate(client, f.riskMaps.all, f.risks.all, f.comparisons.all),
   });
 }
 
@@ -258,7 +258,7 @@ export async function exportRiskMap(id: string, type: "csv" | "xlsx"): Promise<v
   const { blob, filename } = await apiDownload(
     `${BASE}/risk-maps/${id}/export/${toQuery({ type })}`,
   );
-  downloadBlob(blob, filename);
+  downloadBlob(blob, filename === DEFAULT_DOWNLOAD_NAME ? `cartographie.${type}` : filename);
 }
 
 // ---- Risques -------------------------------------------------------------------------------

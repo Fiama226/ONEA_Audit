@@ -76,4 +76,11 @@ describe("RiskMatrix", () => {
     expect(cell).toHaveAttribute("data-level", "high");
     expect(cell).toHaveTextContent("99");
   });
+
+  it("uses the singular for one risk", () => {
+    render(<RiskMatrix cells={[{ probability: 1, impact: 1, count: 1 }]} />);
+    expect(
+      screen.getByRole("cell", { name: "Probabilité 1, impact 1 : 1 risque, faible" }),
+    ).toBeInTheDocument();
+  });
 });

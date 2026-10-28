@@ -79,7 +79,9 @@ async function send(path: string, init: ApiInit, accept: string): Promise<Respon
   return response;
 }
 
-const DEFAULT_FILENAME = "export";
+/** Nom renvoyé quand le serveur n'indique aucun nom de fichier (ou que CORS le masque). */
+export const DEFAULT_DOWNLOAD_NAME = "export";
+const DEFAULT_FILENAME = DEFAULT_DOWNLOAD_NAME;
 
 /** Nom de fichier de l'en-tête Content-Disposition ; `filename*=UTF-8''` est prioritaire. */
 function filenameFrom(disposition: string | null): string {
