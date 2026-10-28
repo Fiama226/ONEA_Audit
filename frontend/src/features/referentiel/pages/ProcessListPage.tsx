@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { fr } from "@/i18n/fr";
 import { useProcesses, type ProcessParams } from "../api";
-import { ALERT_CLASS, SELECT_CLASS } from "../components/FormField";
+import { ALERT_CLASS } from "../components/FormField";
+import { NativeSelect } from "../components/NativeSelect";
 import { FAMILLE_LABELS } from "../labels";
 import { canEditStructure } from "../permissions";
 import type { FamilleProcessus, Processus } from "../types";
@@ -57,6 +58,12 @@ export function ProcessListPage() {
   const ordering = params.get("ordering") ?? "";
   const page = Math.max(1, Number(params.get("page")) || 1);
   const [search, setSearch] = useState(q);
+  // Retour/avance du navigateur : la saisie suit le paramètre d'URL.
+  const [seenQ, setSeenQ] = useState(q);
+  if (q !== seenQ) {
+    setSeenQ(q);
+    setSearch(q);
+  }
 
   const query: ProcessParams = {
     q: q || undefined,
@@ -125,9 +132,8 @@ export function ProcessListPage() {
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="proc-famille">{s.familyFilter}</Label>
-          <select
+          <NativeSelect
             id="proc-famille"
-            className={SELECT_CLASS}
             value={famille}
             onChange={(e) => update({ famille: e.target.value })}
           >
@@ -137,7 +143,7 @@ export function ProcessListPage() {
                 {FAMILLE_LABELS[f]}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
         <Button type="submit" variant="outline">
           {fr.common.search}

@@ -17,7 +17,8 @@ import { applyApiErrors } from "../formErrors";
 import { TYPE_ENTITE_LABELS } from "../labels";
 import { directionSchema, type DirectionFormValues } from "../schemas/direction";
 import type { Direction } from "../types";
-import { ALERT_CLASS, FormField, SELECT_CLASS } from "./FormField";
+import { ALERT_CLASS, FormField } from "./FormField";
+import { NativeSelect } from "./NativeSelect";
 
 const s = fr.refStructure;
 
@@ -93,13 +94,13 @@ function DirectionForm({
       )}
       <FormField label={fr.referentiel.type} error={errors.type?.message}>
         {(p) => (
-          <select {...p} className={SELECT_CLASS} {...register("type")}>
+          <NativeSelect {...p} {...register("type")}>
             {(["DIRECTION", "DEPARTEMENT"] as const).map((t) => (
               <option key={t} value={t}>
                 {TYPE_ENTITE_LABELS[t]}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         )}
       </FormField>
       <FormField label={fr.referentiel.code} error={errors.code?.message} help={s.errCodeDirection}>
@@ -111,7 +112,7 @@ function DirectionForm({
       {type === "DEPARTEMENT" && (
         <FormField label={fr.referentiel.directionRattachement} error={errors.parent?.message}>
           {(p) => (
-            <select {...p} className={SELECT_CLASS} {...register("parent")}>
+            <NativeSelect {...p} {...register("parent")}>
               <option value="">{s.selectParent}</option>
               {parents
                 .filter((d) => d.id !== direction?.id)
@@ -120,7 +121,7 @@ function DirectionForm({
                     {d.code} - {d.libelle}
                   </option>
                 ))}
-            </select>
+            </NativeSelect>
           )}
         </FormField>
       )}

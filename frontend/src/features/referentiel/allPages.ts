@@ -1,32 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiFetch } from "@/api/client";
-import { toQuery } from "@/api/query";
-import { referentielKeys, type DirectionParams, type ProcessParams } from "./api";
-import type { Direction, Page, Processus } from "./types";
-
-const PAGE_SIZE = 200;
-/** Garde-fou contre une boucle infinie si le serveur renvoie toujours un `next`. */
-const MAX_PAGES = 50;
-
-export type AllPages<T> = { results: T[]; count: number };
-
-/** Charge toutes les pages d'une liste paginée (taille de page maximale, suit `next`). */
-export async function fetchAllPages<T>(
-  resource: string,
-  params: Record<string, string | number | undefined> = {},
-): Promise<AllPages<T>> {
-  const results: T[] = [];
-  let count = 0;
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const data = await apiFetch<Page<T>>(
-      `/api/v1/${resource}/${toQuery({ ...params, page, page_size: PAGE_SIZE })}`,
-    );
-    count = data.count;
-    results.push(...data.results);
-    if (!data.next || data.results.length === 0) break;
-  }
-  return { results, count };
-}
+import { fetchAllPages, referentielKeys, type DirectionParams, type ProcessParams } from "./api";
+import type { Direction, Processus } from "./types";
 
 type Unpaged<P> = Omit<P, "page" | "page_size">;
 
@@ -45,3 +19,5 @@ export function useAllProcesses(params: Unpaged<ProcessParams> = {}) {
     queryFn: () => fetchAllPages<Processus>("processes", params),
   });
 }
+
+export { fetchAllPages, type AllPages } from "./api";

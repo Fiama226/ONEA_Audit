@@ -10,7 +10,8 @@ import { fr } from "@/i18n/fr";
 import { useAllDirections } from "../allPages";
 import { useDeleteProcess, useProcess, useSaveProcess } from "../api";
 import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
-import { ALERT_CLASS, FormField, SELECT_CLASS } from "../components/FormField";
+import { ALERT_CLASS, FormField } from "../components/FormField";
+import { NativeSelect } from "../components/NativeSelect";
 import { ListIncompleteAlert } from "../components/ListIncompleteAlert";
 import { applyApiErrors } from "../formErrors";
 import { FAMILLE_LABELS } from "../labels";
@@ -236,14 +237,14 @@ function ProcessForm({ process }: { process?: Processus }) {
           </FormField>
           <FormField label={fr.referentiel.famille} error={errors.famille?.message}>
             {(p) => (
-              <select {...p} className={SELECT_CLASS} {...register("famille")}>
+              <NativeSelect {...p} {...register("famille")}>
                 <option value="">{s.selectFamily}</option>
                 {FAMILIES.map((f) => (
                   <option key={f} value={f}>
                     {FAMILLE_LABELS[f]}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             )}
           </FormField>
           <FormField label={fr.referentiel.ordre} error={errors.ordre?.message}>

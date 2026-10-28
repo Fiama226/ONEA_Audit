@@ -36,6 +36,30 @@ export type RiskParams = Query<"v1_risks_list">;
 
 const BASE = "/api/v1";
 
+const PAGE_SIZE = 200;
+/** Garde-fou contre une boucle infinie si le serveur renvoie toujours un `next`. */
+const MAX_PAGES = 50;
+
+export type AllPages<T> = { results: T[]; count: number };
+
+/** Charge toutes les pages d'une liste paginée (taille de page maximale, suit `next`). */
+export async function fetchAllPages<T>(
+  resource: string,
+  params: Record<string, string | number | undefined> = {},
+): Promise<AllPages<T>> {
+  const results: T[] = [];
+  let count = 0;
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const data = await apiFetch<{ count: number; next?: string | null; results: T[] }>(
+      `${BASE}/${resource}/${toQuery({ ...params, page, page_size: PAGE_SIZE })}`,
+    );
+    count = data.count;
+    results.push(...data.results);
+    if (!data.next || data.results.length === 0) break;
+  }
+  return { results, count };
+}
+
 const ROOT = ["referentiel"] as const;
 const family = (name: string) => ({
   all: [...ROOT, name] as QueryKey,
@@ -272,21 +296,21 @@ export function useRisks(params: RiskParams = {}) {
   return useQuery({
     queryKey: referentielKeys.risks(params),
     queryFn: () => apiFetch<S["PaginatedRisqueList"]>(`${BASE}/risks/${toQuery(params)}`),
-    // Garde les lignes affichées pendant le changement de page ou de filtre (pas de clignotement).
-    placeholderData: keepPreviousData,
+    // Garde les lignes affichées pendant le changement de page ou de filtre (pas de clignotement),
+    // mais jamais celles d'une autre version (cartographie) sous le nouvel en-tête.
+    placeholderData: (previous, previousQuery) => {
+      const previousParams = previousQuery?.queryKey[3] as RiskParams | undefined;
+      return previousParams?.version === params.version ? keepPreviousData(previous) : undefined;
+    },
   });
 }
 
 /** Charge toutes les pages d'une liste de risques (impression complète). */
 export async function fetchAllRisks(params: RiskParams): Promise<Risque[]> {
-  const all: Risque[] = [];
-  for (let page = 1; ; page += 1) {
-    const data = await apiFetch<S["PaginatedRisqueList"]>(
-      `${BASE}/risks/${toQuery({ ...params, page, page_size: 200 })}`,
-    );
-    all.push(...data.results);
-    if (!data.next || data.results.length === 0) return all;
-  }
+  // `fetchAllPages` impose lui-même la pagination (page, page_size).
+  return (
+    await fetchAllPages<Risque>("risks", { ...params, page: undefined, page_size: undefined })
+  ).results;
 }
 
 export function useRisk(id: string | undefined) {
