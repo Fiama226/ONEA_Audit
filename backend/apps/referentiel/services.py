@@ -21,6 +21,7 @@ from .models import (
     CartographieVersion,
     Direction,
     NatureObjet,
+    NiveauRisque,
     ObjetAuditable,
     Processus,
     Risque,
@@ -576,6 +577,28 @@ def matrice(version: CartographieVersion) -> list[CelluleMatrice]:
         for p in range(5, 0, -1)
         for i in range(1, 6)
     ]
+
+
+@dataclass(frozen=True)
+class ResumeMatrice:
+    version: CartographieVersion
+    total: int
+    par_niveau: dict[str, int]
+    cellules: list[CelluleMatrice]
+
+
+def resume_matrice(version: CartographieVersion) -> ResumeMatrice:
+    """Matrice 5x5 avec total et répartition par niveau (FAIBLE / MOYEN / ELEVE)."""
+    cellules = matrice(version)
+    par_niveau = {n.value: 0 for n in NiveauRisque}
+    for c in cellules:
+        par_niveau[c.niveau] += c.nombre
+    return ResumeMatrice(
+        version=version,
+        total=sum(par_niveau.values()),
+        par_niveau=par_niveau,
+        cellules=cellules,
+    )
 
 
 # --------------------------------------------------------------------------- comparaison

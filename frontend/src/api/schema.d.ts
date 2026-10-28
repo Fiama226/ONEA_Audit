@@ -41,6 +41,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auditable-objects/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : objets auditables
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        get: operations["v1_auditable_objects_list"];
+        put?: never;
+        /**
+         * Créer : objets auditables
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        post: operations["v1_auditable_objects_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auditable-objects/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : objets auditables
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        get: operations["v1_auditable_objects_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : objets auditables
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        delete: operations["v1_auditable_objects_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : objets auditables
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        patch: operations["v1_auditable_objects_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/auditable-objects/tree/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Arbre domaines / opérations d'un processus
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        get: operations["v1_auditable_objects_tree_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/directions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : directions et départements
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        get: operations["v1_directions_list"];
+        put?: never;
+        /**
+         * Créer : directions et départements
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        post: operations["v1_directions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/directions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : directions et départements
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        get: operations["v1_directions_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : directions et départements
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        delete: operations["v1_directions_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : directions et départements
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        patch: operations["v1_directions_partial_update"];
+        trace?: never;
+    };
     "/api/v1/health/": {
         parameters: {
             query?: never;
@@ -71,6 +195,222 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/processes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : processus
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        get: operations["v1_processes_list"];
+        put?: never;
+        /**
+         * Créer : processus
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        post: operations["v1_processes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/processes/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : processus
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        get: operations["v1_processes_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : processus
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        delete: operations["v1_processes_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : processus
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        patch: operations["v1_processes_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/risk-maps/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : cartographies des risques
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        get: operations["v1_risk_maps_list"];
+        put?: never;
+        /**
+         * Créer : cartographies des risques
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        post: operations["v1_risk_maps_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/risk-maps/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : cartographies des risques
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        get: operations["v1_risk_maps_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : cartographies des risques
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        delete: operations["v1_risk_maps_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : cartographies des risques
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        patch: operations["v1_risk_maps_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/risk-maps/{id}/compare/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Comparer deux cartographies (référence = celle de l'URL)
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        get: operations["v1_risk_maps_compare_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/risk-maps/{id}/matrix/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Matrice 5x5 des risques d'une cartographie
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        get: operations["v1_risk_maps_matrix_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/risk-maps/{id}/validate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Valider (figer) une cartographie
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        post: operations["v1_risk_maps_validate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/risks/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : risques
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        get: operations["v1_risks_list"];
+        put?: never;
+        /**
+         * Créer : risques
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        post: operations["v1_risks_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/risks/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : risques
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        get: operations["v1_risks_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : risques
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        delete: operations["v1_risks_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : risques
+         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         */
+        patch: operations["v1_risks_partial_update"];
         trace?: never;
     };
 }
@@ -120,9 +460,116 @@ export interface components {
                 };
             };
         };
+        /** @enum {unknown} */
+        BlankEnum: "";
+        CartographieVersion: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Année */
+            annee: number;
+            /** Libellé */
+            libelle: string;
+            commentaire?: string;
+            readonly statut: components["schemas"]["StatutCartographieEnum"];
+            /**
+             * Format: uuid
+             * @description Cartographie validée dont les risques sont copiés (création uniquement).
+             */
+            source?: string | null;
+            /**
+             * Validée le
+             * Format: date-time
+             */
+            readonly validee_le: string | null;
+            readonly validee_par: components["schemas"]["Valideur"] | null;
+            readonly nb_risques: number;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        CartographieVersionRequest: {
+            /** Année */
+            annee: number;
+            /** Libellé */
+            libelle: string;
+            commentaire?: string;
+            /**
+             * Format: uuid
+             * @description Cartographie validée dont les risques sont copiés (création uniquement).
+             */
+            source?: string | null;
+        };
+        CelluleMatrice: {
+            probabilite: number;
+            impact: number;
+            score: number;
+            niveau: components["schemas"]["NiveauRisqueEnum"];
+            nombre: number;
+            codes: string[];
+        };
+        Comparaison: {
+            reference: components["schemas"]["VersionResume"];
+            cible: components["schemas"]["VersionResume"];
+            ajoutes: components["schemas"]["RisqueResume"][];
+            retires: components["schemas"]["RisqueResume"][];
+            modifies: components["schemas"]["RisqueModifie"][];
+        };
+        Direction: {
+            /** Format: uuid */
+            readonly id: string;
+            code: string;
+            /** Libellé */
+            libelle: string;
+            type: components["schemas"]["TypeEntiteEnum"];
+            /**
+             * Direction de rattachement
+             * Format: uuid
+             */
+            parent?: string | null;
+            readonly parent_code: string | null;
+        };
+        DirectionRequest: {
+            code: string;
+            /** Libellé */
+            libelle: string;
+            type: components["schemas"]["TypeEntiteEnum"];
+            /**
+             * Direction de rattachement
+             * Format: uuid
+             */
+            parent?: string | null;
+        };
+        DirectionResume: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly code: string;
+            /** Libellé */
+            readonly libelle: string;
+        };
+        DomaineArbre: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Libellé */
+            readonly libelle: string;
+            readonly description: string;
+            readonly ordre: number;
+            readonly operations: components["schemas"]["ObjetAuditable"][];
+        };
+        /**
+         * @description * `PILOTAGE` - Pilotage
+         *     * `REALISATION` - Réalisation
+         *     * `SUPPORT` - Support
+         * @enum {string}
+         */
+        FamilleProcessusEnum: "PILOTAGE" | "REALISATION" | "SUPPORT";
         Health: {
             status: string;
             version: string;
+        };
+        Matrice: {
+            version: components["schemas"]["VersionResume"];
+            total: number;
+            par_niveau: components["schemas"]["ParNiveau"];
+            cellules: components["schemas"]["CelluleMatrice"][];
         };
         Me: {
             readonly id: number;
@@ -144,6 +591,49 @@ export interface components {
             readonly direction_code: string;
             readonly fonction: string;
         };
+        /**
+         * @description * `DOMAINE` - Domaine
+         *     * `OPERATION` - Opération
+         * @enum {string}
+         */
+        NatureObjetEnum: "DOMAINE" | "OPERATION";
+        /**
+         * @description * `FAIBLE` - Faible
+         *     * `MOYEN` - Moyen
+         *     * `ELEVE` - Élevé
+         * @enum {string}
+         */
+        NiveauRisqueEnum: "FAIBLE" | "MOYEN" | "ELEVE";
+        ObjetAuditable: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            processus: string;
+            /**
+             * Domaine parent
+             * Format: uuid
+             */
+            parent?: string | null;
+            nature: components["schemas"]["NatureObjetEnum"];
+            /** Libellé */
+            libelle: string;
+            description?: string;
+            ordre?: number;
+        };
+        ObjetAuditableRequest: {
+            /** Format: uuid */
+            processus: string;
+            /**
+             * Domaine parent
+             * Format: uuid
+             */
+            parent?: string | null;
+            nature: components["schemas"]["NatureObjetEnum"];
+            /** Libellé */
+            libelle: string;
+            description?: string;
+            ordre?: number;
+        };
         PaginatedAuditLogList: {
             /** @example 123 */
             count: number;
@@ -159,6 +649,291 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["AuditLog"][];
         };
+        PaginatedCartographieVersionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["CartographieVersion"][];
+        };
+        PaginatedDirectionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Direction"][];
+        };
+        PaginatedObjetAuditableList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["ObjetAuditable"][];
+        };
+        PaginatedProcessusList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Processus"][];
+        };
+        PaginatedRisqueList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Risque"][];
+        };
+        ParNiveau: {
+            FAIBLE: number;
+            MOYEN: number;
+            ELEVE: number;
+        };
+        PatchedCartographieVersionRequest: {
+            /** Année */
+            annee?: number;
+            /** Libellé */
+            libelle?: string;
+            commentaire?: string;
+            /**
+             * Format: uuid
+             * @description Cartographie validée dont les risques sont copiés (création uniquement).
+             */
+            source?: string | null;
+        };
+        PatchedDirectionRequest: {
+            code?: string;
+            /** Libellé */
+            libelle?: string;
+            type?: components["schemas"]["TypeEntiteEnum"];
+            /**
+             * Direction de rattachement
+             * Format: uuid
+             */
+            parent?: string | null;
+        };
+        PatchedObjetAuditableRequest: {
+            /** Format: uuid */
+            processus?: string;
+            /**
+             * Domaine parent
+             * Format: uuid
+             */
+            parent?: string | null;
+            nature?: components["schemas"]["NatureObjetEnum"];
+            /** Libellé */
+            libelle?: string;
+            description?: string;
+            ordre?: number;
+        };
+        PatchedProcessusRequest: {
+            code?: string;
+            /** Libellé */
+            libelle?: string;
+            famille?: components["schemas"]["FamilleProcessusEnum"];
+            ordre?: number;
+            /** @description Identifiants des directions rattachées (écriture). */
+            directions?: string[];
+        };
+        PatchedRisqueRequest: {
+            /**
+             * Cartographie
+             * Format: uuid
+             */
+            version?: string;
+            /** Format: uuid */
+            processus?: string;
+            /** Format: uuid */
+            objet_auditable?: string | null;
+            /** Libellé */
+            libelle?: string;
+            description?: string;
+            probabilite?: number;
+            impact?: number;
+            /** Vulnérabilité */
+            vulnerabilite?: string;
+            reponse?: components["schemas"]["ReponseRisqueEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * @description Par défaut dérivée du niveau : ÉLEVÉ 1, MOYEN 2, FAIBLE 3.
+             *
+             *     * `1` - Prioritaire
+             *     * `2` - Amélioration
+             *     * `3` - Observation
+             */
+            priorite?: components["schemas"]["PrioriteRisqueEnum"];
+            /** Objectif de contrôle */
+            objectif_controle?: string;
+            /** Dispositif de contrôle interne */
+            dispositif_controle?: string;
+        };
+        /**
+         * @description * `1` - Prioritaire
+         *     * `2` - Amélioration
+         *     * `3` - Observation
+         * @enum {integer}
+         */
+        PrioriteRisqueEnum: 1 | 2 | 3;
+        Processus: {
+            /** Format: uuid */
+            readonly id: string;
+            code: string;
+            /** Libellé */
+            libelle: string;
+            famille: components["schemas"]["FamilleProcessusEnum"];
+            ordre?: number;
+            readonly directions_detail: components["schemas"]["DirectionResume"][];
+        };
+        ProcessusRequest: {
+            code: string;
+            /** Libellé */
+            libelle: string;
+            famille: components["schemas"]["FamilleProcessusEnum"];
+            ordre?: number;
+            /** @description Identifiants des directions rattachées (écriture). */
+            directions?: string[];
+        };
+        /**
+         * @description * `TRAITER` - Traiter
+         *     * `TRANSFERER` - Transférer
+         *     * `TERMINER` - Terminer
+         *     * `TOLERER` - Tolérer
+         * @enum {string}
+         */
+        ReponseRisqueEnum: "TRAITER" | "TRANSFERER" | "TERMINER" | "TOLERER";
+        Risque: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Cartographie
+             * Format: uuid
+             */
+            version: string;
+            readonly version_annee: number;
+            readonly version_statut: components["schemas"]["StatutCartographieEnum"];
+            /** Format: uuid */
+            processus: string;
+            readonly processus_code: string;
+            /** Format: uuid */
+            objet_auditable?: string | null;
+            readonly objet_auditable_libelle: string | null;
+            /** Numéro */
+            readonly numero: number;
+            readonly rang: number;
+            readonly code: string;
+            readonly score: number;
+            readonly niveau: components["schemas"]["NiveauRisqueEnum"];
+            /** Libellé */
+            libelle: string;
+            description?: string;
+            probabilite: number;
+            impact: number;
+            /** Vulnérabilité */
+            vulnerabilite?: string;
+            reponse?: components["schemas"]["ReponseRisqueEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * @description Par défaut dérivée du niveau : ÉLEVÉ 1, MOYEN 2, FAIBLE 3.
+             *
+             *     * `1` - Prioritaire
+             *     * `2` - Amélioration
+             *     * `3` - Observation
+             */
+            priorite?: components["schemas"]["PrioriteRisqueEnum"];
+            /** Objectif de contrôle */
+            objectif_controle?: string;
+            /** Dispositif de contrôle interne */
+            dispositif_controle?: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        RisqueModifie: {
+            code: string;
+            /** @description Par champ : [valeur avant, valeur après]. */
+            changements: {
+                [key: string]: (string | null)[];
+            };
+        };
+        RisqueRequest: {
+            /**
+             * Cartographie
+             * Format: uuid
+             */
+            version: string;
+            /** Format: uuid */
+            processus: string;
+            /** Format: uuid */
+            objet_auditable?: string | null;
+            /** Libellé */
+            libelle: string;
+            description?: string;
+            probabilite: number;
+            impact: number;
+            /** Vulnérabilité */
+            vulnerabilite?: string;
+            reponse?: components["schemas"]["ReponseRisqueEnum"] | components["schemas"]["BlankEnum"];
+            /**
+             * @description Par défaut dérivée du niveau : ÉLEVÉ 1, MOYEN 2, FAIBLE 3.
+             *
+             *     * `1` - Prioritaire
+             *     * `2` - Amélioration
+             *     * `3` - Observation
+             */
+            priorite?: components["schemas"]["PrioriteRisqueEnum"];
+            /** Objectif de contrôle */
+            objectif_controle?: string;
+            /** Dispositif de contrôle interne */
+            dispositif_controle?: string;
+        };
+        RisqueResume: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly code: string;
+            /** Libellé */
+            readonly libelle: string;
+            readonly score: number;
+            readonly niveau: components["schemas"]["NiveauRisqueEnum"];
+        };
         /**
          * @description * `ADMIN` - Administrateur
          *     * `RAI` - Responsable de l'audit interne
@@ -168,6 +943,36 @@ export interface components {
          * @enum {string}
          */
         RoleEnum: "ADMIN" | "RAI" | "AUDITEUR" | "AUDITE" | "DG";
+        /**
+         * @description * `BROUILLON` - Brouillon
+         *     * `VALIDEE` - Validée
+         * @enum {string}
+         */
+        StatutCartographieEnum: "BROUILLON" | "VALIDEE";
+        /**
+         * @description * `DIRECTION` - Direction
+         *     * `DEPARTEMENT` - Département
+         * @enum {string}
+         */
+        TypeEntiteEnum: "DIRECTION" | "DEPARTEMENT";
+        Valideur: {
+            readonly id: number;
+            /**
+             * Nom d’utilisateur
+             * @description Requis. 150 caractères maximum. Uniquement des lettres, nombres et les caractères « @ », « . », « + », « - » et « _ ».
+             */
+            readonly username: string;
+            readonly nom_complet: string;
+        };
+        VersionResume: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Année */
+            readonly annee: number;
+            /** Libellé */
+            readonly libelle: string;
+            readonly statut: components["schemas"]["StatutCartographieEnum"];
+        };
     };
     responses: never;
     parameters: never;
@@ -200,6 +1005,8 @@ export interface operations {
                 object_id?: string;
                 /** @description Un numéro de page de l'ensemble des résultats. */
                 page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
             };
             header?: never;
             path?: never;
@@ -279,6 +1086,616 @@ export interface operations {
             };
         };
     };
+    v1_auditable_objects_list: {
+        parameters: {
+            query?: {
+                /**
+                 * @description * `DOMAINE` - Domaine
+                 *     * `OPERATION` - Opération
+                 */
+                nature?: "DOMAINE" | "OPERATION";
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                parent?: string;
+                processus?: string;
+                /** @description Recherche insensible à la casse sur le libellé. */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedObjetAuditableList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auditable_objects_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObjetAuditableRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ObjetAuditableRequest"];
+                "multipart/form-data": components["schemas"]["ObjetAuditableRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjetAuditable"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auditable_objects_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) objet auditable. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjetAuditable"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auditable_objects_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) objet auditable. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auditable_objects_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) objet auditable. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedObjetAuditableRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedObjetAuditableRequest"];
+                "multipart/form-data": components["schemas"]["PatchedObjetAuditableRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObjetAuditable"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auditable_objects_tree_list: {
+        parameters: {
+            query: {
+                processus: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomaineArbre"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_directions_list: {
+        parameters: {
+            query?: {
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                parent?: string;
+                /** @description Recherche insensible à la casse (sensible aux accents) sur le code et le libellé. */
+                q?: string;
+                /**
+                 * @description * `DIRECTION` - Direction
+                 *     * `DEPARTEMENT` - Département
+                 */
+                type?: "DEPARTEMENT" | "DIRECTION";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedDirectionList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_directions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DirectionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DirectionRequest"];
+                "multipart/form-data": components["schemas"]["DirectionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Direction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_directions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) direction. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Direction"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_directions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) direction. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_directions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) direction. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedDirectionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedDirectionRequest"];
+                "multipart/form-data": components["schemas"]["PatchedDirectionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Direction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_health_retrieve: {
         parameters: {
             query?: never;
@@ -332,6 +1749,1026 @@ export interface operations {
                 };
             };
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_processes_list: {
+        parameters: {
+            query?: {
+                direction?: string;
+                /**
+                 * @description * `PILOTAGE` - Pilotage
+                 *     * `REALISATION` - Réalisation
+                 *     * `SUPPORT` - Support
+                 */
+                famille?: "PILOTAGE" | "REALISATION" | "SUPPORT";
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /** @description Recherche insensible à la casse (sensible aux accents) sur le code et le libellé. */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedProcessusList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_processes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProcessusRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ProcessusRequest"];
+                "multipart/form-data": components["schemas"]["ProcessusRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Processus"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_processes_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) processus. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Processus"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_processes_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) processus. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_processes_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) processus. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedProcessusRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedProcessusRequest"];
+                "multipart/form-data": components["schemas"]["PatchedProcessusRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Processus"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risk_maps_list: {
+        parameters: {
+            query?: {
+                annee?: number;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `BROUILLON` - Brouillon
+                 *     * `VALIDEE` - Validée
+                 */
+                statut?: "BROUILLON" | "VALIDEE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCartographieVersionList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risk_maps_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CartographieVersionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CartographieVersionRequest"];
+                "multipart/form-data": components["schemas"]["CartographieVersionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CartographieVersion"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risk_maps_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) cartographie des risques. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CartographieVersion"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risk_maps_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) cartographie des risques. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risk_maps_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) cartographie des risques. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedCartographieVersionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedCartographieVersionRequest"];
+                "multipart/form-data": components["schemas"]["PatchedCartographieVersionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CartographieVersion"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risk_maps_compare_retrieve: {
+        parameters: {
+            query: {
+                /** @description Cartographie cible : « ajoutés » = présents dans la cible seulement. */
+                with: string;
+            };
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) cartographie des risques. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comparaison"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risk_maps_matrix_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) cartographie des risques. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Matrice"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risk_maps_validate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) cartographie des risques. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CartographieVersion"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risks_list: {
+        parameters: {
+            query?: {
+                impact?: number;
+                /**
+                 * @description * `FAIBLE` - Faible
+                 *     * `MOYEN` - Moyen
+                 *     * `ELEVE` - Élevé
+                 */
+                niveau?: "ELEVE" | "FAIBLE" | "MOYEN";
+                objet_auditable?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `1` - Prioritaire
+                 *     * `2` - Amélioration
+                 *     * `3` - Observation
+                 */
+                priorite?: 1 | 2 | 3;
+                probabilite?: number;
+                processus?: string;
+                /** @description Recherche insensible à la casse (sensible aux accents) sur le code et le libellé. */
+                q?: string;
+                /**
+                 * @description * `TRAITER` - Traiter
+                 *     * `TRANSFERER` - Transférer
+                 *     * `TERMINER` - Terminer
+                 *     * `TOLERER` - Tolérer
+                 */
+                reponse?: "TERMINER" | "TOLERER" | "TRAITER" | "TRANSFERER";
+                version?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedRisqueList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risks_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RisqueRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RisqueRequest"];
+                "multipart/form-data": components["schemas"]["RisqueRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Risque"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risks_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) risque. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Risque"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risks_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) risque. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risks_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) risque. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRisqueRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedRisqueRequest"];
+                "multipart/form-data": components["schemas"]["PatchedRisqueRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Risque"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -8,6 +8,20 @@ from django import forms
 from django.apps import apps
 from django.db.models import QuerySet
 from django.utils import timezone
+from rest_framework.filters import OrderingFilter
+from rest_framework.request import Request
+from rest_framework.views import APIView
+
+
+class StableOrderingFilter(OrderingFilter):
+    """`ordering` parameter with the primary key as final tie-breaker (stable pagination)."""
+
+    def filter_queryset(
+        self, request: Request, queryset: QuerySet[Any], view: APIView
+    ) -> QuerySet[Any]:
+        ordered = super().filter_queryset(request, queryset, view)
+        return ordered.order_by(*ordered.query.order_by, "pk")
+
 
 ACTIONS = {
     "create": LogEntry.Action.CREATE,
