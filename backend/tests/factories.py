@@ -1,6 +1,8 @@
 import string
 
 import factory
+from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 
 from apps.referentiel.models import (
     CartographieVersion,
@@ -13,6 +15,8 @@ from apps.referentiel.models import (
     Risque,
     TypeEntite,
 )
+from apps.signatures.models import Confirmation, TypeDocumentSignable
+from apps.signatures.services import empreinte as empreinte_de
 from apps.users.models import Role, User
 
 
@@ -101,6 +105,23 @@ class RisqueFactory(factory.django.DjangoModelFactory):
     probabilite = 3
     impact = 3
     priorite = PrioriteRisque.AMELIORATION
+
+
+class ConfirmationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Confirmation
+
+    class Params:
+        objet = factory.SubFactory(DirectionFactory)
+
+    type_document = TypeDocumentSignable.ORDRE_MISSION
+    content_type = factory.LazyAttribute(lambda o: ContentType.objects.get_for_model(o.objet))
+    object_id = factory.LazyAttribute(lambda o: o.objet.pk)
+    signataire = factory.SubFactory(UserFactory, role=Role.RAI)
+    confirme_le = factory.LazyFunction(timezone.now)
+    texte = "Je soussigné(e) confirme."
+    donnees = factory.LazyFunction(lambda: {"titre": "Mission"})
+    empreinte = factory.LazyAttribute(lambda o: empreinte_de(o.texte, o.donnees))
 
 
 def reset_sequences() -> None:

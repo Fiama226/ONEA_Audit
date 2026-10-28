@@ -1,7 +1,11 @@
 """OpenAPI helpers: the shared error envelope documented as component ``ApiError``."""
 
+from typing import Any
+
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import serializers
+from rest_framework.serializers import BaseSerializer
 
 
 class ApiErrorSerializer(serializers.Serializer[dict[str, object]]):
@@ -21,6 +25,43 @@ ERROR_503 = {503: ApiErrorSerializer}
 
 # Default error responses for authenticated endpoints.
 ERROR_RESPONSES = {**ERROR_401, **ERROR_403}
+
+
+def crud_schema(serializer: type[BaseSerializer[Any]], tag: str, nom: str) -> Any:
+    """Documente list / retrieve / create / partial_update / destroy avec leurs erreurs."""
+    return extend_schema_view(
+        list=extend_schema(
+            tags=[tag],
+            summary=f"Lister : {nom}",
+            responses={200: serializer(many=True), **ERROR_400, **ERROR_RESPONSES},
+        ),
+        retrieve=extend_schema(
+            tags=[tag],
+            summary=f"Détail : {nom}",
+            responses={200: serializer, **ERROR_RESPONSES, **ERROR_404},
+        ),
+        create=extend_schema(
+            tags=[tag],
+            summary=f"Créer : {nom}",
+            responses={201: serializer, **ERROR_400, **ERROR_RESPONSES, **ERROR_422},
+        ),
+        partial_update=extend_schema(
+            tags=[tag],
+            summary=f"Modifier : {nom}",
+            responses={
+                200: serializer,
+                **ERROR_400,
+                **ERROR_RESPONSES,
+                **ERROR_404,
+                **ERROR_422,
+            },
+        ),
+        destroy=extend_schema(
+            tags=[tag],
+            summary=f"Supprimer (logiquement) : {nom}",
+            responses={204: None, **ERROR_RESPONSES, **ERROR_404, **ERROR_422},
+        ),
+    )
 
 
 class SessionAuthentication401Scheme(OpenApiAuthenticationExtension):  # type: ignore[no-untyped-call]
