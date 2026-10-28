@@ -27,13 +27,24 @@ ERROR_503 = {503: ApiErrorSerializer}
 ERROR_RESPONSES = {**ERROR_401, **ERROR_403}
 
 
-def crud_schema(serializer: type[BaseSerializer[Any]], tag: str, nom: str) -> Any:
-    """Documente list / retrieve / create / partial_update / destroy avec leurs erreurs."""
+def crud_schema(
+    serializer: type[BaseSerializer[Any]],
+    tag: str,
+    nom: str,
+    *,
+    liste: type[BaseSerializer[Any]] | None = None,
+    creation_404: bool = False,
+) -> Any:
+    """Documente list / retrieve / create / partial_update / destroy avec leurs erreurs.
+
+    `liste` : sérialiseur allégé de la liste, quand il diffère de celui du détail.
+    `creation_404` : la création répond 404 quand l'objet parent (mission) est invisible.
+    """
     return extend_schema_view(
         list=extend_schema(
             tags=[tag],
             summary=f"Lister : {nom}",
-            responses={200: serializer(many=True), **ERROR_400, **ERROR_RESPONSES},
+            responses={200: (liste or serializer)(many=True), **ERROR_400, **ERROR_RESPONSES},
         ),
         retrieve=extend_schema(
             tags=[tag],
@@ -43,7 +54,13 @@ def crud_schema(serializer: type[BaseSerializer[Any]], tag: str, nom: str) -> An
         create=extend_schema(
             tags=[tag],
             summary=f"Créer : {nom}",
-            responses={201: serializer, **ERROR_400, **ERROR_RESPONSES, **ERROR_422},
+            responses={
+                201: serializer,
+                **ERROR_400,
+                **ERROR_RESPONSES,
+                **(ERROR_404 if creation_404 else {}),
+                **ERROR_422,
+            },
         ),
         partial_update=extend_schema(
             tags=[tag],

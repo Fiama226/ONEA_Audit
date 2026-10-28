@@ -196,6 +196,12 @@ def _exiger_role(action: str, etape: EtapeMission, mission: Mission, user: User)
     raise PermissionDenied(MSG_DROIT)
 
 
+def exiger_droit(etape: EtapeMission, action: str, user: User) -> None:
+    """Refuse (403) si `user` n'a pas le droit `action` : à appeler avant tout examen du corps."""
+    mission = Mission.objects.get(pk=etape.mission_id)
+    _exiger_role(action, etape, mission, user)
+
+
 def _motif(motif: str) -> str:
     motif = motif.strip()
     if not motif:

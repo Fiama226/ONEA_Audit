@@ -38,10 +38,17 @@ def _de_role(libelle: str) -> str:
     return f"d'{libelle}" if libelle[0] in "aeiouyé" else f"de {libelle}"
 
 
-def texte_declaration(declaration: DeclarationIndependance) -> str:
+def texte_declaration(
+    declaration: DeclarationIndependance, *, libelles_entites: str | None = None
+) -> str:
+    """`libelles_entites` : entités déjà chargées (listes), sinon lues en base."""
     affectation = declaration.affectation
     mission = affectation.mission
-    entites = ", ".join(mission.entites.order_by("code").values_list("libelle", flat=True))
+    entites = (
+        libelles_entites
+        if libelles_entites is not None
+        else ", ".join(mission.entites.order_by("code").values_list("libelle", flat=True))
+    )
     return _TEXTE.format(
         nom_complet=nom_complet(affectation.utilisateur),
         reference=mission.reference,
