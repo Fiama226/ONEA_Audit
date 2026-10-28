@@ -12,6 +12,12 @@ describe("Breadcrumbs", () => {
     expect(within(nav).getByText(fr.nav.dashboard)).toHaveAttribute("aria-current", "page");
   });
 
+  it("never nests a list item inside another list item (valid HTML)", () => {
+    renderWithAuth(<Breadcrumbs />, "RAI", "/referentiel/cartographies");
+    const nav = screen.getByRole("navigation", { name: fr.common.breadcrumb });
+    expect(nav.querySelectorAll("li li")).toHaveLength(0);
+  });
+
   it("links back to the dashboard from a section", () => {
     renderWithAuth(<Breadcrumbs />, "RAI", "/missions");
     const nav = screen.getByRole("navigation", { name: fr.common.breadcrumb });

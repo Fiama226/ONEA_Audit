@@ -13,7 +13,10 @@ export function ReferentielLayout() {
   return (
     <>
       <h1 className="mb-4 text-2xl font-semibold tracking-[-0.012em]">{fr.referentiel.title}</h1>
-      <nav aria-label={fr.referentiel.tabsLabel} className="mb-6 border-b border-border">
+      <nav
+        aria-label={fr.referentiel.tabsLabel}
+        className="mb-6 border-b border-border print:hidden"
+      >
         <ul className="-mb-px flex flex-wrap gap-x-6">
           {TABS.map((tab) => (
             <li key={tab.to}>
