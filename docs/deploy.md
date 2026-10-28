@@ -166,6 +166,26 @@ des mots de passe de test et un client à accès direct par mot de passe).
    | `direction` | User Attribute (String) | attribut `direction` | `direction` |
    | `fonction` | User Attribute (String) | attribut `fonction` | `fonction` |
 
+7bis. **Client de service `onea-admin-sync`** (synchronisation des comptes depuis la
+   plateforme : activation/désactivation, fermeture de session, recherche). Moindre privilège,
+   à ne pas élargir :
+
+   - *Clients > Create client* : `onea-admin-sync`, *Client authentication* activée,
+     **Service accounts roles** activé, tous les flux décochés (*Standard flow*, *Direct
+     access grants*, *Implicit flow*).
+   - Onglet *Service accounts roles* > *Assign role* > filtrer sur les clients >
+     `realm-management` : **`view-users` et `manage-users` uniquement**. Aucun rôle de realm,
+     jamais `realm-admin`.
+   - Onglet *Client scopes* > `onea-admin-sync-dedicated` > *Scope* : désactiver
+     *Full scope allowed*, puis *Assign role* > `realm-management` > `view-users` et
+     `manage-users` (sans ce mapping de portée, Keycloak répond 403 à tous les appels).
+   - Ne **jamais** ajouter `onea-admin-sync` à `OIDC_ALLOWED_AZP` : ses jetons ne doivent pas
+     ouvrir de session applicative.
+   - Onglet *Credentials* : copier le secret (long et aléatoire) dans
+     `KEYCLOAK_ADMIN_API_CLIENT_SECRET` de `.env.prod` (le backend refuse de démarrer si la
+     valeur est vide, l'espace réservé `CHANGE_ME_*` ou le secret de développement), puis
+     `docker compose ... up -d web worker beat`.
+
 8. **Protection contre la force brute** (*Realm settings > Security defenses > Brute force
    detection*) : activée, verrouillage temporaire après 5 échecs, durée croissante - **sur
    le realm `onea` et aussi sur le realm `master`** (celui des administrateurs).
@@ -241,6 +261,7 @@ restauration). Tester la restauration régulièrement sur un serveur de recette.
 | `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | administrateur d'amorçage Keycloak |
 | `KEYCLOAK_DB_PASSWORD` | mot de passe de la base Keycloak (instance dédiée) |
 | `OIDC_RP_CLIENT_SECRET` | secret du client confidentiel `onea-backend` ; non utilisé par le chemin Bearer, requis seulement car mozilla-django-oidc le lit à l'initialisation |
+| `KEYCLOAK_ADMIN_API_CLIENT_ID`, `KEYCLOAK_ADMIN_API_CLIENT_SECRET` | client de service `onea-admin-sync` (voir §5, étape 7bis) ; secret obligatoire |
 | `MEILI_MASTER_KEY` | clé maître Meilisearch |
 | `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET` | stockage objet (profil `storage`, en attente) |
 | `MINIO_IMAGE`, `MINIO_MC_IMAGE` | images du stockage objet, à fixer après décision |

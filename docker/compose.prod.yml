@@ -41,6 +41,9 @@ x-backend-env: &backend-env
   OIDC_RP_CLIENT_ID: onea-backend
   # Unused by the Bearer path; mozilla-django-oidc reads it at init, hence required.
   OIDC_RP_CLIENT_SECRET: ${OIDC_RP_CLIENT_SECRET:?OIDC_RP_CLIENT_SECRET is required}
+  # Service account (view-users + manage-users) used to sync accounts with Keycloak.
+  KEYCLOAK_ADMIN_API_CLIENT_ID: onea-admin-sync
+  KEYCLOAK_ADMIN_API_CLIENT_SECRET: ${KEYCLOAK_ADMIN_API_CLIENT_SECRET:?KEYCLOAK_ADMIN_API_CLIENT_SECRET is required}
   DJANGO_ADMIN_ENABLED: ${DJANGO_ADMIN_ENABLED:-false}
   MEILI_URL: http://meilisearch:7700
   MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required}
