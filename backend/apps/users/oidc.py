@@ -6,9 +6,11 @@ from typing import Any
 from django.core.exceptions import SuspiciousOperation
 from django.db import IntegrityError, transaction
 from django.db.models import QuerySet
+from django.utils import timezone
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
-from .models import Role, User
+from .models import KeycloakSyncStatut, OrigineCompte, Role, User
+from .services import SYNCED_FIELDS
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +56,9 @@ class OneaOIDCBackend(OIDCAuthenticationBackend):  # type: ignore[misc]
         except SuspiciousOperation as exc:
             logger.warning("OIDC login refused: %s", exc)
             raise
+        if user is not None and user.premiere_connexion_le is None:
+            user.premiere_connexion_le = timezone.now()
+            user.save(update_fields=["premiere_connexion_le"])
         return user
 
     def get_role_from_claims(self, claims: Mapping[str, Any]) -> Role:
@@ -65,26 +70,57 @@ class OneaOIDCBackend(OIDCAuthenticationBackend):  # type: ignore[misc]
 
     def filter_users_by_claims(self, claims: Mapping[str, Any]) -> QuerySet[User]:
         users = User.objects.all()
+        # (1) Stable Keycloak identifier.
         kc_id = _parse_uuid(claims.get("sub"))
         if kc_id is not None:
             by_id = users.filter(keycloak_id=kc_id)
             if by_id.exists():
                 return by_id
+        by_username = self._preprovisioned_by_username(users, claims)
+        by_email = self._unbound_by_email(users, claims)
+        # (2) Pre-provisioned account matching the Keycloak username, then (3) the
+        # verified-email rule.
+        if by_username is not None:
+            if by_email is not None and by_email.pk != by_username.pk:
+                logger.warning("OIDC username and email designate different local accounts")
+            return users.filter(pk=by_username.pk)
+        if by_email is not None:
+            return users.filter(pk=by_email.pk)
+        return users.none()
+
+    def _preprovisioned_by_username(
+        self, users: QuerySet[User], claims: Mapping[str, Any]
+    ) -> User | None:
+        username = _text(claims.get("preferred_username"))
+        if not username:
+            return None
+        matches = list(
+            users.filter(
+                username__iexact=username,
+                origine__in=(OrigineCompte.ANNUAIRE, OrigineCompte.CSV),
+                keycloak_id__isnull=True,
+                is_staff=False,
+                is_superuser=False,
+            )[:2]
+        )
+        return matches[0] if len(matches) == 1 else None
+
+    def _unbound_by_email(self, users: QuerySet[User], claims: Mapping[str, Any]) -> User | None:
         email = _text(claims.get("email"))
         # Email fallback only for a verified email (a self-declared one would allow
         # account takeover) and only to bind a still-unbound, non-privileged account.
         if not email or claims.get("email_verified") is not True:
-            return users.none()
+            return None
         matches = list(users.filter(email__iexact=email)[:2])
         if len(matches) > 1:
             logger.warning("OIDC email matches several local accounts; not binding")
-            return users.none()
+            return None
         if not matches:
-            return users.none()
+            return None
         local = matches[0]
         if local.keycloak_id is not None or local.is_staff or local.is_superuser:
-            return users.none()
-        return users.filter(pk=local.pk)
+            return None
+        return local
 
     def _base_username(self, claims: Mapping[str, Any]) -> str:
         base = _text(claims.get("preferred_username")) or _text(claims.get("email")).split("@")[0]
@@ -132,7 +168,14 @@ class OneaOIDCBackend(OIDCAuthenticationBackend):  # type: ignore[misc]
 
     def update_user(self, user: User, claims: Mapping[str, Any]) -> User:
         changed: list[str] = []
-        for field, value in self._claim_values(claims).items():
+        values = self._claim_values(claims)
+        if user.profil_gere_localement:
+            for field in SYNCED_FIELDS:
+                values.pop(field, None)
+        values["role_provisoire"] = False
+        if "keycloak_id" in values and user.keycloak_id is None and not user.is_active:
+            values["keycloak_sync_statut"] = KeycloakSyncStatut.EN_ATTENTE
+        for field, value in values.items():
             if getattr(user, field) != value:
                 if (
                     field == "role"

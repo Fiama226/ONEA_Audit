@@ -11,5 +11,13 @@ class UsersConfig(AppConfig):
 
         from .models import User
 
-        # Never log credentials or login timestamps.
-        auditlog.register(User, exclude_fields=["password", "last_login"])
+        # Never log credentials, login timestamps or technical retry counters.
+        auditlog.register(
+            User,
+            exclude_fields=[
+                "password",
+                "last_login",
+                "keycloak_sync_le",
+                "keycloak_sync_tentatives",
+            ],
+        )
