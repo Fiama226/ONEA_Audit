@@ -102,7 +102,7 @@ export interface paths {
         };
         /**
          * Arbre domaines / opérations d'un processus
-         * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
+         * @description Répond 404 si le processus est inconnu ou supprimé.
          */
         get: operations["v1_auditable_objects_tree_list"];
         put?: never;
@@ -792,7 +792,7 @@ export interface components {
             libelle?: string;
             famille?: components["schemas"]["FamilleProcessusEnum"];
             ordre?: number;
-            /** @description Identifiants des directions rattachées (écriture). */
+            /** @description Identifiants des directions (type DIRECTION uniquement) rattachées (écriture). */
             directions?: string[];
         };
         PatchedRisqueRequest: {
@@ -849,7 +849,7 @@ export interface components {
             libelle: string;
             famille: components["schemas"]["FamilleProcessusEnum"];
             ordre?: number;
-            /** @description Identifiants des directions rattachées (écriture). */
+            /** @description Identifiants des directions (type DIRECTION uniquement) rattachées (écriture). */
             directions?: string[];
         };
         /**
@@ -1425,6 +1425,14 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
