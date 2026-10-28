@@ -3,7 +3,7 @@ from rest_framework.test import APIClient
 
 from apps.users.models import Role, User
 
-from .factories import make_user
+from .factories import make_user, reset_sequences
 
 
 @pytest.fixture
@@ -40,3 +40,9 @@ def dg(db: None) -> User:
 def auth_client(api_client: APIClient, user: User) -> APIClient:
     api_client.force_authenticate(user=user)
     return api_client
+
+
+@pytest.fixture(autouse=True)
+def _reset_factory_sequences() -> None:
+    """Keep sequence-based values (years, risk numbers) deterministic across tests."""
+    reset_sequences()
