@@ -157,6 +157,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.tasks.heartbeat",
         "schedule": crontab(hour=6, minute=0),
     },
+    "users-keycloak-sync": {
+        "task": "users.synchroniser_comptes_keycloak",
+        "schedule": crontab(minute="*/15"),
+    },
 }
 
 # --- Email: EMAIL_URL = smtp://mailpit:1025 in compose, smtp://localhost:1025 on host ---
