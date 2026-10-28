@@ -43,7 +43,8 @@ const COLUMNS: DataTableColumn<AuditLog>[] = [
       <ul className="space-y-0.5 py-1">
         {describeChanges(row.original).map((line) => (
           <li key={line.field}>
-            {line.label} : {line.before} → {line.after}
+            {line.label} : {line.before} <span className="sr-only">{t.becomes}</span>
+            <span aria-hidden>→</span> {line.after}
           </li>
         ))}
       </ul>

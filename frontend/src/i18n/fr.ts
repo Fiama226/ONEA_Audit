@@ -304,6 +304,7 @@ export const fr = {
     action: "Action",
     changes: "Changements",
     system: "Système",
+    becomes: "devient",
     actionCreate: "Création",
     actionUpdate: "Modification",
     actionDelete: "Suppression",

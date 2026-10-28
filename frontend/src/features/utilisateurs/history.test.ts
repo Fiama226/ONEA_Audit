@@ -77,6 +77,20 @@ describe("describeChanges", () => {
       entry({ groups: { type: "m2m", operation: "add", objects: ["a", "b"] } }),
     );
     expect(lines).toHaveLength(1);
-    expect(lines[0]?.after).toContain("a");
+    expect(lines[0]?.after).toBe("Ajout : a, b");
+  });
+
+  it("drops id and unchanged blank lines on a real creation payload", () => {
+    const e = entry({
+      id: ["None", "7"],
+      username: ["None", "auditeur2"],
+      email: ["None", ""],
+      first_name: ["None", ""],
+      is_active: ["None", "True"],
+    });
+    expect(describeChanges(e)).toEqual([
+      { field: "username", label: "Identifiant", before: "—", after: "auditeur2" },
+      { field: "is_active", label: "Statut du compte", before: "—", after: "Actif" },
+    ]);
   });
 });

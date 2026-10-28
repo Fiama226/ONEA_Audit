@@ -49,7 +49,9 @@ describe("UserHistory", () => {
     expect(search).toBe("?model=users.user&object_id=7&page=1");
     expect(screen.getByText("admin")).toBeInTheDocument();
     expect(screen.getByText("Modification")).toBeInTheDocument();
-    expect(screen.getByText("Statut du compte : Actif → Désactivé")).toBeInTheDocument();
+    const item = screen.getByRole("listitem");
+    expect(item).toHaveTextContent(/Statut du compte : Actif.*→.*Désactivé/);
+    expect(item).toHaveTextContent("devient");
     const results = await axe(container, { rules: { "color-contrast": { enabled: false } } });
     expect(results.violations).toEqual([]);
   });

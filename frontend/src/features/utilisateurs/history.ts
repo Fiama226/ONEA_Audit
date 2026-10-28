@@ -7,7 +7,15 @@ import { fr } from "@/i18n/fr";
 type S = components["schemas"];
 type AuditLog = S["AuditLog"];
 
+/** Doit rester égal au `PAGE_SIZE` DRF du backend (config/settings/base.py) : aucun page_size n'est envoyé. */
 export const HISTORY_PAGE_SIZE = 25;
+
+const M2M_OPERATIONS: Record<string, string> = {
+  add: "Ajout",
+  remove: "Retrait",
+  clear: "Vidage",
+  set: "Remplacement",
+};
 const EMPTY_VALUE = "—";
 
 export const historyKey = (userId: number, page: number) =>
@@ -48,6 +56,7 @@ export const FIELD_LABELS: Record<string, string> = {
 };
 
 const HIDDEN_FIELDS = new Set([
+  "id",
   "desactive_le",
   "desactive_par",
   "date_joined",
@@ -90,10 +99,11 @@ export function describeChanges(entry: AuditLog): ChangeLine[] {
       before = formatValue(field, change[0]);
       after = formatValue(field, change[1]);
     } else if ("type" in change) {
-      after = `${change.operation} : ${change.objects.join(", ")}`;
+      after = `${M2M_OPERATIONS[change.operation] ?? change.operation} : ${change.objects.join(", ")}`;
     } else {
       after = formatValue(field, change.raw);
     }
+    if (before === after) continue;
     lines.push({ field, label, before, after });
   }
   return lines;
