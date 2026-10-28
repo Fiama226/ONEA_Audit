@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, ClassVar
 
 from django.conf import settings
 from django.db import models
@@ -6,9 +6,16 @@ from django.db.models import Case, CharField, F, Q, Value, When
 from django.db.models.lookups import GreaterThanOrEqual
 from django_fsm import FSMField, transition
 
+from apps.core.exceptions import RegleMetierError
 from apps.core.models import BaseModel
 
 from .exceptions import CartographieFigeeError
+from .managers import (
+    CartographieAllManager,
+    CartographieManager,
+    RisqueAllManager,
+    RisqueManager,
+)
 from .validators import valider_code_direction, valider_code_processus, valider_code_risque
 
 
@@ -181,6 +188,9 @@ class CartographieVersion(BaseModel):
         related_name="+",
     )
 
+    objects: ClassVar[CartographieManager] = CartographieManager()
+    all_objects: ClassVar[CartographieAllManager] = CartographieAllManager()  # noqa: DJ012
+
     class Meta:
         verbose_name = "cartographie des risques"
         verbose_name_plural = "cartographies des risques"
@@ -195,6 +205,13 @@ class CartographieVersion(BaseModel):
                 condition=Q(deleted_at__isnull=True),
                 name="cartographie_annee_unique_actif",
             ),
+            models.CheckConstraint(
+                condition=(
+                    ~Q(statut=StatutCartographie.VALIDEE)
+                    | Q(validee_le__isnull=False, validee_par__isnull=False)
+                ),
+                name="cartographie_validee_signee",
+            ),
         ]
 
     def __str__(self) -> str:
@@ -204,13 +221,13 @@ class CartographieVersion(BaseModel):
         # Le contrôle porte sur la ligne EN BASE : la sauvegarde qui valide passe
         # (la base dit encore BROUILLON), toute sauvegarde suivante est refusée.
         if not self._state.adding:
-            statut = (
+            en_base = (
                 CartographieVersion.all_objects.filter(pk=self.pk)
-                .values_list("statut", flat=True)
+                .values_list("statut", "annee")
                 .first()
             )
-            if statut == StatutCartographie.VALIDEE:
-                raise CartographieFigeeError(self.annee)
+            if en_base is not None and en_base[0] == StatutCartographie.VALIDEE:
+                raise CartographieFigeeError(en_base[1])
         super().save(*args, **kwargs)
 
     @transition(  # type: ignore[untyped-decorator]  # django-fsm is untyped
@@ -278,6 +295,9 @@ class Risque(BaseModel):
     objectif_controle = models.TextField("objectif de contrôle", blank=True)
     dispositif_controle = models.TextField("dispositif de contrôle interne", blank=True)
 
+    objects: ClassVar[RisqueManager] = RisqueManager()
+    all_objects: ClassVar[RisqueAllManager] = RisqueAllManager()  # noqa: DJ012
+
     class Meta:
         verbose_name = "risque"
         verbose_name_plural = "risques"
@@ -318,13 +338,26 @@ class Risque(BaseModel):
         return self.code
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        figee = (
-            CartographieVersion.all_objects.filter(
-                pk=self.version_id, statut=StatutCartographie.VALIDEE
-            )
-            .values_list("annee", flat=True)
+        # Contrôle sur les lignes EN BASE : la version actuelle du risque (déplacement
+        # impossible hors d'une version validée) et la version visée.
+        en_base = (
+            Risque.all_objects.filter(pk=self.pk)
+            .values_list("version_id", "version__statut", "version__annee")
             .first()
         )
-        if figee is not None:
-            raise CartographieFigeeError(figee)
+        if en_base is not None and en_base[1] == StatutCartographie.VALIDEE:
+            raise CartographieFigeeError(en_base[2])
+        if en_base is None or en_base[0] != self.version_id:
+            cible = (
+                CartographieVersion.all_objects.filter(pk=self.version_id)
+                .values_list("statut", "annee")
+                .first()
+            )
+            if cible is not None and cible[0] == StatutCartographie.VALIDEE:
+                raise CartographieFigeeError(cible[1])
+            if en_base is not None:
+                raise RegleMetierError(
+                    "Un risque ne peut pas changer de cartographie.",
+                    {"version": ["Un risque ne peut pas changer de cartographie."]},
+                )
         super().save(*args, **kwargs)
