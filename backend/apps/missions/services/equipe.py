@@ -75,8 +75,6 @@ def affecter(
 def desaffecter(affectation: AffectationMission, *, by: User) -> None:
     mission = verrouiller_mission(affectation.mission_id)
     affectation = relire(affectation)
-    if affectation.deleted_at is not None:
-        return
     if affectation.role_mission == RoleMission.CHEF_MISSION and mission.statut not in (
         StatutMission.BROUILLON,
         StatutMission.PLANIFIEE,
@@ -91,8 +89,11 @@ def desaffecter(affectation: AffectationMission, *, by: User) -> None:
 @transaction.atomic
 def remplacer_chef(mission: Mission, *, utilisateur: User, by: User) -> AffectationMission:
     mission = verrouiller_mission(mission)
-    if utilisateur.role != Role.AUDITEUR or not utilisateur.is_active:
+    if utilisateur.role != Role.AUDITEUR:
         raise refuser(MSG_INTERVENANT, utilisateur=MSG_INTERVENANT)
+    if not utilisateur.is_active:
+        msg = "Cet utilisateur est désactivé."
+        raise refuser(msg, utilisateur=msg)
     existantes = list(_actives(mission).select_for_update(of=("self",)))
     ancien_chef = next((a for a in existantes if a.role_mission == RoleMission.CHEF_MISSION), None)
     if ancien_chef is None:

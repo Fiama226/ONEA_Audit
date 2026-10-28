@@ -20,9 +20,11 @@ from apps.users.models import User
 from ..etapes import ETAPES
 from ..gardes import verrouiller_mission
 from ..models import (
+    ROLES_INTERVENANTS,
     EtapeMission,
     EvenementEtape,
     Mission,
+    RoleMission,
     StatutEtape,
     StatutMission,
     TypeEvenementEtape,
@@ -59,6 +61,15 @@ SUSPENDABLES = frozenset(
 )
 MSG_OBLIGATOIRE_PLANIFIER = "Ce champ est obligatoire pour planifier la mission."
 MSG_OBLIGATOIRE_ORDRE = "Ce champ est obligatoire pour émettre l'ordre de mission."
+# Statuts où l'étape I peut être (ré)close par une émission : D8 laisse rouvrir I dans toute
+# phase, et D17 impose alors une nouvelle émission.
+STATUTS_ORDRE = frozenset(
+    {
+        StatutMission.EN_PLANIFICATION,
+        StatutMission.EN_ACCOMPLISSEMENT,
+        StatutMission.EN_COMMUNICATION,
+    }
+)
 MSG_MOTIF = "Le motif est obligatoire."
 MSG_CHEF = "Désignez un chef de mission avant de lancer la mission."
 
@@ -69,8 +80,11 @@ _TEXTE_ORDRE = (
 )
 
 
-def _pas_possible(mission: Mission, action: str) -> Any:
-    msg = f"Impossible de {action} : la mission est {mission.get_statut_display().lower()}."
+def _pas_possible(mission: Mission, action: str) -> RegleMetierError:
+    etat = mission.get_statut_display().lower()
+    if mission.statut == StatutMission.BROUILLON:
+        etat = f"en {etat}"
+    msg = f"Impossible de {action} : la mission est {etat}."
     return refuser(msg, statut=msg)
 
 
@@ -127,7 +141,7 @@ def creer_mission(
         raise refuser(msg, cartographie=msg)
     mission = Mission(titre=titre, type=type, cartographie=version)
     appliquer(mission, champs, CHAMPS_MODIFIABLES - M2M)
-    _verifier_dates_apres_validation(mission, by)
+    _verifier_et_enregistrer(mission, by)
     for definition in ETAPES:
         etape = EtapeMission(mission=mission, numero=definition.numero)
         enregistrer(etape, by=by, creation=True)
@@ -136,7 +150,7 @@ def creer_mission(
     return mission
 
 
-def _verifier_dates_apres_validation(mission: Mission, by: User) -> None:
+def _verifier_et_enregistrer(mission: Mission, by: User) -> None:
     # `enregistrer` rend d'abord les erreurs de champs ; les dates sont contrôlées avant pour
     # que le CHECK de base ne soit jamais la première garde atteinte.
     _verifier_dates(mission)
@@ -214,7 +228,7 @@ def lancer_mission(mission: Mission, *, by: User) -> Mission:
     mission = verrouiller_mission(mission)
     if mission.statut != StatutMission.PLANIFIEE:
         raise _pas_possible(mission, "lancer la mission")
-    if not mission.affectations.filter(role_mission="CHEF_MISSION").exists():
+    if not mission.affectations.filter(role_mission=RoleMission.CHEF_MISSION).exists():
         raise refuser(MSG_CHEF, chef_mission=MSG_CHEF)
     mission.statut = StatutMission.EN_PLANIFICATION
     enregistrer(mission, by=by)
@@ -230,7 +244,9 @@ def lancer_mission(mission: Mission, *, by: User) -> Mission:
 def _donnees_ordre(mission: Mission) -> dict[str, Any]:
     equipe = [
         {"nom": nom_complet(a.utilisateur), "role_mission": a.role_mission}
-        for a in mission.affectations.select_related("utilisateur").order_by("created_at")
+        for a in mission.affectations.filter(role_mission__in=ROLES_INTERVENANTS)
+        .select_related("utilisateur")
+        .order_by("created_at")
     ]
     return {
         "reference": mission.reference,
@@ -256,7 +272,7 @@ def emettre_ordre_mission(
     mission: Mission, *, by: User, adresse_ip: str | None = None
 ) -> Confirmation:
     mission = verrouiller_mission(mission)
-    if mission.statut != StatutMission.EN_PLANIFICATION:
+    if mission.statut not in STATUTS_ORDRE:
         raise _pas_possible(mission, "émettre l'ordre de mission")
     etape = _etape(mission, 1)
     if etape.statut not in (StatutEtape.EN_COURS, StatutEtape.RENVOYEE):

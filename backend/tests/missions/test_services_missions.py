@@ -43,10 +43,6 @@ from tests.factories import (
 MSG_CHEF = "Désignez un chef de mission avant de lancer la mission."
 
 
-def _messages(e: RegleMetierError) -> list[str]:
-    return [str(e.value if hasattr(e, "value") else e), *sum(e.errors.values(), [])]
-
-
 @pytest.fixture
 def cartographie_validee(db: None) -> CartographieVersion:
     return MissionFactory().cartographie
@@ -285,6 +281,63 @@ def test_emettre_ordre_deux_fois_refuse(rai: User, mission_a_ordre: Mission):
     emettre_ordre_mission(mission_a_ordre, by=rai)
     with pytest.raises(RegleMetierError):
         emettre_ordre_mission(mission_a_ordre, by=rai)
+
+
+def test_d17_m2m_gele_apres_emission(rai: User, mission_a_ordre: Mission):
+    emettre_ordre_mission(mission_a_ordre, by=rai)
+    mission = Mission.objects.get(pk=mission_a_ordre.pk)
+    with pytest.raises(EtapeCloseError):
+        modifier_mission(mission, by=rai, processus=[ProcessusFactory()])
+    with pytest.raises(EtapeCloseError):
+        modifier_mission(mission, by=rai, entites=[DirectionFactory()])
+    # Les mêmes ensembles ne sont pas une modification.
+    modifier_mission(
+        mission,
+        by=rai,
+        processus=list(mission.processus.all()),
+        entites=list(mission.entites.all()),
+    )
+
+
+@pytest.mark.parametrize(
+    "statut", [StatutMission.EN_ACCOMPLISSEMENT, StatutMission.EN_COMMUNICATION]
+)
+def test_nouvelle_emission_apres_reouverture_de_I(rai: User, mission_a_ordre: Mission, statut: str):
+    premiere = emettre_ordre_mission(mission_a_ordre, by=rai)
+    Mission.objects.filter(pk=mission_a_ordre.pk).update(statut=statut)
+    EtapeMission.objects.filter(mission=mission_a_ordre, numero=1).update(
+        statut=StatutEtape.EN_COURS
+    )
+    seconde = emettre_ordre_mission(mission_a_ordre, by=rai)
+    assert seconde.pk != premiere.pk and verifier(premiere) and verifier(seconde)
+    assert mission_a_ordre.etapes.get(numero=1).statut == StatutEtape.TERMINEE
+    mission = Mission.objects.get(pk=mission_a_ordre.pk)
+    with pytest.raises(EtapeCloseError):
+        modifier_mission(mission, by=rai, objectifs="Autres objectifs")
+
+
+def test_emission_refusee_hors_phases(rai: User, mission_a_ordre: Mission):
+    Mission.objects.filter(pk=mission_a_ordre.pk).update(statut=StatutMission.RAPPORT_DIFFUSE)
+    with pytest.raises(RegleMetierError):
+        emettre_ordre_mission(mission_a_ordre, by=rai)
+
+
+def test_ordre_equipe_sans_audites(rai: User, mission_a_ordre: Mission):
+    affecter(mission_a_ordre, utilisateur=make_user(Role.AUDITE), role_mission="AUDITE", by=rai)
+    c = emettre_ordre_mission(mission_a_ordre, by=rai)
+    assert [m["role_mission"] for m in c.donnees["equipe"]] == ["CHEF_MISSION"]
+
+
+def test_message_mission_en_brouillon(rai: User, cartographie_validee: CartographieVersion):
+    with pytest.raises(RegleMetierError) as e:
+        lancer_mission(brouillon_complet(rai), by=rai)
+    assert e.value.message == "Impossible de lancer la mission : la mission est en brouillon."
+
+
+def test_factory_trait_ajoute_processus_et_entites(db: None):
+    mission = MissionFactory(avec_processus_et_entites=True)
+    assert mission.processus.count() == 1 and mission.entites.count() == 1
+    assert MissionFactory().processus.count() == 0
 
 
 def test_gel_mission_suspendue_toutes_ecritures(rai: User, mission_a_ordre: Mission):

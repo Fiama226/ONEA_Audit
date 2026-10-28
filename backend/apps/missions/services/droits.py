@@ -8,16 +8,16 @@ from dataclasses import dataclass
 
 from apps.users.models import Role, User
 
-from .. import acces
 from ..gardes import STATUTS_FIGES
 from ..models import (
+    ROLES_INTERVENANTS,
     DeclarationIndependance,
     Mission,
     StatutDeclaration,
     StatutEtape,
     StatutMission,
 )
-from .missions import SUSPENDABLES
+from .missions import STATUTS_ORDRE, SUSPENDABLES
 
 _EDITABLES = frozenset({StatutMission.BROUILLON, *SUSPENDABLES})
 _TRAVAUX = frozenset(SUSPENDABLES)
@@ -42,11 +42,11 @@ class DroitsMission:
 def _droits_rai(mission: Mission) -> DroitsMission:
     statut = mission.statut
     if statut == StatutMission.SUSPENDUE:
-        return DroitsMission(reprendre=True, annuler=True)
+        return DroitsMission(reprendre=True, annuler=True, voir_travaux=True)
     if statut in STATUTS_FIGES:
-        return DroitsMission()
+        return DroitsMission(voir_travaux=True)
     ordre = (
-        statut == StatutMission.EN_PLANIFICATION
+        statut in STATUTS_ORDRE
         and mission.etapes.filter(
             numero=1, statut__in=(StatutEtape.EN_COURS, StatutEtape.RENVOYEE)
         ).exists()
@@ -66,24 +66,27 @@ def _droits_rai(mission: Mission) -> DroitsMission:
 
 
 def _droits_intervenant(user: User, mission: Mission) -> DroitsMission:
-    statut = mission.statut
-    if statut in STATUTS_FIGES or statut == StatutMission.BROUILLON:
-        return DroitsMission()
+    """Une seule requête : la déclaration de l'intervenant donne son rôle et sa levée."""
     declaration = DeclarationIndependance.objects.filter(
-        affectation__mission=mission, affectation__utilisateur=user
+        affectation__mission=mission,
+        affectation__utilisateur=user,
+        affectation__role_mission__in=ROLES_INTERVENANTS,
     ).first()
+    statut = mission.statut
+    if declaration is None or statut == StatutMission.BROUILLON:
+        return DroitsMission()
+    if statut in STATUTS_FIGES:
+        return DroitsMission(voir_travaux=True)
     return DroitsMission(
-        contribuer=statut in _TRAVAUX and acces.declaration_levee(user, mission),
+        contribuer=statut in _TRAVAUX and declaration.levee,
         voir_travaux=True,
-        confirmer_ma_declaration=(
-            declaration is not None and declaration.statut == StatutDeclaration.EN_ATTENTE
-        ),
+        confirmer_ma_declaration=declaration.statut == StatutDeclaration.EN_ATTENTE,
     )
 
 
 def droits_mission(user: User, mission: Mission) -> DroitsMission:
     if user.role == Role.RAI:
         return _droits_rai(mission)
-    if user.role == Role.AUDITEUR and acces.est_intervenant(user, mission):
+    if user.role == Role.AUDITEUR:
         return _droits_intervenant(user, mission)
     return DroitsMission()

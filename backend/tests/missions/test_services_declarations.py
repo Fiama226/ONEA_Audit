@@ -13,6 +13,7 @@ from apps.missions.services.declarations import (
     arbitrer_conflit,
     confirmation_de,
     confirmer_declaration,
+    texte_a_confirmer,
     texte_declaration,
 )
 from apps.missions.services.equipe import affecter
@@ -51,13 +52,21 @@ def _declaration(mission: Mission, user: User) -> DeclarationIndependance:
 def test_texte_declaration_exact(mission: Mission, auditeur: User):
     assert texte_declaration(_declaration(mission, auditeur)) == (
         "Je soussigné(e) Awa Sawadogo, affecté(e) à la mission DAI/2026/M07 « Audit des achats » "
-        "en qualité de auditeur, déclare n'avoir, à ma connaissance, aucun conflit d'intérêts ni "
+        "en qualité d'auditeur, déclare n'avoir, à ma connaissance, aucun conflit d'intérêts ni "
         "aucune relation personnelle, professionnelle ou financière avec les entités auditées "
         "(Direction Administrative et Financière, Direction de l'Exploitation), ni avoir exercé "
         "de responsabilité opérationnelle sur les activités auditées au cours des douze derniers "
         "mois, de nature à porter atteinte à mon objectivité (Normes internationales d'audit "
         "interne, principe 2). Je m'engage à signaler sans délai au Responsable de l'Audit "
         "Interne toute situation nouvelle de cette nature."
+    )
+
+
+def test_texte_a_confirmer_conflit(mission: Mission, auditeur: User):
+    d = _declaration(mission, auditeur)
+    assert texte_a_confirmer(d) == texte_declaration(d)
+    assert texte_a_confirmer(d, description_conflit="Lien familial").endswith(
+        "\n\nSous réserve de la situation suivante : Lien familial"
     )
 
 
@@ -104,7 +113,11 @@ def test_conflit_puis_arbitrage_leve_la_declaration(rai: User, mission: Mission,
     )
     assert d.statut == StatutDeclaration.CONFLIT_DECLARE and not d.levee
     c = confirmation_de(d)
-    assert c is not None and c.donnees["conflit"] is True and "Ancien chef de service" in c.texte
+    assert (
+        c is not None
+        and c.donnees["conflit"] is True
+        and c.texte == texte_a_confirmer(d, description_conflit="Ancien chef de service")
+    )
     with pytest.raises(RegleMetierError):
         arbitrer_conflit(d, justification=" ", by=rai)
     d = arbitrer_conflit(d, justification="Aucune incidence, mission non concernée", by=rai)

@@ -43,11 +43,19 @@ def en(mission: Mission, statut: str) -> Mission:
         ),
         (
             StatutMission.EN_COMMUNICATION,
-            {"modifier", "suspendre", "annuler", "affecter", "contribuer", "voir_travaux"},
+            {
+                "modifier",
+                "emettre_ordre",
+                "suspendre",
+                "annuler",
+                "affecter",
+                "contribuer",
+                "voir_travaux",
+            },
         ),
-        (StatutMission.SUSPENDUE, {"reprendre", "annuler"}),
-        (StatutMission.ANNULEE, set()),
-        (StatutMission.CLOTUREE, set()),
+        (StatutMission.SUSPENDUE, {"reprendre", "annuler", "voir_travaux"}),
+        (StatutMission.ANNULEE, {"voir_travaux"}),
+        (StatutMission.CLOTUREE, {"voir_travaux"}),
     ],
 )
 def test_droits_rai_par_etat(mission_lancee: Mission, rai: User, statut: str, attendu: set[str]):
@@ -58,6 +66,30 @@ def test_droits_rai_emettre_ordre_selon_etape_I(mission_lancee: Mission, rai: Us
     assert "emettre_ordre" in vrais(droits_mission(rai, mission_lancee))
     mission_lancee.etapes.filter(numero=1).update(statut=StatutEtape.TERMINEE)
     assert "emettre_ordre" not in vrais(droits_mission(rai, mission_lancee))
+
+
+@pytest.mark.parametrize(
+    ("statut", "attendu"),
+    [
+        (StatutMission.EN_PLANIFICATION, True),
+        (StatutMission.EN_ACCOMPLISSEMENT, True),
+        (StatutMission.EN_COMMUNICATION, True),
+        (StatutMission.PLANIFIEE, False),
+        (StatutMission.RAPPORT_DIFFUSE, False),
+        (StatutMission.SUSPENDUE, False),
+    ],
+)
+def test_droits_emettre_ordre_si_I_ouverte(
+    mission_lancee: Mission, rai: User, statut: str, attendu: bool
+):
+    assert droits_mission(rai, en(mission_lancee, statut)).emettre_ordre is attendu
+
+
+def test_droits_intervenant_une_requete(
+    mission_lancee: Mission, chef: User, django_assert_num_queries
+):
+    with django_assert_num_queries(1):
+        droits_mission(chef, mission_lancee)
 
 
 def test_droits_auditeur_non_confirme_puis_confirme(mission_lancee: Mission):
@@ -73,7 +105,9 @@ def test_droits_auditeur_non_confirme_puis_confirme(mission_lancee: Mission):
 
 def test_droits_auditeur_mission_figee(mission_lancee: Mission, chef: User):
     assert droits_mission(chef, mission_lancee).contribuer
-    assert vrais(droits_mission(chef, en(mission_lancee, StatutMission.SUSPENDUE))) == set()
+    assert vrais(droits_mission(chef, en(mission_lancee, StatutMission.SUSPENDUE))) == {
+        "voir_travaux"
+    }
 
 
 @pytest.mark.parametrize("role", [Role.ADMIN, Role.DG, Role.AUDITE])

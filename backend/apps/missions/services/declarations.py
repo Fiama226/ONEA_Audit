@@ -20,7 +20,7 @@ MSG_BROUILLON = "La mission n'est pas encore planifiée : la déclaration ne peu
 
 _TEXTE = (
     "Je soussigné(e) {nom_complet}, affecté(e) à la mission {reference} « {titre} » en qualité "
-    "de {role_mission}, déclare n'avoir, à ma connaissance, aucun conflit d'intérêts ni aucune "
+    "{role_mission}, déclare n'avoir, à ma connaissance, aucun conflit d'intérêts ni aucune "
     "relation personnelle, professionnelle ou financière avec les entités auditées ({entites}), "
     "ni avoir exercé de responsabilité opérationnelle sur les activités auditées au cours des "
     "douze derniers mois, de nature à porter atteinte à mon objectivité (Normes internationales "
@@ -33,6 +33,11 @@ def nom_complet(user: User) -> str:
     return user.get_full_name() or user.username
 
 
+def _de_role(libelle: str) -> str:
+    libelle = libelle.lower()
+    return f"d'{libelle}" if libelle[0] in "aeiouyé" else f"de {libelle}"
+
+
 def texte_declaration(declaration: DeclarationIndependance) -> str:
     affectation = declaration.affectation
     mission = affectation.mission
@@ -41,9 +46,20 @@ def texte_declaration(declaration: DeclarationIndependance) -> str:
         nom_complet=nom_complet(affectation.utilisateur),
         reference=mission.reference,
         titre=mission.titre,
-        role_mission=affectation.get_role_mission_display().lower(),
+        role_mission=_de_role(affectation.get_role_mission_display()),
         entites=entites,
     )
+
+
+def texte_a_confirmer(
+    declaration: DeclarationIndependance, *, description_conflit: str = ""
+) -> str:
+    """Texte exact présenté puis confirmé (D10) : D9, plus la situation déclarée s'il y en a une."""
+    texte = texte_declaration(declaration)
+    description = description_conflit.strip()
+    if description:
+        texte = f"{texte}\n\nSous réserve de la situation suivante : {description}"
+    return texte
 
 
 def confirmation_de(declaration: DeclarationIndependance) -> Confirmation | None:
@@ -77,9 +93,7 @@ def confirmer_declaration(
     if not conflit:
         description = ""
 
-    texte = texte_declaration(declaration)
-    if conflit:
-        texte = f"{texte}\n\nSituation déclarée : {description}"
+    texte = texte_a_confirmer(declaration, description_conflit=description)
     confirmer(
         type_document=TypeDocumentSignable.DECLARATION_INDEPENDANCE,
         objet=declaration,
