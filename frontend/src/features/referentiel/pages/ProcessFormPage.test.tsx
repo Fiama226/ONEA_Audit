@@ -132,9 +132,101 @@ describe("ProcessFormPage", () => {
   it("is read-only for an AUDITEUR", async () => {
     serveBase();
     renderReferentiel("/referentiel/processus/p1", "AUDITEUR");
-    expect(await screen.findByDisplayValue("Fournir l'eau potable")).toBeDisabled();
+    expect(await screen.findByText("Fournir l'eau potable")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    const term = screen.getByText(fr.referentiel.libelle);
+    expect(term.tagName).toBe("DT");
+    expect(screen.getByText("DEX - Exploitation")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: fr.common.save })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: s.deleteProcess })).not.toBeInTheDocument();
+  });
+
+  it("keeps typed characters and focus after a general server error", async () => {
+    serveBase();
+    server.use(
+      http.post(`${API_URL}/api/v1/processes/`, () =>
+        HttpResponse.json({ detail: "Conflit d'enregistrement." }, { status: 409 }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderReferentiel("/referentiel/processus/nouveau", "RAI");
+    await user.type(await screen.findByLabelText(fr.referentiel.code), "FEP");
+    await user.type(screen.getByLabelText(fr.referentiel.libelle), "X");
+    await user.selectOptions(screen.getByLabelText(fr.referentiel.famille), "SUPPORT");
+    await user.click(screen.getByRole("button", { name: fr.common.save }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Conflit d'enregistrement.");
+    await waitFor(() => expect(alert).toHaveFocus());
+    const libelle = screen.getByLabelText(fr.referentiel.libelle);
+    await user.click(libelle);
+    await user.type(libelle, "Abc");
+    expect(libelle).toHaveValue("XAbc");
+    expect(libelle).toHaveFocus();
+  });
+
+  it("PATCHes without the code when editing", async () => {
+    serveBase();
+    let body: unknown;
+    server.use(
+      http.patch(`${API_URL}/api/v1/processes/p1/`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json(PROCESS);
+      }),
+      http.get(`${API_URL}/api/v1/processes/`, () => HttpResponse.json(page([]))),
+    );
+    const user = userEvent.setup();
+    renderReferentiel("/referentiel/processus/p1", "ADMIN");
+    const libelle = await screen.findByDisplayValue("Fournir l'eau potable");
+    await user.clear(libelle);
+    await user.type(libelle, "Eau potable");
+    await user.click(screen.getByRole("button", { name: fr.common.save }));
+    await waitFor(() =>
+      expect(body).toEqual({
+        libelle: "Eau potable",
+        famille: "REALISATION",
+        ordre: 4,
+        directions: ["d1"],
+      }),
+    );
+  });
+
+  it("loads every page of directions and warns when the list is incomplete", async () => {
+    const d2 = { ...DIRECTION, id: "d2", code: "DAF", libelle: "Finances" };
+    server.use(
+      http.get(`${API_URL}/api/v1/directions/`, ({ request }) => {
+        const n = Number(new URL(request.url).searchParams.get("page"));
+        return HttpResponse.json({
+          count: 3,
+          next: n === 1 ? "http://x/?page=2" : null,
+          previous: null,
+          results: n === 1 ? [DIRECTION] : [d2],
+        });
+      }),
+    );
+    renderReferentiel("/referentiel/processus/nouveau", "RAI");
+    expect(await screen.findByRole("checkbox", { name: /DAF/ })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /DEX/ })).toBeInTheDocument();
+    expect(await screen.findByText(/Liste incomplète/)).toBeInTheDocument();
+  });
+
+  it("shows an error with retry when directions fail, not the empty message", async () => {
+    server.use(
+      http.get(`${API_URL}/api/v1/directions/`, () => HttpResponse.json({}, { status: 500 })),
+    );
+    renderReferentiel("/referentiel/processus/nouveau", "RAI");
+    expect(await screen.findByRole("alert")).toHaveTextContent(s.loadError);
+    expect(screen.queryByText(s.noDirectionAvailable)).not.toBeInTheDocument();
+  });
+
+  it("has no accessibility violation with the delete confirmation open", async () => {
+    serveBase();
+    const user = userEvent.setup();
+    renderReferentiel("/referentiel/processus/p1", "RAI");
+    await user.click(await screen.findByRole("button", { name: s.deleteProcess }));
+    await screen.findByRole("alertdialog");
+    const results = await axe(document.body, { rules: { "color-contrast": { enabled: false } } });
+    expect(results.violations).toEqual([]);
   });
 
   it("has no accessibility violation", async () => {

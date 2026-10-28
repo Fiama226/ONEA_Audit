@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -20,13 +20,24 @@ type Props = {
   description: string;
   /** Lève une ApiError en cas de refus ; son `detail` est alors affiché sans fermer la boîte. */
   onConfirm: () => Promise<unknown>;
+  /** Appelé à la fermeture après une suppression réussie, à la place du retour du focus au déclencheur (supprimé). */
+  restoreFocus?: () => void;
 };
 
-export function ConfirmDeleteDialog({ open, onOpenChange, title, description, onConfirm }: Props) {
+export function ConfirmDeleteDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  onConfirm,
+  restoreFocus,
+}: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const deleted = useRef(false);
 
   function change(next: boolean) {
+    if (pending) return;
     if (!next) setError(null);
     onOpenChange(next);
   }
@@ -36,17 +47,26 @@ export function ConfirmDeleteDialog({ open, onOpenChange, title, description, on
     setError(null);
     try {
       await onConfirm();
-      change(false);
+      deleted.current = true;
+      setPending(false);
+      onOpenChange(false);
     } catch (e) {
       setError(isApiError(e) ? e.detail : fr.errors.generic);
-    } finally {
       setPending(false);
     }
   }
 
   return (
     <AlertDialog open={open} onOpenChange={change}>
-      <AlertDialogContent>
+      <AlertDialogContent
+        onCloseAutoFocus={(e) => {
+          if (deleted.current && restoreFocus) {
+            e.preventDefault();
+            restoreFocus();
+          }
+          deleted.current = false;
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
@@ -57,14 +77,14 @@ export function ConfirmDeleteDialog({ open, onOpenChange, title, description, on
           </p>
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel>{fr.common.cancel}</AlertDialogCancel>
+          <AlertDialogCancel disabled={pending}>{fr.common.cancel}</AlertDialogCancel>
           <Button
             type="button"
             variant="destructive"
             disabled={pending}
             onClick={() => void confirm()}
           >
-            {fr.common.delete}
+            {pending ? fr.refStructure.deleting : fr.common.delete}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

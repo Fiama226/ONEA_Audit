@@ -214,7 +214,6 @@ export const fr = {
     editDirectionTitle: "Modifier l'entité",
     directionsEmptyEditor: "Aucune direction n'est encore enregistrée.",
     directionsEmptyReader: "Aucune direction n'est encore enregistrée dans le référentiel.",
-    selectType: "Choisir un type",
     selectParent: "Choisir une direction",
     deleteEntityTitle: "Supprimer cette entité ?",
     deleteEntityText: "L'entité sera retirée du référentiel. Cette action est tracée.",
@@ -248,6 +247,11 @@ export const fr = {
     saving: "Enregistrement en cours",
     deleting: "Suppression en cours",
     actionsColumn: "Actions",
+    listIncomplete:
+      "Liste incomplète : seuls {loaded} éléments sur {count} ont pu être chargés. Actualisez la page ou contactez l'administrateur.",
+    attachedTo: "Rattaché à",
+    noneValue: "Aucune",
+    loadingDirections: "Chargement des directions",
   },
   auth: {
     login: "Se connecter",

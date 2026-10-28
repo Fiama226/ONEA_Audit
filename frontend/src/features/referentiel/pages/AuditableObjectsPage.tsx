@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/auth/useAuth";
@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fr } from "@/i18n/fr";
-import { useAuditableTree, useDeleteAuditableObject, useProcesses } from "../api";
+import { useAllProcesses } from "../allPages";
+import { useAuditableTree, useDeleteAuditableObject } from "../api";
+import { ListIncompleteAlert } from "../components/ListIncompleteAlert";
 import {
   AuditableObjectFormDialog,
   type AuditableObjectTarget,
@@ -45,7 +47,9 @@ export function AuditableObjectsPage() {
   const editable = canEditAuditableObjects(me?.role ?? null);
   const [params, setParams] = useSearchParams();
   const processId = params.get("processus") ?? "";
-  const processes = useProcesses({ page_size: 100, ordering: "ordre" });
+  const processes = useAllProcesses({ ordering: "ordre" });
+  const heading = useRef<HTMLHeadingElement>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const tree = useAuditableTree(processId || undefined);
   const remove = useDeleteAuditableObject();
   const [target, setTarget] = useState<AuditableObjectTarget | null>(null);
@@ -59,6 +63,8 @@ export function AuditableObjectsPage() {
   }
 
   const domains = tree.data ?? [];
+  const processList = processes.data?.results ?? [];
+  const selectedProcess = processList.find((p) => p.id === processId);
 
   function actions(
     label: string,
@@ -84,7 +90,10 @@ export function AuditableObjectsPage() {
           size="icon"
           {...{ [ITEM]: "" }}
           aria-label={`${s.deleteObject} ${label}`}
-          onClick={() => setToDelete({ id: existing.id, nature, libelle: label })}
+          onClick={() => {
+            setToDelete({ id: existing.id, nature, libelle: label });
+            setDeleteOpen(true);
+          }}
         >
           <Trash2 aria-hidden />
         </Button>
@@ -148,9 +157,9 @@ export function AuditableObjectsPage() {
           {domains.map((domain) => (
             <li key={domain.id}>
               <div className="flex items-center justify-between gap-3 border-b border-border pb-1">
-                <h3 id={`dom-${domain.id}`} className="text-base font-semibold">
+                <h4 id={`dom-${domain.id}`} className="text-base font-semibold">
                   {domain.libelle}
-                </h3>
+                </h4>
                 {editable && actions(domain.libelle, domain, "DOMAINE")}
               </div>
               {domain.description && (
@@ -195,7 +204,9 @@ export function AuditableObjectsPage() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">{fr.referentiel.pageObjets}</h2>
+        <h2 ref={heading} tabIndex={-1} className="text-xl font-semibold outline-none">
+          {fr.referentiel.pageObjets}
+        </h2>
         {editable && processId && domains.length > 0 && (
           <Button
             type="button"
@@ -216,13 +227,38 @@ export function AuditableObjectsPage() {
           onChange={(e) => choose(e.target.value)}
         >
           <option value="">{s.processSelectorPlaceholder}</option>
-          {(processes.data?.results ?? []).map((p) => (
+          {processes.isLoading && processId && (
+            <option value={processId}>{fr.common.loading}</option>
+          )}
+          {processList.map((p) => (
             <option key={p.id} value={p.id}>
               {p.code} - {p.libelle}
             </option>
           ))}
         </select>
+        {processes.data && (
+          <ListIncompleteAlert count={processes.data.count} loaded={processList.length} />
+        )}
       </div>
+      {processes.isError && (
+        <div role="alert" className={ALERT_CLASS}>
+          <p>{s.loadError}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() => void processes.refetch()}
+          >
+            {fr.common.retry}
+          </Button>
+        </div>
+      )}
+      {selectedProcess && (
+        <h3 className="text-base font-semibold">
+          {selectedProcess.code} - {selectedProcess.libelle}
+        </h3>
+      )}
       {body}
       {editable && (
         <AuditableObjectFormDialog
@@ -232,11 +268,12 @@ export function AuditableObjectsPage() {
       )}
       {toDelete && (
         <ConfirmDeleteDialog
-          open
-          onOpenChange={(open) => !open && setToDelete(null)}
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
           title={toDelete.nature === "DOMAINE" ? s.deleteDomainTitle : s.deleteOperationTitle}
           description={`${toDelete.libelle}. ${s.deleteObjectText}`}
           onConfirm={() => remove.mutateAsync(toDelete.id)}
+          restoreFocus={() => heading.current?.focus()}
         />
       )}
     </div>

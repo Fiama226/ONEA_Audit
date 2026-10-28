@@ -1,4 +1,4 @@
-import { configure, screen } from "@testing-library/react";
+import { configure, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { axe } from "vitest-axe";
@@ -58,7 +58,7 @@ describe("AuditableObjectsPage", () => {
   it("renders a domain with two operations in titled nested lists", async () => {
     serve(TREE);
     renderReferentiel("/referentiel/objets-auditables?processus=p1", "RAI");
-    expect(await screen.findByRole("heading", { level: 3, name: "Captage" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 4, name: "Captage" })).toBeInTheDocument();
     const list = screen.getByRole("list", { name: "Captage" });
     expect(list.querySelectorAll("li")).toHaveLength(2);
     expect(screen.getByText("Pompage")).toBeInTheDocument();
@@ -115,6 +115,48 @@ describe("AuditableObjectsPage", () => {
     expect(screen.getByRole("button", { name: "Supprimer Captage" })).toHaveFocus();
     await user.keyboard("{Home}");
     expect(first).toHaveFocus();
+  });
+
+  it("names the selected process above the tree", async () => {
+    serve(TREE);
+    renderReferentiel("/referentiel/objets-auditables?processus=p1", "AUDITEUR");
+    expect(
+      await screen.findByRole("heading", { level: 3, name: "FEP - Fournir l'eau potable" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows an error when the process list fails to load", async () => {
+    server.use(
+      http.get(`${API_URL}/api/v1/processes/`, () => HttpResponse.json({}, { status: 500 })),
+    );
+    renderReferentiel("/referentiel/objets-auditables", "RAI");
+    expect(await screen.findByRole("alert")).toHaveTextContent(s.loadError);
+  });
+
+  it("shows the 422 detail when deleting an operation", async () => {
+    serve(TREE);
+    const detail = "Cette opération porte des risques.";
+    server.use(
+      http.delete(`${API_URL}/api/v1/auditable-objects/o2/`, () =>
+        HttpResponse.json({ detail }, { status: 422 }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderReferentiel("/referentiel/objets-auditables?processus=p1", "RAI");
+    await user.click(await screen.findByRole("button", { name: "Supprimer Pompage" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: fr.common.delete }));
+    expect(await within(dialog).findByText(detail)).toBeInTheDocument();
+  });
+
+  it("has no accessibility violation with a dialog open", async () => {
+    serve(TREE);
+    const user = userEvent.setup();
+    renderReferentiel("/referentiel/objets-auditables?processus=p1", "RAI");
+    await user.click(await screen.findByRole("button", { name: s.addDomain }));
+    await screen.findByRole("dialog");
+    const results = await axe(document.body, { rules: { "color-contrast": { enabled: false } } });
+    expect(results.violations).toEqual([]);
   });
 
   it("has no accessibility violation", async () => {
