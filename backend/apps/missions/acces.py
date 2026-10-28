@@ -52,7 +52,11 @@ def peut_valider_jalon(user: User, mission: Mission, numero: int) -> bool:
         return False
     if user.role == Role.RAI:
         return True
-    return numero in JALONS_DELEGABLES and est_superviseur(user, mission)
+    return (
+        numero in JALONS_DELEGABLES
+        and est_superviseur(user, mission)
+        and declaration_levee(user, mission)
+    )
 
 
 def missions_visibles(user: User) -> QuerySet[Mission]:

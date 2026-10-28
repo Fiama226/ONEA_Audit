@@ -107,3 +107,9 @@ def test_pas_de_doublons(rai: User) -> None:
     MissionFactory()
     MissionFactory()
     assert acces.missions_visibles(rai).count() == 2
+
+
+def test_superviseur_non_confirme_ne_valide_pas(mission_lancee: Mission) -> None:
+    sup = make_user(Role.AUDITEUR)
+    affecter(mission_lancee, sup, RoleMission.SUPERVISEUR, confirmee=False)
+    assert not acces.peut_valider_jalon(sup, mission_lancee, 6)

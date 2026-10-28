@@ -270,3 +270,16 @@ def test_creation_historisee() -> None:
     assert LogEntry.objects.filter(object_pk=str(a.pk)).exists()
     assert AffectationMission.objects.count() == 1
     assert Mission.objects.count() == 1
+
+
+def test_numero_exige_une_annee() -> None:
+    _viole(lambda: MissionFactory(numero=4, annee=None, reference="DAI/X/M04", statut="PLANIFIEE"))
+
+
+def test_arbitre_par_exige_un_conflit() -> None:
+    a = AffectationFactory(role_mission=RoleMission.AUDITEUR)
+    _viole(
+        lambda: DeclarationFactory(
+            affectation=a, statut=StatutDeclaration.CONFIRMEE, arbitre_par=make_user()
+        )
+    )

@@ -6,19 +6,22 @@ aussi. Les lignes ciblées sont relues en base, puis contrôlées telles qu'elle
 mise à jour (changement de mission, de type de réunion ou d'étape).
 
 Limite connue (idem lot 2) : SQL brut, `_base_manager` et `hard_delete()` contournent ces gardes.
-`Mission.objects.update` n'est volontairement pas gardé (les tests et les services posent un
-état par `update`) ; seuls `Mission.save()` et `verrouiller_mission` protègent la mission.
+`MissionQuerySet` applique à la mission les mêmes règles que `Mission.save()` (gel, reprise,
+annulation depuis SUSPENDUE, champs D17).
 """
 
 import copy
 from collections.abc import Iterable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from django.db.models import Model
 from django.db.models.expressions import Combinable
 
 from apps.core.exceptions import RegleMetierError
 from apps.core.managers import AllObjectsManager, SoftDeleteManager, SoftDeleteQuerySet
+
+if TYPE_CHECKING:
+    from .models import Mission
 
 
 class MissionEnfantQuerySet[T: Model](SoftDeleteQuerySet[T]):
@@ -88,3 +91,41 @@ class EvenementManager[T: Model](SoftDeleteManager[T]):
 class EvenementAllManager[T: Model](AllObjectsManager[T]):
     def get_queryset(self) -> EvenementQuerySet[T]:
         return EvenementQuerySet(self.model, using=self._db)
+
+
+class MissionQuerySet(SoftDeleteQuerySet["Mission"]):
+    """Mêmes règles que `Mission.save()` pour `update` et `bulk_update`."""
+
+    def update(self, **kwargs: Any) -> int:
+        from . import gardes
+
+        lignes = list(self.order_by().values(*gardes._CHAMPS_LUS))  # noqa: SLF001
+        gardes.controler_lignes_mission(lignes, lambda _l, champ: kwargs.get(champ), set(kwargs))
+        return super().update(**kwargs)
+
+    def bulk_update(
+        self, objs: Iterable["Mission"], fields: Iterable[str], batch_size: int | None = None
+    ) -> int:
+        from . import gardes
+        from .models import Mission
+
+        objs = list(objs)
+        fields = list(fields)
+        par_pk = {o.pk: o for o in objs}
+        lignes = list(
+            Mission.all_objects.filter(pk__in=par_pk).values(*gardes._CHAMPS_LUS)  # noqa: SLF001
+        )
+        gardes.controler_lignes_mission(
+            lignes, lambda ligne, champ: getattr(par_pk[ligne["pk"]], champ), set(fields)
+        )
+        return super().bulk_update(objs, fields, batch_size)
+
+
+class MissionManager(SoftDeleteManager["Mission"]):
+    def get_queryset(self) -> MissionQuerySet:
+        return MissionQuerySet(self.model, using=self._db).filter(deleted_at__isnull=True)
+
+
+class MissionAllManager(AllObjectsManager["Mission"]):
+    def get_queryset(self) -> MissionQuerySet:
+        return MissionQuerySet(self.model, using=self._db)

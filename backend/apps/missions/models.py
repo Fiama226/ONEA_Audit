@@ -22,8 +22,10 @@ from apps.referentiel.scoring import SEUIL_ELEVE, SEUIL_MOYEN
 from .managers import (
     EvenementAllManager,
     EvenementManager,
+    MissionAllManager,
     MissionEnfantAllManager,
     MissionEnfantManager,
+    MissionManager,
 )
 
 if TYPE_CHECKING:
@@ -161,6 +163,9 @@ class Mission(BaseModel):
     )
     ordre_mission_emis_le = models.DateTimeField("ordre de mission émis le", null=True, blank=True)
 
+    objects: ClassVar[MissionManager] = MissionManager()
+    all_objects: ClassVar[MissionAllManager] = MissionAllManager()  # noqa: DJ012
+
     class Meta:
         verbose_name = "mission"
         verbose_name_plural = "missions"
@@ -194,6 +199,10 @@ class Mission(BaseModel):
                 name="mission_periode_ordonnee",
             ),
             models.CheckConstraint(condition=Q(budget_jours__gte=0), name="mission_budget_positif"),
+            models.CheckConstraint(
+                condition=Q(numero__isnull=True) | Q(annee__isnull=False),
+                name="mission_numero_avec_annee",
+            ),
             models.CheckConstraint(
                 condition=Q(statut=StatutMission.BROUILLON) | ~Q(reference=""),
                 name="mission_reference_hors_brouillon",
@@ -318,7 +327,11 @@ class DeclarationIndependance(MissionEnfantModel):
             models.CheckConstraint(
                 condition=(
                     Q(statut=StatutDeclaration.CONFLIT_DECLARE)
-                    | (Q(arbitrage_justification="") & Q(arbitre_le__isnull=True))
+                    | (
+                        Q(arbitrage_justification="")
+                        & Q(arbitre_le__isnull=True)
+                        & Q(arbitre_par__isnull=True)
+                    )
                 ),
                 name="declaration_arbitrage_sur_conflit",
             ),
@@ -563,7 +576,12 @@ class Reunion(MissionEnfantModel):
         from . import gardes
         from .etapes import ETAPE_DE_REUNION
 
-        gardes.exiger_etape_ouverte(self.mission_id, ETAPE_DE_REUNION[self.type])
+        numero = ETAPE_DE_REUNION.get(self.type)
+        if numero is None:
+            raise RegleMetierError(
+                "Type de réunion inconnu.", {"type": ["Type de réunion inconnu."]}
+            )
+        gardes.exiger_etape_ouverte(self.mission_id, numero)
 
 
 class Entretien(MissionEnfantModel):
