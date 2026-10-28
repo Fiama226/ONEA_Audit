@@ -11,6 +11,13 @@ import { SEGMENT_LABELS } from "./navigation";
 
 type Crumb = { to: string; label: string };
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function labelFor(segment: string): string {
+  if (UUID.test(segment)) return fr.referentiel.detail;
+  return SEGMENT_LABELS[segment] ?? segment;
+}
+
 function crumbsFor(pathname: string): Crumb[] {
   const root: Crumb = { to: "/", label: fr.nav.dashboard };
   const segments = pathname.split("/").filter(Boolean);
@@ -19,7 +26,7 @@ function crumbsFor(pathname: string): Crumb[] {
   segments.forEach((segment, i) => {
     crumbs.push({
       to: `/${segments.slice(0, i + 1).join("/")}`,
-      label: SEGMENT_LABELS[segment] ?? segment,
+      label: labelFor(segment),
     });
   });
   return crumbs;

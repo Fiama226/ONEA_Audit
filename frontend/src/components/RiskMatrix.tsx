@@ -7,7 +7,10 @@ export type RiskMatrixCell = {
   impact: 1 | 2 | 3 | 4 | 5;
   /** Nombre de risques dans la case. */
   count: number;
+  /** Codes des risques de la case (ex. « R-001 »). */
+  codes?: string[];
 };
+export type RiskMatrixPosition = { probability: 1 | 2 | 3 | 4 | 5; impact: 1 | 2 | 3 | 4 | 5 };
 
 const SCALE = [1, 2, 3, 4, 5] as const;
 
@@ -44,9 +47,16 @@ const LEGEND: [RiskLevel, string][] = [
 export function RiskMatrix({
   cells = [],
   className,
+  onSelect,
+  selected = null,
+  size = "compact",
 }: {
   cells?: RiskMatrixCell[];
   className?: string;
+  /** Rend chaque case cliquable (bouton `aria-pressed`). */
+  onSelect?: (cell: RiskMatrixPosition) => void;
+  selected?: RiskMatrixPosition | null;
+  size?: "compact" | "large";
 }) {
   const counts = new Map(cells.map((c) => [`${c.probability}-${c.impact}`, c.count]));
   const impact = fr.dashboard.impact.toLowerCase();
@@ -58,7 +68,10 @@ export function RiskMatrix({
       <div className="min-w-0 flex-1">
         <table
           aria-label={fr.dashboard.matrixLabel}
-          className="print-exact w-full max-w-[272px] table-fixed border-separate [border-spacing:3px]"
+          className={cn(
+            "print-exact w-full table-fixed border-separate [border-spacing:3px]",
+            size === "large" ? "max-w-[440px]" : "max-w-[272px]",
+          )}
         >
           <tbody>
             {[...SCALE].reverse().map((p) => (
@@ -76,21 +89,37 @@ export function RiskMatrix({
                   const count = counts.get(`${p}-${i}`);
                   const shown = count ?? score;
                   const unit = count === undefined ? "" : ` ${fr.dashboard.riskCount}`;
+                  const label = `${fr.dashboard.probability} ${p}, ${impact} ${i} : ${shown}${unit}, ${LEVEL_NAME[level]}`;
+                  const box = cn(
+                    "flex aspect-square items-center justify-center rounded-[3px] text-center font-medium text-risk-foreground tabular-nums",
+                    size === "large" ? "text-sm" : "text-xs",
+                    TINT[level],
+                  );
+                  const isSelected = selected?.probability === p && selected.impact === i;
                   return (
                     <td
                       key={i}
                       data-level={level}
-                      aria-label={`${fr.dashboard.probability} ${p}, ${impact} ${i} : ${shown}${unit}, ${LEVEL_NAME[level]}`}
+                      aria-label={onSelect ? undefined : label}
                       className="p-0"
                     >
-                      <div
-                        className={cn(
-                          "flex aspect-square items-center justify-center rounded-[3px] text-center text-xs font-medium text-risk-foreground tabular-nums",
-                          TINT[level],
-                        )}
-                      >
-                        {shown}
-                      </div>
+                      {onSelect ? (
+                        <button
+                          type="button"
+                          aria-label={label}
+                          aria-pressed={isSelected}
+                          onClick={() => onSelect({ probability: p, impact: i })}
+                          className={cn(
+                            box,
+                            "w-full cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
+                            isSelected && "ring-2 ring-foreground ring-offset-1",
+                          )}
+                        >
+                          {shown}
+                        </button>
+                      ) : (
+                        <div className={box}>{shown}</div>
+                      )}
                     </td>
                   );
                 })}

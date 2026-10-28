@@ -28,7 +28,9 @@ describe("guarded routes", () => {
       renderRoutes(appRoutes, role, { path });
       if (roles.includes(role)) {
         expect(screen.getByRole("heading", { level: 1, name: title })).toBeInTheDocument();
-        expect(screen.getByText(fr.shell.comingSoonTitle)).toBeInTheDocument();
+        if (path !== "/referentiel") {
+          expect(screen.getByText(fr.shell.comingSoonTitle)).toBeInTheDocument();
+        }
         expect(screen.queryByText(fr.errors.forbiddenTitle)).not.toBeInTheDocument();
       } else {
         expect(
@@ -72,6 +74,33 @@ describe("sidebar and routes agree", () => {
       ).toBeInTheDocument();
       unmount();
     }
+  });
+});
+
+describe("referentiel routes", () => {
+  it("redirects /referentiel to the cartographies tab for a RAI", () => {
+    const { router } = renderRoutes(appRoutes, "RAI", { path: "/referentiel" });
+    expect(router.state.location.pathname).toBe("/referentiel/cartographies");
+    expect(screen.getByRole("link", { name: "Cartographies" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it("shows the forbidden view to an AUDITE on a sub-route", () => {
+    renderRoutes(appRoutes, "AUDITE", { path: "/referentiel/cartographies" });
+    expect(screen.getByText(fr.errors.forbiddenTitle)).toBeInTheDocument();
+  });
+
+  it.each([
+    ["/referentiel/cartographies/abc", "Cartographie"],
+    ["/referentiel/processus", "Processus"],
+    ["/referentiel/directions", "Directions"],
+    ["/referentiel/objets-auditables", "Objets auditables"],
+    ["/referentiel/risques/nouveau", "Risque"],
+  ])("renders the skeleton page of %s", (path, title) => {
+    renderRoutes(appRoutes, "RAI", { path });
+    expect(screen.getByRole("heading", { level: 2, name: title })).toBeInTheDocument();
   });
 });
 

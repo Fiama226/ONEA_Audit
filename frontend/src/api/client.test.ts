@@ -2,10 +2,55 @@ import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it } from "vitest";
 import { fr } from "@/i18n/fr";
 import { API_URL, server } from "@/test/msw";
-import { apiFetch, setTokenProvider } from "./client";
+import { apiDownload, apiFetch, setTokenProvider } from "./client";
 import { ApiError, isApiError } from "./errors";
 
 afterEach(() => setTokenProvider(() => null));
+
+describe("apiDownload", () => {
+  it("prefers filename*=UTF-8'' and sends the Bearer token", async () => {
+    let auth: string | null = null;
+    server.use(
+      http.get(`${API_URL}/api/v1/x/`, ({ request }) => {
+        auth = request.headers.get("Authorization");
+        return new HttpResponse("a;b", {
+          headers: {
+            "Content-Disposition":
+              "attachment; filename=\"fallback.csv\"; filename*=UTF-8''cartographie-2026.csv",
+          },
+        });
+      }),
+    );
+    setTokenProvider(() => "tok");
+    const { blob, filename } = await apiDownload("/api/v1/x/");
+    expect(filename).toBe("cartographie-2026.csv");
+    expect(auth).toBe("Bearer tok");
+    expect(await blob.text()).toBe("a;b");
+  });
+
+  it("falls back to the quoted filename, then to a default", async () => {
+    server.use(
+      http.get(
+        `${API_URL}/api/v1/q/`,
+        () =>
+          new HttpResponse("x", {
+            headers: { "Content-Disposition": 'attachment; filename="a b.xlsx"' },
+          }),
+      ),
+      http.get(`${API_URL}/api/v1/n/`, () => new HttpResponse("x")),
+    );
+    expect((await apiDownload("/api/v1/q/")).filename).toBe("a b.xlsx");
+    expect((await apiDownload("/api/v1/n/")).filename).toBe("export");
+  });
+
+  it("throws ApiError on 403", async () => {
+    server.use(http.get(`${API_URL}/api/v1/f/`, () => new HttpResponse(null, { status: 403 })));
+    const error = await apiDownload("/api/v1/f/").catch((e: unknown) => e);
+    expect(isApiError(error)).toBe(true);
+    expect((error as ApiError).status).toBe(403);
+    expect((error as ApiError).detail).toBe(fr.errors.forbidden);
+  });
+});
 
 describe("apiFetch", () => {
   it("returns the parsed JSON body", async () => {

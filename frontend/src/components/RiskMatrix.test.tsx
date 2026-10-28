@@ -1,6 +1,39 @@
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import { RiskMatrix, riskLevel } from "./RiskMatrix";
+
+describe("RiskMatrix interactive", () => {
+  it("renders no button without onSelect", () => {
+    render(<RiskMatrix cells={[{ probability: 3, impact: 5, count: 2 }]} />);
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+  });
+
+  it("calls onSelect with the clicked cell and marks the selected one", async () => {
+    const onSelect = vi.fn();
+    render(
+      <RiskMatrix
+        cells={[{ probability: 3, impact: 5, count: 2, codes: ["R1", "R2"] }]}
+        onSelect={onSelect}
+        selected={{ probability: 1, impact: 1 }}
+        size="large"
+      />,
+    );
+    expect(screen.getAllByRole("button")).toHaveLength(25);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Probabilité 3, impact 5 : 2 risques, élevé" }),
+    );
+    expect(onSelect).toHaveBeenCalledWith({ probability: 3, impact: 5 });
+    expect(screen.getByRole("button", { name: /Probabilité 1, impact 1/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /Probabilité 3, impact 5/ })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+});
 
 describe("riskLevel", () => {
   it.each([
