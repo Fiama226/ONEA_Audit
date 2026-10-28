@@ -145,9 +145,8 @@ describe("programme annuel routes", () => {
     renderRoutes(appRoutes, "RAI", {
       path: "/programme-annuel/3f2b8c1e-8a4d-4c55-9a0e-1b2c3d4e5f60/nouvelle-ligne",
     });
-    expect(
-      screen.getByRole("heading", { level: 1, name: fr.programmation.title }),
-    ).toBeInTheDocument();
+    // La page charge d'abord le programme : l'indicateur de chargement prouve que la route est montée.
+    expect(screen.getByRole("status", { name: fr.common.loading })).toBeInTheDocument();
   });
 });
 
