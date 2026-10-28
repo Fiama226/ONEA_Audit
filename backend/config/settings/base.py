@@ -141,6 +141,8 @@ SPECTACULAR_SETTINGS = {
         "NiveauRisqueEnum": "apps.referentiel.models.NiveauRisque.choices",
         "ReponseRisqueEnum": "apps.referentiel.models.ReponseRisque.choices",
         "PrioriteRisqueEnum": "apps.referentiel.models.PrioriteRisque.choices",
+        "StatutProgrammeEnum": "apps.programmation.models.StatutProgramme.choices",
+        "TypeInterventionEnum": "apps.programmation.models.TypeIntervention.choices",
     },
 }
 
