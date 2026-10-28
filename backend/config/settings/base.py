@@ -140,6 +140,18 @@ SPECTACULAR_SETTINGS = {
         "NiveauRisqueEnum": "apps.referentiel.models.NiveauRisque.choices",
         "ReponseRisqueEnum": "apps.referentiel.models.ReponseRisque.choices",
         "PrioriteRisqueEnum": "apps.referentiel.models.PrioriteRisque.choices",
+        "TypeMissionEnum": "apps.missions.models.TypeMission.choices",
+        "StatutMissionEnum": "apps.missions.models.StatutMission.choices",
+        "EvenementDeclencheurEnum": "apps.missions.models.EvenementDeclencheur.choices",
+        "RoleMissionEnum": "apps.missions.models.RoleMission.choices",
+        "PhaseEnum": "apps.missions.models.Phase.choices",
+        "StatutEtapeEnum": "apps.missions.models.StatutEtape.choices",
+        "TypeEvenementEtapeEnum": "apps.missions.models.TypeEvenementEtape.choices",
+        "StatutDeclarationEnum": "apps.missions.models.StatutDeclaration.choices",
+        "TypeReunionEnum": "apps.missions.models.TypeReunion.choices",
+        "StatutEntretienEnum": "apps.missions.models.StatutEntretien.choices",
+        "ActionEtapeEnum": "apps.missions.services.etapes.ActionEtape.choices",
+        "TypeDocumentSignableEnum": "apps.signatures.models.TypeDocumentSignable.choices",
     },
 }
 

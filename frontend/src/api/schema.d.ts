@@ -181,6 +181,178 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/independence-declarations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : déclarations d'indépendance
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_independence_declarations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/independence-declarations/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : déclaration d'indépendance
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_independence_declarations_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/independence-declarations/{id}/arbitrate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Arbitrer une situation déclarée
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_independence_declarations_arbitrate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/independence-declarations/{id}/confirm/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirmer ma déclaration d'indépendance
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_independence_declarations_confirm_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : entretiens
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_interviews_list"];
+        put?: never;
+        /**
+         * Créer : entretiens
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_interviews_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : entretiens
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_interviews_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : entretiens
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        delete: operations["v1_interviews_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : entretiens
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        patch: operations["v1_interviews_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/interviews/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Annuler l'entretien
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_interviews_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/interviews/{id}/mark-done/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Marquer l'entretien comme réalisé
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_interviews_mark_done_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/": {
         parameters: {
             query?: never;
@@ -189,6 +361,614 @@ export interface paths {
             cookie?: never;
         };
         get: operations["v1_me_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meetings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : réunions
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_meetings_list"];
+        put?: never;
+        /**
+         * Créer : réunions
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_meetings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/meetings/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : réunions
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_meetings_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : réunions
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        delete: operations["v1_meetings_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : réunions
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        patch: operations["v1_meetings_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/meetings/{id}/mark-held/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Marquer la réunion comme tenue
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_meetings_mark_held_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mission-assignments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : affectations
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_mission_assignments_list"];
+        put?: never;
+        /**
+         * Affecter un utilisateur à la mission
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_mission_assignments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mission-assignments/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : affectation
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_mission_assignments_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Désaffecter (logiquement)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        delete: operations["v1_mission_assignments_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mission-risks/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : risques de mission
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_mission_risks_list"];
+        put?: never;
+        /**
+         * Créer : risques de mission
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_mission_risks_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mission-risks/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : risques de mission
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_mission_risks_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : risques de mission
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        delete: operations["v1_mission_risks_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : risques de mission
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        patch: operations["v1_mission_risks_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/mission-steps/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Les 18 étapes d'une mission
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_mission_steps_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mission-steps/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : étape
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_mission_steps_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Planifier une étape (dates prévues et charges)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        patch: operations["v1_mission_steps_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/mission-steps/{id}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Terminer l'étape
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_mission_steps_complete_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mission-steps/{id}/not-applicable/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Marquer l'étape non applicable
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_mission_steps_not_applicable_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mission-steps/{id}/reopen/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rouvrir l'étape
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_mission_steps_reopen_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mission-steps/{id}/restore/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rétablir l'étape non applicable
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_mission_steps_restore_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mission-steps/{id}/return/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Renvoyer le jalon
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_mission_steps_return_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mission-steps/{id}/start/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Démarrer l'étape
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_mission_steps_start_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mission-steps/{id}/validate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Valider le jalon
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_mission_steps_validate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : missions
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_missions_list"];
+        put?: never;
+        /**
+         * Créer : missions
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_missions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : missions
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_missions_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : missions
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        delete: operations["v1_missions_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : missions
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        patch: operations["v1_missions_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/missions/{id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Annuler la mission (définitif)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_missions_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{id}/default-auditees/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Audités proposés par défaut (rattachés aux entités de la mission)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_missions_default_auditees_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{id}/issue-order/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Émettre l'ordre de mission (confirmation horodatée)
+         * @description Seul `confirme: true` est pris en compte ; `conflit` est ignoré.
+         */
+        post: operations["v1_missions_issue_order_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{id}/launch/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Lancer la mission (étape I en cours)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_missions_launch_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{id}/plan/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Planifier la mission (référence attribuée)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_missions_plan_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{id}/replace-chief/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Remplacer le chef de mission
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_missions_replace_chief_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{id}/resume/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reprendre la mission suspendue
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_missions_resume_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{id}/risk-matrix/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Matrice 5x5 des risques de la mission
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_missions_risk_matrix_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{id}/suspend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Suspendre la mission
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_missions_suspend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{id}/tracking/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fiche de suivi de la mission
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_missions_tracking_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -433,6 +1213,26 @@ export interface paths {
         patch: operations["v1_risks_partial_update"];
         trace?: never;
     };
+    "/api/v1/users/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Annuaire des utilisateurs actifs
+         * @description Annuaire en lecture seule (sélecteurs d'équipe, de participants et d'interlocuteurs).
+         */
+        get: operations["v1_users_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -446,12 +1246,43 @@ export interface components {
          * @enum {string}
          */
         ActionEnum: "create" | "update" | "delete" | "access" | "unknown";
+        /**
+         * @description * `DEMARRER` - Démarrer
+         *     * `TERMINER` - Terminer
+         *     * `VALIDER` - Valider
+         *     * `RENVOYER` - Renvoyer
+         *     * `ROUVRIR` - Rouvrir
+         *     * `NON_APPLICABLE` - Marquer non applicable
+         *     * `RETABLIR` - Rétablir
+         *     * `PLANIFIER` - Planifier
+         * @enum {string}
+         */
+        ActionEtapeEnum: "DEMARRER" | "TERMINER" | "VALIDER" | "RENVOYER" | "ROUVRIR" | "NON_APPLICABLE" | "RETABLIR" | "PLANIFIER";
+        Affectation: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            mission: string;
+            utilisateur: number;
+            readonly utilisateur_detail: components["schemas"]["UtilisateurResume"];
+            role_mission: components["schemas"]["RoleMissionEnum"];
+            readonly declaration: components["schemas"]["DeclarationResume"] | null;
+        };
+        AffectationRequest: {
+            /** Format: uuid */
+            mission: string;
+            utilisateur: number;
+            role_mission: components["schemas"]["RoleMissionEnum"];
+        };
         /** @description Error body returned by the API exception handler (see apps.core.handlers). */
         ApiError: {
             detail: string;
             errors: {
                 [key: string]: string[];
             };
+        };
+        ArbitrageRequest: {
+            justification: string;
         };
         AuditActor: {
             id: number;
@@ -482,6 +1313,12 @@ export interface components {
         };
         /** @enum {unknown} */
         BlankEnum: "";
+        CartographieResume: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Année */
+            readonly annee: number;
+        };
         CartographieVersion: {
             /** Format: uuid */
             readonly id: string;
@@ -533,6 +1370,68 @@ export interface components {
             retires: components["schemas"]["RisqueResume"][];
             modifies: components["schemas"]["RisqueModifie"][];
         };
+        ConfirmationRequest: {
+            /** @description Doit être vrai : la confirmation explicite de l'utilisateur. */
+            confirme: boolean;
+            /**
+             * @description Déclaration d'indépendance seulement : une situation est à signaler.
+             * @default false
+             */
+            conflit: boolean;
+            /**
+             * @description Déclaration d'indépendance seulement : description de la situation.
+             * @default
+             */
+            description_conflit: string;
+        };
+        ConfirmationResume: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Type de document */
+            readonly type_document: components["schemas"]["TypeDocumentSignableEnum"];
+            readonly signataire: components["schemas"]["Signataire"];
+            /**
+             * Confirmé le
+             * Format: date-time
+             */
+            readonly confirme_le: string;
+            /** Empreinte SHA-256 */
+            readonly empreinte: string;
+        };
+        Declaration: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly affectation: string;
+            /** Format: uuid */
+            readonly mission: string;
+            readonly mission_reference: string;
+            readonly mission_titre: string;
+            readonly utilisateur_detail: components["schemas"]["UtilisateurResume"];
+            readonly role_mission: components["schemas"]["RoleMissionEnum"];
+            readonly statut: components["schemas"]["StatutDeclarationEnum"];
+            readonly levee: boolean;
+            readonly texte: string;
+            /** Situation déclarée */
+            readonly description_conflit: string;
+            readonly confirmation: components["schemas"]["ConfirmationResume"] | null;
+            /** Justification de l'arbitrage */
+            readonly arbitrage_justification: string;
+            readonly arbitre_par: components["schemas"]["UtilisateurResume"] | null;
+            /**
+             * Arbitré le
+             * Format: date-time
+             */
+            readonly arbitre_le: string | null;
+        };
+        DeclarationResume: {
+            /** Format: uuid */
+            id: string;
+            statut: components["schemas"]["StatutDeclarationEnum"];
+            levee: boolean;
+            /** Format: date-time */
+            confirmee_le: string | null;
+        };
         Direction: {
             /** Format: uuid */
             readonly id: string;
@@ -574,6 +1473,170 @@ export interface components {
             readonly ordre: number;
             readonly operations: components["schemas"]["ObjetAuditable"][];
         };
+        DroitsMission: {
+            modifier: boolean;
+            planifier: boolean;
+            lancer: boolean;
+            emettre_ordre: boolean;
+            suspendre: boolean;
+            reprendre: boolean;
+            annuler: boolean;
+            supprimer: boolean;
+            affecter: boolean;
+            contribuer: boolean;
+            voir_travaux: boolean;
+            confirmer_ma_declaration: boolean;
+        };
+        Entretien: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            mission: string;
+            /** Format: uuid */
+            etape?: string | null;
+            readonly etape_romain: string | null;
+            objet: string;
+            /**
+             * Date prévue
+             * Format: date-time
+             */
+            date_prevue: string;
+            /** Durée (minutes) */
+            duree_minutes?: number | null;
+            lieu?: string;
+            auditeurs?: number[];
+            readonly auditeurs_detail: components["schemas"]["UtilisateurResume"][];
+            interlocuteurs?: number[];
+            readonly interlocuteurs_detail: components["schemas"]["UtilisateurResume"][];
+            autres_interlocuteurs?: string;
+            /** Thèmes */
+            themes?: string;
+            compte_rendu?: string;
+            /** Note de synthèse */
+            note_synthese?: string;
+            readonly statut: components["schemas"]["StatutEntretienEnum"];
+            /**
+             * Réalisé le
+             * Format: date-time
+             */
+            readonly realise_le: string | null;
+            /** Motif d'annulation */
+            readonly motif_annulation: string;
+            readonly etape_close: boolean;
+        };
+        EntretienRequest: {
+            /** Format: uuid */
+            mission: string;
+            /** Format: uuid */
+            etape?: string | null;
+            objet: string;
+            /**
+             * Date prévue
+             * Format: date-time
+             */
+            date_prevue: string;
+            /** Durée (minutes) */
+            duree_minutes?: number | null;
+            lieu?: string;
+            auditeurs?: number[];
+            interlocuteurs?: number[];
+            autres_interlocuteurs?: string;
+            /** Thèmes */
+            themes?: string;
+            compte_rendu?: string;
+            /** Note de synthèse */
+            note_synthese?: string;
+        };
+        Etape: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly mission: string;
+            /** Numéro */
+            readonly numero: number;
+            readonly romain: string;
+            readonly titre: string;
+            readonly phase: components["schemas"]["PhaseEnum"];
+            readonly jalon: boolean;
+            readonly objectif: string;
+            readonly livrables: string[];
+            readonly acteurs: string;
+            readonly statut: components["schemas"]["StatutEtapeEnum"];
+            /**
+             * Début prévu
+             * Format: date
+             */
+            date_debut_prevue?: string | null;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            date_fin_prevue?: string | null;
+            /**
+             * Début réel
+             * Format: date
+             */
+            readonly date_debut_reelle: string | null;
+            /**
+             * Fin réelle
+             * Format: date
+             */
+            readonly date_fin_reelle: string | null;
+            /**
+             * Charge prévue (jours)
+             * Format: decimal
+             */
+            charge_prevue_jours?: string | null;
+            /**
+             * Charge réelle (jours)
+             * Format: decimal
+             */
+            charge_reelle_jours?: string | null;
+            readonly terminee_par: components["schemas"]["UtilisateurResume"] | null;
+            readonly validee_par: components["schemas"]["UtilisateurResume"] | null;
+            /**
+             * Validée le
+             * Format: date-time
+             */
+            readonly validee_le: string | null;
+            /** Motif « non applicable » */
+            readonly motif_non_applicable: string;
+            readonly actions_possibles: components["schemas"]["ActionEtapeEnum"][];
+            readonly livrables_manquants: string[];
+            readonly evenements: components["schemas"]["Evenement"][];
+        };
+        EtapeCourante: {
+            numero: number;
+            romain: string;
+        };
+        Evenement: {
+            readonly type: components["schemas"]["TypeEvenementEtapeEnum"];
+            readonly par: components["schemas"]["UtilisateurResume"];
+            /** Format: date-time */
+            readonly le: string;
+            readonly motif: string;
+            readonly statut_avant: components["schemas"]["StatutEtapeEnum"];
+            readonly statut_apres: components["schemas"]["StatutEtapeEnum"];
+        };
+        /**
+         * @description * `PROGRAMME_ANNUEL` - Mission inscrite au programme annuel
+         *     * `DEMANDE_MANAGEMENT` - Demande du management
+         *     * `CHANGEMENT_MAJEUR` - Changement majeur interne ou externe
+         *     * `EXIGENCE_REGLEMENTAIRE` - Exigence réglementaire
+         *     * `AUTRE` - Autre
+         * @enum {string}
+         */
+        EvenementDeclencheurEnum: "PROGRAMME_ANNUEL" | "DEMANDE_MANAGEMENT" | "CHANGEMENT_MAJEUR" | "EXIGENCE_REGLEMENTAIRE" | "AUTRE";
+        EvenementSuivi: {
+            readonly type: components["schemas"]["TypeEvenementEtapeEnum"];
+            readonly par: components["schemas"]["UtilisateurResume"];
+            /** Format: date-time */
+            readonly le: string;
+            readonly motif: string;
+            readonly statut_avant: components["schemas"]["StatutEtapeEnum"];
+            readonly statut_apres: components["schemas"]["StatutEtapeEnum"];
+            readonly etape_romain: string;
+        };
         /**
          * @description * `PILOTAGE` - Pilotage
          *     * `REALISATION` - Réalisation
@@ -581,12 +1644,52 @@ export interface components {
          * @enum {string}
          */
         FamilleProcessusEnum: "PILOTAGE" | "REALISATION" | "SUPPORT";
+        FicheSuivi: {
+            mission: components["schemas"]["MissionResume"];
+            /** Format: decimal */
+            budget_jours: string;
+            /** Format: decimal */
+            total_prevu: string;
+            /** Format: decimal */
+            total_reel: string;
+            lignes: components["schemas"]["LigneSuivi"][];
+            evenements: components["schemas"]["EvenementSuivi"][];
+        };
         Health: {
             status: string;
             version: string;
         };
+        LigneSuivi: {
+            numero: number;
+            romain: string;
+            titre: string;
+            phase: components["schemas"]["PhaseEnum"];
+            jalon: boolean;
+            statut: components["schemas"]["StatutEtapeEnum"];
+            /** Format: date */
+            debut_prevu: string | null;
+            /** Format: date */
+            fin_prevue: string | null;
+            /** Format: date */
+            debut_reel: string | null;
+            /** Format: date */
+            fin_reelle: string | null;
+            /** @description Positif = retard, négatif = avance. */
+            ecart_jours: number | null;
+            /** Format: decimal */
+            charge_prevue: string | null;
+            /** Format: decimal */
+            charge_reelle: string | null;
+        };
         Matrice: {
             version: components["schemas"]["VersionResume"];
+            total: number;
+            par_niveau: components["schemas"]["ParNiveau"];
+            cellules: components["schemas"]["CelluleMatrice"][];
+        };
+        MatriceMission: {
+            /** Format: uuid */
+            mission: string;
             total: number;
             par_niveau: components["schemas"]["ParNiveau"];
             cellules: components["schemas"]["CelluleMatrice"][];
@@ -611,6 +1714,138 @@ export interface components {
             readonly direction_code: string;
             readonly fonction: string;
         };
+        Mission: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Référence */
+            readonly reference: string;
+            titre: string;
+            type: components["schemas"]["TypeMissionEnum"];
+            readonly statut: components["schemas"]["StatutMissionEnum"];
+            readonly phase: (components["schemas"]["PhaseEnum"] | components["schemas"]["NullEnum"]) | null;
+            readonly chef_mission: components["schemas"]["UtilisateurResume"] | null;
+            /**
+             * Début prévu
+             * Format: date
+             */
+            date_debut_prevue?: string | null;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            date_fin_prevue?: string | null;
+            readonly etape_courante: components["schemas"]["EtapeCourante"] | null;
+            readonly ma_declaration_en_attente: boolean;
+            readonly processus_detail: components["schemas"]["Resume"][];
+            readonly entites_detail: components["schemas"]["Resume"][];
+            evenement_declencheur?: components["schemas"]["EvenementDeclencheurEnum"] | components["schemas"]["BlankEnum"];
+            /** Précision sur l'événement */
+            evenement_precision?: string;
+            /**
+             * Début de la période auditée
+             * Format: date
+             */
+            periode_debut?: string | null;
+            /**
+             * Fin de la période auditée
+             * Format: date
+             */
+            periode_fin?: string | null;
+            /** Format: decimal */
+            budget_jours?: string | null;
+            objectifs?: string;
+            /** Périmètre */
+            perimetre?: string;
+            exclusions?: string;
+            /** Clients de la mission */
+            clients?: string;
+            livrables_attendus?: string;
+            readonly cartographie: components["schemas"]["CartographieResume"] | null;
+            readonly statut_avant_suspension: components["schemas"]["StatutMissionEnum"] | components["schemas"]["BlankEnum"];
+            readonly motif_suspension: string;
+            readonly motif_annulation: string | null;
+            readonly ordre_mission: components["schemas"]["ConfirmationResume"] | null;
+            /**
+             * Ordre de mission émis le
+             * Format: date-time
+             */
+            readonly ordre_mission_emis_le: string | null;
+            readonly equipe: components["schemas"]["Affectation"][];
+            readonly mes_droits: components["schemas"]["DroitsMission"];
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        MissionListe: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Référence */
+            readonly reference: string;
+            readonly titre: string;
+            readonly type: components["schemas"]["TypeMissionEnum"];
+            readonly statut: components["schemas"]["StatutMissionEnum"];
+            readonly phase: (components["schemas"]["PhaseEnum"] | components["schemas"]["NullEnum"]) | null;
+            readonly chef_mission: components["schemas"]["UtilisateurResume"] | null;
+            /**
+             * Début prévu
+             * Format: date
+             */
+            readonly date_debut_prevue: string | null;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            readonly date_fin_prevue: string | null;
+            readonly etape_courante: components["schemas"]["EtapeCourante"] | null;
+            readonly ma_declaration_en_attente: boolean;
+        };
+        MissionRequest: {
+            titre: string;
+            type: components["schemas"]["TypeMissionEnum"];
+            /**
+             * Début prévu
+             * Format: date
+             */
+            date_debut_prevue?: string | null;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            date_fin_prevue?: string | null;
+            processus?: string[];
+            entites?: string[];
+            evenement_declencheur?: components["schemas"]["EvenementDeclencheurEnum"] | components["schemas"]["BlankEnum"];
+            /** Précision sur l'événement */
+            evenement_precision?: string;
+            /**
+             * Début de la période auditée
+             * Format: date
+             */
+            periode_debut?: string | null;
+            /**
+             * Fin de la période auditée
+             * Format: date
+             */
+            periode_fin?: string | null;
+            /** Format: decimal */
+            budget_jours?: string | null;
+            objectifs?: string;
+            /** Périmètre */
+            perimetre?: string;
+            exclusions?: string;
+            /** Clients de la mission */
+            clients?: string;
+            livrables_attendus?: string;
+        };
+        MissionResume: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Référence */
+            readonly reference: string;
+            readonly titre: string;
+        };
+        MotifRequest: {
+            motif: string;
+        };
         /**
          * @description * `DOMAINE` - Domaine
          *     * `OPERATION` - Opération
@@ -624,6 +1859,8 @@ export interface components {
          * @enum {string}
          */
         NiveauRisqueEnum: "FAIBLE" | "MOYEN" | "ELEVE";
+        /** @enum {unknown} */
+        NullEnum: null;
         ObjetAuditable: {
             /** Format: uuid */
             readonly id: string;
@@ -653,6 +1890,21 @@ export interface components {
             libelle: string;
             description?: string;
             ordre?: number;
+        };
+        PaginatedAffectationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Affectation"][];
         };
         PaginatedAuditLogList: {
             /** @example 123 */
@@ -684,6 +1936,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["CartographieVersion"][];
         };
+        PaginatedDeclarationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Declaration"][];
+        };
         PaginatedDirectionList: {
             /** @example 123 */
             count: number;
@@ -698,6 +1965,36 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Direction"][];
+        };
+        PaginatedEntretienList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Entretien"][];
+        };
+        PaginatedMissionListeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["MissionListe"][];
         };
         PaginatedObjetAuditableList: {
             /** @example 123 */
@@ -729,6 +2026,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Processus"][];
         };
+        PaginatedReunionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Reunion"][];
+        };
         PaginatedRisqueList: {
             /** @example 123 */
             count: number;
@@ -743,6 +2055,36 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Risque"][];
+        };
+        PaginatedRisqueMissionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["RisqueMission"][];
+        };
+        PaginatedUtilisateurResumeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["UtilisateurResume"][];
         };
         ParNiveau: {
             FAIBLE: number;
@@ -772,6 +2114,89 @@ export interface components {
              */
             parent?: string | null;
         };
+        PatchedEntretienRequest: {
+            /** Format: uuid */
+            mission?: string;
+            /** Format: uuid */
+            etape?: string | null;
+            objet?: string;
+            /**
+             * Date prévue
+             * Format: date-time
+             */
+            date_prevue?: string;
+            /** Durée (minutes) */
+            duree_minutes?: number | null;
+            lieu?: string;
+            auditeurs?: number[];
+            interlocuteurs?: number[];
+            autres_interlocuteurs?: string;
+            /** Thèmes */
+            themes?: string;
+            compte_rendu?: string;
+            /** Note de synthèse */
+            note_synthese?: string;
+        };
+        PatchedEtapeRequest: {
+            /**
+             * Début prévu
+             * Format: date
+             */
+            date_debut_prevue?: string | null;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            date_fin_prevue?: string | null;
+            /**
+             * Charge prévue (jours)
+             * Format: decimal
+             */
+            charge_prevue_jours?: string | null;
+            /**
+             * Charge réelle (jours)
+             * Format: decimal
+             */
+            charge_reelle_jours?: string | null;
+        };
+        PatchedMissionRequest: {
+            titre?: string;
+            type?: components["schemas"]["TypeMissionEnum"];
+            /**
+             * Début prévu
+             * Format: date
+             */
+            date_debut_prevue?: string | null;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            date_fin_prevue?: string | null;
+            processus?: string[];
+            entites?: string[];
+            evenement_declencheur?: components["schemas"]["EvenementDeclencheurEnum"] | components["schemas"]["BlankEnum"];
+            /** Précision sur l'événement */
+            evenement_precision?: string;
+            /**
+             * Début de la période auditée
+             * Format: date
+             */
+            periode_debut?: string | null;
+            /**
+             * Fin de la période auditée
+             * Format: date
+             */
+            periode_fin?: string | null;
+            /** Format: decimal */
+            budget_jours?: string | null;
+            objectifs?: string;
+            /** Périmètre */
+            perimetre?: string;
+            exclusions?: string;
+            /** Clients de la mission */
+            clients?: string;
+            livrables_attendus?: string;
+        };
         PatchedObjetAuditableRequest: {
             /** Format: uuid */
             processus?: string;
@@ -794,6 +2219,33 @@ export interface components {
             ordre?: number;
             /** @description Identifiants des directions (type DIRECTION uniquement) rattachées (écriture). */
             directions?: string[];
+        };
+        PatchedReunionRequest: {
+            /** Format: uuid */
+            mission?: string;
+            type?: components["schemas"]["TypeReunionEnum"];
+            /** Format: date-time */
+            date?: string;
+            lieu?: string;
+            ordre_du_jour?: string;
+            participants?: number[];
+            participants_externes?: string;
+            /** Décisions */
+            decisions?: string;
+            compte_rendu?: string;
+        };
+        PatchedRisqueMissionRequest: {
+            /** Format: uuid */
+            mission?: string;
+            /** Format: uuid */
+            risque_source?: string | null;
+            /** Format: uuid */
+            processus?: string;
+            libelle?: string;
+            description?: string;
+            probabilite?: number;
+            impact?: number;
+            commentaire?: string;
         };
         PatchedRisqueRequest: {
             /**
@@ -827,6 +2279,13 @@ export interface components {
             dispositif_controle?: string;
         };
         /**
+         * @description * `PLANIFICATION` - Planification
+         *     * `ACCOMPLISSEMENT` - Accomplissement
+         *     * `COMMUNICATION` - Communication
+         * @enum {string}
+         */
+        PhaseEnum: "PLANIFICATION" | "ACCOMPLISSEMENT" | "COMMUNICATION";
+        /**
          * @description * `1` - Prioritaire
          *     * `2` - Amélioration
          *     * `3` - Observation
@@ -852,6 +2311,9 @@ export interface components {
             /** @description Identifiants des directions (type DIRECTION uniquement) rattachées (écriture). */
             directions?: string[];
         };
+        RemplacerChefRequest: {
+            utilisateur: number;
+        };
         /**
          * @description * `TRAITER` - Traiter
          *     * `TRANSFERER` - Transférer
@@ -860,6 +2322,47 @@ export interface components {
          * @enum {string}
          */
         ReponseRisqueEnum: "TRAITER" | "TRANSFERER" | "TERMINER" | "TOLERER";
+        /** @description {id, code, libelle} d'un processus ou d'une entité. */
+        Resume: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            libelle: string;
+        };
+        Reunion: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            mission: string;
+            type: components["schemas"]["TypeReunionEnum"];
+            /** Format: date-time */
+            date: string;
+            lieu?: string;
+            ordre_du_jour?: string;
+            participants?: number[];
+            readonly participants_detail: components["schemas"]["UtilisateurResume"][];
+            participants_externes?: string;
+            /** Décisions */
+            decisions?: string;
+            compte_rendu?: string;
+            /** Format: date-time */
+            readonly tenue_le: string | null;
+            readonly etape_close: boolean;
+        };
+        ReunionRequest: {
+            /** Format: uuid */
+            mission: string;
+            type: components["schemas"]["TypeReunionEnum"];
+            /** Format: date-time */
+            date: string;
+            lieu?: string;
+            ordre_du_jour?: string;
+            participants?: number[];
+            participants_externes?: string;
+            /** Décisions */
+            decisions?: string;
+            compte_rendu?: string;
+        };
         Risque: {
             /** Format: uuid */
             readonly id: string;
@@ -906,6 +2409,42 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        RisqueMission: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            mission: string;
+            readonly mission_reference: string;
+            /** Format: uuid */
+            risque_source?: string | null;
+            readonly code_source: string;
+            readonly nouveau: boolean;
+            /** Format: uuid */
+            processus?: string;
+            readonly processus_code: string;
+            libelle?: string;
+            description?: string;
+            probabilite?: number;
+            impact?: number;
+            readonly score: number;
+            readonly niveau: components["schemas"]["NiveauRisqueEnum"];
+            commentaire?: string;
+            readonly probabilite_reference: number | null;
+            readonly impact_reference: number | null;
+        };
+        RisqueMissionRequest: {
+            /** Format: uuid */
+            mission: string;
+            /** Format: uuid */
+            risque_source?: string | null;
+            /** Format: uuid */
+            processus?: string;
+            libelle?: string;
+            description?: string;
+            probabilite?: number;
+            impact?: number;
+            commentaire?: string;
         };
         RisqueModifie: {
             code: string;
@@ -964,17 +2503,113 @@ export interface components {
          */
         RoleEnum: "ADMIN" | "RAI" | "AUDITEUR" | "AUDITE" | "DG";
         /**
+         * @description * `CHEF_MISSION` - Chef de mission
+         *     * `AUDITEUR` - Auditeur
+         *     * `SUPERVISEUR` - Superviseur
+         *     * `AUDITE` - Audité
+         * @enum {string}
+         */
+        RoleMissionEnum: "CHEF_MISSION" | "AUDITEUR" | "SUPERVISEUR" | "AUDITE";
+        Signataire: {
+            readonly id: number;
+            readonly nom_complet: string;
+        };
+        /**
          * @description * `BROUILLON` - Brouillon
          *     * `VALIDEE` - Validée
          * @enum {string}
          */
         StatutCartographieEnum: "BROUILLON" | "VALIDEE";
         /**
+         * @description * `EN_ATTENTE` - En attente
+         *     * `CONFIRMEE` - Confirmée
+         *     * `CONFLIT_DECLARE` - Situation déclarée
+         * @enum {string}
+         */
+        StatutDeclarationEnum: "EN_ATTENTE" | "CONFIRMEE" | "CONFLIT_DECLARE";
+        /**
+         * @description * `PLANIFIE` - Planifié
+         *     * `REALISE` - Réalisé
+         *     * `ANNULE` - Annulé
+         * @enum {string}
+         */
+        StatutEntretienEnum: "PLANIFIE" | "REALISE" | "ANNULE";
+        /**
+         * @description * `A_FAIRE` - À faire
+         *     * `EN_COURS` - En cours
+         *     * `TERMINEE` - Terminée
+         *     * `VALIDEE` - Validée
+         *     * `RENVOYEE` - Renvoyée
+         *     * `A_REVALIDER` - À revalider
+         *     * `NON_APPLICABLE` - Non applicable
+         * @enum {string}
+         */
+        StatutEtapeEnum: "A_FAIRE" | "EN_COURS" | "TERMINEE" | "VALIDEE" | "RENVOYEE" | "A_REVALIDER" | "NON_APPLICABLE";
+        /**
+         * @description * `BROUILLON` - Brouillon
+         *     * `PLANIFIEE` - Planifiée
+         *     * `EN_PLANIFICATION` - En planification
+         *     * `EN_ACCOMPLISSEMENT` - En accomplissement
+         *     * `EN_COMMUNICATION` - En communication
+         *     * `RAPPORT_DIFFUSE` - Rapport diffusé
+         *     * `EN_SUIVI` - En suivi
+         *     * `CLOTUREE` - Clôturée
+         *     * `SUSPENDUE` - Suspendue
+         *     * `ANNULEE` - Annulée
+         * @enum {string}
+         */
+        StatutMissionEnum: "BROUILLON" | "PLANIFIEE" | "EN_PLANIFICATION" | "EN_ACCOMPLISSEMENT" | "EN_COMMUNICATION" | "RAPPORT_DIFFUSE" | "EN_SUIVI" | "CLOTUREE" | "SUSPENDUE" | "ANNULEE";
+        /**
+         * @description * `ORDRE_MISSION` - Ordre de mission
+         *     * `DECLARATION_INDEPENDANCE` - Déclaration d'indépendance
+         *     * `VALIDATION_RAPPORT` - Validation du rapport
+         * @enum {string}
+         */
+        TypeDocumentSignableEnum: "ORDRE_MISSION" | "DECLARATION_INDEPENDANCE" | "VALIDATION_RAPPORT";
+        /**
          * @description * `DIRECTION` - Direction
          *     * `DEPARTEMENT` - Département
          * @enum {string}
          */
         TypeEntiteEnum: "DIRECTION" | "DEPARTEMENT";
+        /**
+         * @description * `DEMARREE` - Démarrée
+         *     * `TERMINEE` - Terminée
+         *     * `VALIDEE` - Validée
+         *     * `RENVOYEE` - Renvoyée
+         *     * `ROUVERTE` - Rouverte
+         *     * `A_REVALIDER` - Marquée à revalider
+         *     * `NON_APPLICABLE` - Marquée non applicable
+         *     * `RETABLIE` - Rétablie
+         * @enum {string}
+         */
+        TypeEvenementEtapeEnum: "DEMARREE" | "TERMINEE" | "VALIDEE" | "RENVOYEE" | "ROUVERTE" | "A_REVALIDER" | "NON_APPLICABLE" | "RETABLIE";
+        /**
+         * @description * `ASSURANCE` - Assurance
+         *     * `CONSEIL` - Conseil
+         * @enum {string}
+         */
+        TypeMissionEnum: "ASSURANCE" | "CONSEIL";
+        /**
+         * @description * `OUVERTURE` - Réunion d'ouverture
+         *     * `LANCEMENT` - Réunion de lancement
+         *     * `CLOTURE` - Réunion de clôture
+         * @enum {string}
+         */
+        TypeReunionEnum: "OUVERTURE" | "LANCEMENT" | "CLOTURE";
+        /** @description Représentation minimale d'un utilisateur dans les réponses (annuaire, équipes). */
+        UtilisateurResume: {
+            readonly id: number;
+            /**
+             * Nom d’utilisateur
+             * @description Requis. 150 caractères maximum. Uniquement des lettres, nombres et les caractères « @ », « . », « + », « - » et « _ ».
+             */
+            readonly username: string;
+            readonly nom_complet: string;
+            readonly role: components["schemas"]["RoleEnum"];
+            readonly direction_code: string;
+            readonly fonction: string;
+        };
         Valideur: {
             readonly id: number;
             /**
@@ -1743,6 +3378,651 @@ export interface operations {
             };
         };
     };
+    v1_independence_declarations_list: {
+        parameters: {
+            query?: {
+                /** @description Vrai : seulement mes déclarations. */
+                mine?: boolean;
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `EN_ATTENTE` - En attente
+                 *     * `CONFIRMEE` - Confirmée
+                 *     * `CONFLIT_DECLARE` - Situation déclarée
+                 */
+                statut?: "CONFIRMEE" | "CONFLIT_DECLARE" | "EN_ATTENTE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedDeclarationList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_independence_declarations_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) déclaration d'indépendance. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Declaration"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_independence_declarations_arbitrate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) déclaration d'indépendance. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArbitrageRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ArbitrageRequest"];
+                "multipart/form-data": components["schemas"]["ArbitrageRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Declaration"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_independence_declarations_confirm_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) déclaration d'indépendance. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ConfirmationRequest"];
+                "multipart/form-data": components["schemas"]["ConfirmationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Declaration"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_interviews_list: {
+        parameters: {
+            query?: {
+                etape?: string;
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `PLANIFIE` - Planifié
+                 *     * `REALISE` - Réalisé
+                 *     * `ANNULE` - Annulé
+                 */
+                statut?: "ANNULE" | "PLANIFIE" | "REALISE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedEntretienList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_interviews_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntretienRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["EntretienRequest"];
+                "multipart/form-data": components["schemas"]["EntretienRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entretien"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_interviews_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) entretien. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entretien"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_interviews_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) entretien. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_interviews_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) entretien. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedEntretienRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedEntretienRequest"];
+                "multipart/form-data": components["schemas"]["PatchedEntretienRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entretien"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_interviews_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) entretien. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifRequest"];
+                "multipart/form-data": components["schemas"]["MotifRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entretien"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_interviews_mark_done_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) entretien. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Entretien"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_me_retrieve: {
         parameters: {
             query?: never;
@@ -1777,6 +4057,2329 @@ export interface operations {
                 };
             };
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_meetings_list: {
+        parameters: {
+            query?: {
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `OUVERTURE` - Réunion d'ouverture
+                 *     * `LANCEMENT` - Réunion de lancement
+                 *     * `CLOTURE` - Réunion de clôture
+                 */
+                type?: "CLOTURE" | "LANCEMENT" | "OUVERTURE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedReunionList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_meetings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReunionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReunionRequest"];
+                "multipart/form-data": components["schemas"]["ReunionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Reunion"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_meetings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) réunion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Reunion"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_meetings_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) réunion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_meetings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) réunion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedReunionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedReunionRequest"];
+                "multipart/form-data": components["schemas"]["PatchedReunionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Reunion"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_meetings_mark_held_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) réunion. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Reunion"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_assignments_list: {
+        parameters: {
+            query?: {
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `CHEF_MISSION` - Chef de mission
+                 *     * `AUDITEUR` - Auditeur
+                 *     * `SUPERVISEUR` - Superviseur
+                 *     * `AUDITE` - Audité
+                 */
+                role_mission?: "AUDITE" | "AUDITEUR" | "CHEF_MISSION" | "SUPERVISEUR";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAffectationList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_assignments_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AffectationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AffectationRequest"];
+                "multipart/form-data": components["schemas"]["AffectationRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Affectation"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_assignments_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) affectation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Affectation"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_assignments_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) affectation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_risks_list: {
+        parameters: {
+            query?: {
+                mission?: string;
+                /**
+                 * @description * `FAIBLE` - Faible
+                 *     * `MOYEN` - Moyen
+                 *     * `ELEVE` - Élevé
+                 */
+                niveau?: "ELEVE" | "FAIBLE" | "MOYEN";
+                /** @description Vrai : risques créés dans la mission. */
+                nouveau?: boolean;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                processus?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedRisqueMissionList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_risks_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RisqueMissionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RisqueMissionRequest"];
+                "multipart/form-data": components["schemas"]["RisqueMissionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RisqueMission"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_risks_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) risque de mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RisqueMission"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_risks_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) risque de mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_risks_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) risque de mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRisqueMissionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedRisqueMissionRequest"];
+                "multipart/form-data": components["schemas"]["PatchedRisqueMissionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RisqueMission"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_steps_list: {
+        parameters: {
+            query?: {
+                /** @description Obligatoire pour la liste. */
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Etape"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_steps_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) étape de mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Etape"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_steps_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) étape de mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedEtapeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedEtapeRequest"];
+                "multipart/form-data": components["schemas"]["PatchedEtapeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Etape"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_steps_complete_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) étape de mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Etape"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_steps_not_applicable_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) étape de mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifRequest"];
+                "multipart/form-data": components["schemas"]["MotifRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Etape"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_steps_reopen_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) étape de mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifRequest"];
+                "multipart/form-data": components["schemas"]["MotifRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Etape"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_steps_restore_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) étape de mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Etape"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_steps_return_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) étape de mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifRequest"];
+                "multipart/form-data": components["schemas"]["MotifRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Etape"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_steps_start_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) étape de mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Etape"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_steps_validate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) étape de mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Etape"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_list: {
+        parameters: {
+            query?: {
+                annee?: number;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                processus?: string;
+                /** @description Recherche insensible à la casse sur la référence et le titre. */
+                q?: string;
+                /**
+                 * @description * `BROUILLON` - Brouillon
+                 *     * `PLANIFIEE` - Planifiée
+                 *     * `EN_PLANIFICATION` - En planification
+                 *     * `EN_ACCOMPLISSEMENT` - En accomplissement
+                 *     * `EN_COMMUNICATION` - En communication
+                 *     * `RAPPORT_DIFFUSE` - Rapport diffusé
+                 *     * `EN_SUIVI` - En suivi
+                 *     * `CLOTUREE` - Clôturée
+                 *     * `SUSPENDUE` - Suspendue
+                 *     * `ANNULEE` - Annulée
+                 */
+                statut?: "ANNULEE" | "BROUILLON" | "CLOTUREE" | "EN_ACCOMPLISSEMENT" | "EN_COMMUNICATION" | "EN_PLANIFICATION" | "EN_SUIVI" | "PLANIFIEE" | "RAPPORT_DIFFUSE" | "SUSPENDUE";
+                /**
+                 * @description * `ASSURANCE` - Assurance
+                 *     * `CONSEIL` - Conseil
+                 */
+                type?: "ASSURANCE" | "CONSEIL";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMissionListeList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MissionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MissionRequest"];
+                "multipart/form-data": components["schemas"]["MissionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mission"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mission"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedMissionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedMissionRequest"];
+                "multipart/form-data": components["schemas"]["PatchedMissionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mission"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifRequest"];
+                "multipart/form-data": components["schemas"]["MotifRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mission"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_default_auditees_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UtilisateurResume"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_issue_order_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ConfirmationRequest"];
+                "multipart/form-data": components["schemas"]["ConfirmationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mission"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_launch_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mission"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_plan_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mission"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_replace_chief_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemplacerChefRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RemplacerChefRequest"];
+                "multipart/form-data": components["schemas"]["RemplacerChefRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mission"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_resume_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mission"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_risk_matrix_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatriceMission"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_suspend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifRequest"];
+                "multipart/form-data": components["schemas"]["MotifRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Mission"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_missions_tracking_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) mission. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FicheSuivi"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2860,6 +7463,67 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_users_list: {
+        parameters: {
+            query?: {
+                direction_code?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /** @description Recherche insensible à la casse sur l'identifiant, le prénom et le nom. */
+                q?: string;
+                /**
+                 * @description * `ADMIN` - Administrateur
+                 *     * `RAI` - Responsable de l'audit interne
+                 *     * `AUDITEUR` - Auditeur interne
+                 *     * `AUDITE` - Audité
+                 *     * `DG` - Direction générale
+                 */
+                role?: "ADMIN" | "AUDITE" | "AUDITEUR" | "DG" | "RAI";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedUtilisateurResumeList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

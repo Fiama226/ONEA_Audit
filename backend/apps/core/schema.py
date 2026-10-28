@@ -27,13 +27,22 @@ ERROR_503 = {503: ApiErrorSerializer}
 ERROR_RESPONSES = {**ERROR_401, **ERROR_403}
 
 
-def crud_schema(serializer: type[BaseSerializer[Any]], tag: str, nom: str) -> Any:
-    """Documente list / retrieve / create / partial_update / destroy avec leurs erreurs."""
+def crud_schema(
+    serializer: type[BaseSerializer[Any]],
+    tag: str,
+    nom: str,
+    *,
+    liste: type[BaseSerializer[Any]] | None = None,
+) -> Any:
+    """Documente list / retrieve / create / partial_update / destroy avec leurs erreurs.
+
+    `liste` : sérialiseur allégé de la liste, quand il diffère de celui du détail.
+    """
     return extend_schema_view(
         list=extend_schema(
             tags=[tag],
             summary=f"Lister : {nom}",
-            responses={200: serializer(many=True), **ERROR_400, **ERROR_RESPONSES},
+            responses={200: (liste or serializer)(many=True), **ERROR_400, **ERROR_RESPONSES},
         ),
         retrieve=extend_schema(
             tags=[tag],

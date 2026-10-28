@@ -17,3 +17,17 @@ class MeSerializer(serializers.ModelSerializer[User]):
             "fonction",
         )
         read_only_fields = fields
+
+
+class UtilisateurResumeSerializer(serializers.ModelSerializer[User]):
+    """Représentation minimale d'un utilisateur dans les réponses (annuaire, équipes)."""
+
+    nom_complet = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ("id", "username", "nom_complet", "role", "direction_code", "fonction")
+        read_only_fields = fields
+
+    def get_nom_complet(self, obj: User) -> str:
+        return obj.get_full_name() or obj.username
