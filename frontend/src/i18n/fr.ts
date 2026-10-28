@@ -41,7 +41,7 @@ export const fr = {
     collapseMenu: "Replier le menu",
     expandMenu: "Déplier le menu",
     mobileMenuTitle: "Menu de navigation",
-    version: "Version 0.1 · lot 1",
+    version: "Version 0.2 · lot 2",
     userMenu: "Menu utilisateur",
     role: "Rôle",
     comingSoonTitle: "Disponible dans un prochain lot",

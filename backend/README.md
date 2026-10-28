@@ -38,3 +38,62 @@ API schema and docs (`/api/schema/`, `/api/docs/`) are anonymous in dev/test and
 the broker (Redis) is down. Callers (services) must catch it and decide: fail the business
 action or log and continue. Plain-text email parts are rendered without HTML escaping; HTML
 parts stay autoescaped.
+
+## Référentiel : chargement initial
+
+La plateforme démarre **à vide** : aucune migration de données, aucun seed automatique, aucun
+écran d'import. Les directions, départements et processus de l'ONEA se chargent uniquement par
+la commande explicite `import_referentiel`, lancée par l'exploitant à la demande du RAI.
+**Aucun risque n'est importé** : la cartographie des risques est saisie à l'écran par le RAI.
+
+```
+python manage.py import_referentiel <fichier.csv> --user <login> [--dry-run]
+```
+
+- `--user` (obligatoire) : identifiant d'un utilisateur actif de rôle RAI ou ADMIN ; il signe
+  la piste d'audit (`/api/v1/audit-log/`).
+- `--dry-run` : valide le fichier et affiche ce qui serait créé ou mis à jour, sans rien écrire.
+- **Idempotente** : upsert par code, jamais de suppression. Une seconde exécution du même
+  fichier ne change rien (tout est compté « inchangé »). **Tout ou rien** : à la moindre erreur
+  de validation, rien n'est écrit et les erreurs sont listées en français, ligne par ligne.
+- Limites : 5 000 lignes et 5 Mio au plus. Comptez environ 35 à 40 ms par ligne, soit près de
+  3 minutes pour 5 000 lignes.
+
+Format : UTF-8 (BOM toléré), séparateur `;`, en-tête exact
+`type;code;libelle;famille;ordre;parent;directions`. Les directions et départements sont lus
+avant les processus. `type` vaut `DIRECTION`, `DEPARTEMENT` (colonne `parent` = code de sa
+direction) ou `PROCESSUS` (`famille` = `PILOTAGE`, `REALISATION` ou `SUPPORT`, `directions` =
+codes séparés par des virgules).
+
+```
+type;code;libelle;famille;ordre;parent;directions
+DIRECTION;DAI;Département Audit Interne;;;;
+DEPARTEMENT;DAI-QUAL;Cellule qualité de l'audit;;;DAI;
+PROCESSUS;EST;Élaborer et mettre en œuvre la stratégie;PILOTAGE;1;;DAI
+```
+
+Fichier de référence livré : `apps/referentiel/data/referentiel-onea.csv` (17 directions et
+11 processus). Les noms de directions y sont des développements des sigles du document source
+et **doivent être confirmés par l'ONEA** avant la mise en production
+(voir `apps/referentiel/data/README.md`). Exemple, sur une base vide :
+
+```
+python manage.py import_referentiel apps/referentiel/data/referentiel-onea.csv --user rai --dry-run
+python manage.py import_referentiel apps/referentiel/data/referentiel-onea.csv --user rai
+```
+
+## Référentiel : export et droits
+
+`GET /api/v1/risk-maps/{id}/export/?type=csv|xlsx` télécharge la cartographie (le paramètre est
+`type`, pas `format`, réservé par DRF). CSV : UTF-8 avec BOM, séparateur `;`, ouverture directe
+dans Excel ; XLSX : feuilles « Risques » et « Matrice ». Les cellules commençant par `=`, `+`,
+`-` ou `@` sont neutralisées. Les boutons « Exporter en CSV / Excel » de l'écran d'une
+cartographie appellent cette route.
+
+| Ressource (`/api/v1/…`) | ADMIN | RAI | AUDITEUR | DG | AUDITE |
+|---|---|---|---|---|---|
+| `directions/`, `processes/` | lecture, écriture | lecture, écriture | lecture | lecture | lecture |
+| `auditable-objects/`, `risk-maps/` (matrice, comparaison, export), `risks/` | lecture | lecture, écriture | lecture | lecture | **403** |
+
+Une cartographie validée est figée (aucune modification ni suppression, 422) ; l'année
+suivante se crée par copie d'une version validée.

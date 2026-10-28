@@ -14,6 +14,7 @@ fonctionnalité IA dans le produit.
 - [x] Document de conception approuvé (`docs/superpowers/specs/`)
 - [x] Plan d'implémentation (`docs/superpowers/plans/`)
 - [x] Lot 1 : socle technique
+- [x] Lot 2 : référentiel (processus, objets auditables, cartographie des risques, import, export)
 
 ## Démarrage rapide
 
@@ -23,6 +24,24 @@ make up                      # ou : docker compose --env-file .env -f docker/com
 make backend                 # voir backend/README.md (venv, migrations)
 cp frontend/.env.example frontend/.env && make frontend
 ```
+
+## Tests de bout en bout (Playwright)
+
+Les parcours e2e (`frontend/e2e/`) tournent sur la pile de développement : Keycloak (realm
+`onea`), l'API Django et Vite (lancé par Playwright). Ils créent leurs données et les
+retirent ensuite (la plateforme reste vide) ; le parcours RAI du référentiel utilise le
+processus `ZZE` et les cartographies 2098 et 2099.
+
+```
+make up                # postgres, redis, keycloak, ...
+make backend           # dans un second terminal (migrations appliquées au préalable)
+make e2e               # = cd frontend && npx playwright test
+```
+
+Le nettoyage du parcours « référentiel » met à jour la base via `docker compose exec db psql`
+(une cartographie validée ne peut pas être supprimée par l'API) : lancez-le depuis la machine
+qui héberge la pile de développement. Chargement initial des listes de référence :
+`backend/README.md`, section « Référentiel : chargement initial ».
 
 ## Démarrer avec Claude Code
 

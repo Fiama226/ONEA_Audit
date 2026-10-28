@@ -96,6 +96,18 @@ choix de l'image est en attente de décision du maître d'ouvrage, voir
 Le site d'administration Django (`/admin/`) est désactivé ; ne l'activer
 (`DJANGO_ADMIN_ENABLED=true`) que temporairement pour une opération précise.
 
+**Listes de référence (facultatif, à la demande du RAI).** La plateforme démarre vide et
+aucun chargement n'est automatique. Quand l'ONEA a confirmé les noms des directions et des
+processus (`backend/apps/referentiel/data/README.md`), l'exploitant les charge une fois, après
+une simulation :
+
+```
+docker compose --env-file .env.prod -f docker/compose.prod.yml exec web   python manage.py import_referentiel apps/referentiel/data/referentiel-onea.csv --user <login-rai> --dry-run
+docker compose --env-file .env.prod -f docker/compose.prod.yml exec web   python manage.py import_referentiel apps/referentiel/data/referentiel-onea.csv --user <login-rai>
+```
+
+La commande est idempotente et tout ou rien ; format et options : `backend/README.md`.
+
 ## 5. Amorçage de Keycloak
 
 Keycloak démarre en mode production (`start`), **sans import de realm, sans realm de
