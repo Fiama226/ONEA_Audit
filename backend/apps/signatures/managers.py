@@ -15,6 +15,11 @@ class ConfirmationQuerySet(SoftDeleteQuerySet[Any]):
     def update(self, **kwargs: Any) -> int:
         raise ConfirmationImmuableError
 
+    def bulk_create(self, objs: Any, *args: Any, **kwargs: Any) -> list[Any]:
+        if kwargs.get("update_conflicts"):
+            raise ConfirmationImmuableError
+        return super().bulk_create(objs, *args, **kwargs)
+
     def bulk_update(self, objs: Any, fields: Any, batch_size: int | None = None) -> int:
         raise ConfirmationImmuableError
 

@@ -62,7 +62,7 @@ class Confirmation(BaseModel):
         return f"{self.type_document} {self.object_id} ({self.confirme_le:%d/%m/%Y})"
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        if not self._state.adding:
+        if not self._state.adding or kwargs.get("force_update") or kwargs.get("update_fields"):
             raise ConfirmationImmuableError
         super().save(*args, **kwargs)
 

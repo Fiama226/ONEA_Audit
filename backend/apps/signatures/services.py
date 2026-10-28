@@ -8,6 +8,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
 
+from apps.core.exceptions import RegleMetierError
 from apps.core.models import BaseModel
 from apps.core.services import enregistrer
 from apps.users.models import User
@@ -15,10 +16,34 @@ from apps.users.models import User
 from .models import Confirmation
 
 
+def _entiers(valeur: Any) -> Any:
+    """Les flottants entiers deviennent des entiers : PostgreSQL (jsonb) ne conserve pas
+    la différence, l'empreinte doit donc être identique avant et après stockage."""
+    if isinstance(valeur, dict):
+        return {k: _entiers(v) for k, v in valeur.items()}
+    if isinstance(valeur, list):
+        return [_entiers(v) for v in valeur]
+    if isinstance(valeur, float) and valeur.is_integer():
+        return int(valeur)
+    return valeur
+
+
+def normaliser(donnees: dict[str, Any]) -> dict[str, Any]:
+    """Forme stockable et canonique des données (JSON strict : ni NaN ni Infinity)."""
+    try:
+        brut = json.dumps(donnees, cls=DjangoJSONEncoder, allow_nan=False, sort_keys=True)
+    except ValueError as e:
+        raise RegleMetierError(
+            "Données invalides.", {"donnees": ["Valeur numérique non finie."]}
+        ) from e
+    normalisees: dict[str, Any] = _entiers(json.loads(brut))
+    return normalisees
+
+
 def empreinte(texte: str, donnees: dict[str, Any]) -> str:
     """SHA-256 de `{"texte", "donnees"}` sérialisé de façon canonique."""
     canonique = json.dumps(
-        {"texte": texte, "donnees": donnees},
+        {"texte": texte, "donnees": _entiers(donnees)},
         sort_keys=True,
         ensure_ascii=False,
         separators=(",", ":"),
@@ -36,6 +61,7 @@ def confirmer(
     by: User,
     adresse_ip: str | None = None,
 ) -> Confirmation:
+    donnees = normaliser(donnees)
     confirmation = Confirmation(
         type_document=type_document,
         content_type=ContentType.objects.get_for_model(objet),
@@ -43,7 +69,7 @@ def confirmer(
         signataire=by,
         confirme_le=timezone.now(),
         texte=texte,
-        donnees=json.loads(json.dumps(donnees, cls=DjangoJSONEncoder)),
+        donnees=donnees,
         empreinte=empreinte(texte, donnees),
         adresse_ip=adresse_ip,
     )
@@ -66,6 +92,6 @@ def derniere_confirmation(objet: BaseModel, type_document: str) -> Confirmation 
             object_id=objet.pk,
             type_document=type_document,
         )
-        .order_by("-confirme_le")
+        .order_by("-confirme_le", "-pk")
         .first()
     )

@@ -4,7 +4,9 @@ from typing import Any, cast
 import pytest
 from auditlog.models import LogEntry
 from django.db import IntegrityError, connection, transaction
+from django.utils import timezone
 
+from apps.core.exceptions import RegleMetierError
 from apps.signatures.exceptions import ConfirmationImmuableError
 from apps.signatures.models import Confirmation
 from apps.signatures.serializers import ConfirmationResumeSerializer
@@ -106,6 +108,66 @@ def test_resume_serializer(rai: User) -> None:
     data = ConfirmationResumeSerializer(c).data
     assert set(data) == {"id", "type_document", "signataire", "confirme_le", "empreinte"}
     assert set(data["signataire"]) == {"id", "nom_complet"}
+
+
+def test_save_force_update_et_update_fields_refuses(rai: User) -> None:
+    c = _confirmation(signataire=rai)
+    clone = Confirmation(
+        pk=c.pk,
+        type_document=c.type_document,
+        content_type_id=c.content_type_id,
+        object_id=c.object_id,
+        signataire_id=c.signataire_id,
+        confirme_le=c.confirme_le,
+        empreinte=c.empreinte,
+        texte="x",
+        donnees={},
+    )
+    with pytest.raises(ConfirmationImmuableError):
+        clone.save(force_update=True)
+    with pytest.raises(ConfirmationImmuableError):
+        clone.save(update_fields=["texte"])
+    c.refresh_from_db()
+    assert c.texte != "x"
+
+
+def test_bulk_create_update_conflicts_refuse(rai: User) -> None:
+    c = _confirmation(signataire=rai)
+    with pytest.raises(ConfirmationImmuableError):
+        Confirmation.objects.bulk_create(
+            [c], update_conflicts=True, update_fields=["texte"], unique_fields=["id"]
+        )
+
+
+def test_donnees_flottant_entier_verifiable_apres_postgres(rai: User) -> None:
+    c = confirmer(
+        type_document="ORDRE_MISSION",
+        objet=DirectionFactory(),
+        texte="t",
+        donnees={"x": 1e20, "y": 1.5, "z": 2.0},
+        by=rai,
+    )
+    assert verifier(c)
+
+
+@pytest.mark.parametrize("valeur", [float("nan"), float("inf")])
+def test_donnees_non_finies_refusees(rai: User, valeur: float) -> None:
+    with pytest.raises(RegleMetierError):
+        confirmer(
+            type_document="ORDRE_MISSION",
+            objet=DirectionFactory(),
+            texte="t",
+            donnees={"x": valeur},
+            by=rai,
+        )
+
+
+def test_derniere_confirmation_departage_a_horodatage_egal(rai: User) -> None:
+    objet = DirectionFactory()
+    instant = timezone.now()
+    cs = [_confirmation(objet=objet, signataire=rai, confirme_le=instant) for _ in range(3)]
+    voulue = max(cs, key=lambda c: c.pk)
+    assert derniere_confirmation(objet, "ORDRE_MISSION") == voulue
 
 
 def _confirmation(**kw: Any) -> Confirmation:
