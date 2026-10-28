@@ -1,11 +1,14 @@
+from typing import Any
+
 from django.conf import settings
 from django.db import models
 from django.db.models import Case, CharField, F, Q, Value, When
 from django.db.models.lookups import GreaterThanOrEqual
-from django_fsm import FSMField
+from django_fsm import FSMField, transition
 
 from apps.core.models import BaseModel
 
+from .exceptions import CartographieFigeeError
 from .validators import valider_code_direction, valider_code_processus, valider_code_risque
 
 
@@ -197,6 +200,27 @@ class CartographieVersion(BaseModel):
     def __str__(self) -> str:
         return f"Cartographie {self.annee}"
 
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        # Le contrôle porte sur la ligne EN BASE : la sauvegarde qui valide passe
+        # (la base dit encore BROUILLON), toute sauvegarde suivante est refusée.
+        if not self._state.adding:
+            statut = (
+                CartographieVersion.all_objects.filter(pk=self.pk)
+                .values_list("statut", flat=True)
+                .first()
+            )
+            if statut == StatutCartographie.VALIDEE:
+                raise CartographieFigeeError(self.annee)
+        super().save(*args, **kwargs)
+
+    @transition(  # type: ignore[untyped-decorator]  # django-fsm is untyped
+        field=statut,
+        source=StatutCartographie.BROUILLON,
+        target=StatutCartographie.VALIDEE,
+    )
+    def valider(self) -> None:
+        """Passage BROUILLON -> VALIDEE ; appelée uniquement par le service."""
+
 
 _PRODUIT = F("probabilite") * F("impact")
 
@@ -292,3 +316,15 @@ class Risque(BaseModel):
 
     def __str__(self) -> str:
         return self.code
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        figee = (
+            CartographieVersion.all_objects.filter(
+                pk=self.version_id, statut=StatutCartographie.VALIDEE
+            )
+            .values_list("annee", flat=True)
+            .first()
+        )
+        if figee is not None:
+            raise CartographieFigeeError(figee)
+        super().save(*args, **kwargs)
