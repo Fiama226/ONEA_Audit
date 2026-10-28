@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
-import { Link, createBrowserRouter, type RouteObject } from "react-router-dom";
+import { Link, Outlet, createBrowserRouter, type RouteObject } from "react-router-dom";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
 import { EmptyState } from "@/components/EmptyState";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { ReferentielLayout } from "@/features/referentiel/components/ReferentielLayout";
 import { referentielRoutes } from "@/features/referentiel/routes";
+import { administrationRoutes } from "@/features/utilisateurs/routes";
 import { fr } from "@/i18n/fr";
 import { AppShell } from "@/layouts/AppShell";
 import { rolesFor } from "@/layouts/navigation";
@@ -62,7 +63,8 @@ export const appRoutes: RouteObject[] = [
           { path: "/documents", element: <PlaceholderPage title={fr.nav.documents} /> },
           {
             path: "/administration",
-            element: guarded("/administration", <PlaceholderPage title={fr.nav.administration} />),
+            element: guarded("/administration", <Outlet />),
+            children: administrationRoutes,
           },
           { path: "*", element: <NotFound /> },
         ],

@@ -253,6 +253,15 @@ export const fr = {
     noneValue: "Aucune",
     loadingDirections: "Chargement des directions",
   },
+  utilisateurs: {
+    title: "Utilisateurs",
+    crumbUser: "Fiche utilisateur",
+    directoryNote:
+      "Les comptes et les rôles proviennent de l'annuaire (Keycloak). La plateforme gère le profil, l'accès et le pré-enregistrement des comptes.",
+    liste: {},
+    fiche: {},
+    import: {},
+  },
   auth: {
     login: "Se connecter",
     logout: "Se déconnecter",
