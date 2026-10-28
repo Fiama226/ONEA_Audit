@@ -4,12 +4,14 @@ import uuid
 from typing import Any, ClassVar, cast
 
 from django.db.models import Count, Model, Prefetch, Q, QuerySet
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer
@@ -19,7 +21,7 @@ from apps.core.filters import StableOrderingFilter
 from apps.core.schema import ERROR_400, ERROR_404, ERROR_422, ERROR_RESPONSES
 from apps.users.models import User
 
-from . import services
+from . import exports, services
 from .filters import (
     CartographieFilter,
     DirectionFilter,
@@ -42,6 +44,7 @@ from .permissions import (
     TOUS_ROLES,
     RolePermission,
 )
+from .renderers import PassthroughRenderer
 from .serializers import (
     CartographieVersionSerializer,
     ComparaisonSerializer,
@@ -223,6 +226,17 @@ class CartographieVersionViewSet(ReferentielViewSet[CartographieVersion]):
     read_roles = LECTURE_CARTOGRAPHIE
     write_roles = ECRITURE_CARTOGRAPHIE
 
+    def finalize_response(
+        self, request: Request, response: Response, *args: Any, **kwargs: Any
+    ) -> Response:
+        # Export : le moteur « passthrough » accepte tout `Accept`, mais les erreurs
+        # (400, 403, 404...) restent du JSON.
+        final = super().finalize_response(request, response, *args, **kwargs)
+        if self.action == "export" and isinstance(final, Response) and final.status_code >= 400:
+            final.accepted_renderer = JSONRenderer()
+            final.accepted_media_type = "application/json"
+        return final
+
     def get_queryset(self) -> QuerySet[CartographieVersion]:
         return CartographieVersion.objects.select_related("validee_par").annotate(
             nb_risques=Count("risques", filter=Q(risques__deleted_at__isnull=True))
@@ -266,6 +280,52 @@ class CartographieVersionViewSet(ReferentielViewSet[CartographieVersion]):
     @action(detail=True, methods=["get"], pagination_class=None)
     def matrix(self, request: Request, pk: str | None = None) -> Response:
         return Response(MatriceSerializer(services.resume_matrice(self.get_object())).data)
+
+    @extend_schema(
+        tags=["Cartographie"],
+        summary="Exporter une cartographie (CSV ou XLSX)",
+        description=(
+            "Télécharge la cartographie : liste des risques (CSV ou XLSX) ; "
+            "le XLSX ajoute la matrice 5×5."
+        ),
+        parameters=[
+            OpenApiParameter(
+                "type",
+                OpenApiTypes.STR,
+                required=True,
+                enum=["csv", "xlsx"],
+                description="Format du fichier : csv (UTF-8, séparateur « ; ») ou xlsx.",
+            ),
+        ],
+        responses={
+            (200, exports.TYPE_CSV): OpenApiTypes.BINARY,
+            (200, exports.TYPE_XLSX): OpenApiTypes.BINARY,
+            **ERROR_400,
+            **ERROR_RESPONSES,
+            **ERROR_404,
+        },
+    )
+    @action(
+        detail=True,
+        methods=["get"],
+        pagination_class=None,
+        filter_backends=[],
+        renderer_classes=[JSONRenderer, PassthroughRenderer],
+    )
+    def export(self, request: Request, pk: str | None = None) -> HttpResponse:
+        format_ = request.query_params.get("type")
+        if format_ not in ("csv", "xlsx"):
+            raise ValidationError({"type": ["Format attendu : csv ou xlsx."]})
+        version = self.get_object()
+        if format_ == "csv":
+            contenu, type_mime = exports.exporter_csv(version), exports.TYPE_CSV
+        else:
+            contenu, type_mime = exports.exporter_xlsx(version), exports.TYPE_XLSX
+        reponse = HttpResponse(contenu, content_type=type_mime)
+        reponse["Content-Disposition"] = (
+            f'attachment; filename="{exports.nom_fichier(version, format_)}"'
+        )
+        return reponse
 
     @extend_schema(
         tags=["Cartographie"],
