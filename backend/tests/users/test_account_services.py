@@ -234,3 +234,21 @@ def test_champs_techniques_hors_historique(admin: User, user: User) -> None:
     assert "keycloak_sync_le" not in all_changes
     assert "keycloak_sync_tentatives" not in all_changes
     assert "keycloak_sync_statut" in all_changes
+
+
+def test_migration_refuse_les_matricules_en_double(db: None) -> None:
+    import importlib
+
+    from django.apps import apps as django_apps
+    from django.db import connection
+
+    mod = importlib.import_module("apps.users.migrations.0002_account_administration")
+    constraint = next(
+        c for c in User._meta.constraints if c.name == "users_matricule_unique_non_vide"
+    )
+    with connection.schema_editor() as editor:
+        editor.remove_constraint(User, constraint)
+    make_user(matricule="M-7")
+    make_user(matricule="M-7")
+    with pytest.raises(RuntimeError, match="M-7"):
+        mod.verifier_matricules_uniques(django_apps, None)

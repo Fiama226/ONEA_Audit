@@ -138,3 +138,66 @@ def test_migration_renseigne_premiere_connexion(db: None) -> None:
     unlinked.refresh_from_db()
     assert linked.premiere_connexion_le == linked.date_joined
     assert unlinked.premiere_connexion_le is None
+
+
+def test_liaison_ne_perd_pas_une_desactivation_concurrente(
+    backend: OneaOIDCBackend, db: None
+) -> None:
+    pre = make_user(username="kabore.l", origine="CSV", keycloak_id=None)
+    stale = User.objects.get(pk=pre.pk)  # read while still active
+    User.objects.filter(pk=pre.pk).update(is_active=False)
+    backend.update_user(stale, claims(sub=str(uuid.uuid4())))
+    pre.refresh_from_db()
+    assert pre.keycloak_id is not None and pre.is_active is False
+    assert pre.keycloak_sync_statut == "EN_ATTENTE"
+    assert pre.keycloak_sync_tentatives == 0 and pre.keycloak_sync_erreur == ""
+
+
+def test_premiere_connexion_atomique(backend: OneaOIDCBackend, db: None) -> None:
+    u = make_user(keycloak_id=uuid.uuid4(), premiere_connexion_le=None)
+    stale = User.objects.get(pk=u.pk)
+    earlier = timezone.now() - timedelta(days=2)
+    User.objects.filter(pk=u.pk).update(premiere_connexion_le=earlier)
+    with mock.patch(
+        "mozilla_django_oidc.auth.OIDCAuthenticationBackend.get_or_create_user",
+        return_value=stale,
+    ):
+        backend.get_or_create_user(make_token(), None, None)
+    u.refresh_from_db()
+    assert u.premiere_connexion_le == earlier
+
+
+def test_compte_inactif_refuse_garde_en_attente_de_connexion(db: None) -> None:
+    pre = make_user(username="kabore.l", origine="CSV", keycloak_id=None, is_active=False)
+    got = _login(claims(sub=str(uuid.uuid4()), preferred_username="kabore.l"))
+    got.refresh_from_db()
+    assert got.pk == pre.pk and got.en_attente_connexion
+
+
+def test_nom_complet_et_en_attente_connexion(db: None) -> None:
+    u = make_user(first_name="Awa", last_name="Sawadogo", premiere_connexion_le=None)
+    assert u.nom_complet == "Awa Sawadogo" and u.en_attente_connexion
+    u2 = make_user(
+        first_name="", last_name="", username="solo", premiere_connexion_le=timezone.now()
+    )
+    assert u2.nom_complet == "solo" and not u2.en_attente_connexion
+
+
+def test_liaison_identifiant_avertit_sans_donnee_personnelle(
+    db: None, caplog: pytest.LogCaptureFixture
+) -> None:
+    make_user(username="kabore.l", origine="CSV", keycloak_id=None, email="a@y.bf")
+    make_user(username="autre", origine="CSV", keycloak_id=None, email="rai@onea.bf")
+    with caplog.at_level("WARNING", logger="apps.users.oidc"):
+        _login(claims(sub=str(uuid.uuid4()), preferred_username="kabore.l"))
+    msgs = [r.getMessage() for r in caplog.records if "different local accounts" in r.getMessage()]
+    assert msgs
+    assert all("kabore" not in m and "rai@onea.bf" not in m for m in msgs)
+
+
+def test_email_non_verifie_ne_lie_pas_un_compte_csv(db: None) -> None:
+    pre = make_user(username="csv.u", origine="CSV", keycloak_id=None, email="rai@onea.bf")
+    new = _login(claims(sub=str(uuid.uuid4()), preferred_username="autre", email_verified=False))
+    assert new.pk != pre.pk
+    pre.refresh_from_db()
+    assert pre.keycloak_id is None

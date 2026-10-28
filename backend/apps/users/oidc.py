@@ -56,9 +56,16 @@ class OneaOIDCBackend(OIDCAuthenticationBackend):  # type: ignore[misc]
         except SuspiciousOperation as exc:
             logger.warning("OIDC login refused: %s", exc)
             raise
-        if user is not None and user.premiere_connexion_le is None:
-            user.premiere_connexion_le = timezone.now()
-            user.save(update_fields=["premiere_connexion_le"])
+        if user is not None and user.premiere_connexion_le is None and user.is_active:
+            # Atomic "set once"; a refused (inactive) account stays "pending first login".
+            now = timezone.now()
+            done = User.objects.filter(pk=user.pk, premiere_connexion_le__isnull=True).update(
+                premiere_connexion_le=now
+            )
+            if done:
+                user.premiere_connexion_le = now
+            else:
+                user.refresh_from_db(fields=["premiere_connexion_le"])
         return user
 
     def get_role_from_claims(self, claims: Mapping[str, Any]) -> Role:
@@ -167,6 +174,17 @@ class OneaOIDCBackend(OIDCAuthenticationBackend):  # type: ignore[misc]
         raise SuspiciousOperation("Could not create the local user")
 
     def update_user(self, user: User, claims: Mapping[str, Any]) -> User:
+        if user.keycloak_id is None and _parse_uuid(claims.get("sub")) is not None:
+            # Linking: re-read the row under lock so that a concurrent deactivation
+            # (which decides on the keycloak_id it sees) is serialized with this write.
+            with transaction.atomic():
+                fresh = User.objects.select_for_update().get(pk=user.pk)
+                user.is_active = fresh.is_active
+                user.profil_gere_localement = fresh.profil_gere_localement
+                return self._apply_claims(user, claims)
+        return self._apply_claims(user, claims)
+
+    def _apply_claims(self, user: User, claims: Mapping[str, Any]) -> User:
         changed: list[str] = []
         values = self._claim_values(claims)
         if user.profil_gere_localement:
@@ -175,6 +193,8 @@ class OneaOIDCBackend(OIDCAuthenticationBackend):  # type: ignore[misc]
         values["role_provisoire"] = False
         if "keycloak_id" in values and user.keycloak_id is None and not user.is_active:
             values["keycloak_sync_statut"] = KeycloakSyncStatut.EN_ATTENTE
+            values["keycloak_sync_erreur"] = ""
+            values["keycloak_sync_tentatives"] = 0
         for field, value in values.items():
             if getattr(user, field) != value:
                 if (

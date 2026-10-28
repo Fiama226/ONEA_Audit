@@ -2,8 +2,26 @@
 
 import django.db.models.deletion
 from django.conf import settings
-from django.db.models import F
+from django.db.models import Count, F
 from django.db import migrations, models
+
+
+def verifier_matricules_uniques(apps, schema_editor):  # type: ignore[no-untyped-def]
+    User = apps.get_model("users", "User")
+    doublons = (
+        User.objects.exclude(matricule="")
+        .values("matricule")
+        .annotate(n=Count("pk"))
+        .filter(n__gt=1)
+        .values_list("matricule", flat=True)
+    )
+    liste = sorted(doublons)
+    if liste:
+        raise RuntimeError(
+            "Migration impossible : des matricules sont attribués à plusieurs utilisateurs ("
+            + ", ".join(liste)
+            + "). Corrigez-les (admin Django) puis relancez la migration."
+        )
 
 
 def backfill_premiere_connexion(apps, schema_editor):  # type: ignore[no-untyped-def]
@@ -76,6 +94,7 @@ class Migration(migrations.Migration):
             name='role_provisoire',
             field=models.BooleanField(default=False),
         ),
+        migrations.RunPython(verifier_matricules_uniques, migrations.RunPython.noop),
         migrations.AddConstraint(
             model_name='user',
             constraint=models.UniqueConstraint(condition=models.Q(('matricule', ''), _negated=True), fields=('matricule',), name='users_matricule_unique_non_vide'),
