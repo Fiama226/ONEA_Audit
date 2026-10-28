@@ -20,6 +20,7 @@ function labelFor(segment: string, previous: string | undefined): string {
     if (previous === "risques") return fr.refCartographie.crumbRisk;
     return fr.referentiel.detail;
   }
+  if (previous === "utilisateurs" && /^\d+$/.test(segment)) return fr.utilisateurs.crumbUser;
   if (segment === "nouveau" && previous === "risques") return fr.refCartographie.crumbNewRisk;
   return SEGMENT_LABELS[segment] ?? segment;
 }
