@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "auditlog",
     "apps.core",
     "apps.users",
+    "apps.referentiel",
 ]
 
 AUTH_USER_MODEL = "users.User"
