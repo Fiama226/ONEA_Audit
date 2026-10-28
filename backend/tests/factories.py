@@ -151,18 +151,24 @@ class MissionFactory(factory.django.DjangoModelFactory):
         skip_postgeneration_save = True
 
     class Params:
-        avec_processus_et_entites = factory.Trait(ajouts=True)
+        avec_processus_et_entites = factory.Trait(
+            ajouts=factory.PostGeneration(
+                lambda obj, create, extracted, **kw: _ajouter_m2m(obj, create)
+            )
+        )
 
     titre = factory.Sequence(lambda n: f"Audit du processus {n}")
     type = TypeMission.ASSURANCE
     reference = ""
     cartographie = factory.LazyFunction(lambda: _cartographie_validee())
 
-    @factory.post_generation
-    def ajouts(self, create: bool, extracted: object, **kwargs: object) -> None:
-        if create and extracted:
-            self.processus.add(ProcessusFactory())
-            self.entites.add(DirectionFactory())
+    ajouts = factory.PostGeneration(lambda obj, create, extracted, **kw: None)
+
+
+def _ajouter_m2m(mission: Mission, create: bool) -> None:
+    if create:
+        mission.processus.add(ProcessusFactory())
+        mission.entites.add(DirectionFactory())
 
 
 def _cartographie_validee() -> CartographieVersion:
