@@ -1,11 +1,22 @@
 import { configure, screen } from "@testing-library/react";
 import { axe } from "vitest-axe";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { http, HttpResponse } from "msw";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ROLES, type Role } from "@/auth/types";
 import { fr } from "@/i18n/fr";
 import { NAV_GROUPS, navFor, rolesFor } from "@/layouts/navigation";
+import { API_URL, server } from "@/test/msw";
 import { renderRoutes } from "@/test/shell";
 import { appRoutes } from "./routes";
+
+// La page d'accueil du référentiel (cartographies) interroge l'API.
+beforeEach(() => {
+  server.use(
+    http.get(`${API_URL}/api/v1/risk-maps/`, () =>
+      HttpResponse.json({ count: 0, next: null, previous: null, results: [] }),
+    ),
+  );
+});
 
 // Chaque rendu monte le shell complet : marge pour jsdom.
 beforeAll(() => {
@@ -93,14 +104,24 @@ describe("referentiel routes", () => {
   });
 
   it.each([
-    ["/referentiel/cartographies/abc", "Cartographie"],
     ["/referentiel/processus", "Processus"],
     ["/referentiel/directions", "Directions"],
     ["/referentiel/objets-auditables", "Objets auditables"],
-    ["/referentiel/risques/nouveau", "Risque"],
   ])("renders the skeleton page of %s", (path, title) => {
     renderRoutes(appRoutes, "RAI", { path });
     expect(screen.getByRole("heading", { level: 2, name: title })).toBeInTheDocument();
+  });
+});
+
+describe("referentiel risk map routes", () => {
+  it("renders the risk map list page", async () => {
+    renderRoutes(appRoutes, "RAI", { path: "/referentiel/cartographies" });
+    expect(await screen.findByText(fr.refCartographie.emptyTitle)).toBeInTheDocument();
+  });
+
+  it("renders the risk form page and asks for a map when none is given", () => {
+    renderRoutes(appRoutes, "RAI", { path: "/referentiel/risques/nouveau" });
+    expect(screen.getByText(fr.refCartographie.riskMapMissing)).toBeInTheDocument();
   });
 });
 
