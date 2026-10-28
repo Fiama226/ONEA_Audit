@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "apps.users",
     "apps.referentiel",
     "apps.signatures",
+    "apps.missions",
 ]
 
 AUTH_USER_MODEL = "users.User"
@@ -155,6 +156,10 @@ CELERY_BEAT_SCHEDULE = {
     "heartbeat": {
         "task": "core.tasks.heartbeat",
         "schedule": crontab(hour=6, minute=0),
+    },
+    "users-keycloak-sync": {
+        "task": "users.synchroniser_comptes_keycloak",
+        "schedule": crontab(minute="*/15"),
     },
 }
 
