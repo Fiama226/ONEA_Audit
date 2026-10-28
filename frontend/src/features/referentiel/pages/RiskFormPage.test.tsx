@@ -8,13 +8,26 @@ import { DRAFT, mockReferentiel, R1, renderCarto, risk, VALIDATED } from "../car
 import { RiskFormPage } from "./RiskFormPage";
 
 const routes = [
-  { path: "/referentiel/risques/nouveau", element: <RiskFormPage /> },
+  { path: "/referentiel/cartographies/:id/risques/nouveau", element: <RiskFormPage creating /> },
+  { path: "/referentiel/risques/nouveau", element: <RiskFormPage creating /> },
   { path: "/referentiel/risques/:id", element: <RiskFormPage /> },
   { path: "/referentiel/cartographies/:id", element: <p>carto</p> },
 ];
-const newPath = `/referentiel/risques/nouveau?cartographie=${DRAFT.id}`;
+const newPath = `/referentiel/cartographies/${DRAFT.id}/risques/nouveau`;
 
 describe("RiskFormPage", () => {
+  it("offers a link back to the list when no map is given", async () => {
+    mockReferentiel();
+    renderCarto(routes, "RAI", "/referentiel/risques/nouveau");
+    expect(
+      await screen.findByText("Aucune cartographie n'est indiquée pour ce risque."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Retour aux cartographies" })).toHaveAttribute(
+      "href",
+      "/referentiel/cartographies",
+    );
+  });
+
   it("previews the score and level and derives the priority", async () => {
     mockReferentiel();
     const user = userEvent.setup();

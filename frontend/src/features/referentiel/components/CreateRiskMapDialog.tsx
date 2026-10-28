@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { fr } from "@/i18n/fr";
 import { useCreateRiskMap, useRiskMaps } from "../api";
-import { applyServerErrors } from "../riskServerErrors";
+import { applyApiErrors } from "../formErrors";
 import { defaultRiskMapLibelle, riskMapSchema, type RiskMapFormValues } from "../schemas/riskMap";
 import { NativeSelect } from "./NativeSelect";
 
@@ -56,6 +56,9 @@ function CreateRiskMapForm({ onOpenChange }: { onOpenChange: (open: boolean) => 
   const navigate = useNavigate();
   const create = useCreateRiskMap();
   const [general, setGeneral] = useState("");
+  // Seules les versions validées peuvent servir de source ; la boîte les charge elle-même.
+  const sourcesQuery = useRiskMaps({ statut: "VALIDEE", page_size: 200, ordering: "-annee" });
+  const sources = sourcesQuery.data?.results ?? [];
   const year = String(new Date().getFullYear());
   const form = useForm<RiskMapFormValues>({
     resolver: zodResolver(riskMapSchema),
@@ -66,9 +69,14 @@ function CreateRiskMapForm({ onOpenChange }: { onOpenChange: (open: boolean) => 
       source: "",
     },
   });
-  // Seules les versions validées peuvent servir de source ; la boîte les charge elle-même.
-  const sourcesQuery = useRiskMaps({ statut: "VALIDEE", page_size: 200, ordering: "-annee" });
-  const sources = sourcesQuery.data?.results ?? [];
+  // Une nouvelle année est normalement une copie : la dernière version validée est présélectionnée
+  // (la liste arrive après l'ouverture ; « Aucune » reste choisissable).
+  const latest = sources[0]?.id;
+  useEffect(() => {
+    if (latest && !form.getFieldState("source").isDirty && !form.getValues("source")) {
+      form.setValue("source", latest);
+    }
+  }, [latest, form]);
 
   async function onSubmit(values: RiskMapFormValues) {
     setGeneral("");
@@ -82,7 +90,7 @@ function CreateRiskMapForm({ onOpenChange }: { onOpenChange: (open: boolean) => 
       onOpenChange(false);
       void navigate(`/referentiel/cartographies/${created.id}`);
     } catch (e) {
-      setGeneral(applyServerErrors(e, form.setError, FIELDS));
+      setGeneral(applyApiErrors(e, form.setError, FIELDS) ?? "");
     }
   }
 

@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { API_URL, server } from "@/test/msw";
 import {
   exportRiskMap,
+  fetchAllRisks,
   referentielKeys,
   useRiskMapComparison,
   useRisks,
@@ -37,6 +38,54 @@ describe("referentiel api hooks", () => {
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(search).toBe("?version=v1&probabilite=3&impact=5");
+  });
+
+  it("useRisks keeps previous rows for the same version but not those of another version", async () => {
+    server.use(
+      http.get(`${API_URL}/api/v1/risks/`, async ({ request }) => {
+        const url = new URL(request.url);
+        await new Promise((r) => setTimeout(r, 30));
+        const v = url.searchParams.get("version");
+        const q = url.searchParams.get("q") ?? "";
+        return HttpResponse.json({
+          count: 1,
+          next: null,
+          previous: null,
+          results: [{ id: `${v}-${q}` }],
+        });
+      }),
+    );
+    const { Wrapper } = wrapper();
+    const { result, rerender } = renderHook(
+      ({ version, q }: { version: string; q?: string }) => useRisks({ version, q }),
+      { wrapper: Wrapper, initialProps: { version: "A" } as { version: string; q?: string } },
+    );
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    rerender({ version: "A", q: "x" });
+    expect(result.current.isPlaceholderData).toBe(true);
+    expect(result.current.data?.results[0]).toMatchObject({ id: "A-" });
+    await waitFor(() => expect(result.current.isPlaceholderData).toBe(false));
+    rerender({ version: "B" });
+    expect(result.current.data).toBeUndefined();
+    await waitFor(() => expect(result.current.data?.results[0]).toMatchObject({ id: "B-" }));
+  });
+
+  it("fetchAllRisks follows pages and stops at the page cap", async () => {
+    let calls = 0;
+    server.use(
+      http.get(`${API_URL}/api/v1/risks/`, () => {
+        calls += 1;
+        return HttpResponse.json({
+          count: 999,
+          next: "more",
+          previous: null,
+          results: [{ id: `r${calls}` }],
+        });
+      }),
+    );
+    const all = await fetchAllRisks({ version: "A" });
+    expect(all).toHaveLength(50);
+    expect(calls).toBe(50);
   });
 
   it("useRiskMapComparison is disabled without a target version", () => {

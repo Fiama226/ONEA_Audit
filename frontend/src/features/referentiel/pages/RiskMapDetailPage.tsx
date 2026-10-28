@@ -1,5 +1,5 @@
-import { Plus, Printer } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Pencil, Plus, Printer, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { isApiError } from "@/api/errors";
@@ -12,12 +12,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fr } from "@/i18n/fr";
 import {
   fetchAllRisks,
+  useDeleteRiskMap,
   useProcesses,
   useRiskMap,
   useRiskMaps,
   useRiskMatrix,
   useRisks,
 } from "../api";
+import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
+import { EditRiskMapDialog } from "../components/EditRiskMapDialog";
 import { ExportButtons } from "../components/ExportButtons";
 import { FrozenBanner } from "../components/FrozenBanner";
 import { NativeSelect } from "../components/NativeSelect";
@@ -124,6 +127,9 @@ export function RiskMapDetailPage() {
   const { role } = useRole();
   const [params, setParams] = useSearchParams();
   const [validating, setValidating] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const deleteMap = useDeleteRiskMap();
   const [compareChoice, setCompareChoice] = useState("");
   const [printRows, setPrintRows] = useState<Risque[] | null>(null);
   const [printing, setPrinting] = useState(false);
@@ -137,9 +143,19 @@ export function RiskMapDetailPage() {
   const q = params.get("q") ?? "";
   // La saisie est locale ; l'URL (donc la requête) n'est mise à jour qu'après 300 ms d'inactivité.
   const [qInput, setQInput] = useState(q);
+  const pushedQ = useRef(q);
+  // Retour/avance du navigateur : si `q` change sans que ce soit notre propre mise à jour,
+  // la saisie locale suit l'URL.
+  useEffect(() => {
+    if (q !== pushedQ.current) {
+      pushedQ.current = q;
+      setQInput(q);
+    }
+  }, [q]);
   useEffect(() => {
     if (qInput === q) return;
     const timer = setTimeout(() => {
+      pushedQ.current = qInput;
       setParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -247,13 +263,21 @@ export function RiskMapDetailPage() {
             <>
               <Button
                 type="button"
-                onClick={() => void navigate(`/referentiel/risques/nouveau?cartographie=${id}`)}
+                onClick={() => void navigate(`/referentiel/cartographies/${id}/risques/nouveau`)}
               >
                 <Plus aria-hidden />
                 {c.addRisk}
               </Button>
               <Button type="button" variant="outline" onClick={() => setValidating(true)}>
                 {c.validate}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+                <Pencil aria-hidden />
+                {c.editDraft}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setDeleting(true)}>
+                <Trash2 aria-hidden />
+                {c.deleteDraft}
               </Button>
             </>
           )}
@@ -412,6 +436,20 @@ export function RiskMapDetailPage() {
       </section>
 
       {canEdit && <ValidateRiskMapDialog id={id} open={validating} onOpenChange={setValidating} />}
+      {canEdit && <EditRiskMapDialog version={version} open={editing} onOpenChange={setEditing} />}
+      {canEdit && (
+        <ConfirmDeleteDialog
+          open={deleting}
+          onOpenChange={setDeleting}
+          title={c.deleteDraftTitle}
+          description={c.deleteDraftWarning}
+          onConfirm={async () => {
+            await deleteMap.mutateAsync(id);
+            void navigate("/referentiel/cartographies");
+          }}
+          restoreFocus={() => undefined}
+        />
+      )}
     </div>
   );
 }

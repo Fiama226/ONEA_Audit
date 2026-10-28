@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import { axe } from "vitest-axe";
 import { API_URL, server } from "@/test/msw";
-import { DRAFT, mockReferentiel, page, renderCarto } from "../cartoFixtures";
+import { DRAFT, mockReferentiel, page, renderCarto, VALIDATED } from "../cartoFixtures";
 import { RiskMapListPage } from "./RiskMapListPage";
 
 const routes = [{ path: "/referentiel/cartographies", element: <RiskMapListPage /> }];
@@ -101,6 +101,28 @@ describe("RiskMapListPage", () => {
     expect(within(dialog).getByLabelText("Libellé")).toHaveValue(
       `Cartographie des risques ${new Date().getFullYear()}`,
     );
+  });
+
+  it("preselects the latest validated map as the copy source and keeps it clearable", async () => {
+    mockReferentiel();
+    let body: Record<string, unknown> = {};
+    server.use(
+      http.post(`${API_URL}/api/v1/risk-maps/`, async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(DRAFT, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderCarto(routes, "RAI", path);
+    await user.click(await screen.findByRole("button", { name: "Créer une cartographie" }));
+    const dialog = await screen.findByRole("dialog");
+    const source = within(dialog).getByLabelText("Copier les risques de");
+    await waitFor(() => expect(source).toHaveValue(VALIDATED.id));
+    await user.selectOptions(source, "");
+    expect(source).toHaveValue("");
+    await user.click(within(dialog).getByRole("button", { name: "Créer" }));
+    await waitFor(() => expect(body.annee).toBeDefined());
+    expect(body.source).toBeUndefined();
   });
 
   it("has no axe violations", async () => {

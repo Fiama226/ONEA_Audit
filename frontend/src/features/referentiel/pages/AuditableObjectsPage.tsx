@@ -15,7 +15,8 @@ import {
   type AuditableObjectTarget,
 } from "../components/AuditableObjectFormDialog";
 import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
-import { ALERT_CLASS, SELECT_CLASS } from "../components/FormField";
+import { ALERT_CLASS } from "../components/FormField";
+import { NativeSelect } from "../components/NativeSelect";
 import { canEditAuditableObjects } from "../permissions";
 import type { DomaineArbre, ObjetAuditable } from "../types";
 
@@ -220,12 +221,7 @@ export function AuditableObjectsPage() {
       </div>
       <div className="grid max-w-md gap-1.5 print:hidden">
         <Label htmlFor="obj-process">{s.processSelectorLabel}</Label>
-        <select
-          id="obj-process"
-          className={SELECT_CLASS}
-          value={processId}
-          onChange={(e) => choose(e.target.value)}
-        >
+        <NativeSelect id="obj-process" value={processId} onChange={(e) => choose(e.target.value)}>
           <option value="">{s.processSelectorPlaceholder}</option>
           {processes.isLoading && processId && (
             <option value={processId}>{fr.common.loading}</option>
@@ -235,7 +231,7 @@ export function AuditableObjectsPage() {
               {p.code} - {p.libelle}
             </option>
           ))}
-        </select>
+        </NativeSelect>
         {processes.data && (
           <ListIncompleteAlert count={processes.data.count} loaded={processList.length} />
         )}
