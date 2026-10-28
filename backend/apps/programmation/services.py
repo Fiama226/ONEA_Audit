@@ -43,7 +43,7 @@ MSG_ANNEE_IMMUABLE = "L'année d'un programme ne peut pas être modifiée."
 MSG_PROGRAMME_IMMUABLE = "Une mission prévue ne peut pas changer de programme."
 
 
-def _verrouiller_programme(programme: ProgrammeAnnuel | Any) -> ProgrammeAnnuel:
+def _verrouiller_programme(programme: ProgrammeAnnuel) -> ProgrammeAnnuel:
     """Relit le programme sous verrou de ligne ; refuse s'il est validé."""
     locked = ProgrammeAnnuel.objects.select_for_update().filter(pk=programme.pk).first()
     if locked is None:
@@ -55,6 +55,15 @@ def _verrouiller_programme(programme: ProgrammeAnnuel | Any) -> ProgrammeAnnuel:
 
 def _msg_annee_prise(annee: int) -> str:
     return f"Un programme annuel existe déjà pour l'année {annee}."
+
+
+def _refuser_champs_non_modifiables(changes: dict[str, Any], autorises: set[str]) -> None:
+    """Refus explicite (422) plutôt qu'une ValueError (500) pour un champ non modifiable."""
+    erreurs = {
+        champ: ["Ce champ ne peut pas être modifié."] for champ in changes if champ not in autorises
+    }
+    if erreurs:
+        raise RegleMetierError("Données invalides.", erreurs)
 
 
 # --------------------------------------------------------------------------- programmes
@@ -81,6 +90,8 @@ def creer_programme(
     try:
         enregistrer(programme, by=by, creation=True, controle=controle)
     except IntegrityError as e:  # course sur l'unicité de l'année
+        if "programme_annee_unique_actif" not in str(e):
+            raise
         msg = _msg_annee_prise(annee)
         raise refuser(msg, annee=msg) from e
     return programme
@@ -92,6 +103,7 @@ def modifier_programme(programme: ProgrammeAnnuel, *, by: User, **changes: Any) 
     if "annee" in changes:
         if changes.pop("annee") != locked.annee:
             raise refuser(MSG_ANNEE_IMMUABLE, annee=MSG_ANNEE_IMMUABLE)
+    _refuser_champs_non_modifiables(changes, _CHAMPS_PROGRAMME)
     appliquer(locked, changes, _CHAMPS_PROGRAMME)
     enregistrer(locked, by=by)
     return locked
@@ -109,7 +121,8 @@ def supprimer_programme(programme: ProgrammeAnnuel, *, by: User) -> None:
 def valider_programme(programme: ProgrammeAnnuel, *, by: User) -> ProgrammeAnnuel:
     locked = _verrouiller_programme(programme)
     if not LigneProgramme.objects.filter(programme=locked).exists():
-        raise RegleMetierError("Un programme sans mission prévue ne peut pas être validé.")
+        msg = "Un programme sans mission prévue ne peut pas être validé."
+        raise RegleMetierError(msg, {"non_field_errors": [msg]})
     locked.valider()
     locked.valide_le = timezone.now()
     locked.valide_par = by
@@ -120,6 +133,10 @@ def valider_programme(programme: ProgrammeAnnuel, *, by: User) -> ProgrammeAnnue
 
 
 # --------------------------------------------------------------------------- lignes
+
+
+# Les verrous du référentiel sont posés ici plutôt que par `core.services.verrouiller_actif` :
+# celui-ci émet un message générique, alors que les messages exigés sont propres à chaque champ.
 
 
 def _verifier_processus(processus: Processus, erreurs: dict[str, list[str]]) -> Processus | None:
@@ -142,9 +159,9 @@ def _verifier_entites(
     demandees = list(entites)
     actives = {
         d.pk: d
-        for d in Direction.objects.select_for_update(no_key=True).filter(
-            pk__in=[d.pk for d in demandees]
-        )
+        for d in Direction.objects.select_for_update(no_key=True)
+        .filter(pk__in=[d.pk for d in demandees])
+        .order_by("pk")  # ordre de verrou déterministe
     }
     manquantes = [d.code for d in demandees if d.pk not in actives]
     if manquantes:
@@ -230,7 +247,8 @@ def creer_ligne(
     )
     enregistrer(nouvelle, by=by, creation=True)
     if posees:
-        nouvelle.entites.set(posees)
+        with actor_scope(by):
+            nouvelle.entites.set(posees)
     return nouvelle
 
 
@@ -242,9 +260,17 @@ def _verrouiller_ligne(ligne: LigneProgramme) -> tuple[ProgrammeAnnuel, LignePro
 
 @transaction.atomic
 def modifier_ligne(ligne: LigneProgramme, *, by: User, **changes: Any) -> LigneProgramme:
+    """Modifie une mission prévue.
+
+    Décision D6 : une référence (processus, objet auditable, entités) n'est revérifiée dans le
+    référentiel que si sa clé figure dans `changes`. Une ligne qui cite un élément supprimé
+    depuis reste modifiable, mais renvoyer cette référence (même inchangée) est refusé : le
+    client ne doit envoyer que les champs réellement modifiés.
+    """
     if "programme" in changes or "programme_id" in changes:
         raise refuser(MSG_PROGRAMME_IMMUABLE, programme=MSG_PROGRAMME_IMMUABLE)
     programme, locked = _verrouiller_ligne(ligne)
+    _refuser_champs_non_modifiables(changes, _CHAMPS_LIGNE)
     entites = changes.get("entites")
     appliquer(locked, changes, _CHAMPS_LIGNE, m2m=frozenset({"entites"}))
     posees = _verifier_ligne(
@@ -256,7 +282,8 @@ def modifier_ligne(ligne: LigneProgramme, *, by: User, **changes: Any) -> LigneP
     )
     enregistrer(locked, by=by)
     if posees is not None:
-        locked.entites.set(posees)
+        with actor_scope(by):
+            locked.entites.set(posees)
     return locked
 
 
