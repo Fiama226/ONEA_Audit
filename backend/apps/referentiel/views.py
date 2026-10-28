@@ -145,7 +145,7 @@ class ProcessusViewSet(ReferentielViewSet[Processus]):
     queryset = Processus.objects.prefetch_related("directions")
     serializer_class = ProcessusSerializer
     filterset_class = ProcessusFilter
-    ordering_fields = ("ordre", "code", "libelle")
+    ordering_fields = ("ordre", "code", "libelle", "famille")
     ordering = ("ordre", "code")
 
     def perform_create(self, serializer: BaseSerializer[Processus]) -> None:
@@ -191,7 +191,13 @@ class ObjetAuditableViewSet(ReferentielViewSet[ObjetAuditable]):
         parameters=[
             OpenApiParameter("processus", OpenApiTypes.UUID, required=True),
         ],
-        responses={200: DomaineArbreSerializer(many=True), **ERROR_400, **ERROR_RESPONSES},
+        description="Répond 404 si le processus est inconnu ou supprimé.",
+        responses={
+            200: DomaineArbreSerializer(many=True),
+            **ERROR_400,
+            **ERROR_RESPONSES,
+            **ERROR_404,
+        },
     )
     @action(detail=False, methods=["get"], pagination_class=None, filter_backends=[])
     def tree(self, request: Request) -> Response:
@@ -202,6 +208,7 @@ class ObjetAuditableViewSet(ReferentielViewSet[ObjetAuditable]):
             processus_id = uuid.UUID(brut)
         except ValueError as e:
             raise ValidationError({"processus": ["Identifiant invalide."]}) from e
+        get_object_or_404(Processus.objects.all(), pk=processus_id)
         domaines = ObjetAuditable.objects.filter(
             processus_id=processus_id, nature=NatureObjet.DOMAINE
         ).prefetch_related(

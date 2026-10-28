@@ -14,6 +14,7 @@ from .models import (
     ReponseRisque,
     Risque,
     StatutCartographie,
+    TypeEntite,
 )
 from .validators import CARACTERES_CONTROLE_RE, MSG_CARACTERES_CONTROLE
 
@@ -47,10 +48,10 @@ class DirectionResumeSerializer(serializers.ModelSerializer[Direction]):
 class ProcessusSerializer(serializers.ModelSerializer[Processus]):
     directions = serializers.PrimaryKeyRelatedField(
         many=True,
-        queryset=Direction.objects.all(),
+        queryset=Direction.objects.filter(type=TypeEntite.DIRECTION),
         required=False,
         write_only=True,
-        help_text="Identifiants des directions rattachées (écriture).",
+        help_text="Identifiants des directions (type DIRECTION uniquement) rattachées (écriture).",
     )
     directions_detail = DirectionResumeSerializer(source="directions", many=True, read_only=True)
 
@@ -117,6 +118,7 @@ class CartographieVersionSerializer(serializers.ModelSerializer[CartographieVers
             "created_at",
         )
         read_only_fields = ("id", "validee_le", "created_at")
+        extra_kwargs = {"annee": {"min_value": 2000, "max_value": 2100}}
         # L'unicité de l'année est vérifiée par le service (422 sur « annee »).
         validators: list[Any] = []
 

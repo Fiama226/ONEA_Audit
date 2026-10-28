@@ -7,7 +7,7 @@ from typing import Any
 
 from django.core.exceptions import NON_FIELD_ERRORS as NON_FIELD
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.db import IntegrityError, models, transaction
+from django.db import IntegrityError, connection, models, transaction
 from django.db.models import Max
 from django.http import Http404
 from django.utils import timezone
@@ -124,18 +124,17 @@ def _verifier_code_immuable(obj: Any, changes: dict[str, Any]) -> None:
             raise _refuser(MSG_CODE_IMMUABLE, code=MSG_CODE_IMMUABLE)
 
 
-def _lignee(version: CartographieVersion) -> list[Any]:
-    """Identifiants de la version et de ses sources successives (supprimées incluses)."""
-    ids: list[Any] = []
-    courant: Any = version.pk
-    while courant is not None and courant not in ids:
-        ids.append(courant)
-        courant = (
-            CartographieVersion.all_objects.filter(pk=courant)
-            .values_list("source_id", flat=True)
-            .first()
-        )
-    return ids
+MSG_UTILISE_PAR_VALIDEE = (
+    "{cible} est utilisé par une cartographie validée (figée) : il ne peut pas être supprimé."
+)
+
+# Verrou consultatif unique : `numero` est global, donc toute création de risque est sérialisée.
+_VERROU_NUMEROTATION = 0x4F4E4541  # « ONEA »
+
+
+def _verrouiller_numerotation() -> None:
+    with connection.cursor() as cur:
+        cur.execute("SELECT pg_advisory_xact_lock(%s)", [_VERROU_NUMEROTATION])
 
 
 def _verrouiller_version(version: CartographieVersion | Any) -> CartographieVersion:
@@ -251,6 +250,10 @@ def modifier_processus(processus: Processus, *, by: User, **changes: Any) -> Pro
 @transaction.atomic
 def supprimer_processus(processus: Processus, *, by: User) -> None:
     processus = _relire(processus)
+    if Risque.objects.filter(
+        processus=processus, version__statut=StatutCartographie.VALIDEE
+    ).exists():
+        raise RegleMetierError(MSG_UTILISE_PAR_VALIDEE.format(cible="Ce processus"))
     if (
         Risque.objects.filter(processus=processus).exists()
         or ObjetAuditable.objects.filter(processus=processus).exists()
@@ -326,6 +329,10 @@ def modifier_objet(objet: ObjetAuditable, *, by: User, **changes: Any) -> ObjetA
 @transaction.atomic
 def supprimer_objet(objet: ObjetAuditable, *, by: User) -> None:
     objet = _relire(objet)
+    if Risque.objects.filter(
+        objet_auditable=objet, version__statut=StatutCartographie.VALIDEE
+    ).exists():
+        raise RegleMetierError(MSG_UTILISE_PAR_VALIDEE.format(cible="Cet objet auditable"))
     if (
         ObjetAuditable.objects.filter(parent=objet).exists()
         or Risque.objects.filter(objet_auditable=objet).exists()
@@ -490,10 +497,12 @@ def creer_risque(
         objet_auditable = _verrouiller_actif(objet_auditable, "objet_auditable")
     _verifier_objet(processus, objet_auditable)
 
-    # Numéros jamais réutilisés sur toute la lignée (versions sources, supprimés inclus).
-    lignee = Risque.all_objects.filter(version_id__in=_lignee(locked))
-    numero = (lignee.aggregate(m=Max("numero"))["m"] or 0) + 1
-    rang = (lignee.filter(processus=processus).aggregate(m=Max("rang"))["m"] or 0) + 1
+    # Un même code désigne le même risque dans toutes les cartographies (D3) : numéros jamais
+    # réutilisés sur l'ensemble des cartographies (supprimés inclus), sous verrou consultatif.
+    _verrouiller_numerotation()
+    tous = Risque.all_objects.all()
+    numero = (tous.aggregate(m=Max("numero"))["m"] or 0) + 1
+    rang = (tous.filter(processus=processus).aggregate(m=Max("rang"))["m"] or 0) + 1
     if priorite is None:
         priorite = priorite_par_defaut(niveau_pour_score(probabilite * impact))
     risque = Risque(

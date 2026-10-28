@@ -51,7 +51,8 @@ python manage.py import_referentiel <fichier.csv> --user <login> [--dry-run]
 ```
 
 - `--user` (obligatoire) : identifiant d'un utilisateur actif de rôle RAI ou ADMIN ; il signe
-  la piste d'audit (`/api/v1/audit-log/`).
+  la piste d'audit (`/api/v1/audit-log/`). Le compte doit déjà exister : il est créé à la
+  première connexion de la personne via Keycloak ; la commande ne crée aucun utilisateur.
 - `--dry-run` : valide le fichier et affiche ce qui serait créé ou mis à jour, sans rien écrire.
 - **Idempotente** : upsert par code, jamais de suppression. Une seconde exécution du même
   fichier ne change rien (tout est compté « inchangé »). **Tout ou rien** : à la moindre erreur
@@ -89,6 +90,12 @@ python manage.py import_referentiel apps/referentiel/data/referentiel-onea.csv -
 dans Excel ; XLSX : feuilles « Risques » et « Matrice ». Les cellules commençant par `=`, `+`,
 `-` ou `@` sont neutralisées. Les boutons « Exporter en CSV / Excel » de l'écran d'une
 cartographie appellent cette route.
+
+Le gel d'une cartographie validée porte sur ses risques ; les libellés des processus et des
+objets auditables restent ceux du référentiel vivant. L'export d'une cartographie validée
+affiche donc les libellés actuels (l'historique des renommages est dans la piste d'audit). Pour
+la même raison, un processus ou un objet utilisé par une cartographie validée ne peut pas être
+supprimé.
 
 | Ressource (`/api/v1/…`) | ADMIN | RAI | AUDITEUR | DG | AUDITE |
 |---|---|---|---|---|---|
