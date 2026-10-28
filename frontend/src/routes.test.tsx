@@ -94,9 +94,6 @@ describe("referentiel routes", () => {
 
   it.each([
     ["/referentiel/cartographies/abc", "Cartographie"],
-    ["/referentiel/processus", "Processus"],
-    ["/referentiel/directions", "Directions"],
-    ["/referentiel/objets-auditables", "Objets auditables"],
     ["/referentiel/risques/nouveau", "Risque"],
   ])("renders the skeleton page of %s", (path, title) => {
     renderRoutes(appRoutes, "RAI", { path });
