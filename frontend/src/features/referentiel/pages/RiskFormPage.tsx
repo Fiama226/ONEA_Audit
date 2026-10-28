@@ -6,13 +6,15 @@ import { isApiError } from "@/api/errors";
 import { useRole } from "@/auth/useRole";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
@@ -50,7 +52,6 @@ import type { PrioriteRisque, ReponseRisque, Risque, RisqueInput } from "../type
 const c = fr.refCartographie;
 const SCALE = ["1", "2", "3", "4", "5"] as const;
 const FIELDS = [
-  "version",
   "processus",
   "objet_auditable",
   "libelle",
@@ -150,10 +151,10 @@ export function RiskFormPage() {
       </p>
     );
   }
-  if (!isEdit && !versionId) {
+  if (!isEdit && (!versionId || map.isError)) {
     return (
       <p role="alert" className="rounded-lg border border-border bg-surface p-6 text-sm">
-        {c.riskMapMissing}
+        {versionId ? c.notFound : c.riskMapMissing}
       </p>
     );
   }
@@ -460,32 +461,32 @@ export function RiskFormPage() {
       </Form>
 
       {canEdit && isEdit && (
-        <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{c.deleteTitle}</DialogTitle>
-              <DialogDescription>{c.deleteWarning}</DialogDescription>
-            </DialogHeader>
+        <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{c.deleteTitle}</AlertDialogTitle>
+              <AlertDialogDescription>{c.deleteWarning}</AlertDialogDescription>
+            </AlertDialogHeader>
             {deleteError && (
               <p role="alert" className="text-sm text-destructive">
                 {deleteError}
               </p>
             )}
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setConfirmDelete(false)}>
-                {fr.common.cancel}
-              </Button>
-              <Button
-                type="button"
+            <AlertDialogFooter>
+              <AlertDialogCancel>{fr.common.cancel}</AlertDialogCancel>
+              <AlertDialogAction
                 variant="destructive"
                 disabled={del.isPending}
-                onClick={() => void onDelete()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  void onDelete();
+                }}
               >
                 {del.isPending ? c.deleting : fr.common.delete}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

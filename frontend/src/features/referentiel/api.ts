@@ -1,5 +1,6 @@
 import {
   useMutation,
+  keepPreviousData,
   useQuery,
   useQueryClient,
   type QueryClient,
@@ -243,7 +244,11 @@ export function useRiskMatrix(id: string | undefined) {
   });
 }
 
-/** Comparaison de la version `id` (cible) avec `withId` (référence) ; inactive sans `withId`. */
+/**
+ * Comparaison côté serveur : `id` (dans l'URL) est la version de référence et `withId` la cible.
+ * `ajoutes` = risques présents dans la cible seulement, `retires` = dans la référence seulement,
+ * `changements[champ] = [valeur de la référence, valeur de la cible]`. Inactive sans `withId`.
+ */
 export function useRiskMapComparison(id: string | undefined, withId?: string) {
   return useQuery({
     queryKey: referentielKeys.comparison(id, withId),
@@ -267,7 +272,21 @@ export function useRisks(params: RiskParams = {}) {
   return useQuery({
     queryKey: referentielKeys.risks(params),
     queryFn: () => apiFetch<S["PaginatedRisqueList"]>(`${BASE}/risks/${toQuery(params)}`),
+    // Garde les lignes affichées pendant le changement de page ou de filtre (pas de clignotement).
+    placeholderData: keepPreviousData,
   });
+}
+
+/** Charge toutes les pages d'une liste de risques (impression complète). */
+export async function fetchAllRisks(params: RiskParams): Promise<Risque[]> {
+  const all: Risque[] = [];
+  for (let page = 1; ; page += 1) {
+    const data = await apiFetch<S["PaginatedRisqueList"]>(
+      `${BASE}/risks/${toQuery({ ...params, page, page_size: 200 })}`,
+    );
+    all.push(...data.results);
+    if (!data.next || data.results.length === 0) return all;
+  }
 }
 
 export function useRisk(id: string | undefined) {

@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import { API_URL, server } from "@/test/msw";
 import { DRAFT, mockReferentiel, renderCarto, VALIDATED } from "../cartoFixtures";
@@ -11,6 +11,13 @@ const routes = [{ path: "/referentiel/cartographies/:id", element: <RiskMapDetai
 const draftPath = `/referentiel/cartographies/${DRAFT.id}`;
 
 describe("RiskMapDetailPage", () => {
+  let restoreUrl = () => {};
+  afterEach(() => {
+    restoreUrl();
+    restoreUrl = () => {};
+    vi.unstubAllGlobals();
+  });
+
   it("filters the risk list from a matrix cell, reflects it in the URL and clears it", async () => {
     const seen = mockReferentiel();
     const user = userEvent.setup();
@@ -82,7 +89,7 @@ describe("RiskMapDetailPage", () => {
     const user = userEvent.setup();
     renderCarto(routes, "RAI", draftPath);
     await user.click(await screen.findByRole("button", { name: "Valider la cartographie" }));
-    const dialog = await screen.findByRole("dialog");
+    const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText(
         "Une fois validée, la cartographie est figée : aucun risque ne pourra plus être ajouté, modifié ou supprimé.",
@@ -105,8 +112,14 @@ describe("RiskMapDetailPage", () => {
         });
       }),
     );
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
     URL.createObjectURL = vi.fn(() => "blob:x");
     URL.revokeObjectURL = vi.fn();
+    restoreUrl = () => {
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    };
     const user = userEvent.setup();
     renderCarto(routes, "RAI", draftPath);
     await user.click(await screen.findByRole("button", { name: "Exporter en Excel" }));
@@ -127,6 +140,43 @@ describe("RiskMapDetailPage", () => {
     expect(
       screen.getByRole("heading", { name: /Cartographie des risques 2026/ }),
     ).toBeInTheDocument();
+  });
+
+  it("does not navigate when choosing a version, only on the Comparer button", async () => {
+    mockReferentiel();
+    const user = userEvent.setup();
+    const { router } = renderCarto(routes, "RAI", draftPath);
+    await user.selectOptions(
+      await screen.findByLabelText("Comparer avec une autre version"),
+      VALIDATED.id,
+    );
+    expect(router.state.location.pathname).toBe(draftPath);
+    await user.click(screen.getByRole("button", { name: "Comparer" }));
+    expect(router.state.location.pathname).toBe(`${draftPath}/comparer`);
+    expect(router.state.location.search).toBe(`?avec=${VALIDATED.id}`);
+  });
+
+  it("debounces the search and keeps the previous rows while loading", async () => {
+    const seen = mockReferentiel();
+    const user = userEvent.setup();
+    renderCarto(routes, "RAI", draftPath);
+    await screen.findByText("Retard de facturation");
+    const before = seen.length;
+    await user.type(screen.getByLabelText("Recherche"), "retard");
+    await waitFor(() => expect(seen.some((s) => s.includes("q=retard"))).toBe(true));
+    expect(seen.filter((s) => s.includes("q=")).every((s) => s.includes("q=retard"))).toBe(true);
+    expect(seen.length - before).toBe(1);
+  });
+
+  it("prints every page of the filtered set", async () => {
+    const seen = mockReferentiel();
+    const print = vi.fn();
+    vi.stubGlobal("print", print);
+    const user = userEvent.setup();
+    renderCarto(routes, "AUDITEUR", draftPath);
+    await user.click(await screen.findByRole("button", { name: "Imprimer" }));
+    await waitFor(() => expect(print).toHaveBeenCalledTimes(1));
+    expect(seen.some((s) => s.includes("page_size=200"))).toBe(true);
   });
 
   it("has no axe violations", async () => {

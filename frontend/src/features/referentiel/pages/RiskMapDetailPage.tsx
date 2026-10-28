@@ -1,5 +1,6 @@
-import { Plus } from "lucide-react";
-import { useState } from "react";
+import { Plus, Printer } from "lucide-react";
+import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { isApiError } from "@/api/errors";
 import { useRole } from "@/auth/useRole";
@@ -9,7 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fr } from "@/i18n/fr";
-import { useProcesses, useRiskMap, useRiskMaps, useRiskMatrix, useRisks } from "../api";
+import {
+  fetchAllRisks,
+  useProcesses,
+  useRiskMap,
+  useRiskMaps,
+  useRiskMatrix,
+  useRisks,
+} from "../api";
 import { ExportButtons } from "../components/ExportButtons";
 import { FrozenBanner } from "../components/FrozenBanner";
 import { NativeSelect } from "../components/NativeSelect";
@@ -17,7 +25,7 @@ import { RiskFilters } from "../components/RiskFilters";
 import { RiskLevelBadge } from "../components/RiskLevelBadge";
 import { VersionStatusBadge } from "../components/VersionStatusBadge";
 import { ValidateRiskMapDialog } from "../components/ValidateRiskMapDialog";
-import { PRIORITE_LABELS, REPONSE_LABELS } from "../labels";
+import { NIVEAU_LABELS, PRIORITE_LABELS, REPONSE_LABELS } from "../labels";
 import { canEditCartographie } from "../permissions";
 import type { NiveauRisque, Risque } from "../types";
 
@@ -66,12 +74,60 @@ function scale(value: string | null): 1 | 2 | 3 | 4 | 5 | null {
 
 const NIVEAUX = ["FAIBLE", "MOYEN", "ELEVE"] as const;
 
+/** Tableau complet réservé à l'impression (tous les risques du jeu filtré, sans actions). */
+function PrintTable({ rows }: { rows: Risque[] }) {
+  const heads = [
+    fr.referentiel.code,
+    c.colRisque,
+    c.colProcessus,
+    c.colP,
+    c.colI,
+    c.colScore,
+    c.colNiveau,
+    c.colReponse,
+    c.colPriorite,
+  ];
+  return (
+    <table className="hidden w-full text-xs print:table">
+      <caption className="sr-only">{c.risksCaption}</caption>
+      <thead>
+        <tr>
+          {heads.map((h) => (
+            <th key={h} scope="col" className="border-b border-border px-2 py-1 text-left">
+              {h}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.id} className="break-inside-avoid">
+            <td className="px-2 py-1">{r.code}</td>
+            <td className="px-2 py-1">{r.libelle}</td>
+            <td className="px-2 py-1">{r.processus_code}</td>
+            <td className="px-2 py-1">{r.probabilite}</td>
+            <td className="px-2 py-1">{r.impact}</td>
+            <td className="px-2 py-1">{r.score}</td>
+            <td className="px-2 py-1">{NIVEAU_LABELS[r.niveau]}</td>
+            <td className="px-2 py-1">{r.reponse ? REPONSE_LABELS[r.reponse] : c.noValue}</td>
+            <td className="px-2 py-1">{r.priorite ? PRIORITE_LABELS[r.priorite] : c.noValue}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export function RiskMapDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { role } = useRole();
   const [params, setParams] = useSearchParams();
   const [validating, setValidating] = useState(false);
+  const [compareChoice, setCompareChoice] = useState("");
+  const [printRows, setPrintRows] = useState<Risque[] | null>(null);
+  const [printing, setPrinting] = useState(false);
+  const [printError, setPrintError] = useState(false);
 
   const probabilite = scale(params.get("probabilite"));
   const impact = scale(params.get("impact"));
@@ -79,22 +135,56 @@ export function RiskMapDetailPage() {
   const processus = params.get("processus") ?? "";
   const niveau = params.get("niveau") ?? "";
   const q = params.get("q") ?? "";
+  // La saisie est locale ; l'URL (donc la requête) n'est mise à jour qu'après 300 ms d'inactivité.
+  const [qInput, setQInput] = useState(q);
+  useEffect(() => {
+    if (qInput === q) return;
+    const timer = setTimeout(() => {
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (qInput) next.set("q", qInput);
+          else next.delete("q");
+          next.delete("page");
+          return next;
+        },
+        { replace: true },
+      );
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [qInput, q, setParams]);
   const page = Math.max(1, Number(params.get("page")) || 1);
 
   const map = useRiskMap(id);
   const matrix = useRiskMatrix(id);
   const others = useRiskMaps({ page_size: 100, ordering: "-annee" });
   const processes = useProcesses({ page_size: 200 });
-  const risks = useRisks({
+  const filterParams = {
     version: id,
     probabilite: cellFilter?.probability,
     impact: cellFilter?.impact,
     processus,
     niveau: (NIVEAUX as readonly string[]).includes(niveau) ? (niveau as NiveauRisque) : undefined,
     q,
-    page,
-    page_size: PAGE_SIZE,
-  });
+  };
+  const risks = useRisks({ ...filterParams, page, page_size: PAGE_SIZE });
+
+  // Impression complète : charge toutes les pages du jeu filtré, puis imprime.
+  async function startPrint() {
+    setPrinting(true);
+    setPrintError(false);
+    try {
+      const all = await fetchAllRisks(filterParams);
+      // Rendu synchrone du tableau complet (réservé à l'impression) avant d'ouvrir le dialogue.
+      flushSync(() => setPrintRows(all));
+      window.print();
+      setPrintRows(null);
+    } catch {
+      setPrintError(true);
+    } finally {
+      setPrinting(false);
+    }
+  }
 
   function update(changes: Record<string, string | null>, resetPage = true) {
     setParams(
@@ -143,6 +233,7 @@ export function RiskMapDetailPage() {
   const otherVersions = (others.data?.results ?? []).filter((v) => v.id !== id);
   const rows = risks.data?.results ?? [];
   const filtered = Boolean(cellFilter || processus || niveau || q);
+  const pageCount = Math.ceil((risks.data?.count ?? 0) / PAGE_SIZE);
 
   return (
     <div className="grid gap-6">
@@ -167,29 +258,45 @@ export function RiskMapDetailPage() {
             </>
           )}
           <ExportButtons id={id} />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={printing}
+            onClick={() => void startPrint()}
+          >
+            <Printer aria-hidden />
+            {printing ? c.printPreparing : c.printAction}
+          </Button>
           {otherVersions.length > 0 && (
-            <div className="grid gap-1">
-              <Label htmlFor="compare-with" className="sr-only">
-                {c.compareLabel}
-              </Label>
-              <NativeSelect
-                id="compare-with"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value)
-                    void navigate(
-                      `/referentiel/cartographies/${id}/comparer?avec=${e.target.value}`,
-                    );
-                }}
-              >
-                <option value="">{c.compareWith}</option>
-                {otherVersions.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.libelle}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
+            <form
+              className="flex items-end gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (compareChoice)
+                  void navigate(`/referentiel/cartographies/${id}/comparer?avec=${compareChoice}`);
+              }}
+            >
+              <div className="grid gap-1">
+                <Label htmlFor="compare-with" className="sr-only">
+                  {c.compareLabel}
+                </Label>
+                <NativeSelect
+                  id="compare-with"
+                  value={compareChoice}
+                  onChange={(e) => setCompareChoice(e.target.value)}
+                >
+                  <option value="">{c.compareWith}</option>
+                  {otherVersions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.libelle}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </div>
+              <Button type="submit" variant="outline" disabled={!compareChoice}>
+                {c.compareButton}
+              </Button>
+            </form>
           )}
         </div>
       </div>
@@ -233,10 +340,18 @@ export function RiskMapDetailPage() {
           {c.risksTitle}
         </h3>
         <RiskFilters
-          values={{ processus, niveau, q }}
+          values={{ processus, niveau, q: qInput }}
           processes={processes.data?.results ?? []}
-          onChange={(next) => update(next)}
+          onChange={({ q: nextQ, ...rest }) => {
+            if (nextQ !== undefined) setQInput(nextQ);
+            if (Object.keys(rest).length > 0) update(rest);
+          }}
         />
+        {printError && (
+          <p role="alert" className="text-sm text-destructive print:hidden">
+            {c.printError}
+          </p>
+        )}
         {cellFilter && (
           <p className="flex items-center gap-3 text-sm" role="status">
             <span>
@@ -268,21 +383,31 @@ export function RiskMapDetailPage() {
             </Button>
           </div>
         ) : (
-          <DataTable
-            caption={c.risksCaption}
-            columns={columns}
-            data={rows}
-            total={risks.data?.count ?? 0}
-            page={page}
-            pageSize={PAGE_SIZE}
-            onPageChange={(next) => update({ page: String(next) }, false)}
-            isLoading={risks.isLoading}
-            empty={
-              <p className="rounded-lg border border-border bg-surface p-6 text-sm text-text-muted">
-                {filtered ? c.risksEmpty : c.risksEmptyMap}
+          <>
+            <div className={printRows ? "print:hidden" : undefined}>
+              <DataTable
+                caption={c.risksCaption}
+                columns={columns}
+                data={rows}
+                total={risks.data?.count ?? 0}
+                page={page}
+                pageSize={PAGE_SIZE}
+                onPageChange={(next) => update({ page: String(next) }, false)}
+                isLoading={risks.isLoading}
+                empty={
+                  <p className="rounded-lg border border-border bg-surface p-6 text-sm text-text-muted">
+                    {filtered ? c.risksEmpty : c.risksEmptyMap}
+                  </p>
+                }
+              />
+            </div>
+            {pageCount > 1 && !printRows && (
+              <p className="hidden text-sm print:block">
+                {c.printPartial.replace("{p}", String(page)).replace("{n}", String(pageCount))}
               </p>
-            }
-          />
+            )}
+            {printRows && <PrintTable rows={printRows} />}
+          </>
         )}
       </section>
 

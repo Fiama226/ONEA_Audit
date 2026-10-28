@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fr } from "@/i18n/fr";
@@ -10,7 +12,7 @@ import type { Comparaison } from "../types";
 const c = fr.refCartographie;
 
 const FIELD_LABELS: Record<string, string> = {
-  libelle: fr.refCartographie.colRisque,
+  libelle: c.colRisque,
   description: c.fieldDescription,
   processus: c.colProcessus,
   objet_auditable: c.fieldObjet,
@@ -56,47 +58,65 @@ export function RiskMapComparePage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const avec = params.get("avec") ?? "";
-  const map = useRiskMap(id);
+  const [choice, setChoice] = useState(avec);
+  const current = useRiskMap(id);
+  const other = useRiskMap(avec || undefined);
   const maps = useRiskMaps({ page_size: 100, ordering: "-annee" });
-  const comparison = useRiskMapComparison(id, avec || undefined);
+
+  // Le serveur prend la version de l'URL comme référence : on met toujours la plus ancienne
+  // (par année) en référence et la plus récente en cible, quel que soit le sens de navigation.
+  let reference: string | undefined;
+  let target: string | undefined;
+  if (current.data && other.data) {
+    const currentIsOlder =
+      current.data.annee !== other.data.annee
+        ? current.data.annee < other.data.annee
+        : current.data.created_at <= other.data.created_at;
+    reference = (currentIsOlder ? current.data : other.data).id;
+    target = (currentIsOlder ? other.data : current.data).id;
+  }
+  const comparison = useRiskMapComparison(reference, target);
   const others = (maps.data?.results ?? []).filter((v) => v.id !== id);
   const data = comparison.data;
   const empty =
     data && data.ajoutes.length === 0 && data.retires.length === 0 && data.modifies.length === 0;
+  const failed = Boolean(avec) && (comparison.isError || other.isError);
+  const loading = Boolean(avec) && !failed && !data;
 
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold">{c.compareTitle}</h2>
-          {map.data && (
-            <p className="mt-1 text-sm text-text-muted">
-              {c.compareTarget} : {map.data.libelle}
-            </p>
-          )}
-        </div>
-        <div className="grid gap-1.5 print:hidden">
-          <Label htmlFor="compare-version">{c.compareSelector}</Label>
-          <NativeSelect
-            id="compare-version"
-            value={avec}
-            onChange={(e) => {
-              void navigate(
-                e.target.value
-                  ? `/referentiel/cartographies/${id}/comparer?avec=${e.target.value}`
-                  : `/referentiel/cartographies/${id}/comparer`,
-                { replace: true },
-              );
-            }}
-          >
-            <option value="">{c.compareChoose}</option>
-            {others.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.libelle}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
+        <h2 className="text-xl font-semibold">{c.compareTitle}</h2>
+        <form
+          className="flex items-end gap-2 print:hidden"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void navigate(
+              choice
+                ? `/referentiel/cartographies/${id}/comparer?avec=${choice}`
+                : `/referentiel/cartographies/${id}/comparer`,
+            );
+          }}
+        >
+          <div className="grid gap-1.5">
+            <Label htmlFor="compare-version">{c.compareSelector}</Label>
+            <NativeSelect
+              id="compare-version"
+              value={choice}
+              onChange={(e) => setChoice(e.target.value)}
+            >
+              <option value="">{c.compareChoose}</option>
+              {others.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.libelle}
+                </option>
+              ))}
+            </NativeSelect>
+          </div>
+          <Button type="submit" variant="outline" disabled={!choice}>
+            {c.compareButton}
+          </Button>
+        </form>
       </div>
       <Link
         to={`/referentiel/cartographies/${id}`}
@@ -106,8 +126,8 @@ export function RiskMapComparePage() {
       </Link>
 
       {!avec && <p className="text-sm text-text-muted">{c.comparePick}</p>}
-      {avec && comparison.isLoading && <Skeleton className="h-32 w-full" />}
-      {avec && comparison.isError && (
+      {loading && <Skeleton className="h-32 w-full" />}
+      {failed && (
         <p role="alert" className="text-sm text-destructive">
           {c.compareError}
         </p>
@@ -115,7 +135,9 @@ export function RiskMapComparePage() {
       {data && (
         <>
           <p className="text-sm text-text-muted">
-            {c.compareReference} : {data.reference.libelle}
+            {c.compareRange
+              .replace("{a}", data.reference.libelle)
+              .replace("{b}", data.cible.libelle)}
           </p>
           {empty ? (
             <p className="rounded-lg border border-border bg-surface p-6 text-sm">
@@ -143,10 +165,10 @@ export function RiskMapComparePage() {
                               {c.compareField}
                             </th>
                             <th scope="col" className="px-4 py-2 font-semibold">
-                              {c.compareBefore}
+                              {`${c.compareBefore} (${data.reference.annee})`}
                             </th>
                             <th scope="col" className="px-4 py-2 font-semibold">
-                              {c.compareAfter}
+                              {`${c.compareAfter} (${data.cible.annee})`}
                             </th>
                           </tr>
                         </thead>

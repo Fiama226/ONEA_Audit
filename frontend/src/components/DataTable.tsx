@@ -161,7 +161,7 @@ export function DataTable<T extends RowData>({
           </TableBody>
         </table>
       </div>
-      <div className="flex items-center justify-between gap-4 border-t border-border px-4 py-2 text-sm text-text-muted">
+      <div className="flex items-center justify-between gap-4 border-t border-border px-4 py-2 text-sm text-text-muted print:hidden">
         <span className="tabular-nums">
           {total} {total === 1 ? fr.table.result : fr.table.results}
         </span>

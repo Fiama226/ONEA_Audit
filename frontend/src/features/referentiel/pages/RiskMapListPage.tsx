@@ -119,9 +119,7 @@ export function RiskMapListPage() {
         {versions.length > 0 && createButton}
       </div>
       {body}
-      {canEdit && (
-        <CreateRiskMapDialog open={creating} onOpenChange={setCreating} versions={versions} />
-      )}
+      {canEdit && <CreateRiskMapDialog open={creating} onOpenChange={setCreating} />}
     </div>
   );
 }

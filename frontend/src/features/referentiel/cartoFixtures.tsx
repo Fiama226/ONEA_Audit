@@ -1,7 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { configure } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { Outlet, type RouteObject } from "react-router-dom";
+import { type RouteObject } from "react-router-dom";
 import type { Role } from "@/auth/types";
 import { API_URL, server } from "@/test/msw";
 import { renderRoutes } from "@/test/shell";
@@ -128,8 +127,14 @@ export function mockReferentiel(opts: { map?: MapFixture; risks?: unknown[] } = 
   const risks = opts.risks ?? [R1, R2];
   const seen: string[] = [];
   server.use(
-    http.get(`${API_URL}/api/v1/risk-maps/`, () => HttpResponse.json(page([DRAFT, VALIDATED]))),
-    http.get(`${API_URL}/api/v1/risk-maps/${map.id}/`, () => HttpResponse.json(map)),
+    http.get(`${API_URL}/api/v1/risk-maps/`, ({ request }) => {
+      const statut = new URL(request.url).searchParams.get("statut");
+      return HttpResponse.json(
+        page([DRAFT, VALIDATED].filter((v) => !statut || v.statut === statut)),
+      );
+    }),
+    http.get(`${API_URL}/api/v1/risk-maps/${DRAFT.id}/`, () => HttpResponse.json(DRAFT)),
+    http.get(`${API_URL}/api/v1/risk-maps/${VALIDATED.id}/`, () => HttpResponse.json(VALIDATED)),
     http.get(`${API_URL}/api/v1/risk-maps/${map.id}/matrix/`, () =>
       HttpResponse.json(matrixFor(map)),
     ),
@@ -163,19 +168,5 @@ export function mockReferentiel(opts: { map?: MapFixture; risks?: unknown[] } = 
 }
 
 export function renderCarto(routes: RouteObject[], role: Role, path: string) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return renderRoutes(
-    [
-      {
-        element: (
-          <QueryClientProvider client={client}>
-            <Outlet />
-          </QueryClientProvider>
-        ),
-        children: routes,
-      },
-    ],
-    role,
-    { path },
-  );
+  return renderRoutes(routes, role, { path });
 }

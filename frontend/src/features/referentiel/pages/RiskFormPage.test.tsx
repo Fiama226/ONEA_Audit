@@ -146,6 +146,35 @@ describe("RiskFormPage", () => {
     );
   });
 
+  it("shows an alert when the server rejects the map (version)", async () => {
+    mockReferentiel();
+    server.use(
+      http.post(`${API_URL}/api/v1/risks/`, () =>
+        HttpResponse.json(
+          { detail: "Données invalides.", errors: { version: ["Clé primaire invalide."] } },
+          { status: 422 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderCarto(routes, "RAI", newPath);
+    await user.selectOptions(await screen.findByLabelText("Processus"), "p-1");
+    await user.type(screen.getByLabelText("Libellé du risque"), "Fraude");
+    await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Clé primaire invalide.");
+  });
+
+  it("shows not-found instead of the form when the map of a new risk does not exist", async () => {
+    server.use(
+      http.get(`${API_URL}/api/v1/risk-maps/${DRAFT.id}/`, () =>
+        HttpResponse.json({}, { status: 404 }),
+      ),
+    );
+    renderCarto(routes, "RAI", newPath);
+    expect(await screen.findByRole("alert")).toHaveTextContent("introuvable");
+    expect(screen.queryByRole("button", { name: "Enregistrer" })).not.toBeInTheDocument();
+  });
+
   it("has no axe violations", async () => {
     mockReferentiel();
     const { container } = renderCarto(routes, "RAI", newPath);

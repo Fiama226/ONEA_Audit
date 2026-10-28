@@ -1,17 +1,19 @@
 import { useState } from "react";
 import { isApiError } from "@/api/errors";
-import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { fr } from "@/i18n/fr";
 import { useValidateRiskMap } from "../api";
 
+/** Confirmation d'une action irréversible : `alertdialog`, non fermable par le voile. */
 export function ValidateRiskMapDialog({
   id,
   open,
@@ -41,26 +43,31 @@ export function ValidateRiskMapDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{c.validateTitle}</DialogTitle>
-          <DialogDescription>{c.validateWarning}</DialogDescription>
-        </DialogHeader>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{c.validateTitle}</AlertDialogTitle>
+          <AlertDialogDescription>{c.validateWarning}</AlertDialogDescription>
+        </AlertDialogHeader>
         {error && (
           <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         )}
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-            {fr.common.cancel}
-          </Button>
-          <Button type="button" disabled={validate.isPending} onClick={() => void confirm()}>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{fr.common.cancel}</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={validate.isPending}
+            onClick={(e) => {
+              // Reste ouverte tant que le serveur n'a pas accepté (422 affiché dans la boîte).
+              e.preventDefault();
+              void confirm();
+            }}
+          >
             {validate.isPending ? c.validating : c.validateConfirm}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
