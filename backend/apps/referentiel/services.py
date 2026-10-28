@@ -360,6 +360,14 @@ def creer_version(
     if not 2000 <= annee <= 2100:
         msg = "L'année doit être comprise entre 2000 et 2100."
         raise _refuser(msg, annee=msg)
+    if source is not None:
+        # source relue sous verrou : la copie ne part que d'une cartographie validée active
+        courante = (
+            CartographieVersion.objects.select_for_update(no_key=True).filter(pk=source.pk).first()
+        )
+        if courante is None or courante.statut != StatutCartographie.VALIDEE:
+            msg = "La cartographie source doit être validée."
+            raise _refuser(msg, source=msg)
     msg = f"Une cartographie existe déjà pour l'année {annee}."
     if CartographieVersion.objects.filter(annee=annee).exists():
         raise _refuser(msg, annee=msg)

@@ -223,6 +223,7 @@ def test_copie_n_reprend_l_objet_que_s_il_est_actif(rai: User) -> None:
     p = typed.processus()
     obj = typed.objet(processus=p)
     r = _risque(src, rai, p, objet_auditable=obj)
+    valider_version(src, by=rai)
     obj.soft_delete(rai)
     nv = creer_version(annee=2026, libelle="2026", source=src, by=rai)
     assert nv.risques.get(code=r.code).objet_auditable is None
@@ -233,6 +234,7 @@ def test_copie_continue_la_numerotation(rai: User) -> None:
     src = typed.version(annee=2025)
     p = typed.processus(code="FEP")
     _risque(src, rai, p)
+    valider_version(src, by=rai)
     nv = creer_version(annee=2026, libelle="2026", source=src, by=rai)
     assert _risque(nv, rai, p).code == "2-FEP-R2"
 
@@ -337,6 +339,7 @@ def test_comparer_objet_auditable_par_libelle(rai: User) -> None:
     o1 = typed.objet(processus=p, libelle="Objet A")
     ref = typed.version(annee=2025)
     r = _risque(ref, rai, p)
+    valider_version(ref, by=rai)
     cible = creer_version(annee=2026, libelle="2026", source=ref, by=rai)
     modifier_risque(cible.risques.get(code=r.code), objet_auditable=o1, by=rai)
     comp = comparer_versions(ref, cible)

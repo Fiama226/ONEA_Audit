@@ -128,7 +128,8 @@ def test_queryset_ecritures_ok_sur_brouillon(rai: User) -> None:
 def test_validee_exige_date_et_valideur_en_base() -> None:
     v = typed.version(annee=2024)
     with pytest.raises(IntegrityError), transaction.atomic():
-        CartographieVersion.objects.filter(pk=v.pk).update(statut=StatutCartographie.VALIDEE)
+        # _base_manager contourne volontairement les gardes : seule la contrainte base reste
+        CartographieVersion._base_manager.filter(pk=v.pk).update(statut=StatutCartographie.VALIDEE)
 
 
 def test_numero_supprime_dans_la_lignee_jamais_reutilise(rai: User) -> None:
@@ -196,3 +197,36 @@ def test_creer_objet_processus_supprime_refuse(rai: User) -> None:
     with pytest.raises(RegleMetierError) as exc:
         creer_objet(processus=p, nature=NatureObjet.DOMAINE, libelle="x", by=rai)
     assert "processus" in exc.value.errors
+
+
+def test_queryset_update_refuse_le_changement_de_version(rai: User) -> None:
+    r = _risque(typed.version(annee=2024), rai)
+    autre = typed.version(annee=2030)
+    for kw in ({"version": autre}, {"version_id": autre.pk}):
+        with pytest.raises(RegleMetierError) as exc:
+            Risque.objects.filter(pk=r.pk).update(**kw)
+        assert "version" in exc.value.errors
+    r.refresh_from_db()
+    assert r.version_id != autre.pk
+
+
+def test_queryset_update_refuse_le_statut(rai: User) -> None:
+    v = typed.version(annee=2024)
+    with pytest.raises(RegleMetierError) as exc:
+        CartographieVersion.objects.filter(pk=v.pk).update(statut=StatutCartographie.VALIDEE)
+    assert "statut" in exc.value.errors
+    v.refresh_from_db()
+    assert v.statut == StatutCartographie.BROUILLON
+
+
+def test_copie_exige_une_source_validee_et_active(rai: User) -> None:
+    brouillon = typed.version(annee=2024)
+    _risque(brouillon, rai)
+    with pytest.raises(RegleMetierError) as exc:
+        creer_version(annee=2025, libelle="x", source=brouillon, by=rai)
+    assert "source" in exc.value.errors
+    valider_version(brouillon, by=rai)
+    CartographieVersion._base_manager.filter(pk=brouillon.pk).update(deleted_at=SUPPRIME)
+    with pytest.raises(RegleMetierError) as exc:
+        creer_version(annee=2025, libelle="x", source=brouillon, by=rai)
+    assert "source" in exc.value.errors
