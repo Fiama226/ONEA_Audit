@@ -321,6 +321,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/risk-maps/{id}/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exporter une cartographie (CSV ou XLSX)
+         * @description Télécharge la cartographie : liste des risques (CSV ou XLSX) ; le XLSX ajoute la matrice 5×5.
+         */
+        get: operations["v1_risk_maps_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/risk-maps/{id}/matrix/": {
         parameters: {
             query?: never;
@@ -2342,6 +2362,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Comparaison"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risk_maps_export_retrieve: {
+        parameters: {
+            query: {
+                /** @description Format du fichier : csv (UTF-8, séparateur « ; ») ou xlsx. */
+                type: "csv" | "xlsx";
+            };
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) cartographie des risques. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv; charset=utf-8": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                 };
             };
             400: {

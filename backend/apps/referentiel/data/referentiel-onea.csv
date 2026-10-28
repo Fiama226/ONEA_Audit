@@ -1,0 +1,29 @@
+﻿type;code;libelle;famille;ordre;parent;directions
+DIRECTION;DG;Direction Générale;;;;
+DIRECTION;DCG;Direction du Contrôle de Gestion;;;;
+DIRECTION;DJC;Direction Juridique et Contentieux;;;;
+DIRECTION;DCAD;Direction de la Communication, des Archives et de la Documentation;;;;
+DIRECTION;DCOOP;Direction de la Coopération;;;;
+DIRECTION;DAI;Direction de l'Audit Interne;;;;
+DIRECTION;DOQ;Direction de l'Organisation et de la Qualité;;;;
+DIRECTION;DMO;Direction de la Maîtrise d'Ouvrage;;;;
+DIRECTION;DEX-EP;Direction de l'Exploitation Eau Potable;;;;
+DIRECTION;DEX-ASS;Direction de l'Exploitation Assainissement;;;;
+DIRECTION;DCL;Direction de la Clientèle;;;;
+DIRECTION;DRH;Direction des Ressources Humaines;;;;
+DIRECTION;DSI;Direction du Système d'Information;;;;
+DIRECTION;DM;Direction des Marchés;;;;
+DIRECTION;DL;Direction de la Logistique;;;;
+DIRECTION;DF;Direction Financière;;;;
+DIRECTION;DCEMEAU;Centre des Métiers de l'Eau;;;;
+PROCESSUS;EST;Élaborer et mettre en œuvre la stratégie;PILOTAGE;1;;DG,DCG,DJC,DCAD,DCOOP,DAI
+PROCESSUS;PSM;Piloter le Système de Management de la Qualité;PILOTAGE;2;;DOQ
+PROCESSUS;CGP;Concevoir et gérer les projets;REALISATION;3;;DMO
+PROCESSUS;FEP;Fournir l'eau potable;REALISATION;4;;DEX-EP
+PROCESSUS;PAS;Promouvoir l'assainissement;REALISATION;5;;DEX-ASS
+PROCESSUS;GCL;Gérer la clientèle;REALISATION;6;;DCL
+PROCESSUS;GRH;Gérer les ressources humaines;SUPPORT;7;;DRH
+PROCESSUS;GSI;Gérer le système d'information;SUPPORT;8;;DSI
+PROCESSUS;GAC;Gérer les achats;SUPPORT;9;;DM,DL
+PROCESSUS;GFI;Gérer les finances;SUPPORT;10;;DF
+PROCESSUS;AFO;Assurer la formation;SUPPORT;11;;DCEMEAU
