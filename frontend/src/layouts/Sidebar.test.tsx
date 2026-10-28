@@ -10,7 +10,7 @@ const HIDDEN: Record<Role, string[]> = {
   RAI: [fr.nav.administration],
   AUDITEUR: [fr.nav.administration],
   AUDITE: [fr.nav.referentiel, fr.nav.administration],
-  DG: [fr.nav.referentiel, fr.nav.administration],
+  DG: [fr.nav.administration],
 };
 const ALL = [
   fr.nav.dashboard,

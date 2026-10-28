@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, configure, render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { createMemoryRouter, RouterProvider, type RouteObject } from "react-router-dom";
@@ -42,10 +43,13 @@ export function renderRoutes(
 ) {
   const value = authValueFor(role, opts.logout);
   const router = createMemoryRouter(routes, { initialEntries: [opts.path ?? "/"] });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const utils = render(
-    <AuthContext.Provider value={value}>
-      <RouterProvider router={router} />
-    </AuthContext.Provider>,
+    <QueryClientProvider client={client}>
+      <AuthContext.Provider value={value}>
+        <RouterProvider router={router} />
+      </AuthContext.Provider>
+    </QueryClientProvider>,
   );
   return { ...utils, router, auth: value };
 }

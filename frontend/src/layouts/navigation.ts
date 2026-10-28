@@ -15,7 +15,7 @@ import { fr } from "@/i18n/fr";
  * (routes.tsx) lisent cette table. Absent = tout utilisateur authentifié.
  */
 const ROUTE_ROLES: Readonly<Record<string, readonly Role[]>> = {
-  "/referentiel": ["ADMIN", "RAI", "AUDITEUR"],
+  "/referentiel": ["ADMIN", "RAI", "AUDITEUR", "DG"],
   "/administration": ["ADMIN"],
 };
 
