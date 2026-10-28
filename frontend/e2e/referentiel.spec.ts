@@ -22,6 +22,8 @@ async function logIn(page: Page, username: string) {
 
 async function addRisk(page: Page, libelle: string, probabilite: string, impact: string) {
   await page.getByRole("button", { name: "Ajouter un risque" }).click();
+  // The map id travels in the path (not in a search param that a filter navigation could drop).
+  await expect(page).toHaveURL(/\/referentiel\/cartographies\/[0-9a-f-]{36}\/risques\/nouveau$/);
   // Wait for the form page: the detail page has its own "Processus" filter.
   await expect(page.getByRole("heading", { name: "Nouveau risque", level: 2 })).toBeVisible();
   await page.getByLabel("Processus").selectOption({ label: `ZZE - ${PROCESS_LABEL}` });

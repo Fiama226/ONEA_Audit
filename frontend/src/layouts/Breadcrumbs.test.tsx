@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { cleanup, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { fr } from "@/i18n/fr";
 import { renderWithAuth } from "@/test/shell";
@@ -34,7 +34,7 @@ describe("Breadcrumbs", () => {
     expect(screen.queryByRole("link", { name: fr.nav.missions })).not.toBeInTheDocument();
   });
 
-  it("labels a uuid segment as Détail under the referentiel", () => {
+  it("labels a map uuid segment as Cartographie under the referentiel", () => {
     renderWithAuth(
       <Breadcrumbs />,
       "RAI",
@@ -45,18 +45,48 @@ describe("Breadcrumbs", () => {
       within(nav)
         .getAllByRole("listitem")
         .map((li) => li.textContent),
-    ).toEqual(["Tableau de bord", "Référentiel", "Cartographies", "Détail"]);
+    ).toEqual(["Tableau de bord", "Référentiel", "Cartographies", "Cartographie"]);
   });
 
-  it("does not link the risques segment, which has no page of its own", () => {
-    renderWithAuth(
-      <Breadcrumbs />,
-      "RAI",
-      "/referentiel/risques/3f2b8c1e-8a4d-4c55-9a0e-1b2c3d4e5f60",
-    );
+  const ID = "3f2b8c1e-8a4d-4c55-9a0e-1b2c3d4e5f60";
+  const crumbs = (path: string) => {
+    cleanup();
+    renderWithAuth(<Breadcrumbs />, "RAI", path);
     const nav = screen.getByRole("navigation", { name: fr.common.breadcrumb });
-    expect(within(nav).getByText("Risques").tagName).toBe("SPAN");
-    expect(within(nav).queryByRole("link", { name: "Risques" })).not.toBeInTheDocument();
-    expect(within(nav).getByRole("link", { name: "Référentiel" })).toBeInTheDocument();
+    return within(nav)
+      .getAllByRole("listitem")
+      .map((li) => li.textContent);
+  };
+
+  it("labels a risk page 'Risque', without a dead 'Risques > Détail' pair", () => {
+    expect(crumbs(`/referentiel/risques/${ID}`)).toEqual([
+      "Tableau de bord",
+      "Référentiel",
+      "Risque",
+    ]);
+  });
+
+  it("labels a map page 'Cartographie' and the add-risk page 'Nouveau risque'", () => {
+    expect(crumbs(`/referentiel/cartographies/${ID}`)).toEqual([
+      "Tableau de bord",
+      "Référentiel",
+      "Cartographies",
+      "Cartographie",
+    ]);
+    expect(crumbs(`/referentiel/cartographies/${ID}/risques/nouveau`)).toEqual([
+      "Tableau de bord",
+      "Référentiel",
+      "Cartographies",
+      "Cartographie",
+      "Nouveau risque",
+    ]);
+  });
+
+  it("links the map crumb back to the map from the add-risk page", () => {
+    renderWithAuth(<Breadcrumbs />, "RAI", `/referentiel/cartographies/${ID}/risques/nouveau`);
+    expect(screen.getByRole("link", { name: "Cartographie" })).toHaveAttribute(
+      "href",
+      `/referentiel/cartographies/${ID}`,
+    );
   });
 });

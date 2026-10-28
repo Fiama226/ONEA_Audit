@@ -1,4 +1,4 @@
-import { configure, screen } from "@testing-library/react";
+import { configure, screen, waitFor } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import { http, HttpResponse } from "msw";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -108,6 +108,15 @@ describe("referentiel risk map routes", () => {
   it("renders the risk map list page", async () => {
     renderRoutes(appRoutes, "RAI", { path: "/referentiel/cartographies" });
     expect(await screen.findByText(fr.refCartographie.emptyTitle)).toBeInTheDocument();
+  });
+
+  it("redirects the legacy add-risk URL to the path carrying the map", async () => {
+    const { router } = renderRoutes(appRoutes, "RAI", {
+      path: "/referentiel/risques/nouveau?cartographie=abc",
+    });
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/referentiel/cartographies/abc/risques/nouveau"),
+    );
   });
 
   it("renders the risk form page and asks for a map when none is given", () => {

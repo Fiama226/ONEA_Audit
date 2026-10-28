@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { isApiError } from "@/api/errors";
 import { useRole } from "@/auth/useRole";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,7 @@ import { NativeSelect } from "../components/NativeSelect";
 import { RiskLevelBadge } from "../components/RiskLevelBadge";
 import { NIVEAU_LABELS, PRIORITE_LABELS, REPONSE_LABELS } from "../labels";
 import { canEditCartographie } from "../permissions";
-import { applyServerErrors } from "../riskServerErrors";
+import { applyApiErrors } from "../formErrors";
 import {
   niveauFromScore,
   prioriteFromNiveau,
@@ -97,15 +97,20 @@ function valuesFromRisk(risk: Risque): RiskFormValues {
   };
 }
 
-export function RiskFormPage() {
-  const { id } = useParams();
-  const [search] = useSearchParams();
+/**
+ * Fiche d'un risque. En édition (`/risques/:id`), `:id` est le risque ; en création
+ * (`creating`, `/cartographies/:id/risques/nouveau`), `:id` est la cartographie : elle est portée
+ * par le chemin pour qu'aucune navigation par paramètres de recherche ne puisse la perdre.
+ */
+export function RiskFormPage({ creating = false }: { creating?: boolean }) {
+  const { id: paramId } = useParams();
   const navigate = useNavigate();
   const { role } = useRole();
-  const isEdit = id !== undefined;
+  const isEdit = !creating;
+  const id = isEdit ? paramId : undefined;
 
   const risk = useRisk(id);
-  const versionId = isEdit ? risk.data?.version : (search.get("cartographie") ?? undefined);
+  const versionId = isEdit ? risk.data?.version : paramId;
   const map = useRiskMap(versionId);
   const processes = useProcesses({ page_size: 200 });
   const save = useSaveRisk();
@@ -153,9 +158,12 @@ export function RiskFormPage() {
   }
   if (!isEdit && (!versionId || map.isError)) {
     return (
-      <p role="alert" className="rounded-lg border border-border bg-surface p-6 text-sm">
-        {versionId ? c.notFound : c.riskMapMissing}
-      </p>
+      <div role="alert" className="rounded-lg border border-border bg-surface p-6 text-sm">
+        <p>{versionId ? c.notFound : c.riskMapMissing}</p>
+        <Link to="/referentiel/cartographies" className="mt-3 inline-block text-primary underline">
+          {c.backToList}
+        </Link>
+      </div>
     );
   }
 
@@ -191,7 +199,7 @@ export function RiskFormPage() {
         void navigate(`/referentiel/risques/${created.id}`, { replace: true });
       }
     } catch (e) {
-      setGeneral(applyServerErrors(e, form.setError, FIELDS));
+      setGeneral(applyApiErrors(e, form.setError, FIELDS) ?? "");
     }
   }
 

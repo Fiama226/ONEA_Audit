@@ -11,13 +11,16 @@ import { SEGMENT_LABELS } from "./navigation";
 
 type Crumb = { to: string; label: string; linkable: boolean };
 
-/** Segments sans page propre : affichés dans le fil mais non cliquables. */
-const NON_LINK_SEGMENTS = new Set(["risques"]);
-
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function labelFor(segment: string): string {
-  if (UUID.test(segment)) return fr.referentiel.detail;
+/** Libellé d'un segment ; un identifiant prend le nom de l'objet désigné par le segment précédent. */
+function labelFor(segment: string, previous: string | undefined): string {
+  if (UUID.test(segment)) {
+    if (previous === "cartographies") return fr.refCartographie.crumbMap;
+    if (previous === "risques") return fr.refCartographie.crumbRisk;
+    return fr.referentiel.detail;
+  }
+  if (segment === "nouveau" && previous === "risques") return fr.refCartographie.crumbNewRisk;
   return SEGMENT_LABELS[segment] ?? segment;
 }
 
@@ -27,10 +30,12 @@ function crumbsFor(pathname: string): Crumb[] {
   if (segments.length === 0) return [root];
   const crumbs: Crumb[] = [root];
   segments.forEach((segment, i) => {
+    // « risques » n'a pas de page propre : il n'apparaît que s'il est le dernier segment.
+    if (segment === "risques" && i < segments.length - 1) return;
     crumbs.push({
       to: `/${segments.slice(0, i + 1).join("/")}`,
-      label: labelFor(segment),
-      linkable: !NON_LINK_SEGMENTS.has(segment),
+      label: labelFor(segment, segments[i - 1]),
+      linkable: true,
     });
   });
   return crumbs;

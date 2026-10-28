@@ -379,6 +379,16 @@ export const fr = {
     backToList: "Retour aux cartographies",
     backToMap: "Retour à la cartographie",
     addRisk: "Ajouter un risque",
+    crumbMap: "Cartographie",
+    crumbRisk: "Risque",
+    crumbNewRisk: "Nouveau risque",
+    editDraft: "Modifier",
+    editTitle: "Modifier la cartographie",
+    editDescription: "Corrigez le libellé ou le commentaire de ce brouillon.",
+    deleteDraft: "Supprimer le brouillon",
+    deleteDraftTitle: "Supprimer le brouillon",
+    deleteDraftWarning:
+      "Le brouillon et tous les risques qu'il contient seront supprimés. L'année pourra de nouveau être utilisée pour une nouvelle cartographie.",
     validate: "Valider la cartographie",
     validateTitle: "Valider la cartographie",
     validateWarning:
