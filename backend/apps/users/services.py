@@ -46,7 +46,13 @@ def _mark_pending(user: User, fields: list[str]) -> None:
         user.keycloak_sync_statut = KeycloakSyncStatut.EN_ATTENTE
         user.keycloak_sync_erreur = ""
         user.keycloak_sync_tentatives = 0
-        fields += ["keycloak_sync_statut", "keycloak_sync_erreur", "keycloak_sync_tentatives"]
+        user.keycloak_sync_manuel = False
+        fields += [
+            "keycloak_sync_statut",
+            "keycloak_sync_erreur",
+            "keycloak_sync_tentatives",
+            "keycloak_sync_manuel",
+        ]
 
 
 def modifier_profil(compte: User, *, changes: dict[str, str], by: User) -> User:

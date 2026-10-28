@@ -5,6 +5,7 @@ from auditlog.models import LogEntry
 from django.utils import timezone
 
 from apps.core.exceptions import RegleMetierError
+from apps.users import keycloak_sync
 from apps.users.keycloak_admin import KeycloakIndisponible
 from apps.users.keycloak_sync import (
     DEJA_SYNCHRONISE_KEYCLOAK,
@@ -181,3 +182,101 @@ def test_synchro_historisee_avec_acteur(admin: User, fake_keycloak: FakeKeycloak
     last = LogEntry.objects.get_for_object(User.objects.get(pk=autre.pk)).order_by("-pk").first()
     assert last is not None and last.actor_id is None
     assert "keycloak_sync_statut" in last.changes_dict
+
+
+def test_synchros_croisees_ne_marquent_pas_a_jour_un_etat_incoherent(
+    admin: User, fake_keycloak: FakeKeycloakAdmin, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B (target False) is overtaken by A (target True) which lands last in Keycloak."""
+    cible = _lie(fake_keycloak)
+    assert cible.keycloak_id is not None
+    desactiver(cible, motif="x", by=admin)
+    real = keycloak_sync._appliquer
+    calls: list[int] = []
+
+    def croisee(keycloak_id: object, enabled: bool) -> object:
+        erreur = real(keycloak_id, enabled)  # type: ignore[arg-type]
+        calls.append(1)
+        if len(calls) == 1:
+            reactiver(User.objects.get(pk=cible.pk), by=admin)
+            synchroniser_keycloak(cible.pk, by=admin)  # A, commits first
+            desactiver(User.objects.get(pk=cible.pk), motif="y", by=admin)
+        return erreur
+
+    monkeypatch.setattr(keycloak_sync, "_appliquer", croisee)
+    resultat = synchroniser_keycloak(cible.pk, by=admin)  # B commits last
+    assert not resultat.is_active and fake_keycloak.enabled(cible.keycloak_id)
+    assert resultat.keycloak_sync_statut == "EN_ATTENTE"
+    monkeypatch.setattr(keycloak_sync, "_appliquer", real)
+    resultat = synchroniser_keycloak(cible.pk, by=admin)
+    assert resultat.keycloak_sync_statut == "A_JOUR"
+    assert not fake_keycloak.enabled(cible.keycloak_id)
+
+
+def test_tache_beat_ne_relance_pas_les_erreurs_permanentes(
+    admin: User, fake_keycloak: FakeKeycloakAdmin
+) -> None:
+    cible = _lie(fake_keycloak)
+    assert cible.keycloak_id is not None
+    del fake_keycloak.users[cible.keycloak_id]
+    desactiver(cible, motif="x", by=admin)
+    synchroniser_keycloak(cible.pk, by=admin)  # 404 on deactivation: A_JOUR
+    reactiver(User.objects.get(pk=cible.pk), by=admin)
+    cible = synchroniser_keycloak(cible.pk, by=admin)
+    assert cible.keycloak_sync_statut == "ECHEC" and cible.keycloak_sync_manuel
+    assert synchroniser_comptes_keycloak() == 0
+    cible = relancer_synchronisation(cible, by=admin)
+    assert cible.keycloak_sync_statut == "ECHEC" and cible.keycloak_sync_tentatives == 2
+    # a new state change clears the manual-only flag
+    desactiver(cible, motif="z", by=admin)
+    assert not User.objects.get(pk=cible.pk).keycloak_sync_manuel
+
+
+def test_tache_beat_espace_les_tentatives_transitoires(
+    admin: User, fake_keycloak: FakeKeycloakAdmin
+) -> None:
+    now = timezone.now()
+    recent = make_user(
+        Role.AUDITEUR,
+        keycloak_id=fake_keycloak.add_user("recent"),
+        is_active=False,
+        keycloak_sync_statut=KeycloakSyncStatut.ECHEC,
+        keycloak_sync_tentatives=3,
+        keycloak_sync_le=now - timedelta(minutes=60),  # backoff 15 min * 2**3 = 2 h
+    )
+    ancien = make_user(
+        Role.AUDITEUR,
+        keycloak_id=fake_keycloak.add_user("ancien"),
+        is_active=False,
+        keycloak_sync_statut=KeycloakSyncStatut.ECHEC,
+        keycloak_sync_tentatives=3,
+        keycloak_sync_le=now - timedelta(hours=3),
+    )
+    assert synchroniser_comptes_keycloak() == 1
+    recent.refresh_from_db()
+    ancien.refresh_from_db()
+    assert recent.keycloak_sync_statut == "ECHEC" and ancien.keycloak_sync_statut == "A_JOUR"
+
+
+def test_tache_beat_ignore_un_compte_disparu(
+    admin: User, fake_keycloak: FakeKeycloakAdmin, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for i in range(2):
+        make_user(
+            Role.AUDITEUR,
+            keycloak_id=fake_keycloak.add_user(f"u{i}"),
+            is_active=False,
+            keycloak_sync_statut=KeycloakSyncStatut.EN_ATTENTE,
+        )
+    real = keycloak_sync.synchroniser_avec_resultat
+    seen: list[int] = []
+
+    def flaky(compte_id: int, *, by: User | None = None) -> object:
+        seen.append(compte_id)
+        if len(seen) == 1:
+            raise User.DoesNotExist
+        return real(compte_id, by=by)
+
+    monkeypatch.setattr("apps.users.tasks.synchroniser_avec_resultat", flaky)
+    assert synchroniser_comptes_keycloak() == 1
+    assert len(seen) == 2

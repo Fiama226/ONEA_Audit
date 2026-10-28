@@ -13,6 +13,7 @@ an unusable password. Directory imports reuse the login matching (`filter_users_
 import csv
 import io
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
@@ -42,6 +43,10 @@ CSV_EMAIL_INVALIDE = "Adresse e-mail invalide."
 CSV_ROLE_INCONNU = "Rôle inconnu : valeurs admises AUDITE, AUDITEUR, RAI, DG."
 CSV_VALEUR_TROP_LONGUE = "Valeur trop longue pour la colonne « {colonne} » (maximum {limite})."
 KEYCLOAK_INTROUVABLE = "Compte introuvable dans Keycloak."
+ANNUAIRE_COMPTE_SERVICE = "Compte de service : non importé."
+ANNUAIRE_COMPTE_DESACTIVE = "Compte désactivé dans l'annuaire : non importé."
+ANNUAIRE_ID_INVALIDE = "Identifiant Keycloak invalide."
+CSV_CARACTERES_INTERDITS = "Caractères non autorisés dans la colonne « {colonne} »."
 ANNUAIRE_IDENTIFIANT_MANQUANT = "Identifiant manquant dans l'annuaire."
 
 CSV_MAX_BYTES = 1024 * 1024
@@ -56,6 +61,16 @@ _CSV_LIMITES = {
     "fonction": 128,
 }
 _username_validator = UnicodeUsernameValidator()
+_CONTROLE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+_FORMULE = re.compile(r"^[=+\-@]")
+_TEXTE_LIBRE = ("prenom", "nom", "matricule", "fonction")
+_ECHO_MAX = 150
+
+
+def _affichable(valeur: str) -> str:
+    """Make an untrusted value safe to echo in a report: no control chars, bounded size."""
+    propre = _CONTROLE.sub("", valeur)
+    return propre if len(propre) <= _ECHO_MAX else propre[:_ECHO_MAX] + "…"
 
 
 class FichierImportInvalide(Exception):
@@ -71,6 +86,9 @@ class LigneIgnoree:
     ligne: int | None
     identifiant: str
     motif: str
+
+    def __post_init__(self) -> None:
+        self.identifiant = _affichable(self.identifiant)
 
 
 @dataclass
@@ -149,7 +167,14 @@ def rechercher_annuaire(q: str) -> list[EntreeAnnuaire]:
     return entrees
 
 
-def _lire_annuaire(keycloak_ids: list[UUID] | None, rapport: RapportImport) -> list[dict[str, Any]]:
+@dataclass
+class _EntreeLue:
+    claims: dict[str, Any]
+    desactive: bool
+    service: bool
+
+
+def _lire_annuaire(keycloak_ids: list[UUID] | None, rapport: RapportImport) -> list[_EntreeLue]:
     """Fetch the representations and effective roles (network, outside any transaction)."""
     kc = keycloak_admin.get_keycloak_admin()
     reps: list[dict[str, Any]] = []
@@ -161,30 +186,47 @@ def _lire_annuaire(keycloak_ids: list[UUID] | None, rapport: RapportImport) -> l
                 reps.append(kc.get_user(keycloak_id))
             except KeycloakIntrouvable:
                 rapport.ignores.append(LigneIgnoree(None, str(keycloak_id), KEYCLOAK_INTROUVABLE))
-    claims_list: list[dict[str, Any]] = []
+    lues: list[_EntreeLue] = []
     for rep in reps:
+        nom = str(rep.get("username") or rep.get("id") or "")
         try:
             keycloak_id = UUID(str(rep.get("id")))
-            roles = kc.effective_realm_roles(keycloak_id)
         except ValueError:
+            rapport.ignores.append(LigneIgnoree(None, nom, ANNUAIRE_ID_INVALIDE))
             continue
+        try:
+            roles = kc.effective_realm_roles(keycloak_id)
         except KeycloakIntrouvable:
-            rapport.ignores.append(
-                LigneIgnoree(None, str(rep.get("username", "")), KEYCLOAK_INTROUVABLE)
-            )
+            rapport.ignores.append(LigneIgnoree(None, nom, KEYCLOAK_INTROUVABLE))
             continue
-        claims_list.append(claims_depuis_keycloak(rep, roles))
-    return claims_list
+        lues.append(
+            _EntreeLue(
+                claims=claims_depuis_keycloak(rep, roles),
+                desactive=rep.get("enabled") is False,
+                service=bool(rep.get("serviceAccountClientId"))
+                or nom.startswith("service-account-"),
+            )
+        )
+    return lues
 
 
-def _importer_entree(
-    backend: OneaOIDCBackend, claims: dict[str, Any], rapport: RapportImport
-) -> None:
+def _importer_entree(backend: OneaOIDCBackend, entree: _EntreeLue, rapport: RapportImport) -> None:
+    claims = entree.claims
     username = claims["preferred_username"]
+    if entree.service:
+        rapport.ignores.append(LigneIgnoree(None, username, ANNUAIRE_COMPTE_SERVICE))
+        return
     existant = backend.filter_users_by_claims(claims).first()
     if existant is not None:
+        ancien_role = existant.role
         backend.update_user(existant, claims)
-        rapport.mis_a_jour.append(existant.username)
+        libelle = existant.username
+        if existant.role != ancien_role:
+            libelle += f" (rôle {ancien_role} → {existant.role})"
+        rapport.mis_a_jour.append(libelle)
+        return
+    if entree.desactive:
+        rapport.ignores.append(LigneIgnoree(None, username, ANNUAIRE_COMPTE_DESACTIVE))
         return
     if not username:
         rapport.ignores.append(LigneIgnoree(None, claims["sub"], ANNUAIRE_IDENTIFIANT_MANQUANT))
@@ -216,11 +258,11 @@ def importer_depuis_annuaire(
     `KeycloakIndisponible` / `KeycloakNonConfigure` propagate; nothing is written then.
     """
     rapport = RapportImport(dry_run=dry_run)
-    claims_list = _lire_annuaire(keycloak_ids, rapport)
+    entrees = _lire_annuaire(keycloak_ids, rapport)
     backend = OneaOIDCBackend()
     with transaction.atomic(), actor_scope(by):
-        for claims in claims_list:
-            _importer_entree(backend, claims, rapport)
+        for entree in entrees:
+            _importer_entree(backend, entree, rapport)
         if dry_run:
             transaction.set_rollback(True)
     return rapport
@@ -261,6 +303,10 @@ def _valider_ligne(valeurs: dict[str, str]) -> str | None:
     for colonne, limite in _CSV_LIMITES.items():
         if len(valeurs[colonne]) > limite:
             return CSV_VALEUR_TROP_LONGUE.format(colonne=colonne, limite=limite)
+    for colonne in _TEXTE_LIBRE:
+        valeur = valeurs[colonne]
+        if _CONTROLE.search(valeur) or _FORMULE.match(valeur):
+            return CSV_CARACTERES_INTERDITS.format(colonne=colonne)
     try:
         _username_validator(valeurs["identifiant"])
     except ValidationError:
@@ -350,6 +396,7 @@ def _creer_compte(valeurs: dict[str, str], rapport: RapportImport) -> str | None
         with transaction.atomic():
             user.save()
     except IntegrityError:
-        return MATRICULE_PRIS if valeurs["matricule"] else CSV_COMPTE_EXISTANT
+        pris = valeurs["matricule"] and User.objects.filter(matricule=valeurs["matricule"]).exists()
+        return MATRICULE_PRIS if pris else CSV_COMPTE_EXISTANT
     rapport.crees.append(user.username)
     return None

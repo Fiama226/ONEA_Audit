@@ -1,6 +1,7 @@
 from dataclasses import replace
 
 import pytest
+from django.db import IntegrityError
 
 from apps.users.models import Role, User
 from apps.users.provisioning import (
@@ -195,3 +196,39 @@ def test_csv_puis_premiere_connexion_sans_doublon(admin: User) -> None:
     assert lie.matricule == "M-042" and lie.direction_code == "DAI"  # local profile kept
     assert not lie.role_provisoire and lie.premiere_connexion_le is not None
     assert User.objects.filter(username__iexact="kabore.l").count() == 1
+
+
+def test_csv_colonnes_is_staff_ignorees(admin: User) -> None:
+    importer_csv(
+        b"identifiant;is_staff;is_superuser;role\nx;true;1;AUDITEUR\n", by=admin, dry_run=False
+    )
+    u = User.objects.get(username="x")
+    assert not u.is_staff and not u.is_superuser
+
+
+@pytest.mark.parametrize("valeur", ["=HYPERLINK(1)", "+1", "-2", "@cmd", "a\x07b", "a\x00b"])
+def test_csv_caracteres_dangereux_refuses(admin: User, valeur: str) -> None:
+    contenu = f"identifiant;prenom;nom;fonction\nx;{valeur};;\ny;;{valeur};\nz;;;{valeur}\n"
+    rapport = importer_csv(contenu.encode(), by=admin, dry_run=False)
+    assert rapport.crees == [] and len(rapport.ignores) == 3
+
+
+def test_csv_prenom_compose_accepte(admin: User) -> None:
+    rapport = importer_csv(b"identifiant;prenom\nx;Jean-Pierre\n", by=admin, dry_run=False)
+    assert rapport.crees == ["x"]
+
+
+def test_csv_identifiant_affiche_tronque(admin: User) -> None:
+    rapport = importer_csv(f"identifiant\n{'x' * 5000}\n".encode(), by=admin, dry_run=True)
+    assert len(rapport.ignores[0].identifiant) <= 151
+
+
+def test_csv_conflit_a_l_ecriture_donne_le_bon_motif(
+    admin: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(self: User, *a: object, **k: object) -> None:
+        raise IntegrityError
+
+    monkeypatch.setattr(User, "save", boom)
+    rapport = importer_csv((ENTETE + "n1;;;;M-5;;;\n").encode(), by=admin, dry_run=True)
+    assert [i.motif for i in rapport.ignores] == [CSV_COMPTE_EXISTANT]

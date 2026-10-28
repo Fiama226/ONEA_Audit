@@ -50,6 +50,8 @@ class User(AbstractUser):
     keycloak_sync_erreur = models.TextField(blank=True)
     keycloak_sync_le = models.DateTimeField(null=True, blank=True)
     keycloak_sync_tentatives = models.PositiveIntegerField(default=0)
+    # Permanent failure (404, refused): no automatic retry, manual relaunch only.
+    keycloak_sync_manuel = models.BooleanField(default=False)
 
     class Meta(AbstractUser.Meta):
         constraints = [

@@ -27,6 +27,19 @@ def test_commande_a_blanc_par_defaut(admin: User, tmp_path: Path) -> None:
     assert not User.objects.filter(username="cmd.user").exists()
 
 
+def test_commande_apply_exige_by(admin: User, tmp_path: Path) -> None:
+    with pytest.raises(CommandError, match="--by"):
+        call_command("import_accounts", csv=_csv(tmp_path), apply=True)
+    assert not User.objects.filter(username="cmd.user").exists()
+
+
+def test_commande_fichier_trop_gros_refuse_avant_lecture(admin: User, tmp_path: Path) -> None:
+    p = tmp_path / "gros.csv"
+    p.write_bytes(b"x" * (1024 * 1024 + 1))
+    with pytest.raises(CommandError, match="1 Mo"):
+        call_command("import_accounts", csv=str(p))
+
+
 def test_commande_apply_csv(admin: User, tmp_path: Path) -> None:
     out = StringIO()
     call_command("import_accounts", csv=_csv(tmp_path), apply=True, by=admin.username, stdout=out)
@@ -58,7 +71,7 @@ def test_commande_fichier_invalide(admin: User, tmp_path: Path) -> None:
 def test_commande_keycloak_apply(admin: User, fake_keycloak: FakeKeycloakAdmin) -> None:
     fake_keycloak.add_user("kc1", roles={"AUDITEUR"})
     out = StringIO()
-    call_command("import_accounts", keycloak=True, apply=True, stdout=out)
+    call_command("import_accounts", keycloak=True, apply=True, by=admin.username, stdout=out)
     assert User.objects.filter(username="kc1", origine="ANNUAIRE").exists()
     call_command("import_accounts", keycloak=True, search="kc", stdout=out)
 

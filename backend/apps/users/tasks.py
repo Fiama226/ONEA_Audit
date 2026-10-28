@@ -1,7 +1,9 @@
 import logging
+from datetime import timedelta
 
 from celery import shared_task
 from django.db.models import F
+from django.utils import timezone
 
 from .keycloak_admin import KeycloakIndisponible, KeycloakNonConfigure
 from .keycloak_sync import synchroniser_avec_resultat
@@ -9,25 +11,44 @@ from .models import KeycloakSyncStatut, User
 
 logger = logging.getLogger(__name__)
 
+BACKOFF_BASE = timedelta(minutes=15)
+BACKOFF_MAX_EXPONENT = 6  # caps the delay at 15 min * 64 = 16 h
+
 
 @shared_task(name="users.synchroniser_comptes_keycloak")  # type: ignore[untyped-decorator]
 def synchroniser_comptes_keycloak(limit: int = 50) -> int:
     """Retry the pending / failed Keycloak syncs, oldest attempt first.
 
-    Stops at the first `KeycloakIndisponible` (or missing configuration): the other
-    accounts would fail the same way. Returns the number of accounts processed.
+    Permanent failures (404, refused: `keycloak_sync_manuel`) are left to a manual relaunch,
+    and transient ones are retried with an exponential backoff on `tentatives`, so that an
+    unrecoverable account does not write an audit row every 15 minutes. Stops at the first
+    `KeycloakIndisponible` (or missing configuration): the other accounts would fail the same
+    way. Returns the number of accounts processed.
     """
-    ids = list(
+    now = timezone.now()
+    candidats = (
         User.objects.filter(
             keycloak_id__isnull=False,
+            keycloak_sync_manuel=False,
             keycloak_sync_statut__in=(KeycloakSyncStatut.EN_ATTENTE, KeycloakSyncStatut.ECHEC),
         )
         .order_by(F("keycloak_sync_le").asc(nulls_first=True), "pk")
-        .values_list("pk", flat=True)[:limit]
+        .values_list("pk", "keycloak_sync_le", "keycloak_sync_tentatives")
     )
+    ids: list[int] = []
+    for pk, derniere, tentatives in candidats.iterator():
+        delai = BACKOFF_BASE * 2 ** min(tentatives, BACKOFF_MAX_EXPONENT)
+        if derniere is not None and derniere > now - delai:
+            continue
+        ids.append(pk)
+        if len(ids) >= limit:
+            break
     traites = 0
     for compte_id in ids:
-        _, erreur = synchroniser_avec_resultat(compte_id, by=None)
+        try:
+            _, erreur = synchroniser_avec_resultat(compte_id, by=None)
+        except User.DoesNotExist:
+            continue
         traites += 1
         if isinstance(erreur, KeycloakIndisponible | KeycloakNonConfigure):
             logger.warning("Keycloak sync batch interrupted after %s account(s)", traites)

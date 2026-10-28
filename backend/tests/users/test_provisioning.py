@@ -79,7 +79,7 @@ def test_import_annuaire_met_a_jour_sans_toucher_is_active_ni_profil_local(
         matricule="M-1",
     )
     rapport = importer_depuis_annuaire([kid], by=admin, dry_run=False)
-    assert rapport.mis_a_jour == ["awa"] and rapport.crees == []
+    assert rapport.mis_a_jour == ["awa (rôle AUDITE → RAI)"] and rapport.crees == []
     local.refresh_from_db()
     assert local.role == Role.RAI and not local.is_active
     assert (local.direction_code, local.fonction, local.matricule) == ("X", "Local", "M-1")
@@ -94,7 +94,7 @@ def test_import_annuaire_lie_un_compte_csv_sans_premiere_connexion(
         Role.AUDITE, username="awa", keycloak_id=None, origine="CSV", role_provisoire=True
     )
     rapport = importer_depuis_annuaire([kid], by=admin, dry_run=False)
-    assert rapport.mis_a_jour == ["awa"]
+    assert rapport.mis_a_jour == ["awa (rôle AUDITE → AUDITEUR)"]
     pre.refresh_from_db()
     assert pre.keycloak_id == kid and not pre.role_provisoire and pre.role == Role.AUDITEUR
     assert pre.premiere_connexion_le is None and pre.origine == "CSV"
@@ -140,3 +140,38 @@ def test_rechercher_annuaire_signale_compte_existant(
     assert entrees["awa"].compte_id == existing.pk and entrees["awb"].compte_id is None
     assert entrees["awa"].keycloak_id == k1 and entrees["awa"].nom_complet == "Awa Zongo"
     assert (entrees["awa"].direction, entrees["awa"].fonction) == ("DAI", "Auditrice")
+
+
+def test_import_annuaire_ignore_comptes_de_service_et_desactives(
+    admin: User, fake_keycloak: FakeKeycloakAdmin
+) -> None:
+    svc = fake_keycloak.add_user("service-account-onea-admin-sync", roles={"AUDITE"})
+    fake_keycloak.users[svc]["serviceAccountClientId"] = "onea-admin-sync"
+    off = _annuaire(fake_keycloak, "parti")
+    fake_keycloak.users[off]["enabled"] = False
+    _annuaire(fake_keycloak, "actif")
+    rapport = importer_depuis_annuaire(None, by=admin, dry_run=False)
+    assert rapport.crees == ["actif"]
+    assert {i.identifiant for i in rapport.ignores} == {
+        "service-account-onea-admin-sync",
+        "parti",
+    }
+    interdits = ["parti", "service-account-onea-admin-sync"]
+    assert not User.objects.filter(username__in=interdits).exists()
+
+
+def test_import_annuaire_signale_les_identifiants_non_uuid(
+    admin: User, fake_keycloak: FakeKeycloakAdmin
+) -> None:
+    fake_keycloak.users[UUID(int=1)] = {"id": "pas-un-uuid", "username": "bizarre", "enabled": True}
+    rapport = importer_depuis_annuaire(None, by=admin, dry_run=True)
+    assert [i.identifiant for i in rapport.ignores] == ["bizarre"]
+
+
+def test_import_annuaire_identifiant_affiche_tronque(
+    admin: User, fake_keycloak: FakeKeycloakAdmin
+) -> None:
+    fake_keycloak.users[UUID(int=1)] = {"id": "x" * 500, "username": "b\x1b[31m" + "z" * 500}
+    rapport = importer_depuis_annuaire(None, by=admin, dry_run=True)
+    echo = rapport.ignores[0].identifiant
+    assert len(echo) <= 151 and "\x1b" not in echo

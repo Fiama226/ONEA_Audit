@@ -8,6 +8,7 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 from apps.users.keycloak_admin import KeycloakAdminError
 from apps.users.models import Role, User
 from apps.users.provisioning import (
+    CSV_MAX_BYTES,
     FichierImportInvalide,
     RapportImport,
     importer_csv,
@@ -37,6 +38,8 @@ class Command(BaseCommand):
     def handle(self, *args: Any, **options: Any) -> None:
         if options["search"] and not options["keycloak"]:
             raise CommandError("L'option --search ne s'utilise qu'avec --keycloak.")
+        if options["apply"] and not options["by"]:
+            raise CommandError("L'option --apply exige --by IDENTIFIANT_ADMIN (piste d'audit).")
         par = self._acteur(options["by"])
         dry_run = not options["apply"]
         try:
@@ -63,7 +66,8 @@ class Command(BaseCommand):
 
     def _csv(self, chemin: str, par: User | None, dry_run: bool) -> RapportImport:
         try:
-            contenu = Path(chemin).read_bytes()
+            with Path(chemin).open("rb") as fichier:
+                contenu = fichier.read(CSV_MAX_BYTES + 1)  # bounded: the size is checked next
         except OSError as exc:
             raise CommandError(f"Fichier illisible : {chemin}") from exc
         try:

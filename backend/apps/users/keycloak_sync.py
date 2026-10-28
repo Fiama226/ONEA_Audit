@@ -19,7 +19,12 @@ from apps.core.audit import actor_scope
 from apps.core.exceptions import RegleMetierError
 
 from . import keycloak_admin
-from .keycloak_admin import KeycloakAdminError, KeycloakIntrouvable
+from .keycloak_admin import (
+    KeycloakAdminError,
+    KeycloakIndisponible,
+    KeycloakIntrouvable,
+    KeycloakNonConfigure,
+)
 from .models import KeycloakSyncStatut, User
 
 logger = logging.getLogger(__name__)
@@ -49,6 +54,11 @@ def _appliquer(keycloak_id: UUID, enabled: bool) -> KeycloakAdminError | None:
     return None
 
 
+def est_permanente(erreur: KeycloakAdminError) -> bool:
+    """True when retrying cannot help (404, refused, ...): manual relaunch only."""
+    return not isinstance(erreur, KeycloakIndisponible | KeycloakNonConfigure)
+
+
 def synchroniser_avec_resultat(
     compte_id: int, *, by: User | None = None
 ) -> tuple[User, KeycloakAdminError | None]:
@@ -57,10 +67,14 @@ def synchroniser_avec_resultat(
     if compte.keycloak_id is None or compte.keycloak_sync_statut == KeycloakSyncStatut.A_JOUR:
         return compte, None
     cible = compte.is_active
+    # Snapshot of the attempt counter-part: every sync write bumps `keycloak_sync_le`, so a
+    # sync that overlapped with another one sees a different value under the lock and must
+    # not claim A_JOUR (its Keycloak write may have been overtaken).
+    lu_le = compte.keycloak_sync_le
     erreur = _appliquer(compte.keycloak_id, cible)
     with transaction.atomic(), actor_scope(by):
         frais = User.objects.select_for_update().get(pk=compte_id)
-        inchange = frais.is_active == cible
+        inchange = frais.is_active == cible and frais.keycloak_sync_le == lu_le
         if erreur is None:
             frais.keycloak_sync_statut = (
                 KeycloakSyncStatut.A_JOUR if inchange else KeycloakSyncStatut.EN_ATTENTE
@@ -71,6 +85,7 @@ def synchroniser_avec_resultat(
                 KeycloakSyncStatut.ECHEC if inchange else KeycloakSyncStatut.EN_ATTENTE
             )
             frais.keycloak_sync_erreur = erreur.message
+        frais.keycloak_sync_manuel = erreur is not None and inchange and est_permanente(erreur)
         frais.keycloak_sync_le = timezone.now()
         frais.keycloak_sync_tentatives += 1
         frais.save(
@@ -79,6 +94,7 @@ def synchroniser_avec_resultat(
                 "keycloak_sync_erreur",
                 "keycloak_sync_le",
                 "keycloak_sync_tentatives",
+                "keycloak_sync_manuel",
             ]
         )
     if erreur is not None:
@@ -102,5 +118,8 @@ def relancer_synchronisation(compte: User, *, by: User) -> User:
             raise RegleMetierError(DEJA_SYNCHRONISE_KEYCLOAK)
         frais.keycloak_sync_statut = KeycloakSyncStatut.EN_ATTENTE
         frais.keycloak_sync_erreur = ""
-        frais.save(update_fields=["keycloak_sync_statut", "keycloak_sync_erreur"])
+        frais.keycloak_sync_manuel = False
+        frais.save(
+            update_fields=["keycloak_sync_statut", "keycloak_sync_erreur", "keycloak_sync_manuel"]
+        )
     return synchroniser_keycloak(frais.pk, by=by)
