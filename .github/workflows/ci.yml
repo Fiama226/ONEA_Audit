@@ -37,9 +37,13 @@ jobs:
         options: >-
           --health-cmd "valkey-cli ping" --health-interval 5s
           --health-timeout 3s --health-retries 20
+      gotenberg:
+        image: gotenberg/gotenberg:8.37.0
+        ports: ["3000:3000"]
     env:
       DATABASE_URL: postgres://onea:ci-throwaway-password@127.0.0.1:5432/onea
       REDIS_URL: redis://127.0.0.1:6379/0
+      GOTENBERG_URL: http://127.0.0.1:3000
     defaults:
       run:
         working-directory: backend
