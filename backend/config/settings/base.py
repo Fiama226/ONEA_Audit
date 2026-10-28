@@ -99,6 +99,8 @@ DJANGO_ADMIN_ENABLED: bool = env.bool("DJANGO_ADMIN_ENABLED", default=True)
 CORS_ALLOWED_ORIGINS: list[str] = env.list(
     "CORS_ALLOWED_ORIGINS", default=["http://localhost:5173"]
 )
+# Lisible par la SPA en cross-origin : nom du fichier des exports (CSV / Excel).
+CORS_EXPOSE_HEADERS: list[str] = ["Content-Disposition"]
 
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.core.handlers.api_exception_handler",

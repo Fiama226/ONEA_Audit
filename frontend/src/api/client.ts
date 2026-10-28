@@ -55,10 +55,11 @@ async function toApiError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, detail, errors);
 }
 
-export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> {
+/** Requête authentifiée ; toute réponse non 2xx ou erreur réseau devient une ApiError. */
+async function send(path: string, init: ApiInit, accept: string): Promise<Response> {
   const { json, headers: initHeaders, ...rest } = init;
   const headers = new Headers(initHeaders);
-  headers.set("Accept", "application/json");
+  headers.set("Accept", accept);
   if (json !== undefined) headers.set("Content-Type", "application/json");
   const token = getAccessToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -75,6 +76,40 @@ export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> 
   }
 
   if (!response.ok) throw await toApiError(response);
+  return response;
+}
+
+/** Nom renvoyé quand le serveur n'indique aucun nom de fichier (ou que CORS le masque). */
+export const DEFAULT_DOWNLOAD_NAME = "export";
+const DEFAULT_FILENAME = DEFAULT_DOWNLOAD_NAME;
+
+/** Nom de fichier de l'en-tête Content-Disposition ; `filename*=UTF-8''` est prioritaire. */
+function filenameFrom(disposition: string | null): string {
+  if (!disposition) return DEFAULT_FILENAME;
+  const star = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(disposition);
+  if (star?.[1]) {
+    try {
+      return decodeURIComponent(star[1].trim());
+    } catch {
+      // encodage invalide : repli sur filename=
+    }
+  }
+  const plain = /filename\s*=\s*(?:"([^"]*)"|([^;]+))/i.exec(disposition);
+  const name = (plain?.[1] ?? plain?.[2] ?? "").trim();
+  return name || DEFAULT_FILENAME;
+}
+
+/** Télécharge un fichier (export CSV / Excel) avec le même jeton et les mêmes erreurs que apiFetch. */
+export async function apiDownload(path: string): Promise<{ blob: Blob; filename: string }> {
+  const response = await send(path, {}, "*/*");
+  return {
+    blob: await response.blob(),
+    filename: filenameFrom(response.headers.get("Content-Disposition")),
+  };
+}
+
+export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> {
+  const response = await send(path, init, "application/json");
   if (response.status === 204) return undefined as T;
   try {
     return (await response.json()) as T;

@@ -4,6 +4,8 @@ import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
 import { EmptyState } from "@/components/EmptyState";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
+import { ReferentielLayout } from "@/features/referentiel/components/ReferentielLayout";
+import { referentielRoutes } from "@/features/referentiel/routes";
 import { fr } from "@/i18n/fr";
 import { AppShell } from "@/layouts/AppShell";
 import { rolesFor } from "@/layouts/navigation";
@@ -50,7 +52,8 @@ export const appRoutes: RouteObject[] = [
           { path: "/missions", element: <PlaceholderPage title={fr.nav.missions} /> },
           {
             path: "/referentiel",
-            element: guarded("/referentiel", <PlaceholderPage title={fr.nav.referentiel} />),
+            element: guarded("/referentiel", <ReferentielLayout />),
+            children: referentielRoutes,
           },
           {
             path: "/recommandations",

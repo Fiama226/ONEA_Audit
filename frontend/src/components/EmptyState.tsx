@@ -1,5 +1,5 @@
 import { Clock } from "lucide-react";
-import { useId, type ComponentType } from "react";
+import { useId, type ComponentType, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { WaterRipple } from "@/components/illustrations/WaterRipple";
 import { cn } from "@/lib/utils";
@@ -17,9 +17,11 @@ type Props = {
   /** Action principale désactivée accompagnée de sa pastille. */
   action?: DisabledAction;
   illustration?: boolean;
+  /** Actions actives (boutons, liens) affichées sous la description. */
+  children?: ReactNode;
 };
 
-export function EmptyState({ title, description, action, illustration = true }: Props) {
+export function EmptyState({ title, description, action, illustration = true, children }: Props) {
   const id = useId();
   const noteId = `${id}-note`;
   const Icon = action?.icon;
@@ -60,6 +62,7 @@ export function EmptyState({ title, description, action, illustration = true }: 
             </span>
           </div>
         )}
+        {children && <div className="mt-6 flex flex-wrap items-center gap-3">{children}</div>}
       </div>
       {illustration && <WaterRipple className="hidden w-80 lg:block" />}
     </section>
