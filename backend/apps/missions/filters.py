@@ -1,5 +1,6 @@
 import django_filters
 from django.db.models import Q, QuerySet
+from django_filters import rest_framework as rf_filters
 
 from apps.referentiel.models import NiveauRisque
 
@@ -49,7 +50,7 @@ class AffectationFilter(django_filters.FilterSet):
 class DeclarationFilter(django_filters.FilterSet):
     mission = django_filters.UUIDFilter(field_name="affectation__mission_id")
     statut = django_filters.ChoiceFilter(choices=StatutDeclaration.choices)
-    mine = django_filters.BooleanFilter(
+    mine = rf_filters.BooleanFilter(
         method="filter_mine", help_text="Vrai : seulement mes déclarations."
     )
 
@@ -86,7 +87,7 @@ class EntretienFilter(django_filters.FilterSet):
 
 class RisqueMissionFilter(django_filters.FilterSet):
     mission = django_filters.UUIDFilter(field_name="mission_id")
-    nouveau = django_filters.BooleanFilter(
+    nouveau = rf_filters.BooleanFilter(
         method="filter_nouveau", help_text="Vrai : risques créés dans la mission."
     )
     niveau = django_filters.ChoiceFilter(choices=NiveauRisque.choices)

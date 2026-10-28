@@ -50,7 +50,7 @@ def test_matrice_droits_missions(
 
 
 def test_non_authentifie_401(api_client: APIClient) -> None:
-    assert api_client.get("/api/v1/missions/").status_code in (401, 403)
+    assert api_client.get("/api/v1/missions/").status_code == 401
 
 
 # droit de `mes_droits` -> (méthode, route, corps)
@@ -81,10 +81,12 @@ def test_mes_droits_concorde_avec_les_permissions(
     api_client.force_authenticate(users[qui])
     vrai = api_client.get(f"/api/v1/missions/{m.id}/").json()["mes_droits"][droit]
     methode, route, corps = _APPELS[droit]
-    declaration = DeclarationIndependance.objects.filter(
-        affectation__utilisateur=users[qui]
-    ).first()
-    route = route.format(m=m.id, d=declaration.id if declaration else m.id)
+    declaration = (
+        DeclarationIndependance.objects.filter(affectation__utilisateur=users[qui]).first()
+        or DeclarationIndependance.objects.filter(affectation__mission=m).first()
+    )
+    assert declaration is not None
+    route = route.format(m=m.id, d=declaration.id)
     if droit == "affecter":
         corps = {"mission": str(m.id), "utilisateur": users["admin"].id, "role_mission": "AUDITEUR"}
     if droit == "contribuer":
@@ -95,7 +97,7 @@ def test_mes_droits_concorde_avec_les_permissions(
     if vrai:
         assert r.status_code != 403, (droit, r.json())
     else:
-        assert r.status_code in (403, 404, 422), (droit, r.status_code, r.json())
+        assert r.status_code in (403, 422), (droit, r.status_code, r.json())
 
 
 _ACTIONS: dict[str, tuple[str, str]] = {
@@ -177,14 +179,16 @@ def test_api_gel_422_sur_modifications_et_actions(
     from tests.factories import EntretienFactory, ReunionFactory, RisqueMissionFactory
 
     m, users = equipe_complete
-    reunion = ReunionFactory(mission=m, type="LANCEMENT")
-    entretien = EntretienFactory(mission=m)
+    reunion = ReunionFactory(mission=m, type="LANCEMENT", compte_rendu="CR")
+    entretien = EntretienFactory(mission=m, compte_rendu="CR")
     risque = RisqueMissionFactory(mission=m, processus=m.processus.first())
     Mission.objects.filter(pk=m.pk).update(
         statut=StatutMission.SUSPENDUE, statut_avant_suspension=StatutMission.EN_PLANIFICATION
     )
     api_client.force_authenticate(users["rai"])
     e2 = EtapeMission.objects.get(mission=m, numero=2)
+    e3 = EtapeMission.objects.get(mission=m, numero=3)
+    e6 = EtapeMission.objects.get(mission=m, numero=6)
     affectation = m.affectations.get(utilisateur=users["auditeur_confirme"])
     appels = [
         ("patch", f"/api/v1/meetings/{reunion.id}/", {"lieu": "X"}),
@@ -197,11 +201,27 @@ def test_api_gel_422_sur_modifications_et_actions(
         ("patch", f"/api/v1/mission-steps/{e2.id}/", {"charge_prevue_jours": "1.0"}),
         ("post", f"/api/v1/mission-steps/{e2.id}/start/", None),
         ("post", f"/api/v1/mission-steps/{e2.id}/reopen/", {"motif": "m"}),
+        ("post", f"/api/v1/mission-steps/{e2.id}/complete/", None),
+        ("post", f"/api/v1/mission-steps/{e6.id}/validate/", None),
+        ("post", f"/api/v1/mission-steps/{e6.id}/return/", {"motif": "m"}),
+        ("post", f"/api/v1/mission-steps/{e3.id}/not-applicable/", {"motif": "m"}),
+        ("post", f"/api/v1/mission-steps/{e3.id}/restore/", None),
+        ("post", f"/api/v1/meetings/{reunion.id}/mark-held/", None),
+        ("post", f"/api/v1/interviews/{entretien.id}/mark-done/", None),
+        ("post", f"/api/v1/interviews/{entretien.id}/cancel/", {"motif": "m"}),
+        ("post", f"/api/v1/missions/{m.id}/issue-order/", {"confirme": True}),
+        ("post", f"/api/v1/missions/{m.id}/suspend/", {"motif": "m"}),
+        ("post", f"/api/v1/missions/{m.id}/launch/", None),
+        ("post", f"/api/v1/missions/{m.id}/plan/", None),
         ("patch", f"/api/v1/missions/{m.id}/", {"budget_jours": "3.0"}),
     ]
+    chef_seul = ("/complete/", "/not-applicable/", "/restore/")
     for methode, route, corps in appels:
+        # Le droit est contrôlé avant l'état : ces actions sont celles du chef de mission.
+        api_client.force_authenticate(users["chef" if route.endswith(chef_seul) else "rai"])
         r = getattr(api_client, methode)(route, corps, format="json")
         assert r.status_code == 422, (methode, route, r.status_code, r.json())
+        assert "suspendue" in r.json()["detail"], (methode, route, r.json())
 
 
 def test_erreurs_au_format_unique(api_client: APIClient, equipe_complete: Equipe) -> None:

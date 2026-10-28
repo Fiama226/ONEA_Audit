@@ -63,6 +63,7 @@ from .services import etapes as svc_etapes
 from .services import missions as svc_missions
 from .services import reunions as svc_reunions
 from .services import risques as svc_risques
+from .services.etapes import ActionEtape
 from .services.suivi import fiche_de_suivi
 
 TAG = "Missions"
@@ -593,8 +594,16 @@ class EtapeViewSet(
         )
         self._publier(serializer, etape)
 
-    def _transition(self, request: Request, service: Any, *, motif: bool = False) -> Response:
+    def update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        # Droit (403) avant le corps (400).
+        svc_etapes.exiger_droit(self.get_object(), ActionEtape.PLANIFIER, self.acteur)
+        return super().update(request, *args, **kwargs)
+
+    def _transition(
+        self, request: Request, service: Any, action_etape: str, *, motif: bool = False
+    ) -> Response:
         etape = self.get_object()
+        svc_etapes.exiger_droit(etape, action_etape, self.acteur)
         if motif:
             corps = serializers.MotifSerializer(data=request.data)
             corps.is_valid(raise_exception=True)
@@ -606,17 +615,17 @@ class EtapeViewSet(
     @_action_schema("Démarrer l'étape", serializers.EtapeSerializer)
     @action(detail=True, methods=["post"], filter_backends=[])
     def start(self, request: Request, pk: str | None = None) -> Response:
-        return self._transition(request, svc_etapes.demarrer_etape)
+        return self._transition(request, svc_etapes.demarrer_etape, ActionEtape.DEMARRER)
 
     @_action_schema("Terminer l'étape", serializers.EtapeSerializer)
     @action(detail=True, methods=["post"], filter_backends=[])
     def complete(self, request: Request, pk: str | None = None) -> Response:
-        return self._transition(request, svc_etapes.terminer_etape)
+        return self._transition(request, svc_etapes.terminer_etape, ActionEtape.TERMINER)
 
     @_action_schema("Valider le jalon", serializers.EtapeSerializer)
     @action(detail=True, methods=["post"], filter_backends=[])
     def validate(self, request: Request, pk: str | None = None) -> Response:
-        return self._transition(request, svc_etapes.valider_etape)
+        return self._transition(request, svc_etapes.valider_etape, ActionEtape.VALIDER)
 
     @_action_schema(
         "Renvoyer le jalon",
@@ -625,7 +634,9 @@ class EtapeViewSet(
     )
     @action(detail=True, methods=["post"], url_path="return", filter_backends=[])
     def send_back(self, request: Request, pk: str | None = None) -> Response:
-        return self._transition(request, svc_etapes.renvoyer_etape, motif=True)
+        return self._transition(
+            request, svc_etapes.renvoyer_etape, ActionEtape.RENVOYER, motif=True
+        )
 
     @_action_schema(
         "Rouvrir l'étape",
@@ -634,7 +645,7 @@ class EtapeViewSet(
     )
     @action(detail=True, methods=["post"], filter_backends=[])
     def reopen(self, request: Request, pk: str | None = None) -> Response:
-        return self._transition(request, svc_etapes.rouvrir_etape, motif=True)
+        return self._transition(request, svc_etapes.rouvrir_etape, ActionEtape.ROUVRIR, motif=True)
 
     @_action_schema(
         "Marquer l'étape non applicable",
@@ -643,12 +654,14 @@ class EtapeViewSet(
     )
     @action(detail=True, methods=["post"], url_path="not-applicable", filter_backends=[])
     def not_applicable(self, request: Request, pk: str | None = None) -> Response:
-        return self._transition(request, svc_etapes.marquer_non_applicable, motif=True)
+        return self._transition(
+            request, svc_etapes.marquer_non_applicable, ActionEtape.NON_APPLICABLE, motif=True
+        )
 
     @_action_schema("Rétablir l'étape non applicable", serializers.EtapeSerializer)
     @action(detail=True, methods=["post"], filter_backends=[])
     def restore(self, request: Request, pk: str | None = None) -> Response:
-        return self._transition(request, svc_etapes.retablir_etape)
+        return self._transition(request, svc_etapes.retablir_etape, ActionEtape.RETABLIR)
 
 
 # --------------------------------------------------------------------------- réunions
@@ -662,7 +675,7 @@ def _numero_etape_reunion() -> Case:
     )
 
 
-@crud_schema(serializers.ReunionSerializer, TAG, "réunions")
+@crud_schema(serializers.ReunionSerializer, TAG, "réunions", creation_404=True)
 class ReunionViewSet(MissionApiViewSet, ModelViewSet[Reunion]):
     serializer_class = serializers.ReunionSerializer
     queryset = Reunion.objects.none()
@@ -731,7 +744,7 @@ class ReunionViewSet(MissionApiViewSet, ModelViewSet[Reunion]):
 # --------------------------------------------------------------------------- entretiens
 
 
-@crud_schema(serializers.EntretienSerializer, TAG, "entretiens")
+@crud_schema(serializers.EntretienSerializer, TAG, "entretiens", creation_404=True)
 class EntretienViewSet(MissionApiViewSet, ModelViewSet[Entretien]):
     serializer_class = serializers.EntretienSerializer
     queryset = Entretien.objects.none()
@@ -806,7 +819,7 @@ class EntretienViewSet(MissionApiViewSet, ModelViewSet[Entretien]):
 # --------------------------------------------------------------------------- risques
 
 
-@crud_schema(serializers.RisqueMissionSerializer, TAG, "risques de mission")
+@crud_schema(serializers.RisqueMissionSerializer, TAG, "risques de mission", creation_404=True)
 class RisqueMissionViewSet(MissionApiViewSet, ModelViewSet[RisqueMission]):
     serializer_class = serializers.RisqueMissionSerializer
     queryset = RisqueMission.objects.none()

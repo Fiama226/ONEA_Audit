@@ -120,7 +120,8 @@ def test_entretien_cycle(api_client: APIClient, equipe_complete: Equipe) -> None
     assert r.json()["statut"] == "PLANIFIE"
     assert r.json()["interlocuteurs_detail"][0]["id"] == users["audite_affecte"].id
     assert api_client.post(f"/api/v1/interviews/{eid}/mark-done/").status_code == 422
-    api_client.patch(f"/api/v1/interviews/{eid}/", {"compte_rendu": "Fait."}, format="json")
+    r = api_client.patch(f"/api/v1/interviews/{eid}/", {"compte_rendu": "Fait."}, format="json")
+    assert r.status_code == 200, r.json()
     r = api_client.post(f"/api/v1/interviews/{eid}/mark-done/")
     assert r.status_code == 200, r.json()
     assert r.json()["statut"] == "REALISE"
@@ -132,7 +133,7 @@ def test_entretien_cycle(api_client: APIClient, equipe_complete: Equipe) -> None
     )
     # Une durée hors bornes est refusée.
     r = api_client.post("/api/v1/interviews/", _entretien_corps(m, duree_minutes=0), format="json")
-    assert r.status_code in (400, 422)
+    assert r.status_code == 422
     # Les auditeurs doivent faire partie de l'équipe.
     r = api_client.post(
         "/api/v1/interviews/",

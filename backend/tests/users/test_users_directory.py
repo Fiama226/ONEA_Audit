@@ -23,7 +23,7 @@ def test_users_directory_droits(api_client: APIClient, role: str, statut: int) -
 
 
 def test_users_directory_non_authentifie(api_client: APIClient) -> None:
-    assert api_client.get("/api/v1/users/").status_code in (401, 403)
+    assert api_client.get("/api/v1/users/").status_code == 401
 
 
 def test_users_directory_droits_et_filtres(api_client: APIClient) -> None:

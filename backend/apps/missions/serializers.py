@@ -7,6 +7,7 @@ une seule fois par la vue (clé `contexte_actions` du contexte du sérialiseur).
 """
 
 from collections.abc import Iterable, Sequence
+from decimal import Decimal
 from typing import Any, cast
 
 from django.contrib.contenttypes.models import ContentType
@@ -186,7 +187,7 @@ class DeclarationResumeSerializer(serializers.Serializer[Any]):
 
 class AffectationSerializer(serializers.ModelSerializer[AffectationMission]):
     mission = CleRelation(queryset=Mission.objects.all())
-    utilisateur = CleRelation(queryset=User.objects.all())
+    utilisateur = CleRelation(queryset=User.objects.filter(is_active=True))
     utilisateur_detail = UtilisateurResumeSerializer(source="utilisateur", read_only=True)
     role_mission = serializers.ChoiceField(choices=RoleMission.choices)
     declaration = serializers.SerializerMethodField()
@@ -352,7 +353,7 @@ class MissionSerializer(MissionListeSerializer):
 
     def validate_budget_jours(self, value: Any) -> Any:
         if value is None:
-            raise serializers.ValidationError("Ce champ ne peut pas être nul.")
+            return Decimal("0.0")  # nul = aucun budget, comme à la création
         return value
 
     @extend_schema_field(ResumeSerializer(many=True))
@@ -390,7 +391,7 @@ class MissionSerializer(MissionListeSerializer):
 
 
 class RemplacerChefSerializer(serializers.Serializer[Any]):
-    utilisateur = CleRelation(queryset=User.objects.all())
+    utilisateur = CleRelation(queryset=User.objects.filter(is_active=True))
 
 
 class MotifSerializer(serializers.Serializer[Any]):
@@ -665,7 +666,9 @@ class FicheSuiviSerializer(serializers.Serializer[Any]):
 class ReunionSerializer(serializers.ModelSerializer[Reunion]):
     mission = CleRelation(queryset=Mission.objects.all())
     type = serializers.ChoiceField(choices=TypeReunion.choices)
-    participants = CleRelation(many=True, queryset=User.objects.all(), required=False)
+    participants = CleRelation(
+        many=True, queryset=User.objects.filter(is_active=True), required=False
+    )
     participants_detail = UtilisateurResumeSerializer(
         source="participants", many=True, read_only=True
     )
@@ -701,9 +704,11 @@ class EntretienSerializer(serializers.ModelSerializer[Entretien]):
     mission = CleRelation(queryset=Mission.objects.all())
     etape = CleRelation(queryset=EtapeMission.objects.all(), required=False, allow_null=True)
     etape_romain = serializers.SerializerMethodField()
-    auditeurs = CleRelation(many=True, queryset=User.objects.all(), required=False)
+    auditeurs = CleRelation(many=True, queryset=User.objects.filter(is_active=True), required=False)
     auditeurs_detail = UtilisateurResumeSerializer(source="auditeurs", many=True, read_only=True)
-    interlocuteurs = CleRelation(many=True, queryset=User.objects.all(), required=False)
+    interlocuteurs = CleRelation(
+        many=True, queryset=User.objects.filter(is_active=True), required=False
+    )
     interlocuteurs_detail = UtilisateurResumeSerializer(
         source="interlocuteurs", many=True, read_only=True
     )
