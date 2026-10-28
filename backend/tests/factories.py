@@ -101,3 +101,9 @@ class RisqueFactory(factory.django.DjangoModelFactory):
     probabilite = 3
     impact = 3
     priorite = PrioriteRisque.AMELIORATION
+
+
+def reset_sequences() -> None:
+    """Reset sequences whose values must stay in range (years) or predictable."""
+    CartographieVersionFactory.reset_sequence()
+    RisqueFactory.reset_sequence()

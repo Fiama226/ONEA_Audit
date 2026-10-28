@@ -155,7 +155,7 @@ class CartographieVersion(BaseModel):
     annee = models.PositiveSmallIntegerField("année")
     libelle = models.CharField("libellé", max_length=200)
     commentaire = models.TextField("commentaire", blank=True)
-    statut = FSMField(
+    statut = FSMField(  # type: ignore[no-untyped-call]  # django-fsm is untyped
         "statut",
         default=StatutCartographie.BROUILLON,
         choices=StatutCartographie.choices,
