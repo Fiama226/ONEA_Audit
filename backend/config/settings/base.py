@@ -105,7 +105,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["apps.users.authentication.SessionAuthentication401"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.StandardPagination",
     "PAGE_SIZE": 25,
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -127,6 +127,16 @@ SPECTACULAR_SETTINGS = {
     "SWAGGER_UI_DIST": "SIDECAR",
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",
+    # Stable component names for enums shared by several serializers and filters.
+    "ENUM_NAME_OVERRIDES": {
+        "TypeEntiteEnum": "apps.referentiel.models.TypeEntite.choices",
+        "FamilleProcessusEnum": "apps.referentiel.models.FamilleProcessus.choices",
+        "NatureObjetEnum": "apps.referentiel.models.NatureObjet.choices",
+        "StatutCartographieEnum": "apps.referentiel.models.StatutCartographie.choices",
+        "NiveauRisqueEnum": "apps.referentiel.models.NiveauRisque.choices",
+        "ReponseRisqueEnum": "apps.referentiel.models.ReponseRisque.choices",
+        "PrioriteRisqueEnum": "apps.referentiel.models.PrioriteRisque.choices",
+    },
 }
 
 # --- Templates: project-level templates (email/*) ---
