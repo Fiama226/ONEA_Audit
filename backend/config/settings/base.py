@@ -140,6 +140,7 @@ SPECTACULAR_SETTINGS = {
         "NiveauRisqueEnum": "apps.referentiel.models.NiveauRisque.choices",
         "ReponseRisqueEnum": "apps.referentiel.models.ReponseRisque.choices",
         "PrioriteRisqueEnum": "apps.referentiel.models.PrioriteRisque.choices",
+        "KeycloakSyncStatutEnum": "apps.users.models.KeycloakSyncStatut.choices",
     },
 }
 
