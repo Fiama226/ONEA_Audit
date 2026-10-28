@@ -1,10 +1,10 @@
+import { ChevronRight } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
-  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { fr } from "@/i18n/fr";
 import { SEGMENT_LABELS } from "./navigation";
@@ -60,7 +60,7 @@ export function Breadcrumbs() {
                   <Link to={crumb.to}>{crumb.label}</Link>
                 </BreadcrumbLink>
               )}
-              {!last && <BreadcrumbSeparator className="text-text-muted" />}
+              {!last && <ChevronRight aria-hidden className="size-3.5 text-text-muted" />}
             </BreadcrumbItem>
           );
         })}
