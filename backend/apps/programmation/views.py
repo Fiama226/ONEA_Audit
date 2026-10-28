@@ -5,21 +5,26 @@ from typing import Any, ClassVar, cast
 
 from django.db.models import Count, DecimalField, Prefetch, Q, QuerySet, Sum, Value
 from django.db.models.functions import Coalesce
+from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer
 from rest_framework.viewsets import ModelViewSet
 
 from apps.core.filters import StableOrderingFilter
-from apps.core.schema import ERROR_404, ERROR_422, ERROR_RESPONSES, crud_schema
+from apps.core.schema import ERROR_400, ERROR_404, ERROR_422, ERROR_RESPONSES, crud_schema
 from apps.referentiel.models import Direction
 from apps.referentiel.permissions import RolePermission
+from apps.referentiel.renderers import PassthroughRenderer
 from apps.users.models import User
 
-from . import services
+from . import exports, services
 from .filters import LigneFilter, ProgrammeFilter
 from .models import LigneProgramme, ProgrammeAnnuel
 from .permissions import ECRITURE_PROGRAMME, LECTURE_PROGRAMME
@@ -101,6 +106,63 @@ class ProgrammeAnnuelViewSet(_ProgrammeViewSet[ProgrammeAnnuel]):
         programme = self.get_object()
         services.valider_programme(programme, by=self.acteur)
         return Response(ProgrammeAnnuelSerializer(self.get_queryset().get(pk=programme.pk)).data)
+
+    @extend_schema(
+        tags=[TAG],
+        summary="Exporter un programme annuel (CSV ou XLSX)",
+        description=(
+            "Télécharge le programme : missions prévues (CSV ou XLSX) ; le XLSX ajoute "
+            "une feuille de synthèse."
+        ),
+        parameters=[
+            OpenApiParameter(
+                "type",
+                OpenApiTypes.STR,
+                required=True,
+                enum=["csv", "xlsx"],
+                description="Format du fichier : csv (UTF-8, séparateur « ; ») ou xlsx.",
+            ),
+        ],
+        responses={
+            (200, exports.TYPE_CSV): OpenApiTypes.BINARY,
+            (200, exports.TYPE_XLSX): OpenApiTypes.BINARY,
+            **ERROR_400,
+            **ERROR_RESPONSES,
+            **ERROR_404,
+        },
+    )
+    @action(
+        detail=True,
+        methods=["get"],
+        pagination_class=None,
+        filter_backends=[],
+        renderer_classes=[JSONRenderer, PassthroughRenderer],
+    )
+    def export(self, request: Request, pk: str | None = None) -> HttpResponse:
+        format_ = request.query_params.get("type")
+        if format_ not in ("csv", "xlsx"):
+            raise ValidationError({"type": ["Format attendu : csv ou xlsx."]})
+        programme = self.get_object()
+        if format_ == "csv":
+            contenu, type_mime = exports.exporter_csv(programme), exports.TYPE_CSV
+        else:
+            contenu, type_mime = exports.exporter_xlsx(programme), exports.TYPE_XLSX
+        reponse = HttpResponse(contenu, content_type=type_mime)
+        reponse["Content-Disposition"] = (
+            f'attachment; filename="{exports.nom_fichier(programme, format_)}"'
+        )
+        return reponse
+
+    def finalize_response(
+        self, request: Request, response: Response, *args: Any, **kwargs: Any
+    ) -> Response:
+        # Export : le moteur « passthrough » accepte tout `Accept`, mais les erreurs
+        # (400, 403, 404...) restent du JSON.
+        final = super().finalize_response(request, response, *args, **kwargs)
+        if self.action == "export" and isinstance(final, Response) and final.status_code >= 400:
+            final.accepted_renderer = JSONRenderer()
+            final.accepted_media_type = "application/json"
+        return final
 
     @extend_schema(
         tags=[TAG],
