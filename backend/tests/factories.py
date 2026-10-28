@@ -1,9 +1,23 @@
+import datetime
 import string
 
 import factory
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
+from apps.missions.models import (
+    AffectationMission,
+    DeclarationIndependance,
+    Entretien,
+    EtapeMission,
+    Mission,
+    Reunion,
+    RisqueMission,
+    RoleMission,
+    StatutDeclaration,
+    TypeMission,
+    TypeReunion,
+)
 from apps.referentiel.models import (
     CartographieVersion,
     Direction,
@@ -13,6 +27,7 @@ from apps.referentiel.models import (
     PrioriteRisque,
     Processus,
     Risque,
+    StatutCartographie,
     TypeEntite,
 )
 from apps.signatures.models import Confirmation, TypeDocumentSignable
@@ -128,3 +143,92 @@ def reset_sequences() -> None:
     """Reset sequences whose values must stay in range (years) or predictable."""
     CartographieVersionFactory.reset_sequence()
     RisqueFactory.reset_sequence()
+
+
+class MissionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Mission
+        skip_postgeneration_save = True
+
+    class Params:
+        avec_processus_et_entites = factory.Trait(ajouts=True)
+
+    titre = factory.Sequence(lambda n: f"Audit du processus {n}")
+    type = TypeMission.ASSURANCE
+    reference = ""
+    cartographie = factory.LazyFunction(lambda: _cartographie_validee())
+
+    @factory.post_generation
+    def ajouts(self, create: bool, extracted: object, **kwargs: object) -> None:
+        if create and extracted:
+            self.processus.add(ProcessusFactory())
+            self.entites.add(DirectionFactory())
+
+
+def _cartographie_validee() -> CartographieVersion:
+    existante = CartographieVersion.objects.filter(statut=StatutCartographie.VALIDEE).first()
+    if existante is not None:
+        return existante
+    version = CartographieVersionFactory()
+    CartographieVersion._base_manager.filter(pk=version.pk).update(  # noqa: SLF001
+        statut=StatutCartographie.VALIDEE,
+        validee_le=timezone.now(),
+        validee_par=make_user(Role.RAI),
+    )
+    version.refresh_from_db()
+    return version
+
+
+class AffectationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = AffectationMission
+
+    mission = factory.SubFactory(MissionFactory)
+    utilisateur = factory.SubFactory(UserFactory)
+    role_mission = RoleMission.AUDITEUR
+
+
+class DeclarationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = DeclarationIndependance
+
+    affectation = factory.SubFactory(AffectationFactory)
+    statut = StatutDeclaration.EN_ATTENTE
+
+
+class EtapeMissionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = EtapeMission
+
+    mission = factory.SubFactory(MissionFactory)
+    numero = factory.Sequence(lambda n: n % 18 + 1)
+
+
+class ReunionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Reunion
+
+    mission = factory.SubFactory(MissionFactory)
+    type = TypeReunion.OUVERTURE
+    date = factory.LazyFunction(lambda: timezone.now() + datetime.timedelta(days=7))
+    lieu = "Salle de réunion DAI"
+
+
+class EntretienFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Entretien
+
+    mission = factory.SubFactory(MissionFactory)
+    objet = factory.Sequence(lambda n: f"Entretien {n}")
+    date_prevue = factory.LazyFunction(lambda: timezone.now() + datetime.timedelta(days=3))
+
+
+class RisqueMissionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = RisqueMission
+
+    mission = factory.SubFactory(MissionFactory)
+    processus = factory.SubFactory(ProcessusFactory)
+    libelle = factory.Sequence(lambda n: f"Risque de mission {n}")
+    probabilite = 3
+    impact = 3

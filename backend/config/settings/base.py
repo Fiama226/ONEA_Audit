@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "apps.users",
     "apps.referentiel",
     "apps.signatures",
+    "apps.missions",
 ]
 
 AUTH_USER_MODEL = "users.User"
