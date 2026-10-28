@@ -31,3 +31,4 @@ test-results/
 
 certs/*.pem
 frontend/e2e/screens/
+.dev/
