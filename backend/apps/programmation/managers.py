@@ -10,6 +10,10 @@ Limite connue : ces protections s'appliquent aux managers `objects` et `all_obje
 sont contournées par du SQL brut (`cursor.execute`, `RawSQL`), par les mises à jour passant
 par `_base_manager`, par `hard_delete()` (maintenance) et par un accès direct à la base ;
 aucun déclencheur en base n'est posé (décision de conception).
+
+Les entités d'une ligne (`entites`, many-to-many) sont gardées par un récepteur `m2m_changed`
+(`pre_add`, `pre_remove`, `pre_clear`, y compris côté inverse) ; il est contourné par des
+écritures directes sur la table de liaison (`through.objects.bulk_create`, SQL brut).
 """
 
 from collections.abc import Iterable
@@ -118,7 +122,9 @@ class LigneProgrammeQuerySet(SoftDeleteQuerySet["LigneProgramme"]):
             )
         return super().bulk_update(objs, fields, batch_size)
 
-    def bulk_create(self, objs: Iterable["LigneProgramme"], *a: Any, **kw: Any) -> list[Any]:
+    def bulk_create(
+        self, objs: Iterable["LigneProgramme"], *a: Any, **kw: Any
+    ) -> list["LigneProgramme"]:
         objs = list(objs)
         _refuser_si_fige(
             _programmes_valides()

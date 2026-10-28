@@ -3,8 +3,11 @@ from typing import Any, ClassVar
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.db.models.signals import m2m_changed
+from django.dispatch import receiver
 from django_fsm import FSMField, transition
 
+from apps.core.exceptions import RegleMetierError
 from apps.core.models import BaseModel
 
 from .exceptions import ProgrammeFigeError
@@ -13,6 +16,7 @@ from .managers import (
     LigneProgrammeManager,
     ProgrammeAllManager,
     ProgrammeManager,
+    champs_execution_seuls,
 )
 
 # Champs d'une ligne modifiables même dans un programme validé (suivi d'exécution).
@@ -145,7 +149,9 @@ class LigneProgramme(BaseModel):
         verbose_name = "ligne de programme"
         verbose_name_plural = "lignes de programme"
         ordering = ("debut_prevu", "numero")
-        indexes = [models.Index(fields=["programme", "debut_prevu"])]
+        indexes = [
+            models.Index(fields=["programme", "debut_prevu"], name="ligne_programme_debut_idx")
+        ]
         constraints = [
             models.UniqueConstraint(fields=["programme", "numero"], name="ligne_numero_unique"),
             models.CheckConstraint(condition=Q(numero__gte=1), name="ligne_numero_positif"),
@@ -163,20 +169,52 @@ class LigneProgramme(BaseModel):
         return f"{self.numero}. {self.titre}"
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        champs = kwargs.get("update_fields")
-        autorise = (
-            champs is not None
-            and bool(set(champs) & CHAMPS_EXECUTION)
-            and set(champs) <= CHAMPS_EXECUTION | {"updated_by", "updated_at"}
+        # Contrôle sur les lignes EN BASE : le programme actuel de la ligne (déplacement
+        # impossible hors d'un programme validé) et le programme visé.
+        en_base = (
+            LigneProgramme.all_objects.filter(pk=self.pk)
+            .values_list("programme_id", "programme__statut", "programme__annee")
+            .first()
         )
-        if not autorise:
-            en_base = (
-                ProgrammeAnnuel.all_objects.filter(
-                    pk=self.programme_id, statut=StatutProgramme.VALIDE
-                )
-                .values_list("annee", flat=True)
+        champs = kwargs.get("update_fields")
+        execution_seule = champs is not None and champs_execution_seuls(champs)
+        if en_base is not None and en_base[1] == StatutProgramme.VALIDE and not execution_seule:
+            raise ProgrammeFigeError(en_base[2])
+        if en_base is None or en_base[0] != self.programme_id:
+            cible = (
+                ProgrammeAnnuel.all_objects.filter(pk=self.programme_id)
+                .values_list("statut", "annee")
                 .first()
             )
+            if cible is not None and cible[0] == StatutProgramme.VALIDE:
+                raise ProgrammeFigeError(cible[1])
             if en_base is not None:
-                raise ProgrammeFigeError(en_base)
+                raise RegleMetierError(
+                    "Une ligne ne peut pas changer de programme.",
+                    {"programme": ["Une ligne ne peut pas changer de programme."]},
+                )
         super().save(*args, **kwargs)
+
+
+@receiver(m2m_changed, sender=LigneProgramme.entites.through)
+def _garder_entites(
+    sender: Any, instance: Any, action: str, reverse: bool, pk_set: Any, **kwargs: Any
+) -> None:
+    """Refuse toute modification des entités d'une ligne d'un programme validé."""
+    if action not in {"pre_add", "pre_remove", "pre_clear"} or "entites" in CHAMPS_EXECUTION:
+        return
+    if not reverse:
+        lignes = LigneProgramme.all_objects.filter(pk=instance.pk)
+    elif action == "pre_clear":  # direction.lignes_programme.clear() : instance = Direction
+        lignes = LigneProgramme.all_objects.filter(entites=instance)
+    else:
+        lignes = LigneProgramme.all_objects.filter(pk__in=pk_set or [])
+    annee = (
+        ProgrammeAnnuel.all_objects.filter(
+            statut=StatutProgramme.VALIDE, pk__in=lignes.order_by().values("programme_id")
+        )
+        .values_list("annee", flat=True)
+        .first()
+    )
+    if annee is not None:
+        raise ProgrammeFigeError(annee)
