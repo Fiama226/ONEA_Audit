@@ -68,7 +68,7 @@ test("RAI runs the whole risk-map lifecycle: create, matrix filter, validate, co
       .getByRole("link", { name: "Référentiel" })
       .click();
     await tabs.getByRole("link", { name: "Processus" }).click();
-    await page.getByRole("link", { name: "Créer un processus" }).click();
+    await page.getByRole("link", { name: "Créer un processus" }).first().click();
     await page.getByLabel("Code").fill("ZZE");
     await page.getByLabel("Libellé").fill(PROCESS_LABEL);
     await page.getByLabel("Famille").selectOption({ label: "Support" });
