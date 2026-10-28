@@ -197,6 +197,43 @@
       "realmRoles": [
         "DG"
       ]
+    },
+    {
+      "username": "service-account-onea-admin-sync",
+      "enabled": true,
+      "serviceAccountClientId": "onea-admin-sync",
+      "clientRoles": {
+        "realm-management": [
+          "view-users",
+          "manage-users"
+        ]
+      }
+    },
+    {
+      "username": "preprov1",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Pre",
+      "lastName": "Provisionne",
+      "email": "preprov1@onea.test",
+      "attributes": {
+        "direction": [
+          "DCM"
+        ],
+        "fonction": [
+          "Chargé de clientèle"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "onea2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "AUDITE"
+      ]
     }
   ],
   "clients": [
@@ -395,6 +432,20 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "onea-admin-sync",
+      "name": "ONEA admin sync (service account)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KEYCLOAK_ADMIN_API_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": false
     }
   ]
 }

@@ -32,6 +32,8 @@ if not env("OIDC_OP_BASE_URL").startswith("https://"):  # required in production
     raise ImproperlyConfigured("OIDC_OP_BASE_URL must be an https:// URL in production")
 if not env.bool("OIDC_VERIFY_SSL", default=True):
     raise ImproperlyConfigured("OIDC_VERIFY_SSL must not be disabled in production")
+if not env("KEYCLOAK_ADMIN_API_CLIENT_SECRET", default=""):  # required in production
+    raise ImproperlyConfigured("KEYCLOAK_ADMIN_API_CLIENT_SECRET must be set in production")
 
 REST_FRAMEWORK = {
     **REST_FRAMEWORK,

@@ -1,6 +1,11 @@
+from collections.abc import Callable, Iterator
+from typing import Any
+from uuid import UUID, uuid4
+
 import pytest
 from rest_framework.test import APIClient
 
+from apps.users.keycloak_admin import KeycloakIntrouvable
 from apps.users.models import Role, User
 
 from .factories import make_user, reset_sequences
@@ -46,3 +51,78 @@ def auth_client(api_client: APIClient, user: User) -> APIClient:
 def _reset_factory_sequences() -> None:
     """Keep sequence-based values (years, risk numbers) deterministic across tests."""
     reset_sequences()
+
+
+class FakeKeycloakAdmin:
+    """In-memory `KeycloakAdmin` for tests of the user-management features."""
+
+    def __init__(self) -> None:
+        self.users: dict[UUID, dict[str, Any]] = {}
+        self.roles: dict[UUID, set[str]] = {}
+        self.calls: list[tuple[Any, ...]] = []
+        self._failures: list[Exception] = []
+        self._on_set_enabled: Callable[[UUID, bool], None] | None = None
+
+    # --- test helpers ---
+    def add_user(self, username: str, **attrs: Any) -> UUID:
+        user_id = uuid4()
+        roles = attrs.pop("roles", set())
+        self.users[user_id] = {"id": str(user_id), "username": username, "enabled": True, **attrs}
+        self.roles[user_id] = set(roles)
+        return user_id
+
+    def enabled(self, user_id: UUID) -> bool:
+        return bool(self.users[user_id]["enabled"])
+
+    def fail_with(self, exc: Exception, times: int = 1) -> None:
+        self._failures.extend([exc] * times)
+
+    def on_set_enabled(self, callback: Callable[[UUID, bool], None]) -> None:
+        self._on_set_enabled = callback
+
+    # --- KeycloakAdmin protocol ---
+    def _enter(self, *call: Any) -> None:
+        self.calls.append(call)
+        if self._failures:
+            raise self._failures.pop(0)
+
+    def _user(self, user_id: UUID) -> dict[str, Any]:
+        if user_id not in self.users:
+            raise KeycloakIntrouvable("Compte introuvable dans Keycloak.", 404)
+        return self.users[user_id]
+
+    def set_enabled(self, user_id: UUID, enabled: bool) -> None:
+        self._enter("set_enabled", user_id, enabled)
+        user = self._user(user_id)
+        if self._on_set_enabled is not None:
+            self._on_set_enabled(user_id, enabled)
+        user["enabled"] = enabled
+
+    def logout(self, user_id: UUID) -> None:
+        self._enter("logout", user_id)
+        self._user(user_id)
+
+    def search_users(self, q: str, *, max_results: int = 20) -> list[dict[str, Any]]:
+        self._enter("search_users", q)
+        found = [u for u in self.users.values() if q.lower() in str(u["username"]).lower()]
+        return found[:max_results]
+
+    def iter_users(self, *, page_size: int = 100) -> Iterator[dict[str, Any]]:
+        self._enter("iter_users")
+        yield from list(self.users.values())
+
+    def get_user(self, user_id: UUID) -> dict[str, Any]:
+        self._enter("get_user", user_id)
+        return dict(self._user(user_id))
+
+    def effective_realm_roles(self, user_id: UUID) -> set[str]:
+        self._enter("effective_realm_roles", user_id)
+        self._user(user_id)
+        return set(self.roles[user_id])
+
+
+@pytest.fixture
+def fake_keycloak(monkeypatch: pytest.MonkeyPatch) -> FakeKeycloakAdmin:
+    fake = FakeKeycloakAdmin()
+    monkeypatch.setattr("apps.users.keycloak_admin.get_keycloak_admin", lambda: fake)
+    return fake
