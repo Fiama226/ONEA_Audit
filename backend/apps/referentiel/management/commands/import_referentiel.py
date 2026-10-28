@@ -1,3 +1,4 @@
+import os
 from argparse import ArgumentParser
 from typing import Any
 
@@ -5,6 +6,8 @@ from django.core.management.base import BaseCommand, CommandError
 
 from apps.referentiel.imports import ImportReferentielError, importer_referentiel
 from apps.users.models import Role, User
+
+TAILLE_MAX = 5 * 1024 * 1024  # octets : borne la mémoire utilisée, 5 000 lignes tiennent en < 1 Mio
 
 _LIBELLES = (
     ("directions", "Directions"),
@@ -36,6 +39,10 @@ class Command(BaseCommand):
             raise CommandError("L'import est réservé aux utilisateurs RAI ou ADMIN.")
         dry_run = bool(options["dry_run"])
         try:
+            if os.path.getsize(options["chemin"]) > TAILLE_MAX:
+                raise CommandError(
+                    f"Fichier trop volumineux : {TAILLE_MAX // (1024 * 1024)} Mio au maximum."
+                )
             with open(options["chemin"], encoding="utf-8-sig", newline="") as flux:
                 rapport = importer_referentiel(flux, by=user, dry_run=dry_run)
         except OSError as e:

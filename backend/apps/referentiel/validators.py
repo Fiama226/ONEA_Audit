@@ -1,4 +1,10 @@
+import re
+
 from django.core.validators import RegexValidator
+
+# Caractères de contrôle interdits dans les textes libres ; \t, \n et \r restent permis.
+CARACTERES_CONTROLE_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+MSG_CARACTERES_CONTROLE = "Les caractères de contrôle ne sont pas autorisés."
 
 valider_code_processus = RegexValidator(
     r"^[A-Z]{2,5}\Z",

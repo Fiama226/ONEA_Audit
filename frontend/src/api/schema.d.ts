@@ -2401,6 +2401,7 @@ export interface operations {
     v1_risk_maps_export_retrieve: {
         parameters: {
             query: {
+                format?: "" | "json";
                 /** @description Format du fichier : csv (UTF-8, séparateur « ; ») ou xlsx. */
                 type: "csv" | "xlsx";
             };
@@ -2428,6 +2429,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
                 };
             };
             401: {
@@ -2436,6 +2438,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
                 };
             };
             403: {
@@ -2444,6 +2447,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
                 };
             };
             404: {
@@ -2452,6 +2456,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
                 };
             };
         };

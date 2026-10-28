@@ -11,6 +11,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
+from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer
@@ -43,6 +44,7 @@ from .permissions import (
     TOUS_ROLES,
     RolePermission,
 )
+from .renderers import PassthroughRenderer
 from .serializers import (
     CartographieVersionSerializer,
     ComparaisonSerializer,
@@ -224,6 +226,17 @@ class CartographieVersionViewSet(ReferentielViewSet[CartographieVersion]):
     read_roles = LECTURE_CARTOGRAPHIE
     write_roles = ECRITURE_CARTOGRAPHIE
 
+    def finalize_response(
+        self, request: Request, response: Response, *args: Any, **kwargs: Any
+    ) -> Response:
+        # Export : le moteur « passthrough » accepte tout `Accept`, mais les erreurs
+        # (400, 403, 404...) restent du JSON.
+        final = super().finalize_response(request, response, *args, **kwargs)
+        if self.action == "export" and isinstance(final, Response) and final.status_code >= 400:
+            final.accepted_renderer = JSONRenderer()
+            final.accepted_media_type = "application/json"
+        return final
+
     def get_queryset(self) -> QuerySet[CartographieVersion]:
         return CartographieVersion.objects.select_related("validee_par").annotate(
             nb_risques=Count("risques", filter=Q(risques__deleted_at__isnull=True))
@@ -271,7 +284,10 @@ class CartographieVersionViewSet(ReferentielViewSet[CartographieVersion]):
     @extend_schema(
         tags=["Cartographie"],
         summary="Exporter une cartographie (CSV ou XLSX)",
-        description="Télécharge la cartographie : liste des risques (CSV ou XLSX) ; le XLSX ajoute la matrice 5×5.",
+        description=(
+            "Télécharge la cartographie : liste des risques (CSV ou XLSX) ; "
+            "le XLSX ajoute la matrice 5×5."
+        ),
         parameters=[
             OpenApiParameter(
                 "type",
@@ -289,7 +305,13 @@ class CartographieVersionViewSet(ReferentielViewSet[CartographieVersion]):
             **ERROR_404,
         },
     )
-    @action(detail=True, methods=["get"], pagination_class=None, filter_backends=[])
+    @action(
+        detail=True,
+        methods=["get"],
+        pagination_class=None,
+        filter_backends=[],
+        renderer_classes=[JSONRenderer, PassthroughRenderer],
+    )
     def export(self, request: Request, pk: str | None = None) -> HttpResponse:
         format_ = request.query_params.get("type")
         if format_ not in ("csv", "xlsx"):

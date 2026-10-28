@@ -44,7 +44,18 @@ def test_csv_colonnes_et_valeurs_en_francais(rai: User) -> None:
 
 
 def test_neutraliser_formule() -> None:
-    for dangereux in ("=1+1", "+1", "-1", "@SUM(A1)", "\tx", "\rx"):
+    for dangereux in (
+        "=1+1",
+        "+1",
+        "-1",
+        "@SUM(A1)",
+        "\tx",
+        "\rx",
+        " =1+1",
+        "\n=1+1",
+        " =1+1",
+        "  \t@x",
+    ):
         assert neutraliser_formule(dangereux) == "'" + dangereux
     assert neutraliser_formule("Texte normal") == "Texte normal"
     assert neutraliser_formule("") == ""
@@ -82,12 +93,48 @@ def test_xlsx_deux_feuilles_et_matrice(auth_rai: APIClient) -> None:
     assert cellule.fill.fgColor.rgb.endswith("F8C9C4")  # score 15 : élevé
 
 
-def test_xlsx_neutralise_les_formules(auth_rai: APIClient) -> None:
-    r = _risque(description="=1+1")
+def test_xlsx_ecrit_les_textes_bruts_sans_formule(auth_rai: APIClient) -> None:
+    r = _risque(description="=1+1", dispositif_controle="- Contrôle 1\n- Contrôle 2")
     resp = auth_rai.get(f"/api/v1/risk-maps/{r.version_id}/export/?type=xlsx")
     wb = openpyxl.load_workbook(io.BytesIO(resp.content))
-    assert wb["Risques"]["E2"].value == "'=1+1"
-    assert wb["Risques"]["E2"].data_type == "s"
+    feuille = wb["Risques"]
+    assert feuille["E2"].value == "=1+1"  # aucune apostrophe visible
+    assert feuille["E2"].data_type == "s"  # jamais interprété comme formule
+    assert feuille["N2"].value == "- Contrôle 1\n- Contrôle 2"
+
+
+def test_csv_garde_l_apostrophe_de_neutralisation(auth_rai: APIClient) -> None:
+    r = _risque(dispositif_controle="- Contrôle 1")
+    resp = auth_rai.get(f"/api/v1/risk-maps/{r.version_id}/export/?type=csv")
+    assert ";'- Contrôle 1" in resp.content.decode("utf-8")
+
+
+def test_caracteres_de_controle_ne_cassent_pas_les_exports(auth_rai: APIClient) -> None:
+    r = _risque(description="a\x0bb\x01c", vulnerabilite="x\x1fy")
+    base = f"/api/v1/risk-maps/{r.version_id}/export/"
+    xlsx = auth_rai.get(f"{base}?type=xlsx")
+    assert xlsx.status_code == 200
+    wb = openpyxl.load_workbook(io.BytesIO(xlsx.content))
+    assert wb["Risques"]["E2"].value == "abc"
+    assert wb["Risques"]["J2"].value == "xy"
+    texte = auth_rai.get(f"{base}?type=csv").content.decode("utf-8")
+    assert ";abc;" in texte and "\x0b" not in texte and "\x01" not in texte
+
+
+def test_export_ignore_l_en_tete_accept(auth_rai: APIClient) -> None:
+    r = _risque()
+    base = f"/api/v1/risk-maps/{r.version_id}/export/"
+    for accept, type_ in (
+        ("text/csv", "csv"),
+        ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx"),
+        ("application/octet-stream", "csv"),
+        ("*/*", "xlsx"),
+    ):
+        resp = auth_rai.get(f"{base}?type={type_}", HTTP_ACCEPT=accept)
+        assert resp.status_code == 200, accept
+    erreur = auth_rai.get(f"{base}?type=pdf", HTTP_ACCEPT="text/csv")
+    assert erreur.status_code == 400
+    assert "type" in erreur.json()["errors"]
 
 
 def test_export_type_invalide_400(auth_rai: APIClient) -> None:
@@ -107,7 +154,7 @@ def test_export_interdit_a_l_audite(api_client: APIClient, audite: User) -> None
 def test_export_lisible_par_dg_et_anonyme_refuse(api_client: APIClient, dg: User) -> None:
     v = typed.version()
     url = f"/api/v1/risk-maps/{v.pk}/export/?type=csv"
-    assert api_client.get(url).status_code in (401, 403)
+    assert api_client.get(url).status_code == 401
     api_client.force_authenticate(user=dg)
     assert api_client.get(url).status_code == 200
 

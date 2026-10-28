@@ -5,6 +5,7 @@ import io
 from typing import cast
 
 from openpyxl import Workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
@@ -49,9 +50,20 @@ _FOND_NIVEAU = {
 _DECLENCHEURS_FORMULE = ("=", "+", "-", "@", "\t", "\r")
 
 
+def nettoyer(valeur: str) -> str:
+    """Retire les caractères de contrôle, illégaux dans un classeur XLSX (et inutiles en CSV)."""
+    return ILLEGAL_CHARACTERS_RE.sub("", valeur)
+
+
 def neutraliser_formule(valeur: str) -> str:
-    """Préfixe d'une apostrophe tout texte qu'un tableur interpréterait comme une formule."""
-    if valeur.startswith(_DECLENCHEURS_FORMULE):
+    """Préfixe d'une apostrophe tout texte qu'un tableur interpréterait comme une formule.
+
+    Les espaces (dont l'espace insécable) et retours à la ligne initiaux sont ignorés pour
+    détecter le déclencheur, certains tableurs les suppriment à l'import.
+    """
+    if valeur.lstrip().startswith(_DECLENCHEURS_FORMULE) or valeur.startswith(
+        _DECLENCHEURS_FORMULE
+    ):
         return "'" + valeur
     return valeur
 
@@ -68,22 +80,29 @@ def _libelle_enum(enum: type[NiveauRisque] | type[ReponseRisque], valeur: str) -
     return str(enum(valeur).label) if valeur else ""
 
 
-def _ligne(r: Risque) -> list[str | int]:
+def _ligne(r: Risque, *, neutraliser: bool) -> list[str | int]:
+    """Valeurs d'une ligne. `neutraliser` : CSV seulement (une cellule XLSX de type texte
+    n'est jamais évaluée, le texte y est donc écrit tel quel)."""
+
+    def texte(valeur: str) -> str:
+        valeur = nettoyer(valeur)
+        return neutraliser_formule(valeur) if neutraliser else valeur
+
     return [
-        neutraliser_formule(r.code),
-        neutraliser_formule(r.processus.libelle),
-        neutraliser_formule(r.objet_auditable.libelle if r.objet_auditable else ""),
-        neutraliser_formule(r.libelle),
-        neutraliser_formule(r.description),
+        texte(r.code),
+        texte(r.processus.libelle),
+        texte(r.objet_auditable.libelle if r.objet_auditable else ""),
+        texte(r.libelle),
+        texte(r.description),
         r.probabilite,
         r.impact,
         r.score,
         _libelle_enum(NiveauRisque, r.niveau),
-        neutraliser_formule(r.vulnerabilite),
+        texte(r.vulnerabilite),
         _libelle_enum(ReponseRisque, r.reponse),
         str(PrioriteRisque(r.priorite).label),
-        neutraliser_formule(r.objectif_controle),
-        neutraliser_formule(r.dispositif_controle),
+        texte(r.objectif_controle),
+        texte(r.dispositif_controle),
     ]
 
 
@@ -93,7 +112,7 @@ def exporter_csv(version: CartographieVersion) -> bytes:
     ecrivain = csv.writer(tampon, delimiter=";", lineterminator="\r\n")
     ecrivain.writerow(COLONNES)
     for r in _risques(version):
-        ecrivain.writerow(_ligne(r))
+        ecrivain.writerow(_ligne(r, neutraliser=True))
     return tampon.getvalue().encode("utf-8-sig")
 
 
@@ -109,7 +128,10 @@ def exporter_xlsx(version: CartographieVersion) -> bytes:
         cellule.font = Font(bold=True)
         cellule.alignment = Alignment(vertical="top", wrap_text=True)
     for r in _risques(version):
-        feuille.append(_ligne(r))
+        feuille.append(_ligne(r, neutraliser=False))
+        for cellule in feuille[feuille.max_row]:
+            if isinstance(cellule.value, str):
+                cellule.data_type = "s"  # texte pur : un « = » initial n'est jamais une formule
     feuille.freeze_panes = "A2"
     feuille.auto_filter.ref = f"A1:{get_column_letter(len(COLONNES))}{feuille.max_row}"
     for index, largeur in enumerate((14, 30, 30, 40, 50, 12, 9, 8, 10, 40, 12, 14, 40, 40), 1):
@@ -132,7 +154,7 @@ def exporter_xlsx(version: CartographieVersion) -> bytes:
             axe = grille.cell(row=ligne, column=1, value=case.probabilite)
             axe.font = Font(bold=True)
             axe.alignment = Alignment(horizontal="center", vertical="center")
-        c = grille.cell(row=ligne, column=1 + case.impact, value="\n".join(case.codes))
+        c = grille.cell(row=ligne, column=1 + case.impact, value=nettoyer("\n".join(case.codes)))
         c.fill = PatternFill("solid", fgColor=_FOND_NIVEAU[case.niveau])
         c.alignment = Alignment(wrap_text=True, vertical="top", horizontal="center")
     grille.column_dimensions["A"].width = 14

@@ -15,6 +15,15 @@ from .models import (
     Risque,
     StatutCartographie,
 )
+from .validators import CARACTERES_CONTROLE_RE, MSG_CARACTERES_CONTROLE
+
+_TEXTES_LIBRES_RISQUE = (
+    "libelle",
+    "description",
+    "vulnerabilite",
+    "objectif_controle",
+    "dispositif_controle",
+)
 
 # --------------------------------------------------------------------------- structure
 
@@ -199,6 +208,13 @@ class RisqueSerializer(serializers.ModelSerializer[Risque]):
         )
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        interdits = {
+            champ: [MSG_CARACTERES_CONTROLE]
+            for champ in _TEXTES_LIBRES_RISQUE
+            if isinstance(attrs.get(champ), str) and CARACTERES_CONTROLE_RE.search(attrs[champ])
+        }
+        if interdits:
+            raise serializers.ValidationError(interdits)
         if self.instance is not None:
             if "version" in attrs and attrs["version"].pk != self.instance.version_id:
                 raise serializers.ValidationError(

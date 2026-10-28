@@ -22,7 +22,11 @@ from apps.users.models import User
 
 from . import services
 from .models import Direction, FamilleProcessus, Processus, TypeEntite
-from .validators import valider_code_direction, valider_code_processus
+from .validators import (
+    CARACTERES_CONTROLE_RE,
+    valider_code_direction,
+    valider_code_processus,
+)
 
 EN_TETE = "type;code;libelle;famille;ordre;parent;directions"
 MAX_LIGNES = 5000
@@ -136,6 +140,9 @@ def _parser_ligne(
     if len(cellules) != 7:
         erreur(f"7 colonnes attendues, {len(cellules)} trouvées.")
         return None
+    if any(CARACTERES_CONTROLE_RE.search(c) for c in cellules):
+        erreur("caractère de contrôle interdit.")
+        return None
     type_, code, libelle, famille, ordre, parent, directions = (c.strip() for c in cellules)
     type_ = type_.upper()
     if type_ not in _TYPES:
@@ -178,7 +185,7 @@ def _parser_ligne(
             return None
         ligne.famille = valeur_famille
         if ordre:
-            if not ordre.isdigit() or int(ordre) > _ORDRE_MAX:
+            if not (ordre.isascii() and ordre.isdigit()) or int(ordre) > _ORDRE_MAX:
                 erreur(f"ordre « {ordre} » invalide (entier de 0 à {_ORDRE_MAX}).")
                 return None
             ligne.ordre = int(ordre)
