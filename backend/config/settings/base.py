@@ -187,6 +187,12 @@ OIDC_VERIFY_SSL: bool = env.bool("OIDC_VERIFY_SSL", default=True)
 OIDC_TIMEOUT = 5  # seconds; Keycloak calls must never hang a request worker
 # Accepted `azp` (issuing client) of bearer access tokens; other realm clients are refused.
 OIDC_ALLOWED_AZP: list[str] = env.list("OIDC_ALLOWED_AZP", default=["onea-frontend"])
+
+# --- Keycloak Admin API (service account of the realm, least privilege) ---
+# Client-credentials grant of `onea-admin-sync` (view-users + manage-users only). Never an
+# accepted `azp` of bearer tokens. Empty secret = synchronisation not configured.
+KEYCLOAK_ADMIN_API_CLIENT_ID: str = env("KEYCLOAK_ADMIN_API_CLIENT_ID", default="onea-admin-sync")
+KEYCLOAK_ADMIN_API_CLIENT_SECRET: str = env("KEYCLOAK_ADMIN_API_CLIENT_SECRET", default="")
 # The OIDC backend is wired for the DRF bearer path only, NOT in AUTHENTICATION_BACKENDS,
 # so that django authenticate() (admin/session) can never trigger a code-flow exchange.
 OIDC_DRF_AUTH_BACKEND = "apps.users.oidc.OneaOIDCBackend"

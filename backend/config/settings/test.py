@@ -9,6 +9,7 @@ SPECTACULAR_SETTINGS = {
     "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
 }
 OIDC_ALLOWED_AZP = ["onea-frontend", "onea-dev-cli"]
+KEYCLOAK_ADMIN_API_CLIENT_SECRET = ""  # tests inject a fake client or set it explicitly
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
