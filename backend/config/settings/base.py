@@ -141,6 +141,7 @@ SPECTACULAR_SETTINGS = {
         "ReponseRisqueEnum": "apps.referentiel.models.ReponseRisque.choices",
         "PrioriteRisqueEnum": "apps.referentiel.models.PrioriteRisque.choices",
         "KeycloakSyncStatutEnum": "apps.users.models.KeycloakSyncStatut.choices",
+        "OrigineCompteEnum": "apps.users.models.OrigineCompte.choices",
     },
 }
 

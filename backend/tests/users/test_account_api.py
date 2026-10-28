@@ -7,7 +7,12 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
-from apps.users.keycloak_admin import KeycloakIndisponible, KeycloakRefus
+from apps.users.keycloak_admin import (
+    KeycloakAdminError,
+    KeycloakIndisponible,
+    KeycloakIntrouvable,
+    KeycloakRefus,
+)
 from apps.users.models import Role, User
 from apps.users.oidc import OneaOIDCBackend
 
@@ -16,24 +21,66 @@ from ..factories import DirectionFactory, make_user
 from .test_oidc import _bearer, claims
 
 BASE = "/api/v1/user-accounts/"
+ANNUAIRE_503 = "L'annuaire (Keycloak) est momentanément indisponible. Réessayez plus tard."
 
 
-@pytest.mark.parametrize(
-    "role,status",
-    [("ADMIN", 200), ("RAI", 403), ("AUDITEUR", 403), ("AUDITE", 403), ("DG", 403)],
-)
-def test_droits_admin_seul(
-    api_client: APIClient, user: User, role: str, status: int, fake_keycloak: FakeKeycloakAdmin
+ROLES_REFUSES = ["RAI", "AUDITEUR", "AUDITE", "DG"]
+
+
+def _appel(client: APIClient, methode: str, url: str, corps: dict[str, Any], fmt: str) -> Any:
+    if methode in ("get", "options"):
+        return getattr(client, methode)(url)
+    return getattr(client, methode)(url, corps, format=fmt)
+
+
+def _routes(cible: int) -> list[tuple[str, str, dict[str, Any], str]]:
+    return [
+        ("get", BASE, {}, "json"),
+        ("get", f"{BASE}{cible}/", {}, "json"),
+        ("patch", f"{BASE}{cible}/", {"fonction": "X"}, "json"),
+        ("post", f"{BASE}{cible}/deactivate/", {"motif": "x"}, "json"),
+        ("post", f"{BASE}{cible}/reactivate/", {}, "json"),
+        ("post", f"{BASE}{cible}/resync-profile/", {}, "json"),
+        ("post", f"{BASE}{cible}/retry-keycloak-sync/", {}, "json"),
+        ("get", BASE + "directory-search/?q=aud", {}, "json"),
+        ("post", BASE + "import-directory/", {"keycloak_ids": [str(uuid.uuid4())]}, "json"),
+        ("post", BASE + "import-csv/", {}, "multipart"),
+        ("options", BASE, {}, "json"),
+        ("options", f"{BASE}{cible}/", {}, "json"),
+    ]
+
+
+@pytest.mark.parametrize("role", ROLES_REFUSES)
+def test_droits_admin_seul_toutes_les_routes(
+    api_client: APIClient, user: User, role: str, fake_keycloak: FakeKeycloakAdmin
 ) -> None:
+    cible = make_user(Role.AUDITEUR)
+    fonction_initiale = cible.fonction
     api_client.force_authenticate(make_user(role))
-    assert api_client.get(BASE).status_code == status
-    assert api_client.get(BASE + "directory-search/?q=aud").status_code == status
-    r = api_client.post(f"{BASE}{user.id}/deactivate/", {"motif": "x"}, format="json")
-    assert r.status_code == (200 if role == "ADMIN" else 403)
+    for methode, url, corps, fmt in _routes(cible.id):
+        r = _appel(api_client, methode, url, corps, fmt)
+        assert r.status_code == 403, (methode, url)
+        assert set(r.json()) == {"detail", "errors"}, (methode, url)
+    cible.refresh_from_db()
+    assert cible.is_active and cible.fonction == fonction_initiale
 
 
-def test_anonyme_401(api_client: APIClient) -> None:
-    assert api_client.get(BASE).status_code in (401, 403)
+def test_admin_acces_aux_routes(
+    api_client: APIClient, admin: User, fake_keycloak: FakeKeycloakAdmin
+) -> None:
+    cible = make_user(Role.AUDITEUR)
+    api_client.force_authenticate(admin)
+    assert api_client.get(BASE).status_code == 200
+    assert api_client.get(BASE + "directory-search/?q=aud").status_code == 200
+    r = api_client.post(f"{BASE}{cible.id}/deactivate/", {"motif": "x"}, format="json")
+    assert r.status_code == 200
+
+
+def test_anonyme_401_sur_toutes_les_routes(api_client: APIClient, user: User) -> None:
+    for methode, url, corps, fmt in _routes(user.id):
+        r = _appel(api_client, methode, url, corps, fmt)
+        assert r.status_code == 401, (methode, url)
+        assert set(r.json()) == {"detail", "errors"}, (methode, url)
 
 
 def test_deactivate_keycloak_echec_200(
@@ -69,15 +116,30 @@ def test_reactivate_et_resync_profile(
     assert api_client.post(f"{BASE}{cible.id}/reactivate/").status_code == 422
 
 
+MSG_ANNUAIRE = "Ce champ est géré dans l'annuaire (Keycloak) et ne peut pas être modifié ici."
+MSG_ACTIF = "Utilisez les actions « Désactiver » et « Réactiver »."
+MSG_AUTRE = "Champ non modifiable."
+
+
 @pytest.mark.parametrize(
-    "champ", ["role", "username", "email", "first_name", "last_name", "is_active"]
+    "champ,message",
+    [
+        ("role", MSG_ANNUAIRE),
+        ("username", MSG_ANNUAIRE),
+        ("email", MSG_ANNUAIRE),
+        ("first_name", MSG_ANNUAIRE),
+        ("last_name", MSG_ANNUAIRE),
+        ("is_active", MSG_ACTIF),
+        ("id", MSG_AUTRE),
+        ("keycloak_id", MSG_AUTRE),
+    ],
 )
-def test_patch_champs_annuaire_refuses(api_client: APIClient, admin: User, champ: str) -> None:
+def test_patch_champs_refuses(api_client: APIClient, admin: User, champ: str, message: str) -> None:
     cible = make_user(Role.AUDITEUR)
     avant = User.objects.values().get(pk=cible.pk)
     api_client.force_authenticate(admin)
     r = api_client.patch(f"{BASE}{cible.id}/", {champ: "x", "fonction": "Chef"}, format="json")
-    assert r.status_code == 400 and champ in r.json()["errors"]
+    assert r.status_code == 400 and r.json()["errors"] == {champ: [message]}
     assert User.objects.values().get(pk=cible.pk) == avant
 
 
@@ -147,8 +209,11 @@ def test_filtres_et_tri(api_client: APIClient, admin: User) -> None:
         origine="CSV",
         keycloak_sync_statut="ECHEC",
         matricule="M-9",
+        email="zed@onea.bf",
+        first_name="Zoe",
+        direction_code="DIRQ",
     )
-    make_user(
+    b = make_user(
         Role.RAI, username="amy", last_name="Alpha", premiere_connexion_le="2026-01-01T00:00:00Z"
     )
     api_client.force_authenticate(admin)
@@ -157,11 +222,18 @@ def test_filtres_et_tri(api_client: APIClient, admin: User) -> None:
         return [x["id"] for x in api_client.get(BASE + qs).json()["results"]]
 
     assert ids("?en_attente_connexion=true&origine=CSV&keycloak_sync=ECHEC") == [a.id]
-    assert ids("?role=RAI") != [a.id]
-    assert ids("?q=m-9") == [a.id]
+    assert ids("?role=RAI") == [b.id]
+    for terme in ("zon", "ZED", "m-9", "zed@onea", "Zo"):
+        assert ids(f"?q={terme}") == [a.id], terme
+    assert ids("?direction_code=DIRQ") == [a.id]
+    assert ids("?en_attente_connexion=false") == [b.id]
     assert ids("?is_active=false") == []
-    assert ids("?ordering=-username")[0] == a.id
-    assert ids("?ordering=last_name")[0] != a.id
+    for champ in ("username", "last_name"):
+        croissant = ids(f"?ordering={champ}")
+        assert croissant.index(b.id) < croissant.index(a.id), champ
+        decroissant = ids(f"?ordering=-{champ}")
+        assert decroissant.index(a.id) < decroissant.index(b.id), champ
+    assert api_client.get(BASE + "?q=" + "x" * 101).status_code == 400
 
 
 @pytest.mark.parametrize("qs", ["?is_active=peut-etre", "?en_attente_connexion=x", "?role=NOPE"])
@@ -300,3 +372,44 @@ def test_import_directory_503(
         BASE + "import-directory/", {"keycloak_ids": [str(uuid.uuid4())]}, format="json"
     )
     assert r.status_code == 503
+
+
+@pytest.mark.parametrize(
+    "exc,statut,detail",
+    [
+        (KeycloakIndisponible("down", 503), 503, ANNUAIRE_503),
+        (
+            KeycloakRefus("Keycloak a refusé l'opération (HTTP 403) : vérifiez les droits.", 403),
+            502,
+            "Keycloak a refusé l'opération (HTTP 403) : vérifiez les droits.",
+        ),
+        (
+            KeycloakIntrouvable("Compte introuvable dans Keycloak.", 404),
+            502,
+            "Compte introuvable dans Keycloak.",
+        ),
+        (KeycloakAdminError("Erreur Keycloak."), 502, "Erreur Keycloak."),
+    ],
+)
+def test_annuaire_erreurs_formatees(
+    api_client: APIClient,
+    admin: User,
+    fake_keycloak: FakeKeycloakAdmin,
+    settings: Any,
+    exc: KeycloakAdminError,
+    statut: int,
+    detail: str,
+) -> None:
+    settings.KEYCLOAK_ADMIN_API_CLIENT_SECRET = "s3cr3t-de-test"  # noqa: S105
+    api_client.force_authenticate(admin)
+    fake_keycloak.fail_with(exc)
+    r = api_client.get(BASE + "directory-search/?q=aud")
+    assert r.status_code == statut and r.json() == {"detail": detail, "errors": {}}
+    if isinstance(exc, KeycloakIntrouvable):
+        return  # an import reports a missing directory entry as an ignored line (T4)
+    fake_keycloak.fail_with(exc, times=5)
+    r = api_client.post(
+        BASE + "import-directory/", {"keycloak_ids": [str(uuid.uuid4())]}, format="json"
+    )
+    assert r.status_code == statut and r.json() == {"detail": detail, "errors": {}}
+    assert "s3cr3t" not in r.content.decode()

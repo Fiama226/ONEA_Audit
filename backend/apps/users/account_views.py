@@ -1,4 +1,4 @@
-"""Admin API for user accounts: no business logic here, everything goes through services."""
+"""API d'administration des comptes : aucune logique métier, tout passe par les services."""
 
 from typing import Any, cast
 
@@ -14,7 +14,14 @@ from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from apps.core.filters import StableOrderingFilter
-from apps.core.schema import ERROR_400, ERROR_404, ERROR_422, ERROR_503, ERROR_RESPONSES
+from apps.core.schema import (
+    ERROR_400,
+    ERROR_404,
+    ERROR_422,
+    ERROR_503,
+    ERROR_RESPONSES,
+    ApiErrorSerializer,
+)
 from apps.referentiel.models import Direction
 
 from . import provisioning, services
@@ -30,7 +37,7 @@ from .account_serializers import (
     ProfilUtilisateurSerializer,
     RapportImportSerializer,
 )
-from .keycloak_admin import KeycloakIndisponible, KeycloakNonConfigure
+from .keycloak_admin import KeycloakAdminError, KeycloakIndisponible, KeycloakNonConfigure
 from .keycloak_sync import relancer_synchronisation, synchroniser_keycloak
 from .models import User
 from .provisioning import FichierImportInvalide
@@ -43,8 +50,14 @@ _COMPTE = {"200": None}
 _ERREURS_ACTION = {**ERROR_RESPONSES, **ERROR_404, **ERROR_422}
 
 
-def _annuaire_indisponible() -> Response:
-    return Response({"detail": ANNUAIRE_INDISPONIBLE, "errors": {}}, status=503)
+ERROR_502 = {502: ApiErrorSerializer}
+
+
+def _erreur_annuaire(exc: KeycloakAdminError) -> Response:
+    """503 si Keycloak est injoignable, 502 s'il refuse (message fixe, sans secret)."""
+    if isinstance(exc, KeycloakIndisponible | KeycloakNonConfigure):
+        return Response({"detail": ANNUAIRE_INDISPONIBLE, "errors": {}}, status=503)
+    return Response({"detail": exc.message, "errors": {}}, status=502)
 
 
 class _RechercheSerializer(serializers.Serializer[dict[str, str]]):
@@ -183,6 +196,7 @@ class UserAccountViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Gener
             **ERROR_400,
             **ERROR_RESPONSES,
             **ERROR_503,
+            **ERROR_502,
         },
     )
     @action(
@@ -197,15 +211,21 @@ class UserAccountViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Gener
         recherche.is_valid(raise_exception=True)
         try:
             entrees = provisioning.rechercher_annuaire(recherche.validated_data["q"])
-        except (KeycloakIndisponible, KeycloakNonConfigure):
-            return _annuaire_indisponible()
+        except KeycloakAdminError as exc:
+            return _erreur_annuaire(exc)
         return Response(EntreeAnnuaireSerializer(entrees, many=True).data)  # type: ignore[arg-type]
 
     @extend_schema(
         tags=[TAG],
         summary="Importer des comptes depuis l'annuaire Keycloak",
         request=ImportAnnuaireSerializer,
-        responses={200: RapportImportSerializer, **ERROR_400, **ERROR_RESPONSES, **ERROR_503},
+        responses={
+            200: RapportImportSerializer,
+            **ERROR_400,
+            **ERROR_RESPONSES,
+            **ERROR_503,
+            **ERROR_502,
+        },
     )
     @action(detail=False, methods=["post"], url_path="import-directory")
     def import_directory(self, request: Request) -> Response:
@@ -215,8 +235,8 @@ class UserAccountViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Gener
             rapport = provisioning.importer_depuis_annuaire(
                 serializer.validated_data["keycloak_ids"], by=self.acteur, dry_run=False
             )
-        except (KeycloakIndisponible, KeycloakNonConfigure):
-            return _annuaire_indisponible()
+        except KeycloakAdminError as exc:
+            return _erreur_annuaire(exc)
         return Response(RapportImportSerializer(rapport).data)
 
     @extend_schema(

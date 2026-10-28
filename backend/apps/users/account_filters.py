@@ -15,7 +15,7 @@ _FALSE = {"false", "0"}
 
 
 class StrictBooleanField(forms.Field):
-    """`true` / `false` (or 1 / 0) only; anything else is a 400, never silently ignored."""
+    """`true` / `false` (ou 1 / 0) uniquement ; toute autre valeur donne un 400."""
 
     def to_python(self, value: Any) -> bool | None:
         if value in (None, ""):
@@ -43,7 +43,7 @@ class UserAccountFilter(django_filters.FilterSet):
     keycloak_sync = django_filters.ChoiceFilter(
         field_name="keycloak_sync_statut", choices=KeycloakSyncStatut.choices
     )
-    q = django_filters.CharFilter(method="filter_q", help_text=Q_AIDE)
+    q = django_filters.CharFilter(method="filter_q", max_length=100, help_text=Q_AIDE)
 
     class Meta:
         model = User

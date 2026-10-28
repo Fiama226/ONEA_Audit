@@ -59,3 +59,10 @@ def test_import_csv_apply_historise_l_admin(admin_client: APIClient, admin: User
     assert cree.origine == "CSV"
     entree = LogEntry.objects.filter(object_pk=str(cree.pk), action=LogEntry.Action.CREATE).get()
     assert entree.actor_id == admin.pk
+
+
+def test_import_csv_type_refuse(admin_client: APIClient) -> None:
+    fichier = SimpleUploadedFile("comptes.pdf", b"%PDF", content_type="application/pdf")
+    r = admin_client.post(URL, {"fichier": fichier}, format="multipart")
+    assert r.status_code == 400
+    assert r.json()["errors"]["fichier"] == ["Le fichier doit être un fichier CSV (.csv)."]

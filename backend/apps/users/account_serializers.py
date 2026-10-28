@@ -5,11 +5,34 @@ from rest_framework import serializers
 from rest_framework.fields import empty
 
 from .models import KeycloakSyncStatut, User
-from .provisioning import EntreeAnnuaire, LigneIgnoree, RapportImport
+from .provisioning import CSV_MAX_BYTES, EntreeAnnuaire, LigneIgnoree, RapportImport
 from .services import actions_compte
 
 PROFILE_FIELDS = ("matricule", "direction_code", "fonction")
-CHAMP_NON_MODIFIABLE = "Ce champ ne peut pas être modifié ici (il provient de l'annuaire)."
+CHAMPS_ANNUAIRE = frozenset({"role", "username", "email", "first_name", "last_name"})
+MSG_ANNUAIRE = "Ce champ est géré dans l'annuaire (Keycloak) et ne peut pas être modifié ici."
+MSG_ACTIF = "Utilisez les actions « Désactiver » et « Réactiver »."
+MSG_AUTRE = "Champ non modifiable."
+FICHIER_TROP_GROS = "Le fichier dépasse 1 Mo."
+FICHIER_TYPE = "Le fichier doit être un fichier CSV (.csv)."
+TYPES_CSV = frozenset(
+    {
+        "text/csv",
+        "application/csv",
+        "application/vnd.ms-excel",
+        "text/plain",
+        "application/octet-stream",
+        "",
+    }
+)
+
+
+def message_champ_refuse(champ: str) -> str:
+    if champ in CHAMPS_ANNUAIRE:
+        return MSG_ANNUAIRE
+    if champ == "is_active":
+        return MSG_ACTIF
+    return MSG_AUTRE
 
 
 class UserRefSerializer(serializers.ModelSerializer[User]):
@@ -22,7 +45,7 @@ class UserRefSerializer(serializers.ModelSerializer[User]):
 
 
 class SyncKeycloakSerializer(serializers.Serializer[User]):
-    """Propagation state of the account towards Keycloak."""
+    """État de la propagation du compte vers Keycloak."""
 
     statut = serializers.ChoiceField(
         choices=KeycloakSyncStatut.choices, source="keycloak_sync_statut", read_only=True
@@ -40,7 +63,7 @@ class SyncKeycloakSerializer(serializers.Serializer[User]):
 
 
 class ActionsCompteSerializer(serializers.Serializer[dict[str, bool]]):
-    """Actions the current administrator may perform on the account."""
+    """Actions que l'administrateur connecté peut effectuer sur le compte."""
 
     modifier_profil = serializers.BooleanField()
     desactiver = serializers.BooleanField()
@@ -108,7 +131,7 @@ class CompteUtilisateurSerializer(CompteUtilisateurListeSerializer):
 
 
 class ProfilUtilisateurSerializer(serializers.Serializer[dict[str, str]]):
-    """Editable profile fields; every other field is refused explicitly."""
+    """Champs de profil modifiables ; tout autre champ est refusé explicitement."""
 
     matricule = serializers.CharField(max_length=32, allow_blank=True)
     direction_code = serializers.CharField(max_length=16, allow_blank=True)
@@ -117,7 +140,9 @@ class ProfilUtilisateurSerializer(serializers.Serializer[dict[str, str]]):
     def to_internal_value(self, data: Any) -> Any:
         if hasattr(data, "keys"):
             refused = {
-                str(key): [CHAMP_NON_MODIFIABLE] for key in list(data) if key not in PROFILE_FIELDS
+                str(key): [message_champ_refuse(str(key))]
+                for key in list(data)
+                if key not in PROFILE_FIELDS
             }
             if refused:
                 raise serializers.ValidationError(refused)
@@ -152,13 +177,23 @@ class ImportAnnuaireSerializer(serializers.Serializer[dict[str, Any]]):
 
 
 class DefaultTrueBooleanField(serializers.BooleanField):
-    """A missing multipart value means the default, not `False` (HTML forms omit it)."""
+    """Valeur multipart absente = défaut (les formulaires HTML omettent le champ)."""
 
     default_empty_html = empty
 
 
 class ImportCsvSerializer(serializers.Serializer[dict[str, Any]]):
     fichier = serializers.FileField()
+
+    def validate_fichier(self, fichier: Any) -> Any:
+        if fichier.size > CSV_MAX_BYTES:
+            raise serializers.ValidationError(FICHIER_TROP_GROS)
+        nom = str(fichier.name or "").lower()
+        type_mime = str(fichier.content_type or "").split(";")[0].strip().lower()
+        if not nom.endswith(".csv") and type_mime not in TYPES_CSV:
+            raise serializers.ValidationError(FICHIER_TYPE)
+        return fichier
+
     dry_run = DefaultTrueBooleanField(
         default=True, help_text="Simulation sans écriture (par défaut)."
     )

@@ -600,7 +600,7 @@ export interface components {
          * @enum {string}
          */
         ActionEnum: "create" | "update" | "delete" | "access" | "unknown";
-        /** @description Actions the current administrator may perform on the account. */
+        /** @description Actions que l'administrateur connecté peut effectuer sur le compte. */
         ActionsCompte: {
             modifier_profil: boolean;
             desactiver: boolean;
@@ -718,7 +718,7 @@ export interface components {
              * @description Précise si l’utilisateur doit être considéré comme actif. Décochez ceci plutôt que de supprimer le compte.
              */
             readonly is_active: boolean;
-            readonly origine: components["schemas"]["OrigineEnum"];
+            readonly origine: components["schemas"]["OrigineCompteEnum"];
             readonly en_attente_connexion: boolean;
             readonly keycloak_sync_statut: components["schemas"]["KeycloakSyncStatutEnum"];
             /**
@@ -765,7 +765,7 @@ export interface components {
              * @description Précise si l’utilisateur doit être considéré comme actif. Décochez ceci plutôt que de supprimer le compte.
              */
             readonly is_active: boolean;
-            readonly origine: components["schemas"]["OrigineEnum"];
+            readonly origine: components["schemas"]["OrigineCompteEnum"];
             readonly en_attente_connexion: boolean;
             readonly keycloak_sync_statut: components["schemas"]["KeycloakSyncStatutEnum"];
             /**
@@ -938,7 +938,7 @@ export interface components {
          *     * `CSV` - Import CSV
          * @enum {string}
          */
-        OrigineEnum: "CONNEXION" | "ANNUAIRE" | "CSV";
+        OrigineCompteEnum: "CONNEXION" | "ANNUAIRE" | "CSV";
         PaginatedAuditLogList: {
             /** @example 123 */
             count: number;
@@ -1095,7 +1095,7 @@ export interface components {
             /** @description Identifiants des directions (type DIRECTION uniquement) rattachées (écriture). */
             directions?: string[];
         };
-        /** @description Editable profile fields; every other field is refused explicitly. */
+        /** @description Champs de profil modifiables ; tout autre champ est refusé explicitement. */
         PatchedProfilUtilisateurRequest: {
             matricule?: string;
             direction_code?: string;
@@ -1281,7 +1281,7 @@ export interface components {
          * @enum {string}
          */
         StatutCartographieEnum: "BROUILLON" | "VALIDEE";
-        /** @description Propagation state of the account towards Keycloak. */
+        /** @description État de la propagation du compte vers Keycloak. */
         SyncKeycloak: {
             readonly statut: components["schemas"]["KeycloakSyncStatutEnum"];
             readonly erreur: string;
@@ -3658,6 +3658,14 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -3755,6 +3763,14 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };

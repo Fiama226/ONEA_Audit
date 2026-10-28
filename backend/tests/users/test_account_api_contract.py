@@ -5,7 +5,6 @@ import json
 from typing import Any
 
 import pytest
-import yaml
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from rest_framework.test import APIClient
@@ -147,7 +146,7 @@ def test_schema_expose_user_accounts_sans_collision() -> None:
         "SyncKeycloak",
         "ActionsCompte",
         "KeycloakSyncStatutEnum",
+        "OrigineCompteEnum",
     ):
         assert nom in composants, nom
     assert "manuel" in composants["SyncKeycloak"]["properties"]
-    assert yaml  # PyYAML is a spectacular dependency
