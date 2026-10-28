@@ -8,7 +8,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.renderers import JSONRenderer
@@ -18,7 +18,7 @@ from rest_framework.serializers import BaseSerializer
 from rest_framework.viewsets import ModelViewSet
 
 from apps.core.filters import StableOrderingFilter
-from apps.core.schema import ERROR_400, ERROR_404, ERROR_422, ERROR_RESPONSES
+from apps.core.schema import ERROR_400, ERROR_404, ERROR_422, ERROR_RESPONSES, crud_schema
 from apps.users.models import User
 
 from . import exports, services
@@ -55,43 +55,6 @@ from .serializers import (
     ProcessusSerializer,
     RisqueSerializer,
 )
-
-
-def crud_schema(serializer: type[BaseSerializer[Any]], tag: str, nom: str) -> Any:
-    """Documente list / retrieve / create / partial_update / destroy avec leurs erreurs."""
-    return extend_schema_view(
-        list=extend_schema(
-            tags=[tag],
-            summary=f"Lister : {nom}",
-            responses={200: serializer(many=True), **ERROR_400, **ERROR_RESPONSES},
-        ),
-        retrieve=extend_schema(
-            tags=[tag],
-            summary=f"Détail : {nom}",
-            responses={200: serializer, **ERROR_RESPONSES, **ERROR_404},
-        ),
-        create=extend_schema(
-            tags=[tag],
-            summary=f"Créer : {nom}",
-            responses={201: serializer, **ERROR_400, **ERROR_RESPONSES, **ERROR_422},
-        ),
-        partial_update=extend_schema(
-            tags=[tag],
-            summary=f"Modifier : {nom}",
-            responses={
-                200: serializer,
-                **ERROR_400,
-                **ERROR_RESPONSES,
-                **ERROR_404,
-                **ERROR_422,
-            },
-        ),
-        destroy=extend_schema(
-            tags=[tag],
-            summary=f"Supprimer (logiquement) : {nom}",
-            responses={204: None, **ERROR_RESPONSES, **ERROR_404, **ERROR_422},
-        ),
-    )
 
 
 class ReferentielViewSet[M: Model](ModelViewSet[M]):

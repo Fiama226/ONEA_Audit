@@ -5,15 +5,15 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
-from django.core.exceptions import NON_FIELD_ERRORS as NON_FIELD
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.db import IntegrityError, connection, models, transaction
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import IntegrityError, connection, transaction
 from django.db.models import Max
 from django.http import Http404
 from django.utils import timezone
 
 from apps.core.audit import actor_scope
 from apps.core.exceptions import RegleMetierError
+from apps.core.services import appliquer, enregistrer, refuser, relire, verrouiller_actif
 from apps.users.models import User
 
 from .exceptions import CartographieFigeeError
@@ -60,68 +60,30 @@ _DETAILS_RISQUE = {
 # --------------------------------------------------------------------------- helpers
 
 
-def _refuser(message: str, **errors: str) -> RegleMetierError:
-    return RegleMetierError(message, {champ: [msg] for champ, msg in errors.items()})
-
-
 def _enregistrer(obj: Any, *, by: User, creation: bool = False) -> None:
-    """Valide (validateurs, unicités, contraintes) puis sauvegarde en traçant l'acteur."""
-    if creation:
-        obj.created_by = by
-    obj.updated_by = by
-    try:
-        # Les contraintes d'unicité sont vérifiées explicitement (messages par champ) ;
-        # la base reste l'ultime garde.
-        obj.full_clean(validate_constraints=False)
-    except ValidationError as e:
-        erreurs = dict(e.message_dict)
-        if NON_FIELD in erreurs:
-            erreurs["non_field_errors"] = erreurs.pop(NON_FIELD)
-        raise RegleMetierError("Données invalides.", erreurs) from e
+    """Enregistrement du socle + unicité du code (Direction, Processus)."""
     code_unique = isinstance(obj, Direction | Processus)
-    if code_unique and type(obj).objects.filter(code=obj.code).exclude(pk=obj.pk).exists():
-        raise _refuser("Données invalides.", code=MSG_CODE_PRIS)
+
+    def controle() -> None:
+        if type(obj).objects.filter(code=obj.code).exclude(pk=obj.pk).exists():
+            raise refuser("Données invalides.", code=MSG_CODE_PRIS)
+
     try:
-        with actor_scope(by), transaction.atomic():
-            obj.save()
+        enregistrer(obj, by=by, creation=creation, controle=controle if code_unique else None)
     except IntegrityError as e:
         if code_unique:  # course sur l'unicité du code
-            raise _refuser("Données invalides.", code=MSG_CODE_PRIS) from e
+            raise refuser("Données invalides.", code=MSG_CODE_PRIS) from e
         raise
 
 
-def _relire[T: models.Model](obj: T) -> T:
-    """Relit la ligne sous verrou : évite de modifier/ressusciter une instance périmée."""
-    model: Any = type(obj)
-    try:
-        return model.objects.select_for_update().get(pk=obj.pk)  # type: ignore[no-any-return]
-    except ObjectDoesNotExist as e:
-        raise Http404("Non trouvé.") from e
-
-
-def _verrouiller_actif[T: models.Model](obj: T, champ: str) -> T:
-    """Verrouille une cible référencée (parent, processus...) ; refuse si supprimée."""
-    model: Any = type(obj)
-    fresh = model.objects.select_for_update(no_key=True).filter(pk=obj.pk).first()
-    if fresh is None:
-        msg = "Cet élément a été supprimé."
-        raise _refuser(msg, **{champ: msg})
-    return fresh  # type: ignore[no-any-return]
-
-
 def _appliquer(obj: Any, changes: dict[str, Any], autorises: set[str]) -> None:
-    inconnus = set(changes) - autorises
-    if inconnus:
-        raise ValueError(f"Champs non modifiables : {sorted(inconnus)}")
-    for champ, valeur in changes.items():
-        if champ != "directions":
-            setattr(obj, champ, valeur)
+    appliquer(obj, changes, autorises, m2m=frozenset({"directions"}))
 
 
 def _verifier_code_immuable(obj: Any, changes: dict[str, Any]) -> None:
     if "code" in changes:
         if changes.pop("code") != obj.code:
-            raise _refuser(MSG_CODE_IMMUABLE, code=MSG_CODE_IMMUABLE)
+            raise refuser(MSG_CODE_IMMUABLE, code=MSG_CODE_IMMUABLE)
 
 
 MSG_UTILISE_PAR_VALIDEE = (
@@ -159,10 +121,10 @@ def _valider_parent_direction(type_: str, parent: Direction | None) -> None:
     if type_ == TypeEntite.DEPARTEMENT:
         if parent is None or parent.type != TypeEntite.DIRECTION or parent.deleted_at is not None:
             msg = "Un département doit être rattaché à une direction."
-            raise _refuser(msg, parent=msg)
+            raise refuser(msg, parent=msg)
     elif parent is not None:
         msg = "Une direction ne peut pas avoir de parent."
-        raise _refuser(msg, parent=msg)
+        raise refuser(msg, parent=msg)
 
 
 @transaction.atomic
@@ -170,7 +132,7 @@ def creer_direction(
     *, code: str, libelle: str, type: str, parent: Direction | None = None, by: User
 ) -> Direction:
     if parent is not None:
-        parent = _verrouiller_actif(parent, "parent")
+        parent = verrouiller_actif(parent, "parent")
     _valider_parent_direction(type, parent)
     direction = Direction(code=code, libelle=libelle, type=type, parent=parent)
     _enregistrer(direction, by=by, creation=True)
@@ -179,14 +141,14 @@ def creer_direction(
 
 @transaction.atomic
 def modifier_direction(direction: Direction, *, by: User, **changes: Any) -> Direction:
-    direction = _relire(direction)
+    direction = relire(direction)
     _verifier_code_immuable(direction, changes)
     if "type" in changes:
         if changes.pop("type") != direction.type:
             msg = "Le type ne peut pas être modifié après création."
-            raise _refuser(msg, type=msg)
+            raise refuser(msg, type=msg)
     if changes.get("parent") is not None:
-        changes["parent"] = _verrouiller_actif(changes["parent"], "parent")
+        changes["parent"] = verrouiller_actif(changes["parent"], "parent")
     _appliquer(direction, changes, _CHAMPS_DIRECTION)
     _valider_parent_direction(direction.type, direction.parent)
     _enregistrer(direction, by=by)
@@ -195,7 +157,7 @@ def modifier_direction(direction: Direction, *, by: User, **changes: Any) -> Dir
 
 @transaction.atomic
 def supprimer_direction(direction: Direction, *, by: User) -> None:
-    direction = _relire(direction)
+    direction = relire(direction)
     if (
         Processus.objects.filter(directions=direction).exists()
         or Direction.objects.filter(parent=direction).exists()
@@ -229,14 +191,12 @@ def creer_processus(
 
 def _verrouiller_directions(directions: Iterable[Direction]) -> list[Direction]:
     # ordre des clés stable : évite les verrous croisés entre deux transactions
-    return [
-        _verrouiller_actif(d, "directions") for d in sorted(set(directions), key=lambda d: d.pk)
-    ]
+    return [verrouiller_actif(d, "directions") for d in sorted(set(directions), key=lambda d: d.pk)]
 
 
 @transaction.atomic
 def modifier_processus(processus: Processus, *, by: User, **changes: Any) -> Processus:
-    processus = _relire(processus)
+    processus = relire(processus)
     _verifier_code_immuable(processus, changes)
     cibles = _verrouiller_directions(changes["directions"]) if "directions" in changes else None
     _appliquer(processus, changes, _CHAMPS_PROCESSUS)
@@ -249,7 +209,7 @@ def modifier_processus(processus: Processus, *, by: User, **changes: Any) -> Pro
 
 @transaction.atomic
 def supprimer_processus(processus: Processus, *, by: User) -> None:
-    processus = _relire(processus)
+    processus = relire(processus)
     if Risque.objects.filter(
         processus=processus, version__statut=StatutCartographie.VALIDEE
     ).exists():
@@ -277,10 +237,10 @@ def _valider_parent_objet(nature: str, processus: Processus, parent: ObjetAudita
             or parent.processus_id != processus.pk
         ):
             msg = "Une opération doit être rattachée à un domaine du même processus."
-            raise _refuser(msg, parent=msg)
+            raise refuser(msg, parent=msg)
     elif parent is not None:
         msg = "Un domaine ne peut pas avoir de parent."
-        raise _refuser(msg, parent=msg)
+        raise refuser(msg, parent=msg)
 
 
 @transaction.atomic
@@ -294,9 +254,9 @@ def creer_objet(
     ordre: int = 0,
     by: User,
 ) -> ObjetAuditable:
-    processus = _verrouiller_actif(processus, "processus")
+    processus = verrouiller_actif(processus, "processus")
     if parent is not None:
-        parent = _verrouiller_actif(parent, "parent")
+        parent = verrouiller_actif(parent, "parent")
     _valider_parent_objet(nature, processus, parent)
     objet = ObjetAuditable(
         processus=processus,
@@ -312,14 +272,14 @@ def creer_objet(
 
 @transaction.atomic
 def modifier_objet(objet: ObjetAuditable, *, by: User, **changes: Any) -> ObjetAuditable:
-    objet = _relire(objet)
+    objet = relire(objet)
     if changes.get("parent") is not None:
-        changes["parent"] = _verrouiller_actif(changes["parent"], "parent")
+        changes["parent"] = verrouiller_actif(changes["parent"], "parent")
     for champ in ("processus", "nature"):
         if champ in changes:
             if changes.pop(champ) != getattr(objet, champ):
                 msg = "Le processus et la nature ne peuvent pas être modifiés."
-                raise _refuser(msg, **{champ: msg})
+                raise refuser(msg, **{champ: msg})
     _appliquer(objet, changes, _CHAMPS_OBJET)
     _valider_parent_objet(objet.nature, objet.processus, objet.parent)
     _enregistrer(objet, by=by)
@@ -328,7 +288,7 @@ def modifier_objet(objet: ObjetAuditable, *, by: User, **changes: Any) -> ObjetA
 
 @transaction.atomic
 def supprimer_objet(objet: ObjetAuditable, *, by: User) -> None:
-    objet = _relire(objet)
+    objet = relire(objet)
     if Risque.objects.filter(
         objet_auditable=objet, version__statut=StatutCartographie.VALIDEE
     ).exists():
@@ -367,7 +327,7 @@ def creer_version(
 ) -> CartographieVersion:
     if not 2000 <= annee <= 2100:
         msg = "L'année doit être comprise entre 2000 et 2100."
-        raise _refuser(msg, annee=msg)
+        raise refuser(msg, annee=msg)
     if source is not None:
         # source relue sous verrou : la copie ne part que d'une cartographie validée active
         courante = (
@@ -375,10 +335,10 @@ def creer_version(
         )
         if courante is None or courante.statut != StatutCartographie.VALIDEE:
             msg = "La cartographie source doit être validée."
-            raise _refuser(msg, source=msg)
+            raise refuser(msg, source=msg)
     msg = f"Une cartographie existe déjà pour l'année {annee}."
     if CartographieVersion.objects.filter(annee=annee).exists():
-        raise _refuser(msg, annee=msg)
+        raise refuser(msg, annee=msg)
     version = CartographieVersion(
         annee=annee, libelle=libelle, commentaire=commentaire, source=source
     )
@@ -386,7 +346,7 @@ def creer_version(
         with transaction.atomic():
             _enregistrer(version, by=by, creation=True)
     except IntegrityError as e:  # course sur l'unicité de l'année
-        raise _refuser(msg, annee=msg) from e
+        raise refuser(msg, annee=msg) from e
     if source is not None:
         _copier_risques(source, version, by=by)
     return version
@@ -471,7 +431,7 @@ def _verifier_notes(probabilite: int, impact: int) -> None:
 def _verifier_objet(processus: Processus, objet: ObjetAuditable | None) -> None:
     if objet is not None and objet.processus_id != processus.pk:
         msg = "L'objet auditable doit appartenir au processus du risque."
-        raise _refuser(msg, objet_auditable=msg)
+        raise refuser(msg, objet_auditable=msg)
 
 
 @transaction.atomic
@@ -492,9 +452,9 @@ def creer_risque(
         raise ValueError(f"Champs inconnus : {sorted(inconnus)}")
     _verifier_notes(probabilite, impact)
     locked = _verrouiller_version(version)  # sérialise numérotation et validation
-    processus = _verrouiller_actif(processus, "processus")
+    processus = verrouiller_actif(processus, "processus")
     if objet_auditable is not None:
-        objet_auditable = _verrouiller_actif(objet_auditable, "objet_auditable")
+        objet_auditable = verrouiller_actif(objet_auditable, "objet_auditable")
     _verifier_objet(processus, objet_auditable)
 
     # Un même code désigne le même risque dans toutes les cartographies (D3) : numéros jamais
@@ -526,15 +486,15 @@ def creer_risque(
 @transaction.atomic
 def modifier_risque(risque: Risque, *, by: User, **changes: Any) -> Risque:
     _verrouiller_version(risque.version_id)
-    risque = _relire(risque)  # ligne fraîche : une instance périmée n'écrase rien
+    risque = relire(risque)  # ligne fraîche : une instance périmée n'écrase rien
     if "code" in changes:
         _verifier_code_immuable(risque, changes)
     if "processus" in changes:
         if getattr(changes.pop("processus"), "pk", None) != risque.processus_id:
             msg = "Le processus d'un risque ne peut pas être modifié."
-            raise _refuser(msg, processus=msg)
+            raise refuser(msg, processus=msg)
     if changes.get("objet_auditable") is not None:
-        changes["objet_auditable"] = _verrouiller_actif(
+        changes["objet_auditable"] = verrouiller_actif(
             changes["objet_auditable"], "objet_auditable"
         )
     _appliquer(risque, changes, _CHAMPS_RISQUE)
@@ -548,7 +508,7 @@ def modifier_risque(risque: Risque, *, by: User, **changes: Any) -> Risque:
 @transaction.atomic
 def supprimer_risque(risque: Risque, *, by: User) -> None:
     _verrouiller_version(risque.version_id)
-    _relire(risque).soft_delete(by)
+    relire(risque).soft_delete(by)
 
 
 # --------------------------------------------------------------------------- matrice
@@ -564,14 +524,12 @@ class CelluleMatrice:
     codes: list[str]
 
 
-def matrice(version: CartographieVersion) -> list[CelluleMatrice]:
-    """Matrice 5x5 (probabilité 5 -> 1, impact 1 -> 5) en une seule requête."""
+def matrice_de(lignes: Iterable[tuple[int, int, str]]) -> list[CelluleMatrice]:
+    """Matrice 5x5 (probabilité 5 -> 1, impact 1 -> 5) de lignes (probabilité, impact, code).
+
+    Les codes d'une case gardent l'ordre reçu.
+    """
     groupes: dict[tuple[int, int], list[str]] = defaultdict(list)
-    lignes = (
-        Risque.objects.filter(version=version)
-        .order_by("numero")
-        .values_list("probabilite", "impact", "code")
-    )
     for p, i, code in lignes:
         groupes[(p, i)].append(code)
     return [
@@ -586,6 +544,15 @@ def matrice(version: CartographieVersion) -> list[CelluleMatrice]:
         for p in range(5, 0, -1)
         for i in range(1, 6)
     ]
+
+
+def matrice(version: CartographieVersion) -> list[CelluleMatrice]:
+    """Matrice 5x5 d'une cartographie, en une seule requête."""
+    return matrice_de(
+        Risque.objects.filter(version=version)
+        .order_by("numero")
+        .values_list("probabilite", "impact", "code")
+    )
 
 
 @dataclass(frozen=True)
