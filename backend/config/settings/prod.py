@@ -32,6 +32,13 @@ if not env("OIDC_OP_BASE_URL").startswith("https://"):  # required in production
     raise ImproperlyConfigured("OIDC_OP_BASE_URL must be an https:// URL in production")
 if not env.bool("OIDC_VERIFY_SSL", default=True):
     raise ImproperlyConfigured("OIDC_VERIFY_SSL must not be disabled in production")
+_kc_sync_secret = env("KEYCLOAK_ADMIN_API_CLIENT_SECRET", default="")
+if not _kc_sync_secret:  # required in production
+    raise ImproperlyConfigured("KEYCLOAK_ADMIN_API_CLIENT_SECRET must be set in production")
+if _kc_sync_secret.startswith("CHANGE_ME") or _kc_sync_secret == "onea-dev-sync-secret":  # noqa: S105
+    raise ImproperlyConfigured(
+        "KEYCLOAK_ADMIN_API_CLIENT_SECRET is still a placeholder or the dev default"
+    )
 
 REST_FRAMEWORK = {
     **REST_FRAMEWORK,
