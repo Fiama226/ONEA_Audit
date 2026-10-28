@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
+from pytest_django.fixtures import DjangoAssertNumQueries
 
 from apps.core.exceptions import RegleMetierError
 from apps.missions.exceptions import MissionFigeeError
@@ -23,6 +24,7 @@ from apps.missions.services.etapes import (
     ActionEtape,
     actions_possibles,
     avancer_phase,
+    contexte_actions,
     demarrer_etape,
     marquer_non_applicable,
     planifier_etape,
@@ -182,7 +184,7 @@ def test_phase_ne_change_pas_tant_qu_une_etape_est_ouverte(
 
 def test_xiii_valide_en_dernier_passe_en_communication(mission_lancee: Mission, rai: User) -> None:
     en_phase(mission_lancee, StatutMission.EN_ACCOMPLISSEMENT)
-    forcer_etapes(mission_lancee, {n: StatutEtape.TERMINEE for n in range(11, 15)})
+    forcer_etapes(mission_lancee, {n: StatutEtape.TERMINEE for n in range(1, 15)})
     valider_etape(etape_n(mission_lancee, 13), by=rai)
     assert statut_mission(mission_lancee) == StatutMission.EN_COMMUNICATION
 
@@ -191,7 +193,7 @@ def test_xiv_termine_en_dernier_passe_en_communication(mission_lancee: Mission, 
     en_phase(mission_lancee, StatutMission.EN_ACCOMPLISSEMENT)
     forcer_etapes(
         mission_lancee,
-        {11: "TERMINEE", 12: "TERMINEE", 13: "VALIDEE", 14: "EN_COURS"},
+        {n: "TERMINEE" for n in range(1, 13)} | {13: "VALIDEE", 14: "EN_COURS"},
     )
     assert avancer_phase(mission_lancee, by=rai) is False
     forcer_etapes(mission_lancee, {14: StatutEtape.TERMINEE})
@@ -382,3 +384,54 @@ def test_actions_possibles_sans_declaration_confirmee(mission_lancee: Mission) -
     sans = make_user(Role.AUDITEUR)
     affecter(mission_lancee, sans, RoleMission.CHEF_MISSION, confirmee=False)
     assert actions_possibles(etape_n(mission_lancee, 3), sans) == []
+
+
+def test_actions_possibles_liste_de_18_etapes_en_peu_de_requetes(
+    mission_lancee: Mission,
+    chef: User,
+    django_assert_max_num_queries: DjangoAssertNumQueries,
+) -> None:
+    mission = Mission.objects.get(pk=mission_lancee.pk)
+    with django_assert_max_num_queries(4):
+        contexte = contexte_actions(mission, chef)
+        etapes = list(EtapeMission.objects.filter(mission=mission))
+        resultats = {e.numero: actions_possibles(e, chef, contexte=contexte) for e in etapes}
+    assert len(resultats) == 18
+    assert A.PLANIFIER in resultats[3]
+    assert A.DEMARRER in resultats[3]
+
+
+def test_phase_bloquee_si_une_etape_precedente_est_rouverte(
+    mission_lancee: Mission, rai: User
+) -> None:
+    en_phase(mission_lancee, StatutMission.EN_ACCOMPLISSEMENT)
+    forcer_etapes(
+        mission_lancee,
+        {n: StatutEtape.TERMINEE for n in range(1, 15)} | {10: StatutEtape.EN_COURS},
+    )
+    valider_etape(etape_n(mission_lancee, 13), by=rai)
+    assert statut_mission(mission_lancee) == StatutMission.EN_ACCOMPLISSEMENT
+    forcer_etapes(mission_lancee, {10: StatutEtape.TERMINEE})
+    assert avancer_phase(mission_lancee, by=rai) is True
+
+
+def test_droit_verifie_avant_motif_et_etat(
+    mission_lancee: Mission, auditeur_mission: User, chef: User
+) -> None:
+    forcer_etapes(mission_lancee, {6: StatutEtape.TERMINEE})
+    with pytest.raises(PermissionDenied):
+        rouvrir_etape(etape_n(mission_lancee, 6), motif="", by=auditeur_mission)
+    with pytest.raises(PermissionDenied):
+        renvoyer_etape(etape_n(mission_lancee, 6), motif="", by=chef)
+    with pytest.raises(PermissionDenied):
+        marquer_non_applicable(etape_n(mission_lancee, 5), motif="", by=auditeur_mission)
+    with pytest.raises(PermissionDenied):
+        valider_etape(etape_n(mission_lancee, 5), by=auditeur_mission)
+
+
+def test_renvoyer_efface_la_date_de_fin_reelle(mission_lancee: Mission, rai: User) -> None:
+    EtapeMission.objects.filter(mission=mission_lancee, numero=6).update(
+        statut=StatutEtape.TERMINEE, date_fin_reelle=date(2026, 3, 13)
+    )
+    etape = renvoyer_etape(etape_n(mission_lancee, 6), motif="À reprendre", by=rai)
+    assert etape.date_fin_reelle is None

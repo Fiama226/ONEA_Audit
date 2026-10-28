@@ -1,9 +1,18 @@
 import pytest
 from django.utils import timezone
 
-from apps.missions.models import Mission, TypeReunion
+from apps.missions.models import Mission, StatutEtape, TypeReunion
+from apps.missions.services.etapes import rouvrir_etape
 from apps.missions.services.livrables import CONTROLES, livrables_manquants
-from tests.factories import EntretienFactory, ReunionFactory, RisqueMissionFactory
+from apps.signatures.models import TypeDocumentSignable
+from apps.users.models import User
+from tests.factories import (
+    ConfirmationFactory,
+    EntretienFactory,
+    ReunionFactory,
+    RisqueMissionFactory,
+)
+from tests.missions.conftest import forcer_etapes
 
 pytestmark = pytest.mark.django_db
 
@@ -46,3 +55,13 @@ def test_etapes_gerees_dans_un_lot_ulterieur(
     assert livrables_manquants(etape) == [
         f"Les livrables de l'étape {romain} sont gérés à partir du lot {lot}."
     ]
+
+
+def test_etape_I_rouverte_exige_une_nouvelle_emission(mission_lancee: Mission, rai: User) -> None:
+    Mission.objects.filter(pk=mission_lancee.pk).update(ordre_mission_emis_le=timezone.now())
+    forcer_etapes(mission_lancee, {1: StatutEtape.TERMINEE})
+    rouvrir_etape(mission_lancee.etapes.get(numero=1), motif="Périmètre revu", by=rai)
+    etape = mission_lancee.etapes.get(numero=1)
+    assert livrables_manquants(etape) == ["L'ordre de mission n'a pas été émis."]
+    ConfirmationFactory(objet=mission_lancee, type_document=TypeDocumentSignable.ORDRE_MISSION)
+    assert livrables_manquants(etape) == []

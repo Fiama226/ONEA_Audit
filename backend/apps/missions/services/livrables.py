@@ -2,17 +2,24 @@
 
 from collections.abc import Callable
 
+from django.contrib.contenttypes.models import ContentType
+
+from apps.signatures.models import Confirmation, TypeDocumentSignable
+
 from ..models import (
     DeclarationIndependance,
     Entretien,
     EtapeMission,
+    EvenementEtape,
     Mission,
     Reunion,
     RisqueMission,
     StatutEntretien,
+    TypeEvenementEtape,
     TypeReunion,
 )
 
+MSG_ORDRE = "L'ordre de mission n'a pas été émis."
 Controle = Callable[[EtapeMission], str | None]
 
 
@@ -29,8 +36,29 @@ def declarations_en_attente(mission_id: object) -> list[str]:
 
 
 def _ordre_mission(etape: EtapeMission) -> str | None:
+    """Ordre émis, et ré-émis (nouvelle confirmation) après toute réouverture de l'étape I."""
     emis = Mission.objects.filter(pk=etape.mission_id, ordre_mission_emis_le__isnull=False).exists()
-    return None if emis else "L'ordre de mission n'a pas été émis."
+    if not emis:
+        return MSG_ORDRE
+    reouverture = (
+        EvenementEtape.objects.filter(
+            etape__mission_id=etape.mission_id,
+            etape__numero=1,
+            type=TypeEvenementEtape.ROUVERTE,
+        )
+        .order_by("-le")
+        .values_list("le", flat=True)
+        .first()
+    )
+    if reouverture is None:
+        return None
+    reemis = Confirmation.objects.filter(
+        type_document=TypeDocumentSignable.ORDRE_MISSION,
+        content_type=ContentType.objects.get_for_model(Mission),
+        object_id=etape.mission_id,
+        confirme_le__gt=reouverture,
+    ).exists()
+    return None if reemis else MSG_ORDRE
 
 
 def _reunion_tenue(type_reunion: str, libelle: str) -> Controle:

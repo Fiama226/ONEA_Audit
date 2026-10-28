@@ -5,7 +5,7 @@ import pytest
 from pytest_django.fixtures import DjangoAssertNumQueries
 
 from apps.missions.models import EtapeMission, Mission, StatutEtape
-from apps.missions.services.etapes import demarrer_etape, planifier_etape
+from apps.missions.services.etapes import demarrer_etape, planifier_etape, renvoyer_etape
 from apps.missions.services.suivi import fiche_de_suivi
 from apps.users.models import User
 from tests.missions.conftest import forcer_etapes
@@ -71,3 +71,14 @@ def test_fiche_de_suivi_totaux_et_requetes(
         "PLANIFICATION",
         False,
     )
+
+
+def test_etape_renvoyee_compte_le_retard_jusqu_a_aujourd_hui(
+    mission_lancee: Mission, rai: User
+) -> None:
+    EtapeMission.objects.filter(mission=mission_lancee, numero=6).update(
+        statut="TERMINEE", date_fin_prevue=date(2026, 3, 10), date_fin_reelle=date(2026, 3, 9)
+    )
+    renvoyer_etape(mission_lancee.etapes.get(numero=6), motif="À reprendre", by=rai)
+    fiche = fiche_de_suivi(mission_lancee, aujourd_hui=date(2026, 3, 18))
+    assert {ligne.numero: ligne.ecart_jours for ligne in fiche.lignes}[6] == 8

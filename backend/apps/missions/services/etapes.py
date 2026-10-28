@@ -1,5 +1,6 @@
 """Moteur des 18 étapes (D8) : transitions, changements de phase (D2) et droits d'action (D4)."""
 
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
@@ -13,13 +14,22 @@ from apps.core.services import appliquer, enregistrer, refuser, relire
 from apps.users.models import Role, User
 
 from .. import acces
-from ..etapes import ETAPES_DE_PHASE, JALON_DE_PHASE, JALONS, PHASE_DU_STATUT, romain
+from ..etapes import (
+    ETAPES_DE_PHASE,
+    JALON_DE_PHASE,
+    JALONS,
+    JALONS_DELEGABLES,
+    PHASE_DU_STATUT,
+    romain,
+)
 from ..gardes import verrouiller_mission
 from ..models import (
+    ROLES_INTERVENANTS,
     EtapeMission,
     EvenementEtape,
     Mission,
     Phase,
+    RoleMission,
     StatutEtape,
     StatutMission,
     TypeEvenementEtape,
@@ -32,7 +42,6 @@ MSG_DECLARATION = "Confirmez votre déclaration d'indépendance avant de contrib
 MSG_DROIT = "Vous n'avez pas le droit d'effectuer cette action."
 
 CLOSES = frozenset({StatutEtape.TERMINEE, StatutEtape.VALIDEE, StatutEtape.NON_APPLICABLE})
-BLOQUANTS = frozenset({StatutEtape.RENVOYEE, StatutEtape.A_REVALIDER})
 _ORDRE_PHASE = {Phase.PLANIFICATION: 0, Phase.ACCOMPLISSEMENT: 1, Phase.COMMUNICATION: 2}
 _CHAMPS_PLANIFIABLES = {
     "date_debut_prevue",
@@ -115,47 +124,74 @@ def _verifier_etat(action: str, etape: EtapeMission, mission: Mission, user: Use
         raise RegleMetierError("Seule une étape non applicable peut être rétablie.")
 
 
-def _role_permet(action: str, etape: EtapeMission, mission: Mission, user: User) -> bool:
+@dataclass(frozen=True)
+class ContexteActions:
+    """Mission, rôle dans la mission et déclaration de l'utilisateur (calculés une fois)."""
+
+    mission: Mission
+    role_mission: str | None
+    levee: bool
+
+
+def contexte_actions(mission: Mission, user: User) -> ContexteActions:
+    """Deux requêtes au plus ; à construire une fois pour toute la liste des étapes."""
+    if user.role == Role.RAI:
+        return ContexteActions(mission, None, False)
+    return ContexteActions(
+        mission,
+        acces.role_dans_mission(user, mission),
+        acces.declaration_levee(user, mission),
+    )
+
+
+def _role_permet(action: str, etape: EtapeMission, ctx: ContexteActions, user: User) -> bool:
     """Droits de D4 (rôle global, rôle dans la mission, déclaration levée)."""
+    rai = user.role == Role.RAI
+    intervenant = ctx.role_mission in ROLES_INTERVENANTS
+    chef = ctx.role_mission == RoleMission.CHEF_MISSION
+    superviseur = ctx.role_mission == RoleMission.SUPERVISEUR
     if action == A.DEMARRER:
-        return acces.peut_contribuer(user, mission)
+        return rai or (intervenant and ctx.levee)
     if action in (A.TERMINER, A.NON_APPLICABLE, A.RETABLIR):
-        return acces.est_chef(user, mission) and acces.declaration_levee(user, mission)
+        return chef and ctx.levee
     if action in (A.VALIDER, A.RENVOYER):
-        return acces.peut_valider_jalon(user, mission, etape.numero)
-    if action == A.ROUVRIR:
-        if user.role == Role.RAI:
+        if rai:
             return True
-        return (
-            etape.numero != 18
-            and acces.est_superviseur(user, mission)
-            and acces.declaration_levee(user, mission)
-        )
+        # Hors jalon, le refus métier (« Seuls les jalons... ») prime sur le refus de droit.
+        delegable = etape.numero in JALONS_DELEGABLES or etape.numero not in JALONS
+        return superviseur and ctx.levee and delegable
+    if action == A.ROUVRIR:
+        return rai or (etape.numero != 18 and superviseur and ctx.levee)
     if action == A.PLANIFIER:
-        return user.role == Role.RAI or (
-            acces.est_chef(user, mission) and acces.declaration_levee(user, mission)
-        )
+        return rai or (chef and ctx.levee)
     return False
 
 
-def actions_possibles(etape: EtapeMission, user: User) -> list[str]:
-    """Actions que `user` peut exécuter sur l'étape ; sert aussi de garde dans les vues."""
-    mission = Mission.objects.get(pk=etape.mission_id)
+def actions_possibles(
+    etape: EtapeMission, user: User, *, contexte: ContexteActions | None = None
+) -> list[str]:
+    """Actions que `user` peut exécuter sur l'étape ; sert aussi de garde dans les vues.
+
+    Pour une liste d'étapes, passer un `contexte` construit une seule fois.
+    """
+    if contexte is None:
+        contexte = contexte_actions(Mission.objects.get(pk=etape.mission_id), user)
     possibles: list[str] = []
     for action in ActionEtape:
         try:
-            _verifier_etat(action, etape, mission, user)
+            _verifier_etat(action, etape, contexte.mission, user)
         except RegleMetierError:
             continue
-        if _role_permet(action, etape, mission, user):
+        if _role_permet(action, etape, contexte, user):
             possibles.append(action.value)
     return possibles
 
 
 def _exiger_role(action: str, etape: EtapeMission, mission: Mission, user: User) -> None:
-    if _role_permet(action, etape, mission, user):
+    ctx = contexte_actions(mission, user)
+    if _role_permet(action, etape, ctx, user):
         return
-    if acces.est_intervenant(user, mission) and not acces.declaration_levee(user, mission):
+    if ctx.role_mission in ROLES_INTERVENANTS and not ctx.levee:
         raise PermissionDenied(MSG_DECLARATION)
     raise PermissionDenied(MSG_DROIT)
 
@@ -170,13 +206,16 @@ def _motif(motif: str) -> str:
 # --------------------------------------------------------------------------- transitions
 
 
-def _ouvrir(etape: EtapeMission, action: str, user: User) -> tuple[Mission, EtapeMission]:
-    """Verrouille la mission puis l'étape, vérifie les règles d'état puis les droits."""
+def _ouvrir(
+    etape: EtapeMission, action: str, user: User, *, motif: str | None = None
+) -> tuple[Mission, EtapeMission, str]:
+    """Verrouille la mission puis l'étape ; vérifie les droits (403), le motif, puis l'état."""
     mission = verrouiller_mission(etape.mission_id)
     frais = relire(etape)
-    _verifier_etat(action, frais, mission, user)
     _exiger_role(action, frais, mission, user)
-    return mission, frais
+    nettoye = _motif(motif) if motif is not None else ""
+    _verifier_etat(action, frais, mission, user)
+    return mission, frais, nettoye
 
 
 def _journaliser(etape: EtapeMission, type_: str, *, by: User, motif: str, avant: str) -> None:
@@ -190,7 +229,7 @@ def _aujourd_hui() -> Any:
 
 @transaction.atomic
 def demarrer_etape(etape: EtapeMission, *, by: User) -> EtapeMission:
-    mission, etape = _ouvrir(etape, A.DEMARRER, by)
+    mission, etape, _ = _ouvrir(etape, A.DEMARRER, by)
     if etape.numero >= 2:
         noms = declarations_en_attente(mission.pk)
         if noms:
@@ -207,7 +246,7 @@ def demarrer_etape(etape: EtapeMission, *, by: User) -> EtapeMission:
 
 @transaction.atomic
 def terminer_etape(etape: EtapeMission, *, by: User) -> EtapeMission:
-    mission, etape = _ouvrir(etape, A.TERMINER, by)
+    mission, etape, _ = _ouvrir(etape, A.TERMINER, by)
     manquants = livrables_manquants(etape)
     if manquants:
         raise RegleMetierError("Livrables manquants.", {"livrables": manquants})
@@ -223,7 +262,7 @@ def terminer_etape(etape: EtapeMission, *, by: User) -> EtapeMission:
 
 @transaction.atomic
 def valider_etape(etape: EtapeMission, *, by: User) -> EtapeMission:
-    mission, etape = _ouvrir(etape, A.VALIDER, by)
+    mission, etape, _ = _ouvrir(etape, A.VALIDER, by)
     avant = etape.statut
     etape.valider()
     etape.validee_par = by
@@ -236,10 +275,10 @@ def valider_etape(etape: EtapeMission, *, by: User) -> EtapeMission:
 
 @transaction.atomic
 def renvoyer_etape(etape: EtapeMission, *, motif: str, by: User) -> EtapeMission:
-    motif = _motif(motif)
-    _, etape = _ouvrir(etape, A.RENVOYER, by)
+    _, etape, motif = _ouvrir(etape, A.RENVOYER, by, motif=motif)
     avant = etape.statut
     etape.renvoyer()
+    etape.date_fin_reelle = None
     enregistrer(etape, by=by)
     _journaliser(etape, TypeEvenementEtape.RENVOYEE, by=by, motif=motif, avant=avant)
     return etape
@@ -247,8 +286,7 @@ def renvoyer_etape(etape: EtapeMission, *, motif: str, by: User) -> EtapeMission
 
 @transaction.atomic
 def rouvrir_etape(etape: EtapeMission, *, motif: str, by: User) -> EtapeMission:
-    motif = _motif(motif)
-    mission, etape = _ouvrir(etape, A.ROUVRIR, by)
+    mission, etape, motif = _ouvrir(etape, A.ROUVRIR, by, motif=motif)
     avant = etape.statut
     etape.rouvrir()
     etape.date_fin_reelle = None
@@ -275,8 +313,7 @@ def rouvrir_etape(etape: EtapeMission, *, motif: str, by: User) -> EtapeMission:
 
 @transaction.atomic
 def marquer_non_applicable(etape: EtapeMission, *, motif: str, by: User) -> EtapeMission:
-    motif = _motif(motif)
-    _, etape = _ouvrir(etape, A.NON_APPLICABLE, by)
+    _, etape, motif = _ouvrir(etape, A.NON_APPLICABLE, by, motif=motif)
     avant = etape.statut
     etape.non_applicable()
     etape.motif_non_applicable = motif
@@ -288,7 +325,7 @@ def marquer_non_applicable(etape: EtapeMission, *, motif: str, by: User) -> Etap
 
 @transaction.atomic
 def retablir_etape(etape: EtapeMission, *, by: User) -> EtapeMission:
-    _, etape = _ouvrir(etape, A.RETABLIR, by)
+    _, etape, _ = _ouvrir(etape, A.RETABLIR, by)
     avant = etape.statut
     etape.retablir()
     etape.motif_non_applicable = ""
@@ -300,7 +337,7 @@ def retablir_etape(etape: EtapeMission, *, by: User) -> EtapeMission:
 @transaction.atomic
 def planifier_etape(etape: EtapeMission, *, by: User, **changes: Any) -> EtapeMission:
     """Dates prévues et charges (D12) ; l'état de l'étape n'est pas modifié."""
-    _, etape = _ouvrir(etape, A.PLANIFIER, by)
+    _, etape, _ = _ouvrir(etape, A.PLANIFIER, by)
     appliquer(etape, changes, _CHAMPS_PLANIFIABLES)
     erreurs: dict[str, list[str]] = {}
     debut, fin = etape.date_debut_prevue, etape.date_fin_prevue
@@ -322,12 +359,12 @@ def planifier_etape(etape: EtapeMission, *, by: User, **changes: Any) -> EtapeMi
 
 
 def _phase_terminee(statuts: dict[int, str], phase: Phase) -> bool:
-    numeros = ETAPES_DE_PHASE[phase]
-    if any(statuts.get(n) not in CLOSES for n in numeros):
+    # Toutes les étapes de I à la fin de la phase doivent être closes (une étape antérieure
+    # rouverte bloque le passage), et le jalon de la phase validé.
+    jusqu_a_la_fin = range(1, ETAPES_DE_PHASE[phase][-1] + 1)
+    if any(statuts.get(n) not in CLOSES for n in jusqu_a_la_fin):
         return False
-    if statuts.get(JALON_DE_PHASE[phase]) != StatutEtape.VALIDEE:
-        return False
-    return not any(statuts.get(n) in BLOQUANTS for n in range(1, numeros[-1] + 1))
+    return statuts.get(JALON_DE_PHASE[phase]) == StatutEtape.VALIDEE
 
 
 @transaction.atomic
