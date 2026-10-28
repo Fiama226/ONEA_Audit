@@ -9,11 +9,12 @@ const HIDDEN: Record<Role, string[]> = {
   ADMIN: [],
   RAI: [fr.nav.administration],
   AUDITEUR: [fr.nav.administration],
-  AUDITE: [fr.nav.referentiel, fr.nav.administration],
+  AUDITE: [fr.nav.programmeAnnuel, fr.nav.referentiel, fr.nav.administration],
   DG: [fr.nav.administration],
 };
 const ALL = [
   fr.nav.dashboard,
+  fr.nav.programmeAnnuel,
   fr.nav.missions,
   fr.nav.referentiel,
   fr.nav.recommandations,
@@ -41,9 +42,16 @@ describe("Sidebar", () => {
     expect(nav.queryByText(fr.nav.administration)).not.toBeInTheDocument();
   });
 
-  it("gives ADMIN the six entries", () => {
+  it("gives ADMIN the seven entries", () => {
     const nav = renderSidebar("ADMIN");
-    expect(nav.getAllByRole("link")).toHaveLength(6);
+    expect(nav.getAllByRole("link")).toHaveLength(7);
+  });
+
+  it("lists Programme annuel before Missions", () => {
+    const nav = renderSidebar("RAI");
+    const names = nav.getAllByRole("link").map((l) => l.textContent);
+    expect(names.indexOf(fr.nav.programmeAnnuel)).toBeGreaterThanOrEqual(0);
+    expect(names.indexOf(fr.nav.programmeAnnuel)).toBeLessThan(names.indexOf(fr.nav.missions));
   });
 
   it("removes the heading of a group whose entries are all hidden", () => {

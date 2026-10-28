@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { Link, createBrowserRouter, type RouteObject } from "react-router-dom";
+import { Link, Outlet, createBrowserRouter, type RouteObject } from "react-router-dom";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
 import { EmptyState } from "@/components/EmptyState";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
+import { programmationRoutes } from "@/features/programmation/routes";
 import { ReferentielLayout } from "@/features/referentiel/components/ReferentielLayout";
 import { referentielRoutes } from "@/features/referentiel/routes";
 import { fr } from "@/i18n/fr";
@@ -50,6 +51,11 @@ export const appRoutes: RouteObject[] = [
         children: [
           { path: "/", element: <DashboardPage /> },
           { path: "/missions", element: <PlaceholderPage title={fr.nav.missions} /> },
+          {
+            path: "/programme-annuel",
+            element: guarded("/programme-annuel", <Outlet />),
+            children: programmationRoutes,
+          },
           {
             path: "/referentiel",
             element: guarded("/referentiel", <ReferentielLayout />),
