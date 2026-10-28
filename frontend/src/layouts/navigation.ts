@@ -1,6 +1,7 @@
 import {
   BookMarked,
   Briefcase,
+  CalendarRange,
   ClipboardCheck,
   FileText,
   LayoutDashboard,
@@ -15,6 +16,7 @@ import { fr } from "@/i18n/fr";
  * (routes.tsx) lisent cette table. Absent = tout utilisateur authentifié.
  */
 const ROUTE_ROLES: Readonly<Record<string, readonly Role[]>> = {
+  "/programme-annuel": ["ADMIN", "RAI", "AUDITEUR", "DG"],
   "/referentiel": ["ADMIN", "RAI", "AUDITEUR", "DG"],
   "/administration": ["ADMIN"],
 };
@@ -36,6 +38,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: fr.nav.groupMissions,
     items: [
+      { to: "/programme-annuel", label: fr.nav.programmeAnnuel, icon: CalendarRange },
       { to: "/missions", label: fr.nav.missions, icon: Briefcase },
       {
         to: "/referentiel",
@@ -75,6 +78,9 @@ export function navFor(role: Role | null): NavGroup[] {
 /** Libellé de chaque segment de route pour le fil d'Ariane. */
 export const SEGMENT_LABELS: Record<string, string> = {
   missions: fr.nav.missions,
+  "programme-annuel": fr.nav.programmeAnnuel,
+  "nouvelle-ligne": fr.programmation.newLine,
+  lignes: "Missions prévues",
   referentiel: fr.nav.referentiel,
   recommandations: fr.nav.recommandations,
   documents: fr.nav.documents,
