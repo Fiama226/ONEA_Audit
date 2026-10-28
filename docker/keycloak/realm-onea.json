@@ -447,5 +447,16 @@
       "serviceAccountsEnabled": true,
       "fullScopeAllowed": false
     }
-  ]
+  ],
+  "clientScopeMappings": {
+    "realm-management": [
+      {
+        "client": "onea-admin-sync",
+        "roles": [
+          "view-users",
+          "manage-users"
+        ]
+      }
+    ]
+  }
 }

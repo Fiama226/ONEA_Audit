@@ -359,6 +359,137 @@ def test_prod_exige_le_secret() -> None:
     assert ok.returncode == 0, ok.stderr
 
 
+@pytest.mark.parametrize("secret", ["CHANGE_ME_keycloak_admin_sync_secret", "onea-dev-sync-secret"])
+def test_prod_refuse_les_secrets_d_exemple(secret: str) -> None:
+    result = _load_prod({"KEYCLOAK_ADMIN_API_CLIENT_SECRET": secret})
+    assert result.returncode != 0
+    assert "ImproperlyConfigured" in result.stderr
+
+
+def test_aucune_redirection_suivie(http_mock: HttpMock) -> None:
+    http_mock.get(USER_URL, json={"id": KC_ID})
+    HttpKeycloakAdmin().get_user(UUID(KC_ID))
+    assert len(http_mock.calls) == 2
+    assert all(c.kwargs["allow_redirects"] is False for c in http_mock.calls)
+
+
+def test_redirection_sur_appel_admin_donne_indisponible(http_mock: HttpMock) -> None:
+    http_mock.get(USER_URL, status=307)
+    with pytest.raises(KeycloakIndisponible) as exc:
+        HttpKeycloakAdmin().get_user(UUID(KC_ID))
+    assert exc.value.message == "Keycloak a répondu HTTP 307."
+
+
+def test_redirection_sur_le_jeton_donne_indisponible(http_mock: HttpMock) -> None:
+    http_mock.routes[("POST", TOKEN_URL)].queue[:] = [(308, None, None)]
+    with pytest.raises(KeycloakIndisponible) as exc:
+        HttpKeycloakAdmin().get_user(UUID(KC_ID))
+    assert exc.value.status == 308
+
+
+def test_jeton_404_n_est_pas_injoignable(http_mock: HttpMock) -> None:
+    http_mock.routes[("POST", TOKEN_URL)].queue[:] = [(404, None, None)]
+    with pytest.raises(KeycloakAdminError) as exc:
+        HttpKeycloakAdmin().get_user(UUID(KC_ID))
+    assert not isinstance(exc.value, KeycloakIndisponible)
+    assert exc.value.status == 404
+    assert "404" in exc.value.message
+
+
+def test_jeton_5xx_donne_indisponible(http_mock: HttpMock) -> None:
+    http_mock.routes[("POST", TOKEN_URL)].queue[:] = [(503, None, None)]
+    with pytest.raises(KeycloakIndisponible) as exc:
+        HttpKeycloakAdmin().get_user(UUID(KC_ID))
+    assert exc.value.message == "Keycloak a répondu HTTP 503."
+
+
+@pytest.mark.parametrize("bad", ["auditeur1", "../../master/users", "", None])
+def test_identifiant_non_uuid_refuse_avant_toute_requete(http_mock: HttpMock, bad: Any) -> None:
+    client = HttpKeycloakAdmin()
+    with pytest.raises(ValueError):  # noqa: PT011
+        client.get_user(bad)
+    with pytest.raises(ValueError):  # noqa: PT011
+        client.set_enabled(bad, False)
+    with pytest.raises(ValueError):  # noqa: PT011
+        client.logout(bad)
+    with pytest.raises(ValueError):  # noqa: PT011
+        client.effective_realm_roles(bad)
+    assert http_mock.calls == []
+
+
+def test_identifiant_uuid_en_chaine_accepte(http_mock: HttpMock) -> None:
+    http_mock.get(USER_URL, json={"id": KC_ID})
+    assert HttpKeycloakAdmin().get_user(KC_ID)["id"] == KC_ID  # type: ignore[arg-type]
+
+
+def test_cache_de_jeton_lie_au_client(http_mock: HttpMock, settings: Any) -> None:
+    http_mock.get(USER_URL, json={"id": KC_ID})
+    HttpKeycloakAdmin().get_user(UUID(KC_ID))
+    settings.KEYCLOAK_ADMIN_API_CLIENT_ID = "autre-client"
+    HttpKeycloakAdmin().get_user(UUID(KC_ID))
+    assert http_mock.count("POST", TOKEN_URL) == 2
+    settings.KEYCLOAK_ADMIN_API_CLIENT_SECRET = "autre-secret"  # noqa: S105
+    HttpKeycloakAdmin().get_user(UUID(KC_ID))
+    assert http_mock.count("POST", TOKEN_URL) == 3
+
+
+def test_session_http_partagee() -> None:
+    assert HttpKeycloakAdmin()._session is HttpKeycloakAdmin()._session
+
+
+def test_iter_users_plafonne(http_mock: HttpMock, monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(keycloak_admin, "_MAX_PAGES", 3)
+    route = http_mock.get(f"{ADMIN}/users", json=[{"id": "a"}, {"id": "b"}])  # never ends
+    with pytest.raises(KeycloakAdminError):
+        list(HttpKeycloakAdmin().iter_users(page_size=2))
+    assert len(route.calls) == 3
+
+
+def test_deploy_doc_decrit_le_client_de_service() -> None:
+    text = (ROOT / "docs/deploy.md").read_text(encoding="utf-8")
+    for needle in (
+        "onea-admin-sync",
+        "view-users",
+        "manage-users",
+        "KEYCLOAK_ADMIN_API_CLIENT_SECRET",
+    ):
+        assert needle in text
+
+
+def test_env_example_secret_marque_dev_only() -> None:
+    lines = (ROOT / ".env.example").read_text(encoding="utf-8").splitlines()
+    idx = next(i for i, ln in enumerate(lines) if ln.startswith("KEYCLOAK_ADMIN_API_CLIENT_SECRET"))
+    assert "DEV-ONLY" in lines[idx - 1]
+
+
+def test_fake_keycloak_fidelite(fake_keycloak: Any) -> None:
+    uid = fake_keycloak.add_user(
+        "jdoe", email="jean.dupont@onea.test", firstName="Jean", lastName="Dupont"
+    )
+    for i in range(5):
+        fake_keycloak.add_user(f"extra{i}")
+    for q in ("JDOE", "dupont@onea", "jean", "DUPONT"):
+        assert [u["id"] for u in fake_keycloak.search_users(q)] == [str(uid)]
+    found = fake_keycloak.search_users("jdoe")[0]
+    found["enabled"] = False
+    assert fake_keycloak.enabled(uid)  # a copy, not the live dict
+    assert len(fake_keycloak.search_users("e", max_results=2)) == 2
+    assert fake_keycloak.calls[-1] == ("search_users", "e", 2)
+    assert len(list(fake_keycloak.iter_users(page_size=4))) == 6
+    assert fake_keycloak.calls[-1] == ("iter_users", 4)
+    with pytest.raises(ValueError):  # noqa: PT011
+        list(fake_keycloak.iter_users(page_size=0))
+    err = KeycloakIndisponible("Keycloak injoignable.")
+    fake_keycloak.fail_with(err, times=2)
+    raised = []
+    for _ in range(2):
+        with pytest.raises(KeycloakIndisponible) as exc:
+            fake_keycloak.get_user(uid)
+        raised.append(exc.value)
+    assert raised[0] is not raised[1]
+    assert raised[0].message == raised[1].message
+
+
 def test_fixture_fake_keycloak(fake_keycloak: Any) -> None:
     uid = fake_keycloak.add_user("auditeur9", roles={"AUDITEUR"})
     seen: list[bool] = []

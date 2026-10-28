@@ -27,6 +27,12 @@ def test_realm_client_de_service_minimal() -> None:
     sa = next(u for u in realm["users"] if u.get("serviceAccountClientId") == "onea-admin-sync")
     assert sa["clientRoles"] == {"realm-management": ["view-users", "manage-users"]}
     assert not sa.get("realmRoles")
+    # fullScopeAllowed is off (least privilege), so the roles must be explicitly in the
+    # token scope, otherwise Keycloak answers 403 to every admin call.
+    assert client["fullScopeAllowed"] is False
+    assert realm["clientScopeMappings"]["realm-management"] == [
+        {"client": "onea-admin-sync", "roles": ["view-users", "manage-users"]}
+    ]
     assert realm["registrationAllowed"] is False and not realm.get("editUsernameAllowed")
     assert "onea-admin-sync" not in settings.OIDC_ALLOWED_AZP
 

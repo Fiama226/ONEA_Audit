@@ -1,3 +1,4 @@
+import copy
 from collections.abc import Callable, Iterator
 from typing import Any
 from uuid import UUID, uuid4
@@ -5,7 +6,7 @@ from uuid import UUID, uuid4
 import pytest
 from rest_framework.test import APIClient
 
-from apps.users.keycloak_admin import KeycloakIntrouvable
+from apps.users.keycloak_admin import KeycloakAdminError, KeycloakIntrouvable
 from apps.users.models import Role, User
 
 from .factories import make_user, reset_sequences
@@ -75,6 +76,7 @@ class FakeKeycloakAdmin:
         return bool(self.users[user_id]["enabled"])
 
     def fail_with(self, exc: Exception, times: int = 1) -> None:
+        """Make the next `times` calls raise (a fresh copy of `exc` each time)."""
         self._failures.extend([exc] * times)
 
     def on_set_enabled(self, callback: Callable[[UUID, bool], None]) -> None:
@@ -84,7 +86,10 @@ class FakeKeycloakAdmin:
     def _enter(self, *call: Any) -> None:
         self.calls.append(call)
         if self._failures:
-            raise self._failures.pop(0)
+            template = self._failures.pop(0)
+            if isinstance(template, KeycloakAdminError):
+                raise type(template)(template.message, template.status)
+            raise copy.copy(template)
 
     def _user(self, user_id: UUID) -> dict[str, Any]:
         if user_id not in self.users:
@@ -103,13 +108,23 @@ class FakeKeycloakAdmin:
         self._user(user_id)
 
     def search_users(self, q: str, *, max_results: int = 20) -> list[dict[str, Any]]:
-        self._enter("search_users", q)
-        found = [u for u in self.users.values() if q.lower() in str(u["username"]).lower()]
+        self._enter("search_users", q, max_results)
+        needle = q.lower()
+        fields = ("username", "email", "firstName", "lastName")
+        found = [
+            copy.deepcopy(u)
+            for u in self.users.values()
+            if any(needle in str(u.get(f, "")).lower() for f in fields)
+        ]
         return found[:max_results]
 
     def iter_users(self, *, page_size: int = 100) -> Iterator[dict[str, Any]]:
-        self._enter("iter_users")
-        yield from list(self.users.values())
+        if page_size < 1:
+            raise ValueError("page_size must be >= 1")
+        self._enter("iter_users", page_size)
+        snapshot = [copy.deepcopy(u) for u in self.users.values()]
+        for first in range(0, len(snapshot), page_size):
+            yield from snapshot[first : first + page_size]
 
     def get_user(self, user_id: UUID) -> dict[str, Any]:
         self._enter("get_user", user_id)
