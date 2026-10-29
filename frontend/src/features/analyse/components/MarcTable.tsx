@@ -18,14 +18,21 @@ import { fr } from "@/i18n/fr";
 import { useAuditFramework, useDeleteMarcLine, useInitializeMarc, useMarcLines } from "../api";
 import { EVALUATION_CONCEPTION_LABELS, NATURE_CONTROLE_LABELS } from "../labels";
 import type { LigneMarc } from "../types";
+import { Heading, type HeadingLevel } from "./Heading";
 import { MarcLineDialog } from "./MarcLineDialog";
 
 const t = fr.analyseVVI;
 
-type Props = { missionId: string; editable: boolean };
+type Props = { missionId: string; editable: boolean; level?: HeadingLevel };
 
 function dash(value: string | null | undefined): string {
   return value ? value : "—";
+}
+
+/** Nom accessible unique d'une ligne : risque, puis contrôle existant ou opération, sinon rang. */
+function lineLabel(l: LigneMarc, index: number): string {
+  const detail = l.controle_existant || l.operation || l.objectif_controle;
+  return `${l.risque_code} — ${detail || `ligne ${index + 1}`}`;
 }
 
 function Appreciation({ value }: { value: LigneMarc["appreciation"] }) {
@@ -39,7 +46,7 @@ function Appreciation({ value }: { value: LigneMarc["appreciation"] }) {
 }
 
 /** Matrice des risques et contrôles, groupée par risque. Les droits viennent du serveur (`editable`). */
-export function MarcTable({ missionId, editable }: Props) {
+export function MarcTable({ missionId, editable, level = 3 }: Props) {
   const lines = useMarcLines(missionId);
   const framework = useAuditFramework(missionId);
   const initialize = useInitializeMarc();
@@ -51,9 +58,18 @@ export function MarcTable({ missionId, editable }: Props) {
 
   if (lines.isError) {
     return (
-      <p role="alert" className={ALERT_CLASS}>
-        {t.loadError}
-      </p>
+      <div role="alert" className={ALERT_CLASS}>
+        <p>{t.loadError}</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-2"
+          onClick={() => void lines.refetch()}
+        >
+          {fr.common.retry}
+        </Button>
+      </div>
     );
   }
   if (lines.isPending) {
@@ -80,11 +96,11 @@ export function MarcTable({ missionId, editable }: Props) {
   }
 
   return (
-    <section aria-labelledby="marc-title" className="grid gap-3">
+    <section aria-labelledby="marc-title" className="marc-print grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id="marc-title" className="text-base font-semibold">
+        <Heading level={level} id="marc-title" className="text-base font-semibold">
           {t.marcTitle}
-        </h3>
+        </Heading>
         {editable && (
           <div className="flex flex-wrap gap-2 print:hidden">
             <Button
@@ -107,8 +123,13 @@ export function MarcTable({ missionId, editable }: Props) {
         </p>
       )}
       {uncovered.length > 0 && (
-        <p role="alert" className="rounded-md border border-warning/50 p-3 text-sm">
+        <p role="status" className="rounded-md border border-warning/50 p-3 text-sm">
           {t.uncovered.replace("{codes}", uncovered.join(", "))}
+        </p>
+      )}
+      {framework.isError && (
+        <p role="alert" className={ALERT_CLASS}>
+          {t.frameworkError}
         </p>
       )}
       <ListIncompleteAlert count={lines.data.count} loaded={rows.length} />
@@ -151,7 +172,7 @@ export function MarcTable({ missionId, editable }: Props) {
                     <RiskLevelBadge niveau={first.risque_niveau as NiveauRisque} />
                   </TableCell>
                 </TableRow>,
-                ...list.map((l) => (
+                ...list.map((l, i) => (
                   <TableRow key={l.id}>
                     <TableCell className="whitespace-normal">
                       {dash(l.objet_auditable_libelle)}
@@ -175,7 +196,7 @@ export function MarcTable({ missionId, editable }: Props) {
                             type="button"
                             variant="outline"
                             size="sm"
-                            aria-label={`${t.editControl} : ${l.risque_code}`}
+                            aria-label={`${t.editControl} : ${lineLabel(l, i)}`}
                             onClick={() => setEditing(l)}
                           >
                             {fr.common.edit}
@@ -184,7 +205,7 @@ export function MarcTable({ missionId, editable }: Props) {
                             type="button"
                             variant="outline"
                             size="sm"
-                            aria-label={`${t.deleteControl} : ${l.risque_code}`}
+                            aria-label={`${t.deleteControl} : ${lineLabel(l, i)}`}
                             onClick={() => setDeleting(l)}
                           >
                             {fr.common.delete}

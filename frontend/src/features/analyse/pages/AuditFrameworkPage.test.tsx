@@ -40,9 +40,59 @@ function render(
             empreinte: "3f2a000000000000000000000000000000000000000000000000000000009c1b",
           },
           donnees: {
-            risques: [{ id: "r1", code: "R-001", libelle: "Fraude" }],
-            lignes_marc: [{ id: "l1", risque_id: "r1", controle_existant: "Version figée" }],
-            forces_faiblesses: [],
+            mission: { reference: "MIS-2026-001", titre: "Audit des achats" },
+            risques: [
+              {
+                id: "r1",
+                code: "R-001",
+                libelle: "Fraude",
+                processus: "Achats",
+                probabilite: 4,
+                impact: 3,
+                score: 12,
+                niveau: "ELEVE",
+              },
+            ],
+            lignes_marc: [
+              {
+                id: "l1",
+                risque_id: "r1",
+                objet_auditable: "Émission des factures",
+                operation: "Saisie",
+                objectif_controle: "Exhaustivité",
+                controle_attendu: "Double validation",
+                controle_existant: "Version figée",
+                composante: "ACTIVITE",
+                nature: "PREVENTIF",
+                evaluation: "ADEQUATE",
+                appreciation: "FORCE",
+                cle: true,
+                commentaire: "",
+              },
+              {
+                id: "l2",
+                risque_id: "r1",
+                objet_auditable: null,
+                operation: "",
+                objectif_controle: "",
+                controle_attendu: "",
+                controle_existant: "",
+                composante: "",
+                nature: "",
+                evaluation: "ABSENTE",
+                appreciation: "FAIBLESSE",
+                cle: false,
+                commentaire: "",
+              },
+            ],
+            forces_faiblesses: [
+              {
+                type: "FAIBLESSE",
+                libelle: "Pas de contrôle",
+                consequence: "",
+                ligne_marc_id: "l2",
+              },
+            ],
           },
         }),
       ),
@@ -79,7 +129,10 @@ describe("AuditFrameworkPage", () => {
   });
 
   it("shows the submitted status and the read-only matrix, with no opinion button for the lead", async () => {
-    render("RAI", SOUMIS);
+    render("AUDITEUR", {
+      ...SOUMIS,
+      mes_droits: analyseRights({ voir_travaux: true, voir_referentiel: true, donner_avis: false }),
+    });
     expect(await screen.findByText("Soumis au RAI")).toBeInTheDocument();
     expect(await screen.findByText("Double signature.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Donner mon avis" })).not.toBeInTheDocument();
@@ -113,6 +166,16 @@ describe("AuditFrameworkPage", () => {
     expect(await screen.findByText("Version validée le 21/03/2026")).toBeInTheDocument();
     expect(await screen.findByText("Version figée")).toBeInTheDocument();
     expect(screen.queryByText("Double signature.")).not.toBeInTheDocument();
+    // Codes de l'instantané traduits, colonnes de la MARC complètes.
+    expect(screen.getByText("Conception adéquate — risque maîtrisé")).toBeInTheDocument();
+    expect(screen.getByText("Contrôle absent")).toBeInTheDocument();
+    expect(screen.getByText("Préventif")).toBeInTheDocument();
+    expect(screen.getByText("Double validation")).toBeInTheDocument();
+    expect(screen.getByText("Exhaustivité")).toBeInTheDocument();
+    expect(screen.getByText("Élevé")).toBeInTheDocument();
+    expect(screen.getByText("✓ Force")).toBeInTheDocument();
+    expect(screen.getAllByText("Faiblesse").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/ADEQUATE|ABSENTE|PREVENTIF|FAIBLESSE/)).not.toBeInTheDocument();
   });
 
   it("prints the framework without the action buttons", async () => {
@@ -122,6 +185,11 @@ describe("AuditFrameworkPage", () => {
     await user.click(await screen.findByRole("button", { name: "Imprimer" }));
     expect(print).toHaveBeenCalled();
     expect(screen.getByRole("heading", { name: "Référentiel d'audit" })).toBeInTheDocument();
+    // Les actions sont masquées à l'impression ; la MARC passe en page nommée paysage.
+    expect(screen.getByRole("button", { name: "Imprimer" }).parentElement).toHaveClass(
+      "print:hidden",
+    );
+    expect(document.querySelector(".marc-print")).not.toBeNull();
     print.mockRestore();
   });
 

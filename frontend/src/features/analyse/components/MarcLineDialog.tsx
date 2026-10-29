@@ -57,6 +57,7 @@ function MarcLineForm({
     control,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors },
   } = useForm<MarcLineFormValues>({
     resolver: zodResolver(marcLineSchema),
@@ -78,9 +79,6 @@ function MarcLineForm({
   const processId = risks.data?.results.find((r) => r.id === riskId)?.processus;
   const tree = useAuditableTree(processId);
   const auditables = (tree.data ?? []).flatMap((d) => [d, ...d.operations]);
-  const prefilled =
-    line !== undefined &&
-    (line.objet_auditable !== null || line.operation !== "" || line.objectif_controle !== "");
 
   async function onSubmit(values: MarcLineFormValues) {
     setFormError(null);
@@ -120,8 +118,6 @@ function MarcLineForm({
     }
   }
 
-  const help = prefilled ? t.prefilled : undefined;
-
   return (
     <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate className="grid gap-4">
       <DialogHeader>
@@ -151,7 +147,11 @@ function MarcLineForm({
                 ref={field.ref}
                 value={field.value}
                 onBlur={field.onBlur}
-                onChange={(e) => field.onChange(e.target.value)}
+                onChange={(e) => {
+                  field.onChange(e.target.value);
+                  // L'objet auditable dépend du processus du risque : on repart de zéro.
+                  setValue("objet_auditable", "");
+                }}
                 disabled={risks.isPending}
                 aria-busy={risks.isPending}
               >
@@ -166,11 +166,16 @@ function MarcLineForm({
           </FormField>
         )}
       />
+      {tree.isError && (
+        <p role="alert" className={ALERT_CLASS}>
+          {t.treeError}
+        </p>
+      )}
       <Controller
         control={control}
         name="objet_auditable"
         render={({ field }) => (
-          <FormField label={t.auditableLabel} error={errors.objet_auditable?.message} help={help}>
+          <FormField label={t.auditableLabel} error={errors.objet_auditable?.message}>
             {(p) => (
               <NativeSelect
                 {...p}
@@ -180,7 +185,7 @@ function MarcLineForm({
                 onBlur={field.onBlur}
                 onChange={(e) => field.onChange(e.target.value)}
               >
-                <option value="">{t.noAuditable}</option>
+                <option value="">{tree.isFetching ? t.treeLoading : t.noAuditable}</option>
                 {auditables.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.libelle}
@@ -191,17 +196,17 @@ function MarcLineForm({
           </FormField>
         )}
       />
-      <FormField label={t.operationLabel} error={errors.operation?.message} help={help}>
+      <FormField label={t.operationLabel} error={errors.operation?.message}>
         {(p) => <Input {...p} maxLength={300} {...register("operation")} />}
       </FormField>
-      <FormField label={t.objectiveLabel} error={errors.objectif_controle?.message} help={help}>
-        {(p) => <Textarea {...p} rows={2} {...register("objectif_controle")} />}
+      <FormField label={t.objectiveLabel} error={errors.objectif_controle?.message}>
+        {(p) => <Textarea {...p} maxLength={5000} rows={2} {...register("objectif_controle")} />}
       </FormField>
       <FormField label={t.expectedLabel} error={errors.controle_attendu?.message}>
-        {(p) => <Textarea {...p} rows={2} {...register("controle_attendu")} />}
+        {(p) => <Textarea {...p} maxLength={5000} rows={2} {...register("controle_attendu")} />}
       </FormField>
       <FormField label={t.existingLabel} error={errors.controle_existant?.message}>
-        {(p) => <Textarea {...p} rows={2} {...register("controle_existant")} />}
+        {(p) => <Textarea {...p} maxLength={5000} rows={2} {...register("controle_existant")} />}
       </FormField>
       <div className="grid gap-4 sm:grid-cols-2">
         <Controller
@@ -288,6 +293,7 @@ function MarcLineForm({
             {(p) => (
               <Checkbox
                 id={p.id}
+                ref={field.ref}
                 aria-invalid={p["aria-invalid"]}
                 aria-describedby={p["aria-describedby"]}
                 checked={field.value}
@@ -298,7 +304,7 @@ function MarcLineForm({
         )}
       />
       <FormField label={t.commentLabel} error={errors.commentaire?.message}>
-        {(p) => <Textarea {...p} rows={2} {...register("commentaire")} />}
+        {(p) => <Textarea {...p} maxLength={5000} rows={2} {...register("commentaire")} />}
       </FormField>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone}>
