@@ -1,11 +1,12 @@
 import type { RouteObject } from "react-router-dom";
-import { PlaceholderPage } from "@/pages/PlaceholderPage";
-import { fr } from "@/i18n/fr";
+import { DocumentDetailPage } from "./pages/DocumentDetailPage";
+import { DocumentListPage } from "./pages/DocumentListPage";
 
-/** Registre des documents (/documents) ; les pages arrivent avec la tâche T12. */
+/** Registre des documents (/documents) ; la garde de rôle est posée dans routes.tsx. */
 export const documentRoutes: RouteObject[] = [
-  { index: true, element: <PlaceholderPage title={fr.nav.documents} /> },
+  { index: true, element: <DocumentListPage /> },
+  { path: ":id", element: <DocumentDetailPage /> },
 ];
 
-/** Gabarits et numérotation (/administration/documents) ; les pages arrivent avec la tâche T9/T10. */
+/** Gabarits et numérotation (/administration/documents) ; les pages arrivent avec la tâche T9. */
 export const documentsAdminRoutes: RouteObject[] = [];

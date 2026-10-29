@@ -46,6 +46,8 @@ export type DataTableProps<T extends RowData> = {
    * requête a échoué : la page doit traiter `isError` (message d'erreur) avant d'afficher le tableau.
    */
   empty: ReactNode;
+  /** Nom du repère de pagination ; à distinguer quand plusieurs tableaux sont sur la même page. */
+  paginationLabel?: string;
 };
 
 const SKELETON_ROWS = 5;
@@ -68,6 +70,7 @@ export function DataTable<T extends RowData>({
   onOrderingChange,
   isLoading,
   empty,
+  paginationLabel = fr.table.pagination,
 }: DataTableProps<T>) {
   const table = useLegacyTable<T>({
     data,
@@ -165,7 +168,7 @@ export function DataTable<T extends RowData>({
         <span className="tabular-nums">
           {total} {total === 1 ? fr.table.result : fr.table.results}
         </span>
-        <nav aria-label={fr.table.pagination} className="flex items-center gap-3">
+        <nav aria-label={paginationLabel} className="flex items-center gap-3">
           <Button
             type="button"
             variant="outline"
