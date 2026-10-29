@@ -8,7 +8,7 @@ import type { Document, DocumentVersion } from "../types";
 import { DocumentStatusBadge } from "./DocumentStatusBadge";
 import { HashDisplay } from "./HashDisplay";
 
-function DownloadCount({ versionId }: { versionId: string }) {
+export function DownloadCount({ versionId }: { versionId: string }) {
   const consultations = useConsultations(versionId);
   if (consultations.data) return <>{consultations.data.count}</>;
   return (
@@ -75,6 +75,7 @@ export function VersionHistory({ document }: { document: Document }) {
       pageSize={Math.max(versions.length, 1)}
       onPageChange={() => undefined}
       isLoading={false}
+      paginationLabel={`${fr.table.pagination} — ${fr.documents.historyCaption}`}
       empty={<p className="text-sm text-text-muted">{fr.documents.noVersions}</p>}
     />
   );
