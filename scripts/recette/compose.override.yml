@@ -1,0 +1,21 @@
+# Surcouche de RECETTE UNIQUEMENT (jamais en production). Ajoutee a docker/compose.prod.yml,
+# qui reste inchange. Ne touche pas aux ports 80/443 de nginx.
+services:
+  db:
+    # Mesure des requetes lentes / volumes (T13, T14).
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all"]
+  web:
+    environment:
+      # Client a acces direct des essais de charge (D20) : recette seulement.
+      OIDC_ALLOWED_AZP: onea-frontend,onea-charge
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    restart: unless-stopped
+    # Interface de consultation du courrier, sur la boucle locale uniquement.
+    ports:
+      - "127.0.0.1:18025:8025"
+    networks: [edge]
+  keycloak:
+    # Port de gestion (sante, metriques) pour diagnostic, boucle locale uniquement.
+    ports:
+      - "127.0.0.1:19000:9000"
