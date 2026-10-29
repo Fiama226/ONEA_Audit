@@ -33,14 +33,18 @@ création du contrat.
 | 10 | Matrice d'analyse des risques et contrôles (MARC) | 1 | `MARC` | 5 | provisoire |
 | 11 | Tableau des forces et faiblesses | 1 | `FORCES_FAIBLESSES` | 5 | provisoire |
 | 12 | Rapport d'orientation | 2 | `RAPPORT_ORIENTATION` | 6 | provisoire |
-| 13 | Programme de travail | 1 | `PROGRAMME_TRAVAIL` | 6 | provisoire |
+| 13 | Programme de travail | 1 | `PROGRAMME_TRAVAIL` | 6 | provisoire livré (contrat v1, `gabarits_provisoires --installer`) |
 | 14 | Programme de vérification | 2 | `PROGRAMME_VERIFICATION` | 6 | provisoire |
-| 15 | Feuille de couverture de test | 1 | `FEUILLE_COUVERTURE` | 7 | provisoire |
-| 16 | Feuille de travail | 1 | `FEUILLE_TRAVAIL` | 7 | provisoire |
+| 15 | Feuille de couverture de test | 1 | `FEUILLE_COUVERTURE` | 7 | provisoire livré (contrat v1, `gabarits_provisoires --installer`) |
+| 16 | Feuille de travail | 1 | `FEUILLE_TRAVAIL` | 7 | provisoire livré (contrat v1, `gabarits_provisoires --installer`) |
 | 17 | PV de clôture | 1 | `PV_CLOTURE` | 8 | provisoire |
 | 18 | Plan d'actions de mise en œuvre des recommandations | 1 | `PLAN_ACTIONS` | 8 | provisoire |
 | 19 | Rapport | 1 | `RAPPORT` | 8 | provisoire |
 | 20 | Note synthétique | 1 | `NOTE_SYNTHETIQUE` | 8 | provisoire |
+| — | Fiche de test (hors recueil, ajoutée au lot 6) | 1 | `FICHE_TEST` | 6 | provisoire livré (contrat v1, `gabarits_provisoires --installer`) |
+| — | Fiche d'observation (hors recueil, ajoutée au lot 6) | 1 | `FICHE_OBSERVATION` | 6 | provisoire livré (contrat v1, `gabarits_provisoires --installer`) |
+
+Les deux lignes « — » sont des documents de la plateforme sans gabarit ONEA connu : elles ne comptent pas dans les 22 fichiers à récupérer. Les abréviations de numérotation du lot 6 (PT, FCT, FDT, FIT, FO) sont à confirmer avec l'ONEA. Le programme de vérification (n° 14, deux variantes) n'est pas couvert : aucun gabarit reçu.
 
 Statuts possibles : « provisoire » (gabarit généré par la plateforme) ou « officiel reçu »
 (modèle ONEA déposé et activé).
