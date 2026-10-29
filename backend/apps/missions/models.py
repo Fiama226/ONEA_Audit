@@ -27,6 +27,7 @@ from .managers import (
     MissionEnfantManager,
     MissionManager,
 )
+from .signals import etape_changee
 
 if TYPE_CHECKING:
     from apps.users.models import User
@@ -527,7 +528,11 @@ class EvenementEtape(BaseModel):
         motif: str = "",
         statut_avant: str,
     ) -> "EvenementEtape":
-        """Écrit l'événement ; `statut_apres` est le statut courant de l'étape."""
+        """Écrit l'événement ; `statut_apres` est le statut courant de l'étape.
+
+        Émet ensuite `signals.etape_changee` dans la transaction de l'appelant : une exception
+        d'un récepteur annule la transition.
+        """
         evenement: EvenementEtape = cls.objects.create(
             etape=etape,
             type=type,
@@ -537,6 +542,15 @@ class EvenementEtape(BaseModel):
             motif=motif,
             statut_avant=statut_avant,
             statut_apres=etape.statut,
+        )
+        etape_changee.send(
+            sender=EtapeMission,
+            etape=etape,
+            evenement=evenement,
+            par=par,
+            type_evenement=type,
+            motif=motif,
+            statut_avant=statut_avant,
         )
         return evenement
 
