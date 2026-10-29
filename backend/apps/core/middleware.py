@@ -3,6 +3,7 @@ from typing import Any, cast
 
 from auditlog.middleware import AuditlogMiddleware
 from django.http import HttpRequest, HttpResponse
+from django.http.response import HttpResponseBase
 from django.utils.functional import SimpleLazyObject, empty
 
 from apps.core.reseau import PROXY_META, adresse_reelle
@@ -24,6 +25,23 @@ class AdresseClientMiddleware:
             request.META[PROXY_META] = pair
             request.META["REMOTE_ADDR"] = reelle
         return self.get_response(request)
+
+
+class PasDeCacheApiMiddleware:
+    """Mark every ``/api/`` response that sets no Cache-Control as ``no-store, private``.
+
+    API payloads are per-user and sensitive: no browser or proxy cache may keep them.
+    Responses that already choose their policy (file downloads) are left alone.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponseBase]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponseBase:
+        response = self.get_response(request)
+        if request.path.startswith("/api/") and "Cache-Control" not in response:
+            response["Cache-Control"] = "no-store, private"
+        return response
 
 
 class _LazyActor(SimpleLazyObject):  # type: ignore[type-arg]

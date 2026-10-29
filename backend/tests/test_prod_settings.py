@@ -43,6 +43,14 @@ print(json.dumps({
     "session_secure": settings.SESSION_COOKIE_SECURE,
     "csrf_secure": settings.CSRF_COOKIE_SECURE,
     "proxy_header": settings.SECURE_PROXY_SSL_HEADER,
+    "session_name": settings.SESSION_COOKIE_NAME,
+    "csrf_name": settings.CSRF_COOKIE_NAME,
+    "session_httponly": settings.SESSION_COOKIE_HTTPONLY,
+    "csrf_httponly": settings.CSRF_COOKIE_HTTPONLY,
+    "samesite": settings.SESSION_COOKIE_SAMESITE,
+    "session_age": settings.SESSION_COOKIE_AGE,
+    "cache": settings.CACHES["default"],
+    "auth": settings.REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"],
     "admin": settings.DJANGO_ADMIN_ENABLED,
     "debug": settings.DEBUG,
     "documents_root": settings.DOCUMENTS_ROOT,
@@ -52,7 +60,7 @@ print(json.dumps({
 """
 
 
-def load_prod(env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+def load_prod(env: dict[str, str], code: str = PROBE) -> subprocess.CompletedProcess[str]:
     clean = {
         k: v for k, v in os.environ.items() if k in {"PATH", "SYSTEMROOT", "TEMP", "TMP", "HOME"}
     }
@@ -60,7 +68,7 @@ def load_prod(env: dict[str, str]) -> subprocess.CompletedProcess[str]:
     clean["ONEA_IGNORE_DOTENV"] = "true"
     clean["DJANGO_SETTINGS_MODULE"] = "config.settings.prod"
     return subprocess.run(  # noqa: S603
-        [sys.executable, "-c", PROBE],
+        [sys.executable, "-c", code],
         cwd=BACKEND_DIR,
         env=clean,
         capture_output=True,
@@ -92,6 +100,49 @@ def test_prod_settings_load_and_are_hardened() -> None:
     assert data["proxy_header"] == ["HTTP_X_FORWARDED_PROTO", "https"]
     assert data["admin"] is False
     assert data["debug"] is False
+
+
+def test_prod_cookies_are_host_prefixed_secure_httponly() -> None:
+    data = probe(PROD_ENV)
+    assert data["session_name"] == "__Host-onea-session"
+    assert data["csrf_name"] == "__Host-onea-csrf"
+    assert data["session_secure"] is True and data["csrf_secure"] is True
+    assert data["session_httponly"] is True and data["csrf_httponly"] is True
+    assert data["samesite"] == "Lax"
+    assert data["session_age"] == 8 * 3600
+
+
+def test_prod_auth_is_bearer_only_and_cache_is_redis() -> None:
+    data = probe({**PROD_ENV, "REDIS_URL": "redis://:pw@redis:6379/0"})
+    assert data["auth"] == ["apps.users.authentication.OIDCBearerAuthentication"]
+    cache = data["cache"]
+    assert isinstance(cache, dict)
+    assert cache["BACKEND"] == "django.core.cache.backends.redis.RedisCache"
+    assert cache["LOCATION"] == "redis://:pw@redis:6379/1"
+
+
+def test_prod_cors_is_optional_and_empty_by_default() -> None:
+    env = {k: v for k, v in PROD_ENV.items() if k != "CORS_ALLOWED_ORIGINS"}
+    assert probe(env)["cors"] == []
+
+
+def test_prod_cache_url_overrides_redis_url() -> None:
+    data = probe({**PROD_ENV, "CACHE_URL": "redis://cache:6379/5"})
+    cache = data["cache"]
+    assert isinstance(cache, dict)
+    assert cache["LOCATION"] == "redis://cache:6379/5"
+
+
+def test_prod_cors_preflight_from_foreign_origin_has_no_allow_origin() -> None:
+    code = (
+        "import django\ndjango.setup()\nfrom django.test import Client\n"
+        "r = Client().options('/api/v1/me/', HTTP_ORIGIN='https://malveillant.example',"
+        " HTTP_ACCESS_CONTROL_REQUEST_METHOD='GET', HTTP_HOST='audit.onea.bf', secure=True)\n"
+        "print('ACAO', r.headers.get('Access-Control-Allow-Origin'))\n"
+    )
+    result = load_prod(PROD_ENV, code=code)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip().splitlines()[-1] == "ACAO None"
 
 
 @pytest.mark.parametrize(
@@ -133,7 +184,6 @@ def test_prod_admin_can_be_enabled_explicitly() -> None:
         "DATABASE_URL",
         "EMAIL_URL",
         "ALLOWED_HOSTS",
-        "CORS_ALLOWED_ORIGINS",
         "CSRF_TRUSTED_ORIGINS",
         "OIDC_OP_BASE_URL",
     ],

@@ -17,7 +17,8 @@ DEBUG = False
 SECRET_KEY = env("SECRET_KEY")  # required in production, no default
 DATABASES = {"default": env.db("DATABASE_URL")}  # required
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")  # required
-CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")  # required
+# The SPA and the API share one origin behind nginx: CORS is optional and closed by default.
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")  # required
 
 _email = env.email_url("EMAIL_URL")  # required (no mailpit default)
@@ -78,3 +79,7 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+# `__Host-` prefix: Secure, Path=/, no Domain; only valid over HTTPS, hence production only.
+SESSION_COOKIE_NAME = "__Host-onea-session"
+CSRF_COOKIE_NAME = "__Host-onea-csrf"
+CSRF_COOKIE_HTTPONLY = True  # the API is bearer-only; admin forms carry the token in the page

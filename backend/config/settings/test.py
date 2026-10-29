@@ -10,6 +10,7 @@ SPECTACULAR_SETTINGS = {
 }
 OIDC_ALLOWED_AZP = ["onea-frontend", "onea-dev-cli"]
 KEYCLOAK_ADMIN_API_CLIENT_SECRET = ""  # tests inject a fake client or set it explicitly
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"

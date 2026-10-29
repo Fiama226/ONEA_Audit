@@ -484,9 +484,9 @@ def test_claims_with_bad_sub_rejected(api_client: APIClient, sub: Any) -> None:
 
 
 @pytest.mark.django_db
-def test_session_auth_still_works(api_client: APIClient, user: User) -> None:
+def test_session_auth_no_longer_authenticates_the_api(api_client: APIClient, user: User) -> None:
     api_client.force_login(user)
-    assert api_client.get("/api/v1/me/").status_code == 200
+    assert api_client.get("/api/v1/me/").status_code == 401
 
 
 # --- audience (azp) -------------------------------------------------------------

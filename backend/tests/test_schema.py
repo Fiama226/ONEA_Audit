@@ -8,8 +8,8 @@ from django.conf import settings
 from django.contrib.staticfiles import finders
 from rest_framework.test import APIClient
 
-from apps.core.schema import OIDCBearerAuthenticationScheme, SessionAuthentication401Scheme
-from apps.users.authentication import OIDCBearerAuthentication, SessionAuthentication401
+from apps.core.schema import OIDCBearerAuthenticationScheme
+from apps.users.authentication import OIDCBearerAuthentication
 from config import __version__
 
 _ASSET_REF = re.compile(r"""<(?:script|link)\s[^>]*?\b(?:src|href)=["']([^"']+)["']""")
@@ -94,15 +94,9 @@ def test_docs_page_loads_assets_locally(api_client: APIClient) -> None:
     assert finders.find(relative), f"{relative} not found by staticfiles finders"
 
 
-def test_cookie_auth_extension_targets_existing_class(api_client: APIClient) -> None:
-    # drf-spectacular keeps target_class a dotted string until schema generation resolves
-    # it to the class, so generate the schema first, then check the resolved class.
+def test_schema_documents_bearer_only(api_client: APIClient) -> None:
     schemes = _schema(api_client)["components"]["securitySchemes"]
-    assert "cookieAuth" in schemes
-    target: object = SessionAuthentication401Scheme.target_class
-    assert target is SessionAuthentication401
-    dotted = f"{SessionAuthentication401.__module__}.{SessionAuthentication401.__qualname__}"
-    assert dotted == "apps.users.authentication.SessionAuthentication401"
+    assert "cookieAuth" not in schemes
 
 
 def test_bearer_auth_extension_targets_existing_class(api_client: APIClient) -> None:

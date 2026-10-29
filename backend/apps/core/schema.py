@@ -3,9 +3,13 @@
 from typing import Any
 
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
+from drf_spectacular.settings import spectacular_settings
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import serializers
+from rest_framework.permissions import BasePermission
+from rest_framework.request import Request
 from rest_framework.serializers import BaseSerializer
+from rest_framework.views import APIView
 
 
 class ApiErrorSerializer(serializers.Serializer[dict[str, object]]):
@@ -85,14 +89,15 @@ def crud_schema(
     )
 
 
-class SessionAuthentication401Scheme(OpenApiAuthenticationExtension):  # type: ignore[no-untyped-call]
-    """Document the project session (cookie) authentication in the schema."""
+class SchemaAccess(BasePermission):
+    """Permission of the schema/docs views: ``SPECTACULAR_SETTINGS["SERVE_PERMISSIONS"]``,
+    read at request time (IsAdminUser in production, open in dev/test)."""
 
-    target_class = "apps.users.authentication.SessionAuthentication401"
-    name = "cookieAuth"
-
-    def get_security_definition(self, auto_schema: object) -> dict[str, str]:
-        return {"type": "apiKey", "in": "cookie", "name": "sessionid"}
+    def has_permission(self, request: Request, view: APIView) -> bool:
+        # spectacular_settings resolves the dotted paths to classes and follows overrides
+        return all(
+            cls().has_permission(request, view) for cls in spectacular_settings.SERVE_PERMISSIONS
+        )
 
 
 class OIDCBearerAuthenticationScheme(OpenApiAuthenticationExtension):  # type: ignore[no-untyped-call]

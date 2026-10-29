@@ -267,8 +267,13 @@ restauration). Tester la restauration régulièrement sur un serveur de recette.
 | `COMPOSE_PROJECT_NAME`, `WEB_CONCURRENCY` | optionnels |
 
 Le backend en production refuse de démarrer si `SECRET_KEY`, `DATABASE_URL`, `EMAIL_URL`,
-`ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` ou `OIDC_OP_BASE_URL`
+`ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` ou `OIDC_OP_BASE_URL`
 (en `https://`) manquent, ou si `OIDC_VERIFY_SSL=false` : aucune valeur par défaut de développement n'est utilisée.
+
+`CORS_ALLOWED_ORIGINS` est **facultatif** (défaut : vide, aucune origine tierce autorisée) : la SPA
+et l'API partagent la même origine derrière `nginx`. Ne le renseigner que pour une SPA hébergée
+ailleurs. `CACHE_URL` (facultatif) désigne le cache partagé entre processus (défaut : `REDIS_URL`,
+base 1 ; la base 0 sert à Celery).
 
 ## 9. Notes de sécurité
 
@@ -281,11 +286,23 @@ Le backend en production refuse de démarrer si `SECRET_KEY`, `DATABASE_URL`, `E
 - Les en-têtes de sécurité (HSTS, CSP, X-Frame-Options, Referrer-Policy...) sont définis
   **uniquement par nginx** ; ceux émis par Django sont masqués. Django garde les réglages
   `SECURE_*` nécessaires à son bon fonctionnement (redirection HTTPS, en-tête proxy, cookies).
+- Authentification de l'API : jeton Bearer Keycloak uniquement. Un cookie de session Django
+  n'authentifie jamais `/api/v1/` ; la session ne sert qu'à `/admin/` (si activé) et à
+  `/api/docs/` / `/api/schema/` (ADMIN).
+- Cookies : `__Host-onea-session` et `__Host-onea-csrf` (Secure, HttpOnly, `SameSite=Lax`,
+  chemin `/`, sans domaine) ; durée de session 8 h. Toute réponse `/api/` sans en-tête
+  `Cache-Control` propre reçoit `no-store, private`.
 - Limitation de débit : 20 requêtes/s par adresse sur `/api/` (rafale 40), 5/s sur les
   endpoints d'authentification Keycloak (réponse 429).
 - Le code des images est en lecture seule pour l'utilisateur applicatif (non root) ;
   seul `/app/staticfiles` est inscriptible. Les conteneurs tournent avec
   `no-new-privileges` et sans capacités Linux superflues.
+- L'API n'accepte que le jeton Bearer Keycloak : un cookie de session Django ne l'authentifie
+  jamais (401). La session ne sert qu'à `/admin/` et à la documentation `/api/docs/` (ADMIN).
+- Cookies en production : `__Host-onea-session` et `__Host-onea-csrf` (`Secure`, `HttpOnly`,
+  `SameSite=Lax`, sans `Domain`), session de 8 h. Le préfixe `__Host-` impose HTTPS.
+- Toute réponse `/api/` sans `Cache-Control` reçoit `no-store, private`.
+- Le cache Django est partagé via Valkey (`CACHE_URL`, défaut `REDIS_URL` base 1).
 - HSTS (1 an, sous-domaines inclus) est actif : ne pas déployer sans certificat valide.
 - Adresse IP enregistrée (confirmations, journal de consultation, piste d'audit) :
   `nginx` transmet l'adresse du pair TCP dans `X-Real-IP`, et Django ne la croit que si le
