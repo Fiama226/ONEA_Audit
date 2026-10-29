@@ -237,7 +237,8 @@ def lancer_mission(mission: Mission, *, by: User) -> Mission:
     etape.demarrer()
     etape.date_debut_reelle = aujourd_hui()
     enregistrer(etape, by=by)
-    EvenementEtape.journaliser(etape, TypeEvenementEtape.DEMARREE, par=by, statut_avant=avant)
+    with actor_scope(by):
+        EvenementEtape.journaliser(etape, TypeEvenementEtape.DEMARREE, par=by, statut_avant=avant)
     return mission
 
 
@@ -305,7 +306,8 @@ def emettre_ordre_mission(
     etape.terminee_par = by
     etape.date_fin_reelle = aujourd_hui()
     enregistrer(etape, by=by)
-    EvenementEtape.journaliser(etape, TypeEvenementEtape.TERMINEE, par=by, statut_avant=avant)
+    with actor_scope(by):
+        EvenementEtape.journaliser(etape, TypeEvenementEtape.TERMINEE, par=by, statut_avant=avant)
     return confirmation
 
 
