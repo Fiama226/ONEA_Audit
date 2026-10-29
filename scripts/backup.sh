@@ -1,8 +1,11 @@
 #!/bin/sh
-# Dump the application and Keycloak PostgreSQL databases of the production stack.
+# Dump the application and Keycloak PostgreSQL databases of the production stack, then
+# archive the documents folder (DOCUMENTS_HOST_DIR). Databases first: the archive then holds
+# every file referenced by the dump.
 #   sh scripts/backup.sh [backup-dir]        (default: ./backups)
 # Run from the repository root on the server. Dumps are written to a .tmp file first and
 # renamed only when pg_dump succeeded, so a failed run never leaves a truncated dump.
+# Must run as root (sudo): the documents folder is owned by uid 10001 with mode 0750.
 # Restore: see docs/deploy.md ("Sauvegardes et restauration").
 set -eu
 umask 077
@@ -34,9 +37,40 @@ dump() { # <service> <output-prefix>
 dump db onea
 dump keycloak-db keycloak
 
-# Keep the 14 most recent dumps of each database.
+# Documents folder: read DOCUMENTS_HOST_DIR from the env file (parsed, never sourced).
+DOCUMENTS_HOST_DIR=$(sed -n 's/^DOCUMENTS_HOST_DIR=//p' "$ENV_FILE" | tail -n 1 \
+  | tr -d '\r' | tr -d "\"'")
+[ -n "$DOCUMENTS_HOST_DIR" ] && [ -d "$DOCUMENTS_HOST_DIR" ] || {
+  echo "ERREUR : DOCUMENTS_HOST_DIR absent de $ENV_FILE ou dossier introuvable." >&2
+  exit 1
+}
+case "$DOCUMENTS_HOST_DIR" in
+  /*) ;;
+  *) echo "ERREUR : DOCUMENTS_HOST_DIR doit être un chemin absolu." >&2; exit 1 ;;
+esac
+DOCS_REAL=$(cd "$DOCUMENTS_HOST_DIR" && pwd -P)
+case "$DOCS_REAL/" in
+  "$ROOT"/*|/|/app/*|/etc/*|/proc/*|/sys/*|/dev/*)
+    echo "ERREUR : DOCUMENTS_HOST_DIR ne doit pas être dans le dépôt ni un dossier système." >&2
+    exit 1 ;;
+esac
+[ "$(id -u)" -eq 0 ] || {
+  echo "ERREUR : la sauvegarde des documents doit être lancée en root (sudo)." >&2
+  exit 1
+}
+tmp="$DEST/documents-$STAMP.tar.gz.tmp"
+if tar -czf "$tmp" -C "$DOCS_REAL" .; then
+  mv "$tmp" "$DEST/documents-$STAMP.tar.gz"
+else
+  rm -f "$tmp"
+  echo "ERREUR : l'archive des documents a échoué." >&2
+  exit 1
+fi
+
+# Keep the 14 most recent dumps of each database and 14 document archives.
 for prefix in onea keycloak; do
   ls -1t "$DEST"/"$prefix"-*.dump 2>/dev/null | tail -n +15 | while read -r old; do rm -f "$old"; done
 done
+ls -1t "$DEST"/documents-*.tar.gz 2>/dev/null | tail -n +15 | while read -r old; do rm -f "$old"; done
 
-echo "OK : sauvegardes écrites dans $DEST (onea-$STAMP.dump, keycloak-$STAMP.dump)"
+echo "OK : sauvegardes écrites dans $DEST (onea-$STAMP.dump, keycloak-$STAMP.dump, documents-$STAMP.tar.gz)"

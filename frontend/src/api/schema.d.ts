@@ -1658,6 +1658,7 @@ export interface components {
         Health: {
             status: string;
             version: string;
+            stockage_documents: string;
         };
         LigneSuivi: {
             numero: number;
