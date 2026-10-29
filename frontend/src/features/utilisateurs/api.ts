@@ -6,6 +6,7 @@ import {
   type QueryKey,
 } from "@tanstack/react-query";
 import { apiFetch } from "@/api/client";
+import { isApiError } from "@/api/errors";
 import { toQuery, type QueryParams } from "@/api/query";
 import type { components, operations } from "@/api/schema";
 import type { AccountAction, CompteUtilisateur, ProfilInput } from "./types";
@@ -79,6 +80,9 @@ export function useDirectorySearch(q: string) {
     queryFn: () =>
       apiFetch<S["EntreeAnnuaire"][]>(`${BASE}/directory-search/${toQuery({ q: term })}`),
     enabled: term.length >= 2,
+    // Une erreur HTTP (ex. 503 Keycloak) n'est pas retentée : le message s'affiche tout de suite
+    // et l'annuaire ne reçoit pas 4 appels par recherche. Seule une erreur réseau l'est.
+    retry: (count, error) => !(isApiError(error) && error.status > 0) && count < 2,
   });
 }
 
