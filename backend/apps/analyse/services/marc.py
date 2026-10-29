@@ -8,12 +8,12 @@ from django.db.models import Count, Q
 from apps.core.exceptions import RegleMetierError
 from apps.core.services import appliquer, enregistrer, refuser, relire
 from apps.missions.models import Mission, RisqueMission
-from apps.missions.services.travaux import verrouiller_travaux
 from apps.referentiel.models import NiveauRisque
 from apps.users.models import User
 
 from ..models import EvaluationConception, LigneMARC
 from . import forces_faiblesses
+from .forces_faiblesses import verrouiller_fenetre
 
 MSG_RISQUE_AUTRE_MISSION = "Ce risque n'appartient pas à la mission."
 MSG_OBJECTIF_ACTIF = "Ce contrôle porte un objectif d'audit : retirez d'abord l'objectif."
@@ -86,7 +86,7 @@ def _creer(mission: Mission, risque: RisqueMission, by: User, champs: dict[str, 
 def ajouter_ligne_marc(
     mission: Mission, *, risque: RisqueMission, by: User, **champs: Any
 ) -> LigneMARC:
-    mission = verrouiller_travaux(mission)
+    mission = verrouiller_fenetre(mission)
     if not RisqueMission.objects.filter(pk=risque.pk, mission=mission).exists():
         raise refuser(MSG_RISQUE_AUTRE_MISSION, risque=MSG_RISQUE_AUTRE_MISSION)
     return _creer(mission, risque, by, champs)
@@ -95,7 +95,7 @@ def ajouter_ligne_marc(
 @transaction.atomic
 def initialiser_marc(mission: Mission, *, by: User) -> list[LigneMARC]:
     """Crée une ligne pour chaque risque de la mission qui n'en a pas (idempotent)."""
-    mission = verrouiller_travaux(mission)
+    mission = verrouiller_fenetre(mission)
     couverts = set(LigneMARC.objects.filter(mission=mission).values_list("risque_id", flat=True))
     risques = RisqueMission.objects.filter(mission=mission).select_related("risque_source")
     return [
@@ -107,7 +107,7 @@ def initialiser_marc(mission: Mission, *, by: User) -> list[LigneMARC]:
 
 @transaction.atomic
 def modifier_ligne_marc(ligne: LigneMARC, *, by: User, **changes: Any) -> LigneMARC:
-    verrouiller_travaux(ligne.mission)
+    verrouiller_fenetre(ligne.mission)
     if "risque" in changes or "risque_id" in changes:
         raise refuser(MSG_RISQUE_FIXE, risque=MSG_RISQUE_FIXE)
     ligne = relire(ligne)
@@ -121,7 +121,7 @@ def modifier_ligne_marc(ligne: LigneMARC, *, by: User, **changes: Any) -> LigneM
 
 @transaction.atomic
 def retirer_ligne_marc(ligne: LigneMARC, *, by: User) -> None:
-    verrouiller_travaux(ligne.mission)
+    verrouiller_fenetre(ligne.mission)
     ligne = relire(ligne)
     if ligne.objectifs_audit.exists():
         raise RegleMetierError(MSG_OBJECTIF_ACTIF)

@@ -9,10 +9,21 @@ from apps.missions.models import Mission
 from apps.missions.services.travaux import verrouiller_travaux
 from apps.users.models import User
 
+from ..gardes import exiger_actives
 from ..models import ForceFaiblesse, LigneMARC
 
+MSG_FENETRE = "Commencez l'étape V pour constituer le référentiel d'audit."
 MSG_LIEE = "Cette ligne suit la matrice MARC : modifiez la ligne MARC."
 _LIBELLE_MAX = 500
+
+
+def verrouiller_fenetre(mission: Mission) -> Mission:
+    """Verrouille la mission et exige V ou VI en cours (D4) ; 422 sinon."""
+    mission = verrouiller_travaux(mission)
+    exiger_actives(mission.pk, une_de=(5, 6), message=MSG_FENETRE)
+    return mission
+
+
 _MODIFIABLES_LIEE = {"libelle", "consequence", "commentaire", "ordre"}
 _MODIFIABLES_MANUELLE = _MODIFIABLES_LIEE | {"type", "processus"}
 
@@ -21,7 +32,8 @@ def libelle_automatique(ligne: LigneMARC) -> str:
     """Libellé initial : contrôle existant, ou « Absence de contrôle : {objectif, 200 car.} »."""
     if ligne.controle_existant.strip():
         return ligne.controle_existant.strip()[:_LIBELLE_MAX]
-    return f"Absence de contrôle : {ligne.objectif_controle.strip()[:200]}"
+    objectif = ligne.objectif_controle.strip()[:200]
+    return f"Absence de contrôle : {objectif}" if objectif else "Absence de contrôle"
 
 
 @transaction.atomic
@@ -60,6 +72,12 @@ def synchroniser(
     return existante
 
 
+def _controler_processus(mission: Mission, processus: Any) -> None:
+    if processus is not None and not mission.processus.filter(pk=processus.pk).exists():
+        message = "Le processus doit être un processus de la mission."
+        raise refuser(message, processus=message)
+
+
 @transaction.atomic
 def ajouter_force_faiblesse(
     mission: Mission,
@@ -69,8 +87,9 @@ def ajouter_force_faiblesse(
     by: User,
     **champs: Any,  # noqa: A002
 ) -> ForceFaiblesse:
-    mission = verrouiller_travaux(mission)
+    mission = verrouiller_fenetre(mission)
     ff = ForceFaiblesse(mission=mission, type=type, libelle=libelle.strip())
+    _controler_processus(mission, champs.get("processus"))
     appliquer(ff, champs, {"consequence", "commentaire", "ordre", "processus"})
     enregistrer(ff, by=by, creation=True)
     return ff
@@ -78,12 +97,13 @@ def ajouter_force_faiblesse(
 
 @transaction.atomic
 def modifier_force_faiblesse(ff: ForceFaiblesse, *, by: User, **changes: Any) -> ForceFaiblesse:
-    verrouiller_travaux(ff.mission)
+    verrouiller_fenetre(ff.mission)
     ff = relire(ff)
     if ff.ligne_marc_id is not None and "type" in changes:
         raise refuser(MSG_LIEE, type=MSG_LIEE)
     if "libelle" in changes:
         changes["libelle"] = str(changes["libelle"]).strip()
+    _controler_processus(ff.mission, changes.get("processus"))
     appliquer(ff, changes, _MODIFIABLES_LIEE if ff.ligne_marc_id else _MODIFIABLES_MANUELLE)
     enregistrer(ff, by=by)
     return ff
@@ -91,7 +111,7 @@ def modifier_force_faiblesse(ff: ForceFaiblesse, *, by: User, **changes: Any) ->
 
 @transaction.atomic
 def retirer_force_faiblesse(ff: ForceFaiblesse, *, by: User) -> None:
-    verrouiller_travaux(ff.mission)
+    verrouiller_fenetre(ff.mission)
     ff = relire(ff)
     if ff.ligne_marc_id is not None:
         raise refuser(MSG_LIEE)

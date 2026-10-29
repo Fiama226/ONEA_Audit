@@ -32,7 +32,7 @@ TEXTE_VALIDATION = (
     "contrôles), qui servira de référence à l'évaluation du dispositif de contrôle "
     "interne."
 )
-MSG_AVIS_NON_DIFFUSE = "Le référentiel d'audit n'est pas encore diffusé aux audités."
+MSG_AVIS_NON_DIFFUSE = "Le référentiel d'audit n'est pas soumis à l'avis des audités."
 MSG_AVIS_COMMENTAIRE = "Un commentaire est obligatoire pour des remarques."
 _VI = 6
 _V = 5
