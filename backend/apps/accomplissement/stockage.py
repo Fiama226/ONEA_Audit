@@ -17,6 +17,7 @@ import os
 import re
 import tempfile
 import uuid
+from collections.abc import Iterator
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -59,6 +60,8 @@ class StockageFichiers(Protocol):
     def ouvrir(self, cle: str) -> BinaryIO: ...  # lecture seule ; FichierIntrouvableError
 
     def existe(self, cle: str) -> bool: ...
+
+    def cles(self) -> Iterator[str]: ...  # lecture seule : toutes les clés stockées
 
 
 def _segments_prefixe(prefixe: str) -> list[str]:
@@ -153,6 +156,15 @@ class StockageDisque:
             return self._chemin(cle).is_file()
         except FichierIntrouvableError:
             return False
+
+    def cles(self) -> Iterator[str]:
+        """Clés de tous les fichiers stockés (fichiers temporaires de dépôt et liens exclus)."""
+        if not self.racine.is_dir():
+            return
+        for chemin in sorted(self.racine.rglob("*")):
+            if chemin.is_symlink() or not chemin.is_file() or chemin.name.startswith(".depot-"):
+                continue
+            yield chemin.relative_to(self.racine).as_posix()
 
 
 @lru_cache(maxsize=8)

@@ -8,7 +8,10 @@ from apps.missions.models import Mission
 
 
 class Command(BaseCommand):
-    help = "Vérifie l'empreinte SHA-256 de chaque pièce justificative (code 1 en cas d'écart)."
+    help = (
+        "Rapproche disque et base : empreinte SHA-256 de chaque pièce justificative, fichiers "
+        "absents et fichiers orphelins (code 1 en cas d'écart). Lecture seule."
+    )
 
     def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("--mission", help="Référence de la mission (ex. DAI/2026/M01).")
@@ -21,10 +24,13 @@ class Command(BaseCommand):
                 raise CommandError(f"Mission introuvable : {options['mission']}.")
         ecarts = verifier_toutes(mission)
         for ecart in ecarts:
-            self.stderr.write(
-                f"ECART : pièce {ecart.piece.numero} ({ecart.piece.mission.reference}) "
-                f"attendu {ecart.attendu}, obtenu {ecart.obtenu}."
-            )
+            if ecart.piece is None:
+                self.stderr.write(f"ECART : {ecart.obtenu} {ecart.cle} (aucune pièce en base).")
+            else:
+                self.stderr.write(
+                    f"ECART : pièce {ecart.piece.numero} ({ecart.piece.mission.reference}) "
+                    f"attendu {ecart.attendu}, obtenu {ecart.obtenu}."
+                )
         self.stdout.write(f"{len(ecarts)} écart(s) d'intégrité.")
         if ecarts:
             sys.exit(1)

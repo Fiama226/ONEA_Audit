@@ -4,7 +4,10 @@ Entrée non fiable : tout est validé AVANT la moindre écriture de fichier (tai
 octets réellement lus, liste blanche d'extensions, signature d'octets, nom nettoyé). Le fichier
 est écrit en dernier, dans la transaction, juste avant la ligne de base ; la clé est générée par
 le stockage. Le contrat de stockage ne permet ni écrasement ni suppression : si la ligne de base
-échoue après l'écriture, le fichier orphelin est consigné dans le journal (jamais effacé).
+échoue (ou si la transaction est annulée) après l'écriture, le fichier orphelin reste sur disque,
+est consigné dans le journal et surtout détecté par le balayage de `verifier_pieces`, qui
+rapproche le disque et la base ; il n'est jamais effacé. L'écriture se fait sous le verrou de la
+mission (50 Mo au plus) : choix assumé pour ne laisser aucun orphelin sur un contrôle tardif.
 """
 
 import hashlib
@@ -16,11 +19,13 @@ from django.db import transaction
 
 from apps.core.exceptions import RegleMetierError
 from apps.core.services import appliquer, enregistrer, refuser, relire
+from apps.missions.models import Mission
 from apps.users.models import User
 
 from .. import droits_fiches as droits
 from ..fichiers import (
     MSG_TAILLE,
+    contient_binaire,
     controler_fichier,
     nom_affichable,
     taille_maximale,
@@ -37,8 +42,15 @@ _LONGUEUR_EN_TETE = 16
 MSG_LIBELLE = "Le libellé est obligatoire."
 
 
-def _lire_en_tete_et_empreinte(fichier: "UploadedFile[Any]") -> tuple[bytes, str, int]:
-    """Lit le fichier une fois : en-tête, SHA-256 et taille réelle (plafonnée avant le bout)."""
+def _exiger_fiche_redigeable(piece: PieceJustificative, by: User, mission: Mission) -> None:
+    """Sous verrou de la fiche : droit de rédaction du test, puis fiche BROUILLON / RENVOYE."""
+    fiche = FicheDeTest.objects.select_for_update().select_related("test").get(pk=piece.fiche_id)
+    droits.exiger_redacteur(by, mission, fiche.test)
+    exiger_fiche_modifiable(fiche)
+
+
+def _lire_en_tete_et_empreinte(fichier: "UploadedFile[Any]") -> tuple[bytes, str, int, bool]:
+    """Lit le fichier une fois : en-tête, SHA-256, taille réelle (plafonnée) et indice binaire."""
     maximum = taille_maximale()
     if fichier.size is not None and fichier.size > maximum:
         raise RegleMetierError(MSG_TAILLE, {"fichier": [MSG_TAILLE]})
@@ -46,15 +58,17 @@ def _lire_en_tete_et_empreinte(fichier: "UploadedFile[Any]") -> tuple[bytes, str
     empreinte = hashlib.sha256()
     taille = 0
     en_tete = b""
+    binaire = False
     while bloc := fichier.read(BLOC):
         if not en_tete:
             en_tete = bloc[:_LONGUEUR_EN_TETE]
         taille += len(bloc)
         if taille > maximum:  # la taille annoncée peut mentir
             raise RegleMetierError(MSG_TAILLE, {"fichier": [MSG_TAILLE]})
+        binaire = binaire or contient_binaire(bloc)
         empreinte.update(bloc)
     fichier.seek(0)
-    return en_tete, empreinte.hexdigest(), taille
+    return en_tete, empreinte.hexdigest(), taille, binaire
 
 
 @transaction.atomic
@@ -66,26 +80,27 @@ def deposer_piece(
     by: User,
     description: str = "",
 ) -> PieceJustificative:
+    # Droit d'abord, sans verrou : un non-rédacteur reçoit 403, jamais un 422 sur le contenu.
+    droits.exiger_redacteur(by, fiche.mission, fiche.test)
     libelle = libelle.strip()
     nom = nom_affichable(fichier.name or "")
-    en_tete, sha256, taille = _lire_en_tete_et_empreinte(fichier)
-    type_mime = controler_fichier(fichier.name or "", en_tete, taille)
+    en_tete, sha256, taille, binaire = _lire_en_tete_et_empreinte(fichier)
+    type_mime = controler_fichier(fichier.name or "", en_tete, taille, binaire=binaire)
     if not libelle:
         raise refuser(MSG_LIBELLE, libelle=MSG_LIBELLE)
 
     mission = ouvrir_fenetre(fiche.mission, ETAPE_FICHES, MSG_XII)
-    droits.exiger_contributeur(by, mission)
     fiche = relire(fiche)
-    if fiche.mission_id != mission.pk:
-        message = "Cette fiche n'appartient pas à la mission."
-        raise refuser(message, fiche=message)
+    droits.exiger_redacteur(by, mission, fiche.test)  # de nouveau, sous verrou
     exiger_fiche_modifiable(fiche)
 
-    # Nouvel envoi des mêmes octets (réessai) : on renvoie la pièce existante.
+    # Nouvel envoi des mêmes octets (réessai) : on renvoie la pièce existante, marquée `doublon`
+    # (le libellé et la description déjà enregistrés ne sont pas modifiés).
     existante: PieceJustificative | None = PieceJustificative.objects.filter(
         fiche=fiche, empreinte_sha256=sha256
     ).first()
     if existante is not None:
+        existante.doublon = True
         return existante
 
     piece = PieceJustificative(
@@ -124,9 +139,8 @@ def deposer_piece(
 @transaction.atomic
 def modifier_piece(piece: PieceJustificative, *, by: User, **changes: Any) -> PieceJustificative:
     mission = ouvrir_fenetre(piece.mission, ETAPE_FICHES, MSG_XII)
-    droits.exiger_contributeur(by, mission)
     piece = relire(piece)
-    exiger_fiche_modifiable(FicheDeTest.objects.select_for_update().get(pk=piece.fiche_id))
+    _exiger_fiche_redigeable(piece, by, mission)
     appliquer(piece, changes, {"libelle", "description"})
     piece.libelle = piece.libelle.strip()
     if not piece.libelle:
@@ -139,7 +153,6 @@ def modifier_piece(piece: PieceJustificative, *, by: User, **changes: Any) -> Pi
 def retirer_piece(piece: PieceJustificative, *, by: User) -> None:
     """Suppression logique : le fichier et son empreinte restent conservés."""
     mission = ouvrir_fenetre(piece.mission, ETAPE_FICHES, MSG_XII)
-    droits.exiger_contributeur(by, mission)
     piece = relire(piece)
-    exiger_fiche_modifiable(FicheDeTest.objects.select_for_update().get(pk=piece.fiche_id))
+    _exiger_fiche_redigeable(piece, by, mission)
     piece.soft_delete(by)

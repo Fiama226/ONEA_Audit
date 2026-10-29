@@ -288,5 +288,5 @@ def test_references_croisees_refusees(
     from tests.accomplissement.factories import FicheFactory
 
     autre = FicheFactory()  # autre mission
-    with pytest.raises((RegleMetierError, PermissionDenied)):
+    with pytest.raises(PermissionDenied):
         deposer_piece(autre, fichier=pdf(), libelle="x", by=auditeur_mission)

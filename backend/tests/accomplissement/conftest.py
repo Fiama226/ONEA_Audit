@@ -62,6 +62,7 @@ def fiche_brouillon(mission_en_accomplissement: Mission) -> FicheDeTest:
 
 # Fixtures de la tâche 5 (fiches, pièces, intégrité).
 from tests.accomplissement.fixtures_fiches import (  # noqa: E402, F401
+    autre_auditeur,
     fiche_auditeur,
     fiche_complete,
     fiche_soumise,

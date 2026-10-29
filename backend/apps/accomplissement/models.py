@@ -425,6 +425,9 @@ class PieceJustificative(MissionEnfantModel):
     )
     deposee_le = models.DateTimeField("déposée le", default=timezone.now)
 
+    # Pas un champ : posé par `deposer_piece` quand les mêmes octets étaient déjà déposés.
+    doublon: bool = False
+
     objects: ClassVar[PieceManager[Any]] = PieceManager()
     all_objects: ClassVar[PieceAllManager[Any]] = PieceAllManager()  # noqa: DJ012
 

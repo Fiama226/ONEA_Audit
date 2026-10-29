@@ -79,8 +79,8 @@ def _journaliser(fiche: FicheDeTest, type_: str, *, by: User, avant: str, motif:
 @transaction.atomic
 def creer_fiche(test: TestPrevu, *, by: User) -> FicheDeTest:
     mission = ouvrir_fenetre(test.mission, ETAPE_FICHES, MSG_XII)
-    droits.exiger_contributeur(by, mission)
     test = TestPrevu.objects.select_for_update().get(pk=test.pk)
+    droits.exiger_redacteur(by, mission, test)
     if test.statut != StatutTest.PREVU:
         message = f"Le test {test.code} est abandonné : il n'a pas de fiche."
         raise refuser(message, test=message)
@@ -95,8 +95,8 @@ def creer_fiche(test: TestPrevu, *, by: User) -> FicheDeTest:
 @transaction.atomic
 def modifier_fiche(fiche: FicheDeTest, *, by: User, **changes: Any) -> FicheDeTest:
     mission = ouvrir_fenetre(fiche.mission, ETAPE_FICHES, MSG_XII)
-    droits.exiger_contributeur(by, mission)
     fiche = relire(fiche)
+    droits.exiger_redacteur(by, mission, fiche.test)
     exiger_fiche_modifiable(fiche)
     appliquer(fiche, changes, _MODIFIABLES)
     if (
@@ -113,8 +113,8 @@ def modifier_fiche(fiche: FicheDeTest, *, by: User, **changes: Any) -> FicheDeTe
 @transaction.atomic
 def soumettre_fiche(fiche: FicheDeTest, *, by: User) -> FicheDeTest:
     mission = ouvrir_fenetre(fiche.mission, ETAPE_FICHES, MSG_XII)
-    droits.exiger_contributeur(by, mission)
     fiche = relire(fiche)
+    droits.exiger_redacteur(by, mission, fiche.test)
     exiger_fiche_modifiable(fiche)
     if not fiche.resultat.strip() or not fiche.conclusion:
         raise refuser(MSG_RESULTAT, resultat=MSG_RESULTAT)
