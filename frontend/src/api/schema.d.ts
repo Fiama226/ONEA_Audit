@@ -2563,9 +2563,10 @@ export interface components {
          * @description * `ORDRE_MISSION` - Ordre de mission
          *     * `DECLARATION_INDEPENDANCE` - Déclaration d'indépendance
          *     * `VALIDATION_RAPPORT` - Validation du rapport
+         *     * `VALIDATION_REFERENTIEL` - Validation du référentiel d'audit
          * @enum {string}
          */
-        TypeDocumentSignableEnum: "ORDRE_MISSION" | "DECLARATION_INDEPENDANCE" | "VALIDATION_RAPPORT";
+        TypeDocumentSignableEnum: "ORDRE_MISSION" | "DECLARATION_INDEPENDANCE" | "VALIDATION_RAPPORT" | "VALIDATION_REFERENTIEL";
         /**
          * @description * `DIRECTION` - Direction
          *     * `DEPARTEMENT` - Département
