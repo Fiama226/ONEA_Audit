@@ -688,6 +688,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/evidence/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : pièces justificatives (paramètre `fiche` ou `mission` obligatoire)
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        get: operations["v1_evidence_list"];
+        put?: never;
+        /**
+         * Déposer : une pièce justificative (multipart)
+         * @description 200 quand les mêmes octets étaient déjà déposés sur la fiche.
+         */
+        post: operations["v1_evidence_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evidence/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : pièces justificatives
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        get: operations["v1_evidence_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : pièces justificatives
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        delete: operations["v1_evidence_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : pièces justificatives
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        patch: operations["v1_evidence_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/evidence/{id}/download/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Télécharger : fichier d'une pièce (journalisé)
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        get: operations["v1_evidence_download_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/": {
         parameters: {
             query?: never;
@@ -1651,6 +1723,78 @@ export interface paths {
         patch: operations["v1_orientation_reports_partial_update"];
         trace?: never;
     };
+    "/api/v1/planned-tests/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : tests prévus
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        get: operations["v1_planned_tests_list"];
+        put?: never;
+        /**
+         * Créer : tests prévus
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        post: operations["v1_planned_tests_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planned-tests/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : tests prévus
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        get: operations["v1_planned_tests_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : tests prévus
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        delete: operations["v1_planned_tests_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : tests prévus
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        patch: operations["v1_planned_tests_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/planned-tests/{id}/abandon/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Abandonner un test prévu (étape XII, motif obligatoire)
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        post: operations["v1_planned_tests_abandon_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/process-descriptions/": {
         parameters: {
             query?: never;
@@ -2129,6 +2273,138 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/test-sheets/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : fiches de test
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        get: operations["v1_test_sheets_list"];
+        put?: never;
+        /**
+         * Créer : fiches de test
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        post: operations["v1_test_sheets_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/test-sheets/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : fiches de test
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        get: operations["v1_test_sheets_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : fiches de test
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        delete: operations["v1_test_sheets_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : fiches de test
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        patch: operations["v1_test_sheets_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/test-sheets/{id}/reopen/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rouvrir une fiche validée (motif obligatoire)
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        post: operations["v1_test_sheets_reopen_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/test-sheets/{id}/return/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Renvoyer la fiche à son auteur (motif obligatoire)
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        post: operations["v1_test_sheets_return_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/test-sheets/{id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Soumettre la fiche à validation
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        post: operations["v1_test_sheets_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/test-sheets/{id}/validate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Valider la fiche (étape XIII)
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        post: operations["v1_test_sheets_validate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/user-accounts/": {
         parameters: {
             query?: never;
@@ -2295,6 +2571,118 @@ export interface paths {
          * @description Annuaire en lecture seule (sélecteurs d'équipe, de participants et d'interlocuteurs).
          */
         get: operations["v1_users_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-programs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : programmes de travail
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        get: operations["v1_work_programs_list"];
+        put?: never;
+        /**
+         * Créer : programmes de travail
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        post: operations["v1_work_programs_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-programs/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : programmes de travail
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        get: operations["v1_work_programs_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : programmes de travail
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        delete: operations["v1_work_programs_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : programmes de travail
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        patch: operations["v1_work_programs_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/work-programs/snapshots/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : instantanés du programme validé (sans les données)
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        get: operations["v1_work_programs_snapshots_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-programs/snapshots/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : instantané du programme validé (avec les données)
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        get: operations["v1_work_programs_snapshots_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-programs/summary/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Synthèse du programme (charges par objectif et par auditeur)
+         * @description Base : liste bornée à une mission visible ; l'audité est refusé par la permission.
+         */
+        get: operations["v1_work_programs_summary_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2597,6 +2985,13 @@ export interface components {
              */
             readonly date_joined: string;
         };
+        /**
+         * @description * `SATISFAISANT` - Satisfaisant
+         *     * `POINT_FORT` - Point fort
+         *     * `ANOMALIE` - Anomalie
+         * @enum {string}
+         */
+        ConclusionTestEnum: "SATISFAISANT" | "POINT_FORT" | "ANOMALIE";
         ConfirmationRequest: {
             /** @description Doit être vrai : la confirmation explicite de l'utilisateur. */
             confirme: boolean;
@@ -2624,6 +3019,11 @@ export interface components {
             readonly confirme_le: string;
             /** Empreinte SHA-256 */
             readonly empreinte: string;
+        };
+        ConstatResume: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
         };
         Consultation: {
             readonly utilisateur: components["schemas"]["UtilisateurResume"];
@@ -2677,6 +3077,16 @@ export interface components {
             levee: boolean;
             /** Format: date-time */
             confirmee_le: string | null;
+        };
+        /** @description Dépôt d'une pièce (multipart/form-data) ; le fichier n'est lu que par le service. */
+        DepotPieceRequest: {
+            /** Format: uuid */
+            fiche: string;
+            /** Format: binary */
+            fichier: string;
+            libelle: string;
+            /** @default  */
+            description: string;
         };
         /** @description Base des sérialiseurs qui exposent `etape_close` : statuts lus une fois par mission. */
         DescriptionProcessus: {
@@ -3015,6 +3425,22 @@ export interface components {
          * @enum {string}
          */
         EvenementDeclencheurEnum: "PROGRAMME_ANNUEL" | "DEMANDE_MANAGEMENT" | "CHANGEMENT_MAJEUR" | "EXIGENCE_REGLEMENTAIRE" | "AUTRE";
+        EvenementFiche: {
+            /** Format: uuid */
+            readonly id: string;
+            type: components["schemas"]["TypeEvenementFicheEnum"];
+            readonly par: components["schemas"]["UtilisateurResume"];
+            /** Format: date-time */
+            readonly le: string;
+            readonly motif: string;
+            statut_avant: components["schemas"]["StatutFicheEnum"];
+            statut_apres: components["schemas"]["StatutFicheEnum"];
+        };
+        EvenementFicheRequest: {
+            type: components["schemas"]["TypeEvenementFicheEnum"];
+            statut_avant: components["schemas"]["StatutFicheEnum"];
+            statut_apres: components["schemas"]["StatutFicheEnum"];
+        };
         EvenementSuivi: {
             readonly type: components["schemas"]["TypeEvenementEtapeEnum"];
             readonly par: components["schemas"]["UtilisateurResume"];
@@ -3032,6 +3458,147 @@ export interface components {
          * @enum {string}
          */
         FamilleProcessusEnum: "PILOTAGE" | "REALISATION" | "SUPPORT";
+        FicheDeTest: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly mission: string;
+            /** Format: uuid */
+            test: string;
+            readonly test_code: string;
+            readonly test_libelle: string;
+            readonly objectif_code: string;
+            readonly statut: components["schemas"]["StatutFicheEnum"];
+            readonly auteur_detail: components["schemas"]["UtilisateurResume"];
+            /**
+             * Date de réalisation
+             * Format: date
+             */
+            date_realisation?: string | null;
+            /** Travaux réalisés */
+            travaux_realises?: string;
+            /** Échantillon testé */
+            echantillon_teste?: string;
+            /** Taille testée */
+            taille_testee?: number | null;
+            /** Nombre d'exceptions */
+            nombre_exceptions?: number | null;
+            /** Résultat */
+            resultat?: string;
+            conclusion?: components["schemas"]["ConclusionTestEnum"] | components["schemas"]["BlankEnum"];
+            /** Commentaire de la conclusion */
+            commentaire_conclusion?: string;
+            /**
+             * Charge réelle (jours)
+             * Format: decimal
+             */
+            charge_reelle_jours?: string | null;
+            /** Justification sans pièce */
+            justification_sans_piece?: string;
+            readonly soumise_par: number | null;
+            /** Format: date-time */
+            readonly soumise_le: string | null;
+            /** Validée par */
+            readonly validee_par: number | null;
+            /**
+             * Validée le
+             * Format: date-time
+             */
+            readonly validee_le: string | null;
+            /** Motif du renvoi */
+            readonly motif_renvoi: string;
+            readonly constats: components["schemas"]["ConstatResume"][];
+            readonly actions_possibles: string[];
+            readonly pieces: components["schemas"]["PieceJustificative"][];
+            readonly evenements: components["schemas"]["EvenementFiche"][];
+        };
+        FicheDeTestListe: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly mission: string;
+            /** Format: uuid */
+            test: string;
+            readonly test_code: string;
+            readonly test_libelle: string;
+            readonly objectif_code: string;
+            readonly statut: components["schemas"]["StatutFicheEnum"];
+            readonly auteur_detail: components["schemas"]["UtilisateurResume"];
+            /**
+             * Date de réalisation
+             * Format: date
+             */
+            date_realisation?: string | null;
+            /** Travaux réalisés */
+            travaux_realises?: string;
+            /** Échantillon testé */
+            echantillon_teste?: string;
+            /** Taille testée */
+            taille_testee?: number | null;
+            /** Nombre d'exceptions */
+            nombre_exceptions?: number | null;
+            /** Résultat */
+            resultat?: string;
+            conclusion?: components["schemas"]["ConclusionTestEnum"] | components["schemas"]["BlankEnum"];
+            /** Commentaire de la conclusion */
+            commentaire_conclusion?: string;
+            /**
+             * Charge réelle (jours)
+             * Format: decimal
+             */
+            charge_reelle_jours?: string | null;
+            /** Justification sans pièce */
+            justification_sans_piece?: string;
+            readonly soumise_par: number | null;
+            /** Format: date-time */
+            readonly soumise_le: string | null;
+            /** Validée par */
+            readonly validee_par: number | null;
+            /**
+             * Validée le
+             * Format: date-time
+             */
+            readonly validee_le: string | null;
+            /** Motif du renvoi */
+            readonly motif_renvoi: string;
+            readonly constats: components["schemas"]["ConstatResume"][];
+            readonly actions_possibles: string[];
+        };
+        FicheDeTestRequest: {
+            /** Format: uuid */
+            test: string;
+            /**
+             * Date de réalisation
+             * Format: date
+             */
+            date_realisation?: string | null;
+            /** Travaux réalisés */
+            travaux_realises?: string;
+            /** Échantillon testé */
+            echantillon_teste?: string;
+            /** Taille testée */
+            taille_testee?: number | null;
+            /** Nombre d'exceptions */
+            nombre_exceptions?: number | null;
+            /** Résultat */
+            resultat?: string;
+            conclusion?: components["schemas"]["ConclusionTestEnum"] | components["schemas"]["BlankEnum"];
+            /** Commentaire de la conclusion */
+            commentaire_conclusion?: string;
+            /**
+             * Charge réelle (jours)
+             * Format: decimal
+             */
+            charge_reelle_jours?: string | null;
+            /** Justification sans pièce */
+            justification_sans_piece?: string;
+        };
+        FicheResume: {
+            /** Format: uuid */
+            id: string;
+            statut: components["schemas"]["StatutFicheEnum"];
+            conclusion: components["schemas"]["ConclusionTestEnum"] | components["schemas"]["BlankEnum"];
+        };
         FicheSuivi: {
             mission: components["schemas"]["MissionResume"];
             /** Format: decimal */
@@ -3196,11 +3763,36 @@ export interface components {
              */
             dry_run: boolean;
         };
+        Instantane: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly valide_par: components["schemas"]["UtilisateurResume"];
+            /**
+             * Validé le
+             * Format: date-time
+             */
+            readonly valide_le: string;
+            /** Empreinte SHA-256 */
+            readonly empreinte: string;
+            readonly donnees: unknown;
+        };
         InstantaneReferentiel: {
             confirmation: components["schemas"]["ConfirmationResume"];
             donnees: {
                 [key: string]: unknown;
             };
+        };
+        InstantaneResume: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly valide_par: components["schemas"]["UtilisateurResume"];
+            /**
+             * Validé le
+             * Format: date-time
+             */
+            readonly valide_le: string;
+            /** Empreinte SHA-256 */
+            readonly empreinte: string;
         };
         /**
          * @description * `A_JOUR` - À jour
@@ -3209,6 +3801,12 @@ export interface components {
          * @enum {string}
          */
         KeycloakSyncStatutEnum: "A_JOUR" | "EN_ATTENTE" | "ECHEC";
+        LigneAuditeurProgramme: {
+            utilisateur: components["schemas"]["UtilisateurResume"];
+            nb_tests: number;
+            /** Format: decimal */
+            charge: string;
+        };
         LigneImportIgnoree: {
             ligne: number | null;
             identifiant: string;
@@ -3269,6 +3867,13 @@ export interface components {
             cle?: boolean;
             commentaire?: string;
             ordre?: number;
+        };
+        LigneObjectifProgramme: {
+            code: string;
+            libelle: string;
+            nb_tests: number;
+            /** Format: decimal */
+            charge: string;
         };
         LigneProgramme: {
             /** Format: uuid */
@@ -3396,6 +4001,14 @@ export interface components {
             readonly direction_code: string;
             readonly fonction: string;
         };
+        /**
+         * @description * `EXHAUSTIF` - Exhaustif
+         *     * `ALEATOIRE` - Aléatoire
+         *     * `STATISTIQUE` - Statistique
+         *     * `RAISONNE` - Raisonné
+         * @enum {string}
+         */
+        MethodeSelectionEnum: "EXHAUSTIF" | "ALEATOIRE" | "STATISTIQUE" | "RAISONNE";
         Mission: {
             /** Format: uuid */
             readonly id: string;
@@ -3558,6 +4171,21 @@ export interface components {
          */
         NatureObjetEnum: "DOMAINE" | "OPERATION";
         /**
+         * @description * `ENTRETIEN` - Entretien
+         *     * `QCI` - Questionnaire de contrôle interne
+         *     * `OBSERVATION` - Observation physique
+         *     * `EXAMEN_DOCUMENTAIRE` - Examen documentaire
+         *     * `PROCEDURE_ANALYTIQUE` - Procédure analytique
+         *     * `PISTE_AUDIT` - Piste d'audit
+         *     * `CIRCULARISATION` - Confirmation / circularisation
+         *     * `ECHANTILLONNAGE` - Échantillonnage
+         *     * `CAATS` - Analyse de données (CAATs)
+         *     * `TEST_CHEMINEMENT` - Test de cheminement
+         *     * `AUTRE` - Autre
+         * @enum {string}
+         */
+        NatureTestEnum: "ENTRETIEN" | "QCI" | "OBSERVATION" | "EXAMEN_DOCUMENTAIRE" | "PROCEDURE_ANALYTIQUE" | "PISTE_AUDIT" | "CIRCULARISATION" | "ECHANTILLONNAGE" | "CAATS" | "TEST_CHEMINEMENT" | "AUTRE";
+        /**
          * @description * `FAIBLE` - Faible
          *     * `MOYEN` - Moyen
          *     * `ELEVE` - Élevé
@@ -3591,6 +4219,13 @@ export interface components {
             retenu?: boolean;
             motif_non_test?: components["schemas"]["MotifNonTestEnum"] | components["schemas"]["BlankEnum"];
             justification?: string;
+        };
+        ObjectifResume: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly code: string;
+            /** Libellé */
+            readonly libelle: string;
         };
         ObjetAuditable: {
             /** Format: uuid */
@@ -3779,6 +4414,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Entretien"][];
         };
+        PaginatedFicheDeTestListeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["FicheDeTestListe"][];
+        };
         PaginatedForceFaiblesseList: {
             /** @example 123 */
             count: number;
@@ -3899,6 +4549,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["ObjetAuditable"][];
         };
+        PaginatedPieceJustificativeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["PieceJustificative"][];
+        };
         PaginatedProcessusList: {
             /** @example 123 */
             count: number;
@@ -3928,6 +4593,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["ProgrammeAnnuel"][];
+        };
+        PaginatedProgrammeDeTravailList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["ProgrammeDeTravail"][];
         };
         PaginatedQuestionnaireList: {
             /** @example 123 */
@@ -3988,6 +4668,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["RisqueMission"][];
+        };
+        PaginatedTestPrevuList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["TestPrevu"][];
         };
         PaginatedUtilisateurResumeList: {
             /** @example 123 */
@@ -4101,6 +4796,35 @@ export interface components {
              * Format: decimal
              */
             charge_reelle_jours?: string | null;
+        };
+        PatchedFicheDeTestRequest: {
+            /** Format: uuid */
+            test?: string;
+            /**
+             * Date de réalisation
+             * Format: date
+             */
+            date_realisation?: string | null;
+            /** Travaux réalisés */
+            travaux_realises?: string;
+            /** Échantillon testé */
+            echantillon_teste?: string;
+            /** Taille testée */
+            taille_testee?: number | null;
+            /** Nombre d'exceptions */
+            nombre_exceptions?: number | null;
+            /** Résultat */
+            resultat?: string;
+            conclusion?: components["schemas"]["ConclusionTestEnum"] | components["schemas"]["BlankEnum"];
+            /** Commentaire de la conclusion */
+            commentaire_conclusion?: string;
+            /**
+             * Charge réelle (jours)
+             * Format: decimal
+             */
+            charge_reelle_jours?: string | null;
+            /** Justification sans pièce */
+            justification_sans_piece?: string;
         };
         PatchedForceFaiblesseRequest: {
             /** Format: uuid */
@@ -4244,6 +4968,11 @@ export interface components {
             description?: string;
             ordre?: number;
         };
+        PatchedPieceJustificativeRequest: {
+            /** Libellé */
+            libelle?: string;
+            description?: string;
+        };
         PatchedProcessusRequest: {
             code?: string;
             /** Libellé */
@@ -4263,6 +4992,17 @@ export interface components {
             /** @description Écriture à la création seulement : l'année est ensuite immuable. */
             annee?: number;
             libelle?: string;
+            commentaire?: string;
+        };
+        PatchedProgrammeDeTravailRequest: {
+            /** Format: uuid */
+            mission?: string;
+            /** Format: uuid */
+            objectif?: string;
+            /** Techniques et sources d'information */
+            techniques?: string;
+            /** Critères de preuve */
+            criteres_preuve?: string;
             commentaire?: string;
         };
         PatchedQuestionRequest: {
@@ -4354,6 +5094,39 @@ export interface components {
             /** Dispositif de contrôle interne */
             dispositif_controle?: string;
         };
+        PatchedTestPrevuRequest: {
+            /** Format: uuid */
+            programme?: string;
+            /** Libellé */
+            libelle?: string;
+            /** Objectif du test */
+            objectif_test?: string;
+            nature?: components["schemas"]["NatureTestEnum"];
+            /** Procédure */
+            procedure?: string;
+            population?: string;
+            /** Taille de l'échantillon */
+            taille_echantillon?: number | null;
+            methode_selection?: components["schemas"]["MethodeSelectionEnum"] | components["schemas"]["BlankEnum"];
+            auditeur?: number | null;
+            /**
+             * Charge prévue (jours)
+             * Format: decimal
+             */
+            charge_prevue_jours?: string | null;
+            /**
+             * Début prévu
+             * Format: date
+             */
+            date_debut_prevue?: string | null;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            date_fin_prevue?: string | null;
+            /** Format: uuid */
+            risque_mission?: string | null;
+        };
         /**
          * @description * `PLANIFICATION` - Planification
          *     * `ACCOMPLISSEMENT` - Accomplissement
@@ -4361,6 +5134,36 @@ export interface components {
          * @enum {string}
          */
         PhaseEnum: "PLANIFICATION" | "ACCOMPLISSEMENT" | "COMMUNICATION";
+        PieceJustificative: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly fiche: string;
+            /** Numéro */
+            readonly numero: number;
+            /** Libellé */
+            libelle: string;
+            description?: string;
+            /** Nom du fichier d'origine */
+            readonly nom_fichier_original: string;
+            readonly type_mime: string;
+            /** Taille (octets) */
+            readonly taille_octets: number;
+            /** Empreinte SHA-256 */
+            readonly empreinte_sha256: string;
+            readonly deposee_par: components["schemas"]["UtilisateurResume"];
+            /**
+             * Déposée le
+             * Format: date-time
+             */
+            readonly deposee_le: string;
+            readonly actions_possibles: string[];
+        };
+        PieceJustificativeRequest: {
+            /** Libellé */
+            libelle: string;
+            description?: string;
+        };
         /**
          * @description * `MISSION` - Par mission
          *     * `ANNEE` - Par année
@@ -4419,6 +5222,33 @@ export interface components {
             /** @description Écriture à la création seulement : l'année est ensuite immuable. */
             annee: number;
             libelle?: string;
+            commentaire?: string;
+        };
+        ProgrammeDeTravail: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            mission: string;
+            /** Format: uuid */
+            objectif: string;
+            readonly objectif_detail: components["schemas"]["ObjectifResume"];
+            /** Techniques et sources d'information */
+            techniques?: string;
+            /** Critères de preuve */
+            criteres_preuve?: string;
+            commentaire?: string;
+            readonly nb_tests: number;
+            readonly actions_possibles: string[];
+        };
+        ProgrammeDeTravailRequest: {
+            /** Format: uuid */
+            mission: string;
+            /** Format: uuid */
+            objectif: string;
+            /** Techniques et sources d'information */
+            techniques?: string;
+            /** Critères de preuve */
+            criteres_preuve?: string;
             commentaire?: string;
         };
         Question: {
@@ -4758,6 +5588,14 @@ export interface components {
          */
         StatutEtapeEnum: "A_FAIRE" | "EN_COURS" | "TERMINEE" | "VALIDEE" | "RENVOYEE" | "A_REVALIDER" | "NON_APPLICABLE";
         /**
+         * @description * `BROUILLON` - Brouillon
+         *     * `SOUMIS` - Soumise
+         *     * `VALIDE` - Validée
+         *     * `RENVOYE` - Renvoyée
+         * @enum {string}
+         */
+        StatutFicheEnum: "BROUILLON" | "SOUMIS" | "VALIDE" | "RENVOYE";
+        /**
          * @description * `DEPOSE` - Déposé
          *     * `ACTIF` - Actif
          *     * `ARCHIVE` - Archivé
@@ -4809,6 +5647,12 @@ export interface components {
          * @enum {string}
          */
         StatutReferentielEnum: "BROUILLON" | "SOUMIS" | "RENVOYE" | "VALIDE" | "A_REVALIDER";
+        /**
+         * @description * `PREVU` - Prévu
+         *     * `ABANDONNE` - Abandonné
+         * @enum {string}
+         */
+        StatutTestEnum: "PREVU" | "ABANDONNE";
         /** @description État de la propagation du compte vers Keycloak. */
         SyncKeycloak: {
             readonly statut: components["schemas"]["KeycloakSyncStatutEnum"];
@@ -4825,6 +5669,96 @@ export interface components {
             charge_totale_jours: string;
             par_type: components["schemas"]["ParType"];
             par_trimestre: components["schemas"]["ParTrimestre"];
+        };
+        SyntheseProgrammeTravail: {
+            objectifs: components["schemas"]["LigneObjectifProgramme"][];
+            auditeurs: components["schemas"]["LigneAuditeurProgramme"][];
+            /** Format: decimal */
+            total_charge: string;
+            /** Format: decimal */
+            budget_jours: string;
+            depassement_budget: boolean;
+            tests_sans_auditeur: string[];
+        };
+        TestPrevu: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly mission: string;
+            /** Format: uuid */
+            programme: string;
+            readonly code: string;
+            /** Libellé */
+            libelle: string;
+            /** Objectif du test */
+            objectif_test?: string;
+            nature?: components["schemas"]["NatureTestEnum"];
+            /** Procédure */
+            procedure?: string;
+            population?: string;
+            /** Taille de l'échantillon */
+            taille_echantillon?: number | null;
+            methode_selection?: components["schemas"]["MethodeSelectionEnum"] | components["schemas"]["BlankEnum"];
+            auditeur?: number | null;
+            readonly auditeur_detail: components["schemas"]["UtilisateurResume"];
+            /**
+             * Charge prévue (jours)
+             * Format: decimal
+             */
+            charge_prevue_jours?: string | null;
+            /**
+             * Début prévu
+             * Format: date
+             */
+            date_debut_prevue?: string | null;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            date_fin_prevue?: string | null;
+            /** Format: uuid */
+            risque_mission?: string | null;
+            readonly risque_code: string;
+            /** Test complémentaire */
+            readonly complementaire: boolean;
+            readonly statut: components["schemas"]["StatutTestEnum"];
+            /** Motif d'abandon */
+            readonly motif_abandon: string;
+            readonly fiche: components["schemas"]["FicheResume"] | null;
+            readonly actions_possibles: string[];
+        };
+        TestPrevuRequest: {
+            /** Format: uuid */
+            programme: string;
+            /** Libellé */
+            libelle: string;
+            /** Objectif du test */
+            objectif_test?: string;
+            nature?: components["schemas"]["NatureTestEnum"];
+            /** Procédure */
+            procedure?: string;
+            population?: string;
+            /** Taille de l'échantillon */
+            taille_echantillon?: number | null;
+            methode_selection?: components["schemas"]["MethodeSelectionEnum"] | components["schemas"]["BlankEnum"];
+            auditeur?: number | null;
+            /**
+             * Charge prévue (jours)
+             * Format: decimal
+             */
+            charge_prevue_jours?: string | null;
+            /**
+             * Début prévu
+             * Format: date
+             */
+            date_debut_prevue?: string | null;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            date_fin_prevue?: string | null;
+            /** Format: uuid */
+            risque_mission?: string | null;
         };
         /**
          * @description * `ACCORD` - Accord
@@ -4856,9 +5790,10 @@ export interface components {
          *     * `DECLARATION_INDEPENDANCE` - Déclaration d'indépendance
          *     * `VALIDATION_RAPPORT` - Validation du rapport
          *     * `VALIDATION_REFERENTIEL` - Validation du référentiel d'audit
+         *     * `REPONSE_CONSTAT` - Réponse à un constat
          * @enum {string}
          */
-        TypeDocumentSignableEnum: "ORDRE_MISSION" | "DECLARATION_INDEPENDANCE" | "VALIDATION_RAPPORT" | "VALIDATION_REFERENTIEL";
+        TypeDocumentSignableEnum: "ORDRE_MISSION" | "DECLARATION_INDEPENDANCE" | "VALIDATION_RAPPORT" | "VALIDATION_REFERENTIEL" | "REPONSE_CONSTAT";
         /**
          * @description * `DIRECTION` - Direction
          *     * `DEPARTEMENT` - Département
@@ -4877,6 +5812,14 @@ export interface components {
          * @enum {string}
          */
         TypeEvenementEtapeEnum: "DEMARREE" | "TERMINEE" | "VALIDEE" | "RENVOYEE" | "ROUVERTE" | "A_REVALIDER" | "NON_APPLICABLE" | "RETABLIE";
+        /**
+         * @description * `SOUMISE` - Soumise
+         *     * `VALIDEE` - Validée
+         *     * `RENVOYEE` - Renvoyée
+         *     * `ROUVERTE` - Rouverte
+         * @enum {string}
+         */
+        TypeEvenementFicheEnum: "SOUMISE" | "VALIDEE" | "RENVOYEE" | "ROUVERTE";
         /**
          * @description * `FORCE` - Force
          *     * `FAIBLESSE` - Faiblesse
@@ -8048,6 +8991,356 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_evidence_list: {
+        parameters: {
+            query?: {
+                /** @description Fiche ou mission requise. */
+                fiche?: string;
+                /** @description Mission ou fiche requise. */
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPieceJustificativeList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_evidence_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["DepotPieceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PieceJustificative"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PieceJustificative"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_evidence_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PieceJustificative"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_evidence_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_evidence_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPieceJustificativeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedPieceJustificativeRequest"];
+                "multipart/form-data": components["schemas"]["PatchedPieceJustificativeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PieceJustificative"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_evidence_download_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11819,6 +13112,378 @@ export interface operations {
             };
         };
     };
+    v1_planned_tests_list: {
+        parameters: {
+            query?: {
+                auditeur?: number;
+                complementaire?: boolean;
+                /** @description Vrai : seulement les tests de l'utilisateur. */
+                mine?: boolean;
+                /** @description Obligatoire pour la liste. */
+                mission?: string;
+                /**
+                 * @description * `ENTRETIEN` - Entretien
+                 *     * `QCI` - Questionnaire de contrôle interne
+                 *     * `OBSERVATION` - Observation physique
+                 *     * `EXAMEN_DOCUMENTAIRE` - Examen documentaire
+                 *     * `PROCEDURE_ANALYTIQUE` - Procédure analytique
+                 *     * `PISTE_AUDIT` - Piste d'audit
+                 *     * `CIRCULARISATION` - Confirmation / circularisation
+                 *     * `ECHANTILLONNAGE` - Échantillonnage
+                 *     * `CAATS` - Analyse de données (CAATs)
+                 *     * `TEST_CHEMINEMENT` - Test de cheminement
+                 *     * `AUTRE` - Autre
+                 */
+                nature?: "AUTRE" | "CAATS" | "CIRCULARISATION" | "ECHANTILLONNAGE" | "ENTRETIEN" | "EXAMEN_DOCUMENTAIRE" | "OBSERVATION" | "PISTE_AUDIT" | "PROCEDURE_ANALYTIQUE" | "QCI" | "TEST_CHEMINEMENT";
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                programme?: string;
+                /**
+                 * @description * `PREVU` - Prévu
+                 *     * `ABANDONNE` - Abandonné
+                 */
+                statut?: "ABANDONNE" | "PREVU";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTestPrevuList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_planned_tests_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TestPrevuRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TestPrevuRequest"];
+                "multipart/form-data": components["schemas"]["TestPrevuRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestPrevu"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_planned_tests_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestPrevu"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_planned_tests_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_planned_tests_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTestPrevuRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedTestPrevuRequest"];
+                "multipart/form-data": components["schemas"]["PatchedTestPrevuRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestPrevu"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_planned_tests_abandon_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifRequest"];
+                "multipart/form-data": components["schemas"]["MotifRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TestPrevu"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_process_descriptions_list: {
         parameters: {
             query?: {
@@ -14139,6 +15804,545 @@ export interface operations {
             };
         };
     };
+    v1_test_sheets_list: {
+        parameters: {
+            query?: {
+                /** @description Vrai : fiches soumises, en attente de validation. */
+                a_valider?: boolean;
+                auteur?: number;
+                /**
+                 * @description * `SATISFAISANT` - Satisfaisant
+                 *     * `POINT_FORT` - Point fort
+                 *     * `ANOMALIE` - Anomalie
+                 */
+                conclusion?: "ANOMALIE" | "POINT_FORT" | "SATISFAISANT";
+                /** @description Vrai : fiches dont l'utilisateur est l'auteur ou l'auditeur du test. */
+                mine?: boolean;
+                /** @description Obligatoire pour la liste. */
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `BROUILLON` - Brouillon
+                 *     * `SOUMIS` - Soumise
+                 *     * `VALIDE` - Validée
+                 *     * `RENVOYE` - Renvoyée
+                 */
+                statut?: "BROUILLON" | "RENVOYE" | "SOUMIS" | "VALIDE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedFicheDeTestListeList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_test_sheets_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FicheDeTestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["FicheDeTestRequest"];
+                "multipart/form-data": components["schemas"]["FicheDeTestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FicheDeTest"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_test_sheets_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FicheDeTest"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_test_sheets_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_test_sheets_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedFicheDeTestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedFicheDeTestRequest"];
+                "multipart/form-data": components["schemas"]["PatchedFicheDeTestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FicheDeTest"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_test_sheets_reopen_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifRequest"];
+                "multipart/form-data": components["schemas"]["MotifRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FicheDeTest"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_test_sheets_return_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifRequest"];
+                "multipart/form-data": components["schemas"]["MotifRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FicheDeTest"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_test_sheets_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FicheDeTest"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_test_sheets_validate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FicheDeTest"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_user_accounts_list: {
         parameters: {
             query?: {
@@ -14779,6 +16983,441 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_work_programs_list: {
+        parameters: {
+            query?: {
+                /** @description Obligatoire pour la liste. */
+                mission?: string;
+                objectif?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedProgrammeDeTravailList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_work_programs_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgrammeDeTravailRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ProgrammeDeTravailRequest"];
+                "multipart/form-data": components["schemas"]["ProgrammeDeTravailRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgrammeDeTravail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_work_programs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgrammeDeTravail"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_work_programs_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_work_programs_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedProgrammeDeTravailRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedProgrammeDeTravailRequest"];
+                "multipart/form-data": components["schemas"]["PatchedProgrammeDeTravailRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgrammeDeTravail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_work_programs_snapshots_list: {
+        parameters: {
+            query: {
+                /** @description Mission (obligatoire). */
+                mission: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstantaneResume"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_work_programs_snapshots_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Instantane"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_work_programs_summary_retrieve: {
+        parameters: {
+            query: {
+                /** @description Mission (obligatoire). */
+                mission: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyntheseProgrammeTravail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

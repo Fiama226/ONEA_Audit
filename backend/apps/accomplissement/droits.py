@@ -74,11 +74,10 @@ def _actif(ctx: ContexteProgramme, numero: int) -> bool:
     return ctx.statuts.get(numero) in ACTIFS
 
 
-def actions_programme(user: User, mission: Mission) -> list[str]:
-    """Actions d'écriture sur le programme (VIII), les ressources (IX) et les compléments (XII)."""
-    if mission.statut in STATUTS_FIGES:
+def actions_programme_depuis(user: User, ctx: ContexteProgramme) -> list[str]:
+    """Comme `actions_programme`, à partir d'un contexte déjà construit (aucune requête)."""
+    if ctx.mission.statut in STATUTS_FIGES:
         return []
-    ctx = contexte_programme(mission, user)
     contribue, ressources, complementaires = profil(user, ctx)
     actions: list[str] = []
     if contribue and _actif(ctx, ETAPE_CONTENU):
@@ -88,6 +87,13 @@ def actions_programme(user: User, mission: Mission) -> list[str]:
     if complementaires and _actif(ctx, ETAPE_COMPLEMENTAIRES):
         actions.append(AJOUTER_COMPLEMENTAIRE)
     return actions
+
+
+def actions_programme(user: User, mission: Mission) -> list[str]:
+    """Actions d'écriture sur le programme (VIII), les ressources (IX) et les compléments (XII)."""
+    if mission.statut in STATUTS_FIGES:
+        return []
+    return actions_programme_depuis(user, contexte_programme(mission, user))
 
 
 def actions_test(test: TestPrevu, user: User, *, contexte: ContexteProgramme) -> list[str]:

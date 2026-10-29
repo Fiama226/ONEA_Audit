@@ -219,6 +219,12 @@ SPECTACULAR_SETTINGS = {
         "CouvertureOrdreEnum": "apps.analyse.models.CouvertureOrdre.choices",
         "VarianteOrientationEnum": "apps.analyse.models.VarianteOrientation.choices",
         "StatutReferentielEnum": "apps.analyse.models.StatutReferentiel.choices",
+        "NatureTestEnum": "apps.accomplissement.models.NatureTest.choices",
+        "MethodeSelectionEnum": "apps.accomplissement.models.MethodeSelection.choices",
+        "StatutTestEnum": "apps.accomplissement.models.StatutTest.choices",
+        "StatutFicheEnum": "apps.accomplissement.models.StatutFiche.choices",
+        "ConclusionTestEnum": "apps.accomplissement.models.ConclusionTest.choices",
+        "TypeEvenementFicheEnum": "apps.accomplissement.models.TypeEvenementFiche.choices",
     },
 }
 

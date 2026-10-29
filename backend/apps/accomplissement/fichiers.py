@@ -61,6 +61,12 @@ def _extension(nom: str) -> str:
     return base.rsplit(".", 1)[-1].lower() if "." in base else ""
 
 
+def type_contenu(nom: str) -> str:
+    """Type MIME servi au téléchargement : fixé par l'extension (liste blanche), sinon binaire."""
+    definition = EXTENSIONS_AUTORISEES.get(_extension(nom))
+    return definition[0] if definition is not None else "application/octet-stream"
+
+
 def taille_maximale() -> int:
     return int(settings.PIECE_TAILLE_MAX_OCTETS)
 

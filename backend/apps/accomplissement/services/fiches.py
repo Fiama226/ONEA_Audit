@@ -130,6 +130,18 @@ def soumettre_fiche(fiche: FicheDeTest, *, by: User) -> FicheDeTest:
     return fiche
 
 
+@transaction.atomic
+def supprimer_fiche(fiche: FicheDeTest, *, by: User) -> None:
+    """Suppression logique d'un brouillon vide (ni pièce, ni événement) par un rédacteur."""
+    mission = ouvrir_fenetre(fiche.mission, ETAPE_FICHES, MSG_XII)
+    fiche = relire(fiche)
+    droits.exiger_redacteur(by, mission, fiche.test)
+    exiger_fiche_modifiable(fiche)
+    if fiche.statut != StatutFiche.BROUILLON or fiche.evenements.exists() or fiche.pieces.exists():
+        raise refuser("Seul un brouillon sans pièce ni historique peut être supprimé.")
+    fiche.soft_delete(by)
+
+
 def _ouvrir_validation(fiche: FicheDeTest, by: User) -> FicheDeTest:
     mission = ouvrir_fenetre(fiche.mission, ETAPE_VALIDATION_PREUVES, MSG_XIII)
     droits.exiger_valideur(by, mission)
