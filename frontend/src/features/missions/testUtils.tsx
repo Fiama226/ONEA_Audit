@@ -6,9 +6,12 @@ import { vi } from "vitest";
 import type { Me, Role } from "@/auth/types";
 import { AuthContext } from "@/auth/useAuth";
 import { API_URL, server } from "@/test/msw";
-import { authValueFor } from "@/test/shell";
+import { allowSlowShell, authValueFor } from "@/test/shell";
 import { missionRoutes } from "./routes";
 import type { DroitsMission, Etape, Mission } from "./types";
+
+// Les écrans de mission montent l'en-tête, les onglets et des dialogues : lent sous jsdom.
+allowSlowShell();
 
 export const MISSION_ID = "11111111-1111-4111-8111-111111111111";
 

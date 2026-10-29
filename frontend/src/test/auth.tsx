@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
@@ -68,10 +69,13 @@ export function serveMe(body: object = fakeMe(), token: string = TEST_TOKEN) {
 
 export function renderApp(path: string | { pathname: string; state?: unknown }, oidc: OidcClient) {
   const router = createMemoryRouter(appRoutes, { initialEntries: [path] });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
-    <AuthProvider userManager={oidc}>
-      <RouterProvider router={router} />
-    </AuthProvider>,
+    <QueryClientProvider client={client}>
+      <AuthProvider userManager={oidc}>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </QueryClientProvider>,
   );
   return router;
 }

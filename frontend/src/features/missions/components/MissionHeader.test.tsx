@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -8,9 +9,11 @@ import { MissionHeader } from "./MissionHeader";
 
 function setup(mission = aMission({ mes_droits: allRights(false) })) {
   return render(
-    <MemoryRouter>
-      <MissionHeader mission={mission} />
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <MissionHeader mission={mission} />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
