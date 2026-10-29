@@ -3,7 +3,6 @@ from typing import Any
 
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
-from rest_framework import status
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
 from rest_framework.response import Response
@@ -60,7 +59,7 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
         set_rollback()
         return Response(
             {"detail": exc.message, "errors": exc.errors},
-            status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status=exc.status_http,
         )
     response = exception_handler(exc, context)
     if response is None:

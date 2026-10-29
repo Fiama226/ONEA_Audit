@@ -77,6 +77,18 @@ def erreurs_modele(modele: str, portee: str) -> list[str]:
     return erreurs
 
 
+def erreurs_format(modele: str, portee: str, abreviation: str) -> dict[str, list[str]]:
+    """Problems of a whole format by field, in French (empty dict when valid)."""
+    erreurs: dict[str, list[str]] = {}
+    if portee not in PorteeNumerotation.values:
+        erreurs["portee"] = ["Portée inconnue."]
+    if not _ABREVIATION_RE.match(abreviation):
+        erreurs["abreviation"] = ["L'abréviation compte 1 à 8 lettres, chiffres ou tirets."]
+    if "portee" not in erreurs and (problemes := erreurs_modele(modele, portee)):
+        erreurs["modele"] = problemes
+    return erreurs
+
+
 def apercu_numero(modele: str, portee: str, abreviation: str) -> str:
     """Example number: mission DAI/2026/M07, year 2026, sequence 1."""
     return _rendre(
@@ -116,14 +128,7 @@ def modifier_format(type_document: str, *, by: "User", **changes: Any) -> Format
     fmt = format_de(type_document)
     for champ, valeur in changes.items():
         setattr(fmt, champ, valeur)
-    erreurs: dict[str, list[str]] = {}
-    if fmt.portee not in PorteeNumerotation.values:
-        erreurs["portee"] = ["Portée inconnue."]
-    if not _ABREVIATION_RE.match(fmt.abreviation):
-        erreurs["abreviation"] = ["L'abréviation compte 1 à 8 lettres, chiffres ou tirets."]
-    if "portee" not in erreurs and (problemes := erreurs_modele(fmt.modele, fmt.portee)):
-        erreurs["modele"] = problemes
-    if erreurs:
+    if erreurs := erreurs_format(fmt.modele, fmt.portee, fmt.abreviation):
         raise RegleMetierError("Données invalides.", erreurs)
     enregistrer(fmt, by=by)
     return fmt

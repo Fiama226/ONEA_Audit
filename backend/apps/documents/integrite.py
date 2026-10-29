@@ -10,7 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 class IntegriteError(RegleMetierError):
-    """A stored file no longer matches its recorded fingerprint (conflict, not a user error)."""
+    """A stored file no longer matches its recorded fingerprint (conflict, not a user error).
+
+    Mapped to HTTP 409 (not the default 422) through `status_http`, by the shared handler.
+    """
+
+    status_http = 409
 
     def __init__(self) -> None:
         super().__init__(

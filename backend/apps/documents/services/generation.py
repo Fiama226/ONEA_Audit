@@ -24,14 +24,14 @@ from apps.missions.gardes import STATUTS_FIGES
 from apps.users.models import User
 
 from .. import pdf
-from ..exceptions import ContratNonRespecteError, IntegriteError
+from ..exceptions import ContratNonRespecteError
+from ..integrite import IntegriteError, verifier_empreinte
 from ..models import (
     ConsultationDocument,
     Document,
     DocumentVersion,
     FormatFichier,
     GabaritDocument,
-    StatutGabarit,
     StatutGeneration,
     StatutPdf,
 )
@@ -48,6 +48,7 @@ from ..stockage import (
     ecrire_avec_empreinte,
     lire,
 )
+from .gabarits import gabarit_actif
 
 logger = logging.getLogger(__name__)
 
@@ -130,11 +131,7 @@ def demander_generation(*, type_document: str, objet_id: Any, by: User) -> Docum
             f"La mission {mission.reference} est {mission.get_statut_display().lower()} : "
             "aucun document ne peut être généré."
         )
-    gabarit = GabaritDocument.objects.filter(
-        type_document=type_document, statut=StatutGabarit.ACTIF
-    ).first()
-    if gabarit is None:
-        raise RegleMetierError("Aucun gabarit actif pour ce type de document.")
+    gabarit = gabarit_actif(type_document)
     if gabarit.contrat_version != t.contrat.version:
         raise RegleMetierError(
             "Le gabarit actif a été validé pour une version antérieure du contrat : "
@@ -219,10 +216,7 @@ def executer_generation(version_id: str) -> None:
     cle = cle_version(version.document_id, version.numero_version, "docx")
     try:
         modele = lire(str(version.gabarit.fichier.name))
-        if _sha(modele) != version.gabarit.empreinte:
-            logger.critical("Intégrité compromise : gabarit %s altéré.", version.gabarit_id)
-            _echec(version_id, IntegriteError().message)
-            return
+        verifier_empreinte(modele, version.gabarit.empreinte, f"gabarit {version.gabarit_id}")
         contenu = rendre_docx(modele, version.contexte, t.contrat)
         try:
             _, empreinte = ecrire_avec_empreinte(cle, contenu)
@@ -237,6 +231,9 @@ def executer_generation(version_id: str) -> None:
             logger.warning("Reprise : fichier existant adopté pour %s.", cle)
             contenu = lire(cle)
             empreinte = _sha(contenu)
+    except IntegriteError as exc:
+        _echec(version_id, exc.message)
+        return
     except RenduError as exc:
         _echec(version_id, str(exc))
         return
@@ -286,8 +283,9 @@ def executer_conversion(version_id: str) -> None:
         logger.exception("Fichier Word introuvable pour la version %s.", version_id)
         marquer_echec_pdf(version_id, "le fichier Word est introuvable")
         return
-    if _sha(docx) != version.empreinte_docx:
-        logger.critical("Intégrité compromise : Word de la version %s altéré.", version_id)
+    try:
+        verifier_empreinte(docx, version.empreinte_docx, f"Word de la version {version_id}")
+    except IntegriteError:
         marquer_echec_pdf(version_id, "le fichier Word est altéré")
         return
     try:
@@ -387,9 +385,10 @@ def relancer_pdf(version: DocumentVersion, *, by: User) -> DocumentVersion:
 
 def _verifier_fichier(cle: str, attendue: str) -> bool:
     try:
-        return hashlib.sha256(lire(cle)).hexdigest() == attendue
-    except (OSError, ValueError):
+        verifier_empreinte(lire(cle), attendue, f"contrôle {cle}")
+    except (IntegriteError, OSError, ValueError):
         return False
+    return True
 
 
 def verifier_integrite(version: DocumentVersion) -> dict[str, bool | None]:
@@ -424,16 +423,10 @@ def ouvrir_version(
         cle, attendue, extension = str(version.fichier_docx.name), version.empreinte_docx, "docx"
     try:
         contenu = lire(cle)
-    except OSError:
-        contenu = b""
-        reel = ""
-    else:
-        reel = hashlib.sha256(contenu).hexdigest()
-    if reel != attendue:
-        logger.critical(
-            "Intégrité compromise : version %s, fichier %s absent ou altéré.", version.pk, cle
-        )
-        raise IntegriteError
+    except OSError as exc:
+        logger.critical("Intégrité compromise : version %s, fichier %s absent.", version.pk, cle)
+        raise IntegriteError from exc
+    verifier_empreinte(contenu, attendue, f"version {version.pk}")
     ConsultationDocument.objects.create(
         version=version,
         utilisateur=by,

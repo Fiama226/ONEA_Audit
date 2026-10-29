@@ -26,14 +26,6 @@ class ContratNonRespecteError(Exception):
     """A provider built a context that does not match its contract: a programming error."""
 
 
-class IntegriteError(Exception):
-    """A stored file is missing or no longer matches its SHA-256 (HTTP 409)."""
-
-    def __init__(self) -> None:
-        self.message = "Le fichier est altéré : contactez l'administrateur."
-        super().__init__(self.message)
-
-
 class ConsultationImmuableError(RegleMetierError):
     """A consultation record is append-only."""
 
