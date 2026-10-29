@@ -13,12 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fr } from "@/i18n/fr";
 import { useSaveDirection } from "../api";
-import { applyApiErrors } from "../formErrors";
+import { applyApiErrors } from "@/api/formErrors";
 import { TYPE_ENTITE_LABELS } from "../labels";
 import { directionSchema, type DirectionFormValues } from "../schemas/direction";
 import type { Direction } from "../types";
-import { ALERT_CLASS, FormField } from "./FormField";
-import { NativeSelect } from "./NativeSelect";
+import { ALERT_CLASS, FormField } from "@/components/form/FormField";
+import { NativeSelect } from "@/components/form/NativeSelect";
 
 const s = fr.refStructure;
 

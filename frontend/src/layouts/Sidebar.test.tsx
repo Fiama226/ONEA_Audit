@@ -6,11 +6,11 @@ import { renderWithAuth } from "@/test/shell";
 import { Sidebar } from "./Sidebar";
 
 const HIDDEN: Record<Role, string[]> = {
-  ADMIN: [],
+  ADMIN: [fr.nav.missions],
   RAI: [fr.nav.administration],
   AUDITEUR: [fr.nav.administration],
   AUDITE: [fr.nav.referentiel, fr.nav.administration],
-  DG: [fr.nav.administration],
+  DG: [fr.nav.missions, fr.nav.administration],
 };
 const ALL = [
   fr.nav.dashboard,
@@ -41,9 +41,9 @@ describe("Sidebar", () => {
     expect(nav.queryByText(fr.nav.administration)).not.toBeInTheDocument();
   });
 
-  it("gives ADMIN the six entries", () => {
+  it("gives ADMIN the five entries", () => {
     const nav = renderSidebar("ADMIN");
-    expect(nav.getAllByRole("link")).toHaveLength(6);
+    expect(nav.getAllByRole("link")).toHaveLength(5);
   });
 
   it("removes the heading of a group whose entries are all hidden", () => {
@@ -62,7 +62,7 @@ describe("Sidebar", () => {
   });
 
   it("keeps accessible labels when collapsed and exposes the state once", () => {
-    renderWithAuth(<Sidebar collapsed onToggle={() => {}} />, "ADMIN");
+    renderWithAuth(<Sidebar collapsed onToggle={() => {}} />, "RAI");
     expect(screen.getByRole("link", { name: fr.nav.missions })).toBeInTheDocument();
     const toggle = screen.getByRole("button", { name: fr.shell.toggleMenu });
     expect(toggle).toHaveAttribute("aria-expanded", "false");

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchAllPages, referentielKeys, type DirectionParams, type ProcessParams } from "./api";
+import { fetchAllPages } from "@/api/allPages";
+import { referentielKeys, type DirectionParams, type ProcessParams } from "./api";
 import type { Direction, Processus } from "./types";
 
 type Unpaged<P> = Omit<P, "page" | "page_size">;
@@ -19,5 +20,3 @@ export function useAllProcesses(params: Unpaged<ProcessParams> = {}) {
     queryFn: () => fetchAllPages<Processus>("processes", params),
   });
 }
-
-export { fetchAllPages, type AllPages } from "./api";

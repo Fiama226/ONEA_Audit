@@ -23,7 +23,7 @@ import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
 import { EditRiskMapDialog } from "../components/EditRiskMapDialog";
 import { ExportButtons } from "../components/ExportButtons";
 import { FrozenBanner } from "../components/FrozenBanner";
-import { NativeSelect } from "../components/NativeSelect";
+import { NativeSelect } from "@/components/form/NativeSelect";
 import { RiskFilters } from "../components/RiskFilters";
 import { RiskLevelBadge } from "../components/RiskLevelBadge";
 import { VersionStatusBadge } from "../components/VersionStatusBadge";

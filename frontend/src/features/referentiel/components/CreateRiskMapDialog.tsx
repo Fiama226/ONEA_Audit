@@ -23,9 +23,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { fr } from "@/i18n/fr";
 import { useCreateRiskMap, useRiskMaps } from "../api";
-import { applyApiErrors } from "../formErrors";
+import { applyApiErrors } from "@/api/formErrors";
 import { defaultRiskMapLibelle, riskMapSchema, type RiskMapFormValues } from "../schemas/riskMap";
-import { NativeSelect } from "./NativeSelect";
+import { NativeSelect } from "@/components/form/NativeSelect";
 
 const FIELDS = ["annee", "libelle", "commentaire", "source"] as const;
 

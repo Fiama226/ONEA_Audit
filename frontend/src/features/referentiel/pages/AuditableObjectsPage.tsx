@@ -9,14 +9,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fr } from "@/i18n/fr";
 import { useAllProcesses } from "../allPages";
 import { useAuditableTree, useDeleteAuditableObject } from "../api";
-import { ListIncompleteAlert } from "../components/ListIncompleteAlert";
+import { ListIncompleteAlert } from "@/components/ListIncompleteAlert";
 import {
   AuditableObjectFormDialog,
   type AuditableObjectTarget,
 } from "../components/AuditableObjectFormDialog";
 import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
-import { ALERT_CLASS } from "../components/FormField";
-import { NativeSelect } from "../components/NativeSelect";
+import { ALERT_CLASS } from "@/components/form/FormField";
+import { NativeSelect } from "@/components/form/NativeSelect";
 import { canEditAuditableObjects } from "../permissions";
 import type { DomaineArbre, ObjetAuditable } from "../types";
 
