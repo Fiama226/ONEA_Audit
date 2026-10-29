@@ -220,6 +220,78 @@ describe("AuditPlanLineFormPage", () => {
     expect(screen.queryByRole("button", { name: s.deleteLine })).not.toBeInTheDocument();
   });
 
+  it("shows the stored process and auditable object when editing", async () => {
+    const pid = "c1a2b3d4-0000-4000-8000-000000000001";
+    const oid = "c1a2b3d4-0000-4000-8000-000000000002";
+    serve();
+    server.use(
+      http.get(`${API_URL}/api/v1/processes/`, () =>
+        HttpResponse.json(page([{ ...PROCESS, id: pid }, PROCESS2])),
+      ),
+      http.get(`${API_URL}/api/v1/auditable-objects/tree/`, () =>
+        HttpResponse.json([
+          {
+            id: "dom9",
+            libelle: "Achats",
+            description: "",
+            ordre: 1,
+            operations: [
+              { id: oid, processus: pid, parent: "dom9", nature: "OPERATION", libelle: "Marchés" },
+            ],
+          },
+        ]),
+      ),
+      http.get(`${API_URL}/api/v1/audit-plan-lines/${LINE_ID}/`, () => HttpResponse.json(aLine())),
+    );
+    renderPlan(EDIT_PATH, "AUDITEUR");
+    await waitFor(() => expect(screen.getByLabelText(fr.programmation.process)).toHaveValue(pid));
+    await waitFor(() =>
+      expect(screen.getByLabelText(fr.programmation.auditableObject)).toHaveValue(oid),
+    );
+  });
+
+  it("patches only the changed fields and labels deleted references", async () => {
+    serve();
+    let body: unknown;
+    server.use(
+      http.get(`${API_URL}/api/v1/audit-plan-lines/${LINE_ID}/`, () =>
+        HttpResponse.json(
+          aLine({
+            processus_supprime: true,
+            objet_auditable_supprime: true,
+            entites_detail: [
+              { id: "dx", code: "OLD", libelle: "Ancienne direction", supprime: true },
+            ],
+          }),
+        ),
+      ),
+      http.patch(`${API_URL}/api/v1/audit-plan-lines/${LINE_ID}/`, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json(aLine());
+      }),
+    );
+    const user = userEvent.setup();
+    renderPlan(EDIT_PATH, "RAI");
+    expect(
+      await screen.findByRole("option", { name: /Approvisionnement.*\(supprimé\)/ }),
+    ).toBeInTheDocument();
+    expect(await screen.findByLabelText(/OLD - Ancienne direction.*\(supprimé\)/)).toBeChecked();
+    const title = screen.getByLabelText(s.lineTitle);
+    await user.clear(title);
+    await user.type(title, "Nouveau titre");
+    await user.click(screen.getByRole("button", { name: s.save }));
+    await waitFor(() => expect(body).toEqual({ titre: "Nouveau titre" }));
+  });
+
+  it("shows an error with retry when a reference list fails to load", async () => {
+    serve();
+    server.use(
+      http.get(`${API_URL}/api/v1/processes/`, () => new HttpResponse(null, { status: 500 })),
+    );
+    renderPlan(NEW_PATH, "RAI");
+    expect(await screen.findByRole("button", { name: fr.common.retry })).toBeInTheDocument();
+  });
+
   it("deletes a line and returns to the plan", async () => {
     serve();
     let deleted = false;

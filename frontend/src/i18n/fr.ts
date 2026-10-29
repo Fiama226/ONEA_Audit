@@ -555,6 +555,9 @@ export const fr = {
     calendarMission: "Mission prévue",
     calendarBeyond: "Au-delà de l'année",
     calendarPlanned: "prévue",
+    refLoadError: "Impossible de charger cette liste du référentiel.",
+    noProcess: "Aucun processus n'est défini dans le référentiel.",
+    noProcessLink: "Ouvrir le référentiel des processus",
     calendarEmpty: "Aucune mission prévue à afficher.",
   },
 } as const;

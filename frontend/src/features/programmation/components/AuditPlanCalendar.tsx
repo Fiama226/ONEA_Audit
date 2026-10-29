@@ -23,7 +23,7 @@ export function AuditPlanCalendar({ year, lines }: { year: number; lines: AuditP
       tabIndex={0}
       className="overflow-x-auto rounded-lg border border-border bg-surface print:overflow-visible print:border-0"
     >
-      <style>{"@media print { @page { size: landscape; } }"}</style>
+      <style>{"@media print { @page { size: A4 landscape; } }"}</style>
       <table className="w-full min-w-[960px] border-collapse text-sm print:min-w-0 print:text-xs">
         <caption className="p-3 text-left text-base font-semibold">
           {s.calendarCaption.replace("{annee}", String(year))}
@@ -71,7 +71,7 @@ export function AuditPlanCalendar({ year, lines }: { year: number; lines: AuditP
                     <td
                       key={label}
                       className={`h-9 border-l border-border text-center ${
-                        covered ? "bg-primary/25 print:bg-primary/25" : ""
+                        covered ? "bg-primary/25" : ""
                       }`}
                     >
                       {covered && (

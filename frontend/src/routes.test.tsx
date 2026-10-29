@@ -141,12 +141,17 @@ describe("programme annuel routes", () => {
     ).toBeInTheDocument();
   });
 
-  it("mounts the line creation route", () => {
-    renderRoutes(appRoutes, "RAI", {
-      path: "/programme-annuel/3f2b8c1e-8a4d-4c55-9a0e-1b2c3d4e5f60/nouvelle-ligne",
-    });
-    // La page charge d'abord le programme : l'indicateur de chargement prouve que la route est montée.
-    expect(screen.getByRole("status", { name: fr.common.loading })).toBeInTheDocument();
+  it("mounts the line creation route", async () => {
+    const planId = "3f2b8c1e-8a4d-4c55-9a0e-1b2c3d4e5f60";
+    server.use(
+      http.get(`${API_URL}/api/v1/audit-plans/${planId}/`, () =>
+        HttpResponse.json({ id: planId, annee: 2026, statut: "BROUILLON" }),
+      ),
+    );
+    renderRoutes(appRoutes, "RAI", { path: `/programme-annuel/${planId}/nouvelle-ligne` });
+    expect(
+      await screen.findByRole("heading", { level: 1, name: fr.programmationLignes.newTitle }),
+    ).toBeInTheDocument();
   });
 });
 

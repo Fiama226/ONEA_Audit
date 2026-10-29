@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/auth/useAuth";
@@ -112,16 +112,8 @@ function LineForm({ planId, year, validated, canWrite, line }: Props) {
   }, [formError]);
 
   const schema = useMemo(() => lineSchema(year), [year]);
-  const {
-    register,
-    control,
-    handleSubmit,
-    setError,
-    setValue,
-    formState: { errors },
-  } = useForm<LineFormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
+  const defaults = useMemo<LineFormValues>(
+    () => ({
       titre: line?.titre ?? "",
       type: line?.type ?? "ASSURANCE",
       processus: line?.processus ?? "",
@@ -131,27 +123,45 @@ function LineForm({ planId, year, validated, canWrite, line }: Props) {
       fin_prevue: line?.fin_prevue ?? "",
       charge_prevue_jours: line?.charge_prevue_jours ?? "",
       justification: line?.justification ?? "",
-    },
+    }),
+    [line],
+  );
+  const typeErrorId = useId();
+  const {
+    register,
+    control,
+    handleSubmit,
+    setError,
+    setValue,
+    formState: { errors },
+  } = useForm<LineFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: defaults,
   });
   const processId = useWatch({ control, name: "processus" });
   const tree = useAuditableTree(processId || undefined);
+  const processList = processes.data?.results ?? [];
+  const treeIds = new Set(
+    (tree.data ?? []).flatMap((d) => [d.id, ...d.operations.map((o) => o.id)]),
+  );
+  const deletedEntities = (line?.entites_detail ?? []).filter((e) => e.supprime);
 
   async function onSubmit(v: LineFormValues) {
     setFormError(null);
-    const data = {
-      titre: v.titre,
-      type: v.type,
-      processus: v.processus,
-      objet_auditable: v.objet_auditable || null,
-      entites: v.entites,
-      debut_prevu: v.debut_prevu,
-      fin_prevue: v.fin_prevue,
-      charge_prevue_jours: toDecimal(v.charge_prevue_jours),
-      justification: v.justification,
-    };
+    const full = toPayload(v);
     try {
-      if (line) await save.mutateAsync({ id: line.id, data });
-      else await save.mutateAsync({ data: { programme: planId, ...data } });
+      if (line) {
+        // Seuls les champs modifiés sont envoyés : une référence supprimée inchangée reste modifiable.
+        const initial = toPayload(defaults);
+        const data = Object.fromEntries(
+          Object.entries(full).filter(
+            ([k, val]) => JSON.stringify(val) !== JSON.stringify(initial[k as keyof typeof full]),
+          ),
+        );
+        await save.mutateAsync({ id: line.id, data });
+      } else {
+        await save.mutateAsync({ data: { programme: planId, ...full } });
+      }
       void navigate(`/programme-annuel/${planId}`, { state: { flash: s.saved } });
     } catch (e) {
       setFormError(applyApiErrors(e, setError, FIELDS));
@@ -187,7 +197,10 @@ function LineForm({ planId, year, validated, canWrite, line }: Props) {
             {(f) => <Input {...f} maxLength={300} {...register("titre")} />}
           </FormField>
 
-          <fieldset className="grid gap-1.5">
+          <fieldset
+            className="grid gap-1.5"
+            aria-describedby={errors.type ? typeErrorId : undefined}
+          >
             <legend className="text-sm font-medium">{s.typeLegend}</legend>
             <div className="flex gap-4">
               {TYPES.map((t) => (
@@ -202,58 +215,113 @@ function LineForm({ planId, year, validated, canWrite, line }: Props) {
                 </label>
               ))}
             </div>
-            {errors.type && <p className="text-sm text-destructive">{errors.type.message}</p>}
+            {errors.type && (
+              <p id={typeErrorId} className="text-sm text-destructive">
+                {errors.type.message}
+              </p>
+            )}
           </fieldset>
 
-          <FormField label={p.process} error={errors.processus?.message}>
-            {(f) => (
-              <>
-                <NativeSelect
-                  {...f}
-                  {...register("processus", {
-                    onChange: () => setValue("objet_auditable", ""),
-                  })}
-                >
-                  <option value="">{s.selectProcess}</option>
-                  {(processes.data?.results ?? []).map((pr) => (
-                    <option key={pr.id} value={pr.id}>
-                      {pr.code} - {pr.libelle}
-                    </option>
-                  ))}
-                </NativeSelect>
-                {processes.data && (
-                  <ListIncompleteAlert
-                    count={processes.data.count}
-                    loaded={processes.data.results.length}
-                  />
+          <Controller
+            control={control}
+            name="processus"
+            render={({ field }) => (
+              <FormField label={p.process} error={errors.processus?.message}>
+                {(f) => (
+                  <>
+                    <NativeSelect
+                      {...f}
+                      name={field.name}
+                      ref={field.ref}
+                      value={field.value}
+                      onBlur={field.onBlur}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        setValue("objet_auditable", "", { shouldDirty: true });
+                      }}
+                    >
+                      <option value="">{s.selectProcess}</option>
+                      {line && !processList.some((pr) => pr.id === line.processus) && (
+                        <option value={line.processus}>
+                          {withDeleted(
+                            `${line.processus_code} - ${line.processus_libelle}`,
+                            line.processus_supprime,
+                          )}
+                        </option>
+                      )}
+                      {processList.map((pr) => (
+                        <option key={pr.id} value={pr.id}>
+                          {pr.code} - {pr.libelle}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                    {processes.isError && <RefError onRetry={() => void processes.refetch()} />}
+                    {processes.data && processList.length === 0 && (
+                      <p className="text-sm text-text-muted">
+                        {s.noProcess} <Link to="/referentiel/processus">{s.noProcessLink}</Link>
+                      </p>
+                    )}
+                    {processes.data && (
+                      <ListIncompleteAlert
+                        count={processes.data.count}
+                        loaded={processList.length}
+                      />
+                    )}
+                  </>
                 )}
-              </>
+              </FormField>
             )}
-          </FormField>
+          />
 
-          <FormField
-            label={p.auditableObject}
-            error={errors.objet_auditable?.message}
-            help={s.auditableObjectHelp}
-          >
-            {(f) => (
-              <NativeSelect {...f} {...register("objet_auditable")}>
-                <option value="">{s.noAuditableObject}</option>
-                {(tree.data ?? []).map((d) => (
-                  <optgroup key={d.id} label={d.libelle}>
-                    <option value={d.id}>
-                      {d.libelle} {s.domainSuffix}
-                    </option>
-                    {d.operations.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.libelle}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </NativeSelect>
+          <Controller
+            control={control}
+            name="objet_auditable"
+            render={({ field }) => (
+              <FormField
+                label={p.auditableObject}
+                error={errors.objet_auditable?.message}
+                help={s.auditableObjectHelp}
+              >
+                {(f) => (
+                  <>
+                    <NativeSelect
+                      {...f}
+                      name={field.name}
+                      ref={field.ref}
+                      value={field.value}
+                      onBlur={field.onBlur}
+                      onChange={field.onChange}
+                    >
+                      <option value="">{s.noAuditableObject}</option>
+                      {line?.objet_auditable &&
+                        processId === line.processus &&
+                        !treeIds.has(line.objet_auditable) && (
+                          <option value={line.objet_auditable}>
+                            {withDeleted(
+                              line.objet_auditable_libelle ?? "",
+                              line.objet_auditable_supprime,
+                            )}
+                          </option>
+                        )}
+                      {(tree.data ?? []).map((d) => (
+                        <optgroup key={d.id} label={d.libelle}>
+                          <option value={d.id}>
+                            {d.libelle} {s.domainSuffix}
+                          </option>
+                          {d.operations.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.libelle}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </NativeSelect>
+                    {tree.isError && <RefError onRetry={() => void tree.refetch()} />}
+                  </>
+                )}
+              </FormField>
             )}
-          </FormField>
+          />
 
           <Controller
             control={control}
@@ -261,18 +329,21 @@ function LineForm({ planId, year, validated, canWrite, line }: Props) {
             render={({ field }) => (
               <EntitiesPicker
                 directions={directions.data?.results ?? []}
+                deleted={deletedEntities}
                 value={field.value}
                 onChange={field.onChange}
+                searchRef={field.ref}
+                error={errors.entites?.message}
               />
             )}
           />
+          {directions.isError && <RefError onRetry={() => void directions.refetch()} />}
           {directions.data && (
             <ListIncompleteAlert
               count={directions.data.count}
               loaded={directions.data.results.length}
             />
           )}
-          {errors.entites && <p className="text-sm text-destructive">{errors.entites.message}</p>}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
@@ -344,6 +415,35 @@ function LineForm({ planId, year, validated, canWrite, line }: Props) {
           }}
         />
       )}
+    </div>
+  );
+}
+
+/** Charge utile de l'API à partir des valeurs du formulaire. */
+function toPayload(v: LineFormValues) {
+  return {
+    titre: v.titre,
+    type: v.type,
+    processus: v.processus,
+    objet_auditable: v.objet_auditable || null,
+    entites: v.entites,
+    debut_prevu: v.debut_prevu,
+    fin_prevue: v.fin_prevue,
+    charge_prevue_jours: toDecimal(v.charge_prevue_jours),
+    justification: v.justification,
+  };
+}
+
+const withDeleted = (label: string, deleted: boolean) =>
+  deleted ? `${label} ${p.deleted}` : label;
+
+function RefError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div role="alert" className={ALERT_CLASS}>
+      <p>{s.refLoadError}</p>
+      <Button type="button" variant="outline" size="sm" className="mt-2" onClick={onRetry}>
+        {fr.common.retry}
+      </Button>
     </div>
   );
 }
