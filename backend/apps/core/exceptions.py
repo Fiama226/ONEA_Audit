@@ -1,5 +1,11 @@
 class RegleMetierError(Exception):
-    """Business rule violation, converted to HTTP 422 by the API exception handler."""
+    """Business rule violation, converted by the API exception handler.
+
+    HTTP 422 by default. A subclass that is a conflict with the stored state rather than a
+    user error overrides `status_http` explicitly (e.g. `IntegriteError` -> 409).
+    """
+
+    status_http: int = 422
 
     def __init__(self, message: str, errors: dict[str, list[str]] | None = None) -> None:
         super().__init__(message)

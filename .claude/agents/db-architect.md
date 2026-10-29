@@ -18,7 +18,7 @@ approuvée dans `docs/superpowers/specs/` avant de concevoir.
   Exemple : score de risque = probabilité x impact, probabilité et impact entre 1 et 5.
 - Index sur toute clé étrangère filtrée et sur les colonnes de statut.
 - Les documents générés sont immuables une fois validés : stocker la version figée (hash,
-  chemin MinIO, auteur, date), jamais écraser.
+  clé de stockage, auteur, date), jamais écraser.
 - Migrations : une par changement cohérent, nommée explicitement, jamais fake.
 
 ## Livrables attendus

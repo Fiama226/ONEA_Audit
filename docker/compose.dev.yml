@@ -18,11 +18,6 @@ services:
     ports:
       - "${GOTENBERG_PORT:-3000}:3000"
 
-  minio:
-    ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
-
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
     command: ["start-dev", "--import-realm"]

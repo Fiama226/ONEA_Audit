@@ -4,7 +4,11 @@ Everything security- or deployment-relevant is REQUIRED from the environment: th
 no localhost/mailpit fallbacks. A missing variable raises ImproperlyConfigured at startup.
 """
 
+import os
+
 from django.core.exceptions import ImproperlyConfigured
+
+from config.documents_settings import S3_VARIABLES, configuration_stockage, valider_documents_root
 
 from .base import *  # noqa: F403
 from .base import REST_FRAMEWORK, env
@@ -39,6 +43,19 @@ if _kc_sync_secret.startswith("CHANGE_ME") or _kc_sync_secret == "onea-dev-sync-
     raise ImproperlyConfigured(
         "KEYCLOAK_ADMIN_API_CLIENT_SECRET is still a placeholder or the dev default"
     )
+
+# --- Documents storage: explicit, absolute, outside the code (D2). ---
+if DOCUMENTS_STORAGE == "filesystem":  # noqa: F405
+    _root = env("DOCUMENTS_ROOT")  # required in production, no dev default
+    valider_documents_root(_root, repo_root=str(BASE_DIR.parent), code_dir=str(BASE_DIR))  # noqa: F405
+    DOCUMENTS_ROOT = _root
+else:
+    for _name in S3_VARIABLES:
+        env(_name)  # each one required for s3
+STORAGES = {
+    **STORAGES,  # noqa: F405
+    "documents": configuration_stockage({**os.environ, "DOCUMENTS_ROOT": DOCUMENTS_ROOT}),  # noqa: F405
+}
 
 REST_FRAMEWORK = {
     **REST_FRAMEWORK,

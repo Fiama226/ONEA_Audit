@@ -19,10 +19,12 @@ PROD_ENV = {
     "CSRF_TRUSTED_ORIGINS": "https://audit.onea.bf",
     "OIDC_OP_BASE_URL": "https://sso.onea.bf/realms/onea",
     "KEYCLOAK_ADMIN_API_CLIENT_SECRET": "prod-sync-secret",
+    "DOCUMENTS_ROOT": "/var/lib/onea/documents",
 }
 
 PROBE = """
 import json
+import sys
 import django
 django.setup()
 from django.conf import settings
@@ -43,6 +45,9 @@ print(json.dumps({
     "proxy_header": settings.SECURE_PROXY_SSL_HEADER,
     "admin": settings.DJANGO_ADMIN_ENABLED,
     "debug": settings.DEBUG,
+    "documents_root": settings.DOCUMENTS_ROOT,
+    "documents_backend": settings.STORAGES["documents"]["BACKEND"],
+    "media_url": getattr(sys.modules[settings.SETTINGS_MODULE], "MEDIA_URL", ""),
 }))
 """
 
@@ -148,3 +153,45 @@ def test_prod_security_flags_cannot_be_weakened_by_env(flag: str) -> None:
     assert data["session_secure"] is True
     assert data["csrf_secure"] is True
     assert data["ssl_redirect"] is True
+
+
+@pytest.mark.parametrize("root", ["", "relatif/documents", "/app/documents", "/app"])
+def test_prod_exige_documents_root_absolu_hors_depot(root: str) -> None:
+    env = {k: v for k, v in PROD_ENV.items() if k != "DOCUMENTS_ROOT"}
+    if root:
+        env["DOCUMENTS_ROOT"] = root
+    result = load_prod(env)
+    assert result.returncode != 0
+    assert "DOCUMENTS_ROOT" in result.stderr
+
+
+def test_prod_refuse_documents_root_dans_le_depot() -> None:
+    result = load_prod({**PROD_ENV, "DOCUMENTS_ROOT": str(BACKEND_DIR / "media")})
+    assert result.returncode != 0
+    assert "DOCUMENTS_ROOT" in result.stderr
+
+
+def test_prod_documents_filesystem_par_defaut() -> None:
+    data = probe(PROD_ENV)
+    assert data["documents_root"] == "/var/lib/onea/documents"
+    assert data["documents_backend"] == "apps.documents.stockage.StockageEcritureUnique"
+    assert not data["media_url"]
+
+
+def test_prod_s3_exige_ses_quatre_variables() -> None:
+    s3 = {
+        "DOCUMENTS_STORAGE": "s3",
+        "DOCUMENTS_S3_ENDPOINT_URL": "https://s3.onea.bf",
+        "DOCUMENTS_S3_ACCESS_KEY": "k",
+        "DOCUMENTS_S3_SECRET_KEY": "s",
+        "DOCUMENTS_S3_BUCKET": "b",
+    }
+    env = {k: v for k, v in PROD_ENV.items() if k != "DOCUMENTS_ROOT"}
+    data = probe({**env, **s3})
+    assert data["documents_backend"] == "storages.backends.s3.S3Storage"
+    for missing in s3:
+        if missing == "DOCUMENTS_STORAGE":
+            continue
+        result = load_prod({**env, **{k: v for k, v in s3.items() if k != missing}})
+        assert result.returncode != 0
+        assert missing in result.stderr

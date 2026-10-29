@@ -8,7 +8,7 @@ Réseaux Docker :
 | Réseau | Type | Services |
 |---|---|---|
 | `edge` | standard (accès sortant : SMTP, LDAP) | nginx, web, worker, frontend, keycloak |
-| `backend` | `internal` (aucune route vers l'extérieur) | web, worker, beat, migrate, db, redis, meilisearch, gotenberg, minio |
+| `backend` | `internal` (aucune route vers l'extérieur) | web, worker, beat, migrate, db, redis, meilisearch, gotenberg |
 | `kc` | `internal` | keycloak, keycloak-db |
 
 `nginx` porte l'alias réseau `${SSO_HOST}` sur `edge` : `web` résout le nom du SSO vers
@@ -88,10 +88,9 @@ d'autre ne démarre : consulter `docker compose ... logs migrate`.
 realm Keycloak n'existe pas (section suivante), la connexion à l'application n'est pas
 possible.
 
-Le stockage objet (`minio`) est derrière le profil `storage` et **n'est pas démarré** : le
-choix de l'image est en attente de décision du maître d'ouvrage, voir
-[`docs/infra-minio.md`](infra-minio.md). Une fois l'image choisie (`MINIO_IMAGE` dans
-`.env.prod`) : `docker compose ... --profile storage up -d`.
+Les fichiers générés (documents Word et PDF) sont stockés sur le disque du serveur, dans
+le dossier `DOCUMENTS_HOST_DIR` monté dans `web` et `worker` : créer ce dossier avant le
+premier démarrage et lire [`docs/stockage-fichiers.md`](stockage-fichiers.md).
 
 Le site d'administration Django (`/admin/`) est désactivé ; ne l'activer
 (`DJANGO_ADMIN_ENABLED=true`) que temporairement pour une opération précise.
@@ -226,9 +225,10 @@ Keycloak) dans `./backups` (14 derniers conservés) :
 sh scripts/backup.sh /srv/onea-backups
 ```
 
-À planifier chaque nuit (cron) et à copier hors du serveur. Les volumes `meili-data` (index,
-reconstructible) et, une fois choisi, le stockage objet des documents sont à sauvegarder
-selon la solution retenue.
+À planifier chaque nuit (cron) et à copier hors du serveur. Le script archive aussi le
+dossier des documents (`documents-AAAAMMJJ-HHMMSS.tar.gz`, après les bases). Le volume
+`meili-data` (index) est reconstructible et n'est pas sauvegardé. Procédure de
+restauration complète : [`docs/stockage-fichiers.md`](stockage-fichiers.md).
 
 Restauration de la base applicative :
 
@@ -263,8 +263,7 @@ restauration). Tester la restauration régulièrement sur un serveur de recette.
 | `OIDC_RP_CLIENT_SECRET` | secret du client confidentiel `onea-backend` ; non utilisé par le chemin Bearer, requis seulement car mozilla-django-oidc le lit à l'initialisation |
 | `KEYCLOAK_ADMIN_API_CLIENT_ID`, `KEYCLOAK_ADMIN_API_CLIENT_SECRET` | client de service `onea-admin-sync` (voir §5, étape 7bis) ; secret obligatoire |
 | `MEILI_MASTER_KEY` | clé maître Meilisearch |
-| `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET` | stockage objet (profil `storage`, en attente) |
-| `MINIO_IMAGE`, `MINIO_MC_IMAGE` | images du stockage objet, à fixer après décision |
+| `DOCUMENTS_HOST_DIR` | dossier de l'hôte (absolu, hors dépôt) où sont stockés les documents ; monté en `/var/lib/onea/documents` dans `web` et `worker` |
 | `COMPOSE_PROJECT_NAME`, `WEB_CONCURRENCY` | optionnels |
 
 Le backend en production refuse de démarrer si `SECRET_KEY`, `DATABASE_URL`, `EMAIL_URL`,

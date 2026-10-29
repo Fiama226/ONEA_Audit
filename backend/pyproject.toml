@@ -19,6 +19,9 @@ dependencies = [
     "django-storages[s3]>=1.14",
     "gunicorn>=22.0",
     "openpyxl>=3.1",
+    "docxtpl>=0.20",
+    "python-docx>=1.1",
+    "requests>=2.32",
 ]
 
 [dependency-groups]
@@ -32,6 +35,7 @@ dev = [
     "django-stubs>=5.1",
     "djangorestframework-stubs>=3.15",
     "types-openpyxl>=3.1.5.20261017",
+    "types-requests>=2.32",
 ]
 
 [tool.uv]

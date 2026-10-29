@@ -293,6 +293,165 @@ export interface paths {
         patch: operations["v1_directions_partial_update"];
         trace?: never;
     };
+    "/api/v1/document-types/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : types de documents
+         * @description Registre des types : contrat de balises, gabarit actif et format de numérotation.
+         */
+        get: operations["v1_document_types_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/document-versions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : version d'un document */
+        get: operations["v1_document_versions_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/document-versions/{id}/consultations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : consultations d'une version (RAI) */
+        get: operations["v1_document_versions_consultations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/document-versions/{id}/download/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Télécharger : fichier Word ou PDF d'une version (journalisé) */
+        get: operations["v1_document_versions_download_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/document-versions/{id}/retry-pdf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Relancer : la conversion PDF d'une version */
+        post: operations["v1_document_versions_retry_pdf_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : documents des missions visibles */
+        get: operations["v1_documents_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : document et ses versions */
+        get: operations["v1_documents_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/available/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Documents disponibles : générés ou générables d'une mission */
+        get: operations["v1_documents_available_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/generate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Générer : une nouvelle version d'un document (traitement en arrière-plan)
+         * @description Répond 202 : suivre `statut` et `statut_pdf` sur la version.
+         */
+        post: operations["v1_documents_generate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/": {
         parameters: {
             query?: never;
@@ -1105,6 +1264,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/numbering-formats/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : formats de numérotation */
+        get: operations["v1_numbering_formats_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/numbering-formats/{type_document}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : format de numérotation */
+        get: operations["v1_numbering_formats_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Modifier : format de numérotation (s'applique aux numéros suivants) */
+        patch: operations["v1_numbering_formats_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/numbering-formats/preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prévisualiser : un format de numérotation
+         * @description Le numéro d'exemple est `null` quand le format a des erreurs.
+         */
+        post: operations["v1_numbering_formats_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/processes/": {
         parameters: {
             query?: never;
@@ -1341,6 +1555,92 @@ export interface paths {
         patch: operations["v1_risks_partial_update"];
         trace?: never;
     };
+    "/api/v1/templates/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : gabarits */
+        get: operations["v1_templates_list"];
+        put?: never;
+        /** Déposer : une version de gabarit (multipart) */
+        post: operations["v1_templates_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : gabarit */
+        get: operations["v1_templates_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}/activate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activer : un gabarit (archive l'actif précédent) */
+        post: operations["v1_templates_activate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}/file/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Télécharger : fichier d'un gabarit (journalisé) */
+        get: operations["v1_templates_file_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}/preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aperçu : gabarit rempli avec les données d'exemple du contrat */
+        get: operations["v1_templates_preview_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/user-accounts/": {
         parameters: {
             query?: never;
@@ -1564,6 +1864,17 @@ export interface components {
             utilisateur: number;
             role_mission: components["schemas"]["RoleMissionEnum"];
         };
+        ApercuFormatRequest: {
+            modele: string;
+            portee: string;
+            abreviation: string;
+        };
+        ApercuNumero: {
+            numero: string | null;
+            errors: {
+                [key: string]: string[];
+            };
+        };
         /** @description Error body returned by the API exception handler (see apps.core.handlers). */
         ApiError: {
             detail: string;
@@ -1652,6 +1963,12 @@ export interface components {
             niveau: components["schemas"]["NiveauRisqueEnum"];
             nombre: number;
             codes: string[];
+        };
+        ChampContrat: {
+            nom: string;
+            type: components["schemas"]["TypeChampEnum"];
+            description: string;
+            readonly enfants: components["schemas"]["ChampContrat"][];
         };
         Comparaison: {
             reference: components["schemas"]["VersionResume"];
@@ -1767,6 +2084,13 @@ export interface components {
             /** Empreinte SHA-256 */
             readonly empreinte: string;
         };
+        Consultation: {
+            readonly utilisateur: components["schemas"]["UtilisateurResume"];
+            /** Format: date-time */
+            readonly le: string;
+            readonly format: components["schemas"]["FormatFichierEnum"];
+            readonly adresse_ip: string | null;
+        };
         Declaration: {
             /** Format: uuid */
             readonly id: string;
@@ -1832,6 +2156,80 @@ export interface components {
             readonly code: string;
             /** Libellé */
             readonly libelle: string;
+        };
+        Document: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Type de document */
+            readonly type_document: string;
+            readonly type_document_libelle: string;
+            /** Numéro */
+            readonly numero: string;
+            readonly mission: components["schemas"]["MissionResume"];
+            readonly derniere_version: components["schemas"]["VersionDocumentResume"] | null;
+            readonly nombre_versions: number;
+            /** Format: uuid */
+            readonly objet_id: string;
+            readonly versions: components["schemas"]["DocumentVersion"][];
+        };
+        DocumentDisponible: {
+            type_document: string;
+            libelle: string;
+            etape: number | null;
+            /** Format: uuid */
+            objet_id: string;
+            document: components["schemas"]["DocumentListe"] | null;
+            peut_generer: boolean;
+            raison: string | null;
+            en_cours: boolean;
+        };
+        DocumentListe: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Type de document */
+            readonly type_document: string;
+            readonly type_document_libelle: string;
+            /** Numéro */
+            readonly numero: string;
+            readonly mission: components["schemas"]["MissionResume"];
+            readonly derniere_version: components["schemas"]["VersionDocumentResume"] | null;
+            readonly nombre_versions: number;
+        };
+        DocumentVersion: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly document: string;
+            /** Numéro de version */
+            readonly numero_version: number;
+            readonly statut: components["schemas"]["StatutGenerationEnum"];
+            /** Statut du PDF */
+            readonly statut_pdf: components["schemas"]["StatutPdfEnum"];
+            readonly gabarit: components["schemas"]["GabaritRef"];
+            readonly demandee_par: components["schemas"]["UtilisateurResume"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /**
+             * Généré le
+             * Format: date-time
+             */
+            readonly genere_le: string | null;
+            /**
+             * PDF produit le
+             * Format: date-time
+             */
+            readonly pdf_le: string | null;
+            /** Empreinte Word */
+            readonly empreinte_docx: string;
+            readonly empreinte_pdf: string;
+            /** Taille Word (octets) */
+            readonly taille_docx: number | null;
+            /** Taille PDF (octets) */
+            readonly taille_pdf: number | null;
+            readonly erreur: string;
+            readonly erreur_pdf: string;
+            readonly confirmation: components["schemas"]["ConfirmationResume"] | null;
+            readonly peut_relancer_pdf: boolean;
         };
         DomaineArbre: {
             /** Format: uuid */
@@ -2042,9 +2440,87 @@ export interface components {
             lignes: components["schemas"]["LigneSuivi"][];
             evenements: components["schemas"]["EvenementSuivi"][];
         };
+        /**
+         * @description * `DOCX` - Word
+         *     * `PDF` - PDF
+         * @enum {string}
+         */
+        FormatFichierEnum: "DOCX" | "PDF";
+        FormatNumerotation: {
+            /** Type de document */
+            readonly type_document: string;
+            /** Modèle */
+            readonly modele: string;
+            /** Portée */
+            readonly portee: components["schemas"]["PorteeNumerotationEnum"];
+            /** Abréviation */
+            readonly abreviation: string;
+            readonly apercu: string | null;
+        };
+        GabaritDepotRequest: {
+            type_document: string;
+            /** Format: binary */
+            fichier: string;
+            /** @default  */
+            commentaire: string;
+        };
+        GabaritDocument: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Type de document */
+            readonly type_document: string;
+            readonly type_document_libelle: string;
+            readonly version: number;
+            /** @default DEPOSE */
+            readonly statut: components["schemas"]["StatutGabaritEnum"];
+            /** Nom d'origine */
+            readonly nom_original: string;
+            /** Taille (octets) */
+            readonly taille: number;
+            /** Empreinte SHA-256 */
+            readonly empreinte: string;
+            readonly balises: unknown;
+            /** Version du contrat */
+            readonly contrat_version: number;
+            readonly provisoire: boolean;
+            readonly commentaire: string;
+            readonly created_by: components["schemas"]["UtilisateurResume"] | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly active_par: components["schemas"]["UtilisateurResume"] | null;
+            /**
+             * Activé le
+             * Format: date-time
+             */
+            readonly active_le: string | null;
+        };
+        GabaritRef: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly version: number;
+            readonly provisoire: boolean;
+        };
+        GabaritResume: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly version: number;
+            readonly statut: components["schemas"]["StatutGabaritEnum"];
+            readonly provisoire: boolean;
+            /**
+             * Activé le
+             * Format: date-time
+             */
+            readonly active_le: string | null;
+        };
+        GenerationRequest: {
+            type_document: string;
+            /** Format: uuid */
+            objet: string;
+        };
         Health: {
             status: string;
             version: string;
+            stockage_documents: string;
         };
         ImportAnnuaireRequest: {
             keycloak_ids: string[];
@@ -2443,6 +2919,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["CompteUtilisateurListe"][];
         };
+        PaginatedConsultationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Consultation"][];
+        };
         PaginatedDeclarationList: {
             /** @example 123 */
             count: number;
@@ -2473,6 +2964,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Direction"][];
         };
+        PaginatedDocumentListeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["DocumentListe"][];
+        };
         PaginatedEntretienList: {
             /** @example 123 */
             count: number;
@@ -2487,6 +2993,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Entretien"][];
+        };
+        PaginatedGabaritDocumentList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["GabaritDocument"][];
         };
         PaginatedLigneProgrammeList: {
             /** @example 123 */
@@ -2706,6 +3227,11 @@ export interface components {
              */
             charge_reelle_jours?: string | null;
         };
+        PatchedFormatNumerotationEcritureRequest: {
+            modele?: string;
+            portee?: components["schemas"]["PorteeNumerotationEnum"];
+            abreviation?: string;
+        };
         PatchedLigneProgrammeRequest: {
             /**
              * Format: uuid
@@ -2872,6 +3398,12 @@ export interface components {
          * @enum {string}
          */
         PhaseEnum: "PLANIFICATION" | "ACCOMPLISSEMENT" | "COMMUNICATION";
+        /**
+         * @description * `MISSION` - Par mission
+         *     * `ANNEE` - Par année
+         * @enum {string}
+         */
+        PorteeNumerotationEnum: "MISSION" | "ANNEE";
         /**
          * @description * `1` - Prioritaire
          *     * `2` - Amélioration
@@ -3167,6 +3699,21 @@ export interface components {
          */
         StatutEtapeEnum: "A_FAIRE" | "EN_COURS" | "TERMINEE" | "VALIDEE" | "RENVOYEE" | "A_REVALIDER" | "NON_APPLICABLE";
         /**
+         * @description * `DEPOSE` - Déposé
+         *     * `ACTIF` - Actif
+         *     * `ARCHIVE` - Archivé
+         * @enum {string}
+         */
+        StatutGabaritEnum: "DEPOSE" | "ACTIF" | "ARCHIVE";
+        /**
+         * @description * `EN_ATTENTE` - En attente
+         *     * `EN_COURS` - En cours
+         *     * `PRETE` - Prête
+         *     * `ECHEC` - Échec
+         * @enum {string}
+         */
+        StatutGenerationEnum: "EN_ATTENTE" | "EN_COURS" | "PRETE" | "ECHEC";
+        /**
          * @description * `BROUILLON` - Brouillon
          *     * `PLANIFIEE` - Planifiée
          *     * `EN_PLANIFICATION` - En planification
@@ -3180,6 +3727,14 @@ export interface components {
          * @enum {string}
          */
         StatutMissionEnum: "BROUILLON" | "PLANIFIEE" | "EN_PLANIFICATION" | "EN_ACCOMPLISSEMENT" | "EN_COMMUNICATION" | "RAPPORT_DIFFUSE" | "EN_SUIVI" | "CLOTUREE" | "SUSPENDUE" | "ANNULEE";
+        /**
+         * @description * `NON_DEMANDE` - Non demandé
+         *     * `EN_COURS` - En cours
+         *     * `PRET` - Prêt
+         *     * `ECHEC` - Échec
+         * @enum {string}
+         */
+        StatutPdfEnum: "NON_DEMANDE" | "EN_COURS" | "PRET" | "ECHEC";
         /**
          * @description * `BROUILLON` - Brouillon
          *     * `VALIDE` - Validé
@@ -3202,6 +3757,25 @@ export interface components {
             charge_totale_jours: string;
             par_type: components["schemas"]["ParType"];
             par_trimestre: components["schemas"]["ParTrimestre"];
+        };
+        /**
+         * @description * `texte` - texte
+         *     * `texte_long` - texte_long
+         *     * `liste` - liste
+         *     * `bloc` - bloc
+         * @enum {string}
+         */
+        TypeChampEnum: "texte" | "texte_long" | "liste" | "bloc";
+        /** @description Entrée du registre : `champs` = contrat complet (blocs communs compris). */
+        TypeDocument: {
+            code: string;
+            libelle: string;
+            etape: number | null;
+            etape_romain: string | null;
+            contrat_version: number;
+            champs: components["schemas"]["ChampContrat"][];
+            gabarit_actif: components["schemas"]["GabaritResume"] | null;
+            format_numerotation: components["schemas"]["FormatNumerotation"];
         };
         /**
          * @description * `ORDRE_MISSION` - Ordre de mission
@@ -3271,6 +3845,20 @@ export interface components {
              */
             readonly username: string;
             readonly nom_complet: string;
+        };
+        VersionDocumentResume: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Numéro de version */
+            readonly numero_version: number;
+            readonly statut: components["schemas"]["StatutGenerationEnum"];
+            /** Statut du PDF */
+            readonly statut_pdf: components["schemas"]["StatutPdfEnum"];
+            /**
+             * Généré le
+             * Format: date-time
+             */
+            readonly genere_le: string | null;
         };
         VersionResume: {
             /** Format: uuid */
@@ -4705,6 +5293,545 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Direction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_document_types_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TypeDocument"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_document_versions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentVersion"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_document_versions_consultations_list: {
+        parameters: {
+            query?: {
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedConsultationList"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_document_versions_download_retrieve: {
+        parameters: {
+            query?: {
+                /**
+                 * @description * `docx` - docx
+                 *     * `pdf` - pdf
+                 */
+                format?: "docx" | "pdf";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_document_versions_retry_pdf_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentVersion"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_documents_list: {
+        parameters: {
+            query?: {
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /** @description Recherche insensible à la casse sur le numéro. */
+                q?: string;
+                type_document?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedDocumentListeList"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_documents_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Document"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_documents_available_list: {
+        parameters: {
+            query: {
+                mission: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDisponible"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_documents_generate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["GenerationRequest"];
+                "multipart/form-data": components["schemas"]["GenerationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentVersion"];
+                };
+            };
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentVersion"];
                 };
             };
             400: {
@@ -7803,6 +8930,242 @@ export interface operations {
             };
         };
     };
+    v1_numbering_formats_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormatNumerotation"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_numbering_formats_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type_document: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormatNumerotation"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_numbering_formats_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type_document: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedFormatNumerotationEcritureRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedFormatNumerotationEcritureRequest"];
+                "multipart/form-data": components["schemas"]["PatchedFormatNumerotationEcritureRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormatNumerotation"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_numbering_formats_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApercuFormatRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ApercuFormatRequest"];
+                "multipart/form-data": components["schemas"]["ApercuFormatRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApercuNumero"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_processes_list: {
         parameters: {
             query?: {
@@ -8869,6 +10232,368 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_templates_list: {
+        parameters: {
+            query?: {
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `DEPOSE` - Déposé
+                 *     * `ACTIF` - Actif
+                 *     * `ARCHIVE` - Archivé
+                 */
+                statut?: "ACTIF" | "ARCHIVE" | "DEPOSE";
+                type_document?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedGabaritDocumentList"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_templates_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["GabaritDepotRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GabaritDocument"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_templates_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GabaritDocument"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_templates_activate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GabaritDocument"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_templates_file_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_templates_preview_retrieve: {
+        parameters: {
+            query?: {
+                /**
+                 * @description * `docx` - docx
+                 *     * `pdf` - pdf
+                 */
+                format?: "docx" | "pdf";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
