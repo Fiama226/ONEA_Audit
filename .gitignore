@@ -15,6 +15,7 @@ coverage/
 .env.*
 !.env.example
 !.env.prod.example
+!.env.recette.example
 # IDE / OS
 .idea/
 .vscode/
@@ -32,3 +33,5 @@ test-results/
 certs/*.pem
 frontend/e2e/screens/
 .dev/
+
+/.recette/
