@@ -10,3 +10,7 @@ class CoreConfig(AppConfig):
         from apps.core.reseau import reseaux_de_confiance
 
         reseaux_de_confiance()  # échec franc au démarrage si TRUSTED_PROXY_CIDRS est invalide
+
+        from apps.core.journalisation import connecter_signaux_celery
+
+        connecter_signaux_celery()

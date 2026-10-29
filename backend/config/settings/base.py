@@ -48,6 +48,7 @@ AUTH_USER_MODEL = "users.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.core.journalisation.CorrelationMiddleware",
     "apps.core.middleware.PasDeCacheApiMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -233,6 +234,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "users.synchroniser_comptes_keycloak",
         "schedule": crontab(minute="*/15"),
     },
+    "pouls-beat": {
+        "task": "core.tasks.pouls_beat",
+        "schedule": crontab(minute="*"),
+    },
     "documents-balayage": {
         "task": "documents.balayer_generations_bloquees",
         "schedule": crontab(minute="*/10"),
@@ -309,6 +314,7 @@ CACHES = {
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {"masquage": {"()": "apps.core.journalisation.MasquageFiltre"}},
     "formatters": {
         "plain": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"},
     },
@@ -317,6 +323,7 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "stream": "ext://sys.stdout",
             "formatter": "plain",
+            "filters": ["masquage"],
         },
     },
     "root": {"handlers": ["console"], "level": "INFO"},
@@ -324,3 +331,6 @@ LOGGING = {
         "django.request": {"handlers": [], "level": "ERROR", "propagate": True},
     },
 }
+
+# --- T13: protected metrics endpoint (empty token = endpoint disabled, always 404) ---
+METRICS_TOKEN: str = env("METRICS_TOKEN", default="")
