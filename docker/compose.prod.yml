@@ -154,7 +154,7 @@ services:
   nginx:
     <<: *hardening
     cap_add: [CHOWN, SETUID, SETGID, NET_BIND_SERVICE, DAC_OVERRIDE]
-    image: nginx:1.27.5-alpine
+    image: nginx:1.27.5-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
     ports:
       - "80:80"
       - "443:443"
@@ -190,7 +190,7 @@ services:
   db:
     <<: *hardening
     cap_add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
-    image: postgres:16.14
+    image: postgres:16.14@sha256:95206741a5b214807675e14165369d05b93a9cf692223b616d07cca227e74b0b
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-onea}
       POSTGRES_USER: ${POSTGRES_USER:-onea}
@@ -207,7 +207,7 @@ services:
   redis:
     <<: *hardening
     cap_add: [SETUID, SETGID, CHOWN]
-    image: valkey/valkey:7.2.15
+    image: valkey/valkey:7.2.15@sha256:828b1cbb1c258e02b9cd9588063fa997e097444e610d3f3c00d43e21400e2b8d
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     command: ["valkey-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
@@ -222,7 +222,7 @@ services:
 
   meilisearch:
     <<: *hardening
-    image: getmeili/meilisearch:v1.12.8
+    image: getmeili/meilisearch:v1.12.8@sha256:c9fac23131cca4db95173d41cc50fd5639121ee381795528fdd7522d7978a7b8
     environment:
       MEILI_ENV: production
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required}
@@ -238,7 +238,7 @@ services:
 
   gotenberg:
     <<: *hardening
-    image: gotenberg/gotenberg:8.37.0
+    image: gotenberg/gotenberg:8.37.0@sha256:f29984bd1e226bf1b93ba90af06000afa8b315853e99d27b9aaa41b93f15c769
     command: ["gotenberg", "--api-port=3000"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
@@ -252,7 +252,7 @@ services:
   keycloak-db:
     <<: *hardening
     cap_add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
-    image: postgres:16.14
+    image: postgres:16.14@sha256:95206741a5b214807675e14165369d05b93a9cf692223b616d07cca227e74b0b
     environment:
       POSTGRES_DB: keycloak
       POSTGRES_USER: keycloak
@@ -271,7 +271,7 @@ services:
   # X-Forwarded-*; KC_HOSTNAME is the public https URL.
   keycloak:
     <<: *hardening
-    image: quay.io/keycloak/keycloak:26.8.1
+    image: quay.io/keycloak/keycloak:26.8.1@sha256:a78d6b79572168cb25886b80a8b5b8d4ed4390743e3eecb810538683e209dd6b
     command: ["start"]
     environment:
       KC_DB: postgres
