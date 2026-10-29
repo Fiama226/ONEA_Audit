@@ -26,12 +26,13 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
+  onCloseAutoFocus?: (event: Event) => void;
 };
 
-export function DeactivateDialog({ account, open, onOpenChange, onDone }: Props) {
+export function DeactivateDialog({ account, open, onOpenChange, onDone, onCloseAutoFocus }: Props) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus}>
         <DeactivateForm account={account} onCancel={() => onOpenChange(false)} onDone={onDone} />
       </AlertDialogContent>
     </AlertDialog>
@@ -48,6 +49,7 @@ function DeactivateForm({
   const {
     register,
     handleSubmit,
+    setError: setFieldError,
     formState: { errors },
   } = useForm<DeactivateFormValues>({
     resolver: zodResolver(deactivateSchema),
@@ -62,7 +64,11 @@ function DeactivateForm({
     } catch (e) {
       if (!isApiError(e)) return setError(fr.errors.generic);
       const motif = e.errors.motif;
-      setError(motif && motif.length > 0 ? motif.join(" ") : e.detail);
+      if (motif && motif.length > 0) {
+        setFieldError("motif", { type: "server", message: motif.join(" ") }, { shouldFocus: true });
+      } else {
+        setError(e.detail);
+      }
     }
   }
 

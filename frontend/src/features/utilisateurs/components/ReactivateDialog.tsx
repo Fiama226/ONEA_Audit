@@ -22,9 +22,21 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDone: () => void;
+  onCloseAutoFocus?: (event: Event) => void;
 };
 
-export function ReactivateDialog({ account, open, onOpenChange, onDone }: Props) {
+export function ReactivateDialog({ account, open, onOpenChange, onDone, onCloseAutoFocus }: Props) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus}>
+        <ReactivateBody account={account} onDone={onDone} />
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+/** Contenu démonté à la fermeture : l'erreur d'une tentative précédente ne survit pas. */
+function ReactivateBody({ account, onDone }: Pick<Props, "account" | "onDone">) {
   const action = useAccountAction();
   const [error, setError] = useState<string | null>(null);
 
@@ -39,24 +51,22 @@ export function ReactivateDialog({ account, open, onOpenChange, onDone }: Props)
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{`${t.reactivateTitle}${account.nom_complet} ?`}</AlertDialogTitle>
-          <AlertDialogDescription>{t.reactivateText}</AlertDialogDescription>
-        </AlertDialogHeader>
-        {error && (
-          <p role="alert" className={ALERT_CLASS}>
-            {error}
-          </p>
-        )}
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={action.isPending}>{fr.common.cancel}</AlertDialogCancel>
-          <Button type="button" disabled={action.isPending} onClick={() => void confirm()}>
-            {t.reactivateConfirm}
-          </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      <AlertDialogHeader>
+        <AlertDialogTitle>{`${t.reactivateTitle}${account.nom_complet} ?`}</AlertDialogTitle>
+        <AlertDialogDescription>{t.reactivateText}</AlertDialogDescription>
+      </AlertDialogHeader>
+      {error && (
+        <p role="alert" className={ALERT_CLASS}>
+          {error}
+        </p>
+      )}
+      <AlertDialogFooter>
+        <AlertDialogCancel disabled={action.isPending}>{fr.common.cancel}</AlertDialogCancel>
+        <Button type="button" disabled={action.isPending} onClick={() => void confirm()}>
+          {t.reactivateConfirm}
+        </Button>
+      </AlertDialogFooter>
+    </>
   );
 }

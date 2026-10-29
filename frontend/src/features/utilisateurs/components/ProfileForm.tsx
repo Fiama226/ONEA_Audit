@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,7 @@ export function ProfileForm({ account }: { account: CompteUtilisateur }) {
   const [saved, setSaved] = useState(false);
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setError,
@@ -63,6 +64,7 @@ export function ProfileForm({ account }: { account: CompteUtilisateur }) {
     }
     try {
       await update.mutateAsync({ id: account.id, data });
+      reset(values);
       setSaved(true);
     } catch (e) {
       setFormError(applyApiErrors(e, setError, FIELDS));
@@ -107,30 +109,42 @@ export function ProfileForm({ account }: { account: CompteUtilisateur }) {
             </FormField>
             <FormField label={t.direction} error={errors.direction_code?.message}>
               {(p) => (
-                <NativeSelect {...p} disabled={!canEdit} {...register("direction_code")}>
-                  <option value="">{t.directionNone}</option>
-                  {!known && account.direction_code !== "" && (
-                    <option value={account.direction_code}>
-                      {directionLabel(account.direction_code, account.direction_libelle)}
-                    </option>
+                <Controller
+                  control={control}
+                  name="direction_code"
+                  render={({ field }) => (
+                    <NativeSelect
+                      {...p}
+                      disabled={!canEdit}
+                      name={field.name}
+                      ref={field.ref}
+                      value={field.value}
+                      onBlur={field.onBlur}
+                      onChange={field.onChange}
+                    >
+                      <option value="">{t.directionNone}</option>
+                      {!known && account.direction_code !== "" && (
+                        <option value={account.direction_code}>
+                          {directionLabel(account.direction_code, account.direction_libelle)}
+                        </option>
+                      )}
+                      {directions.options.map((d) => (
+                        <option key={d.id} value={d.code}>
+                          {directionLabel(d.code, d.libelle)}
+                        </option>
+                      ))}
+                    </NativeSelect>
                   )}
-                  {directions.options.map((d) => (
-                    <option key={d.id} value={d.code}>
-                      {directionLabel(d.code, d.libelle)}
-                    </option>
-                  ))}
-                </NativeSelect>
+                />
               )}
             </FormField>
           </div>
           <p className="text-sm text-text-muted">
             {account.profil_gere_localement ? t.profileLocal : t.profileFromDirectory}
           </p>
-          {saved && (
-            <p role="status" className="text-sm text-success-text">
-              {t.profileSaved}
-            </p>
-          )}
+          <p role="status" className="text-sm text-success-text">
+            {saved && !isDirty ? t.profileSaved : ""}
+          </p>
           {canEdit && (
             <div className="flex flex-wrap gap-2 print:hidden">
               <Button type="submit" disabled={!isDirty || update.isPending}>

@@ -1,16 +1,11 @@
-import { configure, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { axe } from "vitest-axe";
 import { API_URL, server } from "@/test/msw";
 import { anAccount, renderAdministration } from "../testUtils";
 import type { CompteUtilisateur } from "../types";
-
-beforeAll(() => {
-  vi.setConfig({ testTimeout: 20000 });
-  configure({ asyncUtilTimeout: 4000 });
-});
 
 const NO_CONTRAST = { rules: { "color-contrast": { enabled: false } } };
 const ACCOUNT_URL = `${API_URL}/api/v1/user-accounts/7/`;
@@ -363,5 +358,81 @@ describe("UserDetailPage", () => {
     const dialog = await screen.findByRole("alertdialog");
     const modal = await axe(dialog, NO_CONTRAST);
     expect(modal.violations).toEqual([]);
+  });
+  it("selects a direction that is in the referential once the options arrive", async () => {
+    serve(anAccount({ direction_code: "DAI", direction_libelle: null }));
+    open();
+    await screen.findByRole("option", { name: "DAI — Département Audit Interne" });
+    expect(screen.getByRole("combobox", { name: "Direction" })).toHaveValue("DAI");
+  });
+
+  it("offers the manual retry on a pending sync when allowed", async () => {
+    serve(DEACTIVATED("EN_ATTENTE"));
+    open();
+    expect(
+      await screen.findByRole("button", { name: "Relancer la synchronisation" }),
+    ).toBeVisible();
+  });
+
+  it("shows a 400 motif error under the field", async () => {
+    serve(ACTIVE());
+    server.use(
+      http.post(`${ACCOUNT_URL}deactivate/`, () =>
+        HttpResponse.json(
+          { detail: "Données invalides.", errors: { motif: ["Motif trop vague."] } },
+          { status: 400 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    open();
+    await user.click(await screen.findByRole("button", { name: "Désactiver le compte" }));
+    const motif = await screen.findByRole("textbox", { name: "Motif" });
+    await user.type(motif, "x");
+    await user.click(screen.getByRole("button", { name: "Désactiver" }));
+    expect(await screen.findByText("Motif trop vague.")).toBeInTheDocument();
+    expect(motif).toHaveAccessibleDescription("Motif trop vague.");
+  });
+
+  it("shows a reactivation error and clears it when the dialog is reopened", async () => {
+    serve(DEACTIVATED("A_JOUR"));
+    server.use(
+      http.post(`${ACCOUNT_URL}reactivate/`, () =>
+        HttpResponse.json({ detail: "Réactivation impossible." }, { status: 422 }),
+      ),
+    );
+    const user = userEvent.setup();
+    open();
+    await user.click(await screen.findByRole("button", { name: "Réactiver le compte" }));
+    await user.click(await screen.findByRole("button", { name: "Réactiver" }));
+    expect(await screen.findByText("Réactivation impossible.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Annuler" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Réactiver le compte" }));
+    await screen.findByRole("alertdialog");
+    expect(screen.queryByText("Réactivation impossible.")).not.toBeInTheDocument();
+  });
+
+  it("has no dangling phrase without a reason or author", async () => {
+    serve(DEACTIVATED("A_JOUR", { motif_desactivation: "", desactive_par: null }));
+    open();
+    expect(await screen.findByText("Désactivé le 28/10/2026 08:00")).toBeInTheDocument();
+  });
+
+  it("moves focus to the result message after deactivation", async () => {
+    const { state } = serve(ACTIVE());
+    server.use(
+      http.post(`${ACCOUNT_URL}deactivate/`, () => {
+        state.account = DEACTIVATED("A_JOUR");
+        return HttpResponse.json(state.account);
+      }),
+    );
+    const user = userEvent.setup();
+    open();
+    await user.click(await screen.findByRole("button", { name: "Désactiver le compte" }));
+    await user.type(await screen.findByRole("textbox", { name: "Motif" }), "Départ");
+    await user.click(screen.getByRole("button", { name: "Désactiver" }));
+    const notice = await screen.findByText("Compte désactivé dans la plateforme.");
+    await waitFor(() => expect(notice).toHaveFocus());
   });
 });

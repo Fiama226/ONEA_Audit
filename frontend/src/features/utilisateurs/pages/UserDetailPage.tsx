@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { isApiError } from "@/api/errors";
 import { Button } from "@/components/ui/button";
@@ -99,7 +100,7 @@ function IdentityCard({ account }: { account: CompteUtilisateur }) {
   );
 }
 
-function Item({ label, children }: { label: string; children: React.ReactNode }) {
+function Item({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <dt className="text-text-muted">{label}</dt>

@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { configure, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { axe } from "vitest-axe";
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { fr } from "@/i18n/fr";
 import { API_URL, server } from "@/test/msw";
 import { UserHistory } from "./UserHistory";
@@ -34,10 +34,6 @@ function renderHistory() {
     </QueryClientProvider>,
   );
 }
-
-beforeAll(() => {
-  configure({ asyncUtilTimeout: 4000 });
-});
 
 describe("UserHistory", () => {
   it("requests the audit log of the user and renders entries", async () => {
