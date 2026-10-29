@@ -21,10 +21,10 @@ création du contrat.
 
 | N° | Document | Variantes | Contrat (code) | Lot consommateur | Statut |
 |---|---|---|---|---|---|
-| 1 | Ordre de mission | 1 | `ORDRE_MISSION` | 4 | provisoire |
+| 1 | Ordre de mission | 1 | `ORDRE_MISSION` | 4 | provisoire livré (contrat v1, `gabarits_provisoires --installer`) |
 | 2 | Déclaration d'indépendance collaborateur | 1 | `DECLARATION_INDEPENDANCE` | 5 | provisoire |
 | 3 | Fiche de suivi de la mission | 1 | `FICHE_SUIVI` | 5 | provisoire |
-| 4 | PV d'ouverture | 1 | `PV_OUVERTURE` | 4 | provisoire |
+| 4 | PV d'ouverture | 1 | `PV_OUVERTURE` | 4 | provisoire livré (contrat v1, `gabarits_provisoires --installer`) |
 | 5 | Questionnaire de prise de connaissance | 1 | `QUESTIONNAIRE_PRISE_CONNAISSANCE` | 5 | provisoire |
 | 6 | Planning des entretiens | 1 | `PLANNING_ENTRETIENS` | 5 | provisoire |
 | 7 | Note de synthèse entretiens | 1 | `NOTE_SYNTHESE_ENTRETIENS` | 5 | provisoire |

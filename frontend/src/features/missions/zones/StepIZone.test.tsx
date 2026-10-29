@@ -37,7 +37,9 @@ describe("StepIZone", () => {
       http.get(`${API_URL}/api/v1/mission-steps/`, () =>
         HttpResponse.json(allSteps((n) => (n === 1 ? { statut: "EN_COURS" } : {}))),
       ),
-      http.post(`${API_URL}/api/v1/missions/${MISSION_ID}/issue-order/`, () => {
+      http.post(`${API_URL}/api/v1/missions/${MISSION_ID}/issue-order/`, async ({ request }) => {
+        // The API refuses the call without the explicit confirmation flag.
+        expect(await request.json()).toEqual({ confirme: true });
         issued = true;
         posted += 1;
         return HttpResponse.json(issuedMission);

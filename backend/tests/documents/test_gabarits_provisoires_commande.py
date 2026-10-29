@@ -39,7 +39,7 @@ def test_commande_ne_remplace_pas_un_gabarit_reel(type_test: TypeDocument, admin
     call_command("gabarits_provisoires", "--installer", "--user", admin.username, stdout=StringIO())
     reel.refresh_from_db()
     assert reel.statut == StatutGabarit.ACTIF
-    assert GabaritDocument.objects.count() == 1
+    assert GabaritDocument.objects.filter(type_document="TEST_DOC").count() == 1
 
 
 def test_commande_provisoires_idempotente(type_test: TypeDocument, admin: User) -> None:
@@ -50,7 +50,7 @@ def test_commande_provisoires_idempotente(type_test: TypeDocument, admin: User) 
     actifs = GabaritDocument.objects.filter(type_document="TEST_DOC", statut=StatutGabarit.ACTIF)
     assert actifs.count() == 1
     assert actifs.get().provisoire is True
-    assert GabaritDocument.objects.count() == 1
+    assert GabaritDocument.objects.filter(type_document="TEST_DOC").count() == 1
 
 
 def test_commande_utilisateur_requis(type_test: TypeDocument) -> None:
