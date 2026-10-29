@@ -26,6 +26,7 @@ import { FrozenBanner } from "../components/FrozenBanner";
 import { NativeSelect } from "@/components/form/NativeSelect";
 import { RiskFilters } from "../components/RiskFilters";
 import { RiskLevelBadge } from "../components/RiskLevelBadge";
+import { ProposedRisksPanel } from "@/features/missions/components/ProposedRisksPanel";
 import { VersionStatusBadge } from "../components/VersionStatusBadge";
 import { ValidateRiskMapDialog } from "../components/ValidateRiskMapDialog";
 import { NIVEAU_LABELS, PRIORITE_LABELS, REPONSE_LABELS } from "../labels";
@@ -434,6 +435,8 @@ export function RiskMapDetailPage() {
           </>
         )}
       </section>
+
+      {canEdit && <ProposedRisksPanel />}
 
       {canEdit && <ValidateRiskMapDialog id={id} open={validating} onOpenChange={setValidating} />}
       {canEdit && <EditRiskMapDialog version={version} open={editing} onOpenChange={setEditing} />}

@@ -153,6 +153,8 @@ export function mockReferentiel(opts: { map?: MapFixture; risks?: unknown[] } = 
       ),
     ),
     http.get(`${API_URL}/api/v1/auditable-objects/tree/`, () => HttpResponse.json([])),
+    // Risques proposés par les missions (panneau du RAI sur une cartographie en brouillon).
+    http.get(`${API_URL}/api/v1/mission-risks/`, () => HttpResponse.json(page([]))),
     http.get(`${API_URL}/api/v1/risks/`, ({ request }) => {
       const url = new URL(request.url);
       seen.push(url.search);
