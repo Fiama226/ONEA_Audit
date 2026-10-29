@@ -1,14 +1,12 @@
 # Compose reads the repo-root .env (when present) through --env-file.
-# Object storage is opt-in: `make up WITH_STORAGE=1` (see docs/infra-minio.md).
 ENV_FILE := $(wildcard .env)
-COMPOSE := docker compose $(if $(ENV_FILE),--env-file .env) -f docker/compose.yml -f docker/compose.dev.yml $(if $(WITH_STORAGE),--profile storage)
-STORAGE_FLAG := $(if $(WITH_STORAGE),--with-storage)
+COMPOSE := docker compose $(if $(ENV_FILE),--env-file .env) -f docker/compose.yml -f docker/compose.dev.yml
 
 .PHONY: up down logs backend frontend test test-backend test-frontend e2e lint gen-api check
 
 up:
 	$(COMPOSE) up -d
-	bash scripts/wait-for-services.sh $(STORAGE_FLAG)
+	bash scripts/wait-for-services.sh
 
 down:
 	$(COMPOSE) down
@@ -41,7 +39,7 @@ gen-api:
 	sh scripts/gen-api.sh
 
 check:
-	bash scripts/check-services.sh $(STORAGE_FLAG)
+	bash scripts/check-services.sh
 
 .PHONY: worker
 worker:

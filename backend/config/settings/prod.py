@@ -4,7 +4,11 @@ Everything security- or deployment-relevant is REQUIRED from the environment: th
 no localhost/mailpit fallbacks. A missing variable raises ImproperlyConfigured at startup.
 """
 
+import os
+
 from django.core.exceptions import ImproperlyConfigured
+
+from config.documents_settings import S3_VARIABLES, configuration_stockage, valider_documents_root
 
 from .base import *  # noqa: F403
 from .base import REST_FRAMEWORK, env
@@ -32,6 +36,19 @@ if not env("OIDC_OP_BASE_URL").startswith("https://"):  # required in production
     raise ImproperlyConfigured("OIDC_OP_BASE_URL must be an https:// URL in production")
 if not env.bool("OIDC_VERIFY_SSL", default=True):
     raise ImproperlyConfigured("OIDC_VERIFY_SSL must not be disabled in production")
+
+# --- Documents storage: explicit, absolute, outside the code (D2). ---
+if DOCUMENTS_STORAGE == "filesystem":  # noqa: F405
+    _root = env("DOCUMENTS_ROOT")  # required in production, no dev default
+    valider_documents_root(_root, repo_root=str(BASE_DIR.parent), code_dir=str(BASE_DIR))  # noqa: F405
+    DOCUMENTS_ROOT = _root
+else:
+    for _name in S3_VARIABLES:
+        env(_name)  # each one required for s3
+STORAGES = {
+    **STORAGES,  # noqa: F405
+    "documents": configuration_stockage({**os.environ, "DOCUMENTS_ROOT": DOCUMENTS_ROOT}),  # noqa: F405
+}
 
 REST_FRAMEWORK = {
     **REST_FRAMEWORK,

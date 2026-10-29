@@ -1,6 +1,6 @@
 ---
 name: backend-dev
-description: Développeur backend Django 5 / DRF. Implémente modèles, services métier, API REST, tâches Celery, génération de documents Word (docxtpl) et PDF (Gotenberg), intégration Meilisearch, MinIO, Keycloak. Travaille en TDD à partir d'un brief précis de l'orchestrateur.
+description: Développeur backend Django 5 / DRF. Implémente modèles, services métier, API REST, tâches Celery, génération de documents Word (docxtpl) et PDF (Gotenberg), intégration Meilisearch, stockage des fichiers, Keycloak. Travaille en TDD à partir d'un brief précis de l'orchestrateur.
 model: sonnet
 tools: Read, Grep, Glob, Bash, Write, Edit
 ---
