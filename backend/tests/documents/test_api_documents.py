@@ -17,6 +17,11 @@ pytestmark = pytest.mark.django_db
 GENERER = "/api/v1/documents/generate/"
 
 
+def _ligne_test(lignes: list[dict[str, Any]]) -> dict[str, Any]:
+    """Ligne TEST_DOC : les types réels (ordre de mission, étape I) sont listés avant."""
+    return next(ligne for ligne in lignes if ligne["type_document"] == "TEST_DOC")
+
+
 def test_generate_202_puis_polling_prete(
     api_client: APIClient,
     rai: User,
@@ -80,13 +85,13 @@ def test_available_par_role(
     mission = version_prete_mission.document.mission_id
     url = f"/api/v1/documents/available/?mission={mission}"
     api_client.force_authenticate(utilisateurs["rai"])
-    ligne = api_client.get(url).json()[0]
+    ligne = _ligne_test(api_client.get(url).json())
     assert ligne["type_document"] == "TEST_DOC" and ligne["libelle"] == "Document de test"
     assert ligne["peut_generer"] is True and ligne["raison"] is None and ligne["en_cours"] is False
     assert ligne["document"]["numero"].endswith("TD-01")
     assert ligne["objet_id"] == str(mission)
     api_client.force_authenticate(utilisateurs["chef"])
-    ligne = api_client.get(url).json()[0]
+    ligne = _ligne_test(api_client.get(url).json())
     assert ligne["peut_generer"] is False and ligne["raison"]
     api_client.force_authenticate(utilisateurs["auditeur_desaffecte"])
     assert api_client.get(url).status_code == 404
@@ -102,7 +107,7 @@ def test_available_mission_figee_raison(
     Mission.objects.filter(pk=version_prete_mission.document.mission_id).update(statut="SUSPENDUE")
     api_client.force_authenticate(rai)
     url = f"/api/v1/documents/available/?mission={version_prete_mission.document.mission_id}"
-    ligne = api_client.get(url).json()[0]
+    ligne = _ligne_test(api_client.get(url).json())
     assert ligne["peut_generer"] is False
     assert "aucun document ne peut être généré" in ligne["raison"]
 
