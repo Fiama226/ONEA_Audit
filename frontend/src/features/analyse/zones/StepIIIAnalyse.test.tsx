@@ -194,8 +194,20 @@ describe("StepIIIAnalyse", () => {
       ],
     });
     await userEvent.click(await screen.findByRole("button", { name: t.gridSave }));
-    const alert = await screen.findByText("Indice de tâche hors de la grille : 4.");
-    expect(alert.closest("[role=alert]")).toBeInTheDocument();
+    const alert = (await screen.findByText("Indice de tâche hors de la grille : 4.")).closest(
+      "[role=alert]",
+    );
+    expect(alert).toBeInTheDocument();
+    await waitFor(() => expect(alert).toHaveFocus());
+    expect(
+      screen.getByRole("table", { name: t.gridCaption.replace("{process}", "P-ACH") }),
+    ).toHaveAttribute("aria-describedby", alert?.id);
+  });
+
+  it("does not render the QCI in step III", async () => {
+    open({ questionnaires: [aQuestionnaire()], questions: [aQuestion(1)] });
+    await screen.findByRole("button", { name: t.saveQuestion });
+    expect(screen.queryByText(t.qciTitle)).not.toBeInTheDocument();
   });
 
   it("is read-only without contribuer_iii: no active field, no disabled control", async () => {

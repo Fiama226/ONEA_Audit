@@ -70,6 +70,7 @@ export function SegregationGridEditor({ processus, mission, grid, editable }: Pr
   const errorId = `grid-${processus.id}-errors`;
 
   function touch() {
+    setErrors([]);
     setDirty(true);
     setSaved(false);
   }
@@ -140,6 +141,8 @@ export function SegregationGridEditor({ processus, mission, grid, editable }: Pr
     taches[i]?.trim() || t.gridUnnamedTask.replace("{n}", String(i + 1));
   const actorName = (j: number) =>
     acteurs[j]?.trim() || t.gridUnnamedActor.replace("{n}", String(j + 1));
+  // Page paysage nommée, seulement pour une grille qui a du contenu (jamais pour une grille vide).
+  const landscape = taches.length > 0 && acteurs.length > 0;
   const analyse = grid?.analyse;
   const alerts = [
     ...(analyse?.cumuls ?? []).map((c) =>
@@ -155,8 +158,10 @@ export function SegregationGridEditor({ processus, mission, grid, editable }: Pr
   ];
 
   return (
-    <article className="grid gap-3 rounded-md border border-border p-4">
-      <style media="print">{"@page { size: A4 landscape; }"}</style>
+    <article
+      className={`grid gap-3 rounded-md border border-border p-4 ${landscape ? "[page:grille]" : ""}`}
+    >
+      {landscape && <style media="print">{"@page grille { size: A4 landscape; }"}</style>}
       {heading}
       <div className="overflow-x-auto">
         <table

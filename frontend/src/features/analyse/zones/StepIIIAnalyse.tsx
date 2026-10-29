@@ -12,14 +12,13 @@ import {
   useSegregationGrids,
 } from "../api";
 import { ProcessDescriptionForm } from "../components/ProcessDescriptionForm";
-import { QciSection } from "../components/QciSection";
 import { QuestionnaireEditor } from "../components/QuestionnaireEditor";
 import { SegregationGridEditor } from "../components/SegregationGridEditor";
 
 const t = fr.analyse;
 const a = fr.analyseIII;
 
-/** Complément de l'étape III : prise de connaissance, description des processus, grilles, QCI. */
+/** Complément de l'étape III : prise de connaissance, description des processus, grilles (le QCI relève de l'étape V). */
 export function StepIIIAnalyse({ mission, step }: ZoneProps) {
   const id = `analyse-${step.id}`;
   const framework = useAuditFramework(mission.id);
@@ -136,8 +135,6 @@ export function StepIIIAnalyse({ mission, step }: ZoneProps) {
             />
           ))}
         </section>
-
-        <QciSection mission={mission} editable={editable} />
       </>
     );
   }

@@ -148,12 +148,13 @@ export function ProcessDescriptionForm({ mission, processus, description, editab
             name="categories_objectifs"
             render={({ field }) => (
               <div className="flex flex-wrap gap-4">
-                {(Object.keys(CATEGORIE_OBJECTIF_LABELS) as CategorieObjectif[]).map((c) => {
+                {(Object.keys(CATEGORIE_OBJECTIF_LABELS) as CategorieObjectif[]).map((c, index) => {
                   const id = `${processus.id}-cat-${c}`;
                   return (
                     <div key={c} className="flex items-center gap-2">
                       <Checkbox
                         id={id}
+                        ref={index === 0 ? field.ref : undefined}
                         checked={field.value.includes(c)}
                         onCheckedChange={(on) =>
                           field.onChange(
