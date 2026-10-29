@@ -5,7 +5,7 @@ const t = fr.missionTravaux;
 
 export const meetingSchema = z.object({
   date: z.string().min(1, t.dateRequired),
-  lieu: z.string().max(200),
+  lieu: z.string().max(200, t.lieuMax),
   ordre_du_jour: z.string(),
   participants: z.array(z.string()),
   participants_externes: z.string(),

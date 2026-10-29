@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
+import { useRole } from "@/auth/useRole";
 import { Button } from "@/components/ui/button";
 import { fr } from "@/i18n/fr";
 import { useInterviews, useMission } from "../api";
@@ -13,6 +14,7 @@ export function InterviewsPage() {
   const { id } = useParams();
   const mission = useMission(id);
   const interviews = useInterviews({ mission: id });
+  const { is } = useRole();
   const [creating, setCreating] = useState(false);
 
   if (interviews.isError) {
@@ -44,9 +46,11 @@ export function InterviewsPage() {
           {t.interviewsTitle}
         </h2>
         <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={() => window.print()}>
-            {t.printPlanning}
-          </Button>
+          {!is("AUDITE") && (
+            <Button type="button" variant="outline" onClick={() => window.print()}>
+              {t.printPlanning}
+            </Button>
+          )}
           {data.mes_droits.contribuer && (
             <Button type="button" onClick={() => setCreating(true)}>
               {t.planInterview}

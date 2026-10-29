@@ -14,6 +14,8 @@ type Props = {
   mission: Mission;
   type: TypeReunion;
   meeting?: Reunion;
+  /** Étape clôturée : même sans réunion enregistrée, la carte reste en lecture seule. */
+  stepClosed?: boolean;
 };
 
 function Row({ label, children }: { label: string; children: string }) {
@@ -26,12 +28,12 @@ function Row({ label, children }: { label: string; children: string }) {
 }
 
 /** Carte d'une réunion (ouverture, lancement ou clôture). Droits lus sur le serveur uniquement. */
-export function MeetingCard({ mission, type, meeting }: Props) {
+export function MeetingCard({ mission, type, meeting, stepClosed = false }: Props) {
   const [formOpen, setFormOpen] = useState(false);
   const [heldOpen, setHeldOpen] = useState(false);
   const markHeld = useMarkMeetingHeld();
   const titleId = `meeting-${type}`;
-  const closed = meeting?.etape_close === true;
+  const closed = stepClosed || meeting?.etape_close === true;
   const canWrite = mission.mes_droits.contribuer && !closed;
 
   const participants = [

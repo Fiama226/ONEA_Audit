@@ -13,7 +13,7 @@ export const interviewSchema = z.object({
       (v) => v === "" || (/^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 600),
       t.durationInvalid,
     ),
-  lieu: z.string().max(200),
+  lieu: z.string().max(200, t.lieuMax),
   etape: z.string(),
   auditeurs: z.array(z.string()),
   interlocuteurs: z.array(z.string()),

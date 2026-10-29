@@ -212,6 +212,7 @@ function InterviewForm({
             label={t.internalInterlocutors}
             value={field.value}
             onChange={field.onChange}
+            known={interview?.interlocuteurs_detail}
           />
         )}
       />

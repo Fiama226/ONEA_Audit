@@ -26,7 +26,7 @@ export function StepIIIZone({ mission, step }: { mission: Mission; step: Etape }
           <InterviewTable
             mission={mission}
             interviews={interviews.data?.results ?? []}
-            label={t.stepIIIInterviews}
+            label={`${t.stepIIIInterviews} ${step.romain}`}
           />
         )}
       </section>

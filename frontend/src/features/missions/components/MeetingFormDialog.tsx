@@ -96,7 +96,6 @@ function MeetingForm({
           "date",
           "lieu",
           "ordre_du_jour",
-          "participants",
           "participants_externes",
           "decisions",
           "compte_rendu",
@@ -133,6 +132,7 @@ function MeetingForm({
             label={t.internalParticipants}
             value={field.value}
             onChange={field.onChange}
+            known={meeting?.participants_detail}
           />
         )}
       />

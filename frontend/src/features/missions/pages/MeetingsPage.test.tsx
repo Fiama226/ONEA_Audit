@@ -17,13 +17,6 @@ import type { Reunion, UtilisateurResume } from "../types";
 
 const t = fr.missionTravaux;
 
-// jsdom n'implémente pas ResizeObserver, requis par les cases à cocher Radix dans un formulaire.
-globalThis.ResizeObserver ??= class {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-};
-
 const kabore: UtilisateurResume = {
   id: 5,
   username: "m.kabore",
@@ -119,7 +112,14 @@ describe("MeetingsPage", () => {
         ...handlers([aMeeting()]),
         http.post(`${API_URL}/api/v1/meetings/:id/mark-held/`, () =>
           HttpResponse.json(
-            { detail: "Le compte rendu est obligatoire.", errors: {} },
+            {
+              detail: "Saisissez le compte rendu avant de marquer la réunion comme tenue.",
+              errors: {
+                compte_rendu: [
+                  "Saisissez le compte rendu avant de marquer la réunion comme tenue.",
+                ],
+              },
+            },
             { status: 422 },
           ),
         ),
@@ -130,8 +130,99 @@ describe("MeetingsPage", () => {
     await userEvent.click(within(dialog).getByLabelText(fr.missions.confirmCheckbox));
     await userEvent.click(within(dialog).getByRole("button", { name: t.markHeld }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-      "Le compte rendu est obligatoire.",
+      "Saisissez le compte rendu avant de marquer la réunion comme tenue.",
     );
+  });
+
+  it("edits a meeting with PATCH and sends emptied fields", async () => {
+    let body: unknown;
+    renderMission(PATH, "RAI", {
+      handlers: [
+        ...handlers([aMeeting()]),
+        http.patch(`${API_URL}/api/v1/meetings/:id/`, async ({ request }) => {
+          body = await request.json();
+          return HttpResponse.json(aMeeting());
+        }),
+      ],
+    });
+    await userEvent.click(await screen.findByRole("button", { name: t.editMeeting }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.clear(within(dialog).getByLabelText(t.placeLabel));
+    await userEvent.click(within(dialog).getByRole("button", { name: fr.common.save }));
+    await waitFor(() => expect(body).toBeDefined());
+    expect(body).toMatchObject({ lieu: "", mission: MISSION_ID, type: "OUVERTURE" });
+  });
+
+  it("shows the frozen-mission refusal and the 403 message in the form", async () => {
+    const frozen = "La mission MI-2026-001 est suspendue : aucune modification n'est possible.";
+    renderMission(PATH, "RAI", {
+      handlers: [
+        ...handlers([aMeeting()]),
+        http.patch(`${API_URL}/api/v1/meetings/:id/`, () =>
+          HttpResponse.json({ detail: frozen, errors: {} }, { status: 422 }),
+        ),
+      ],
+    });
+    await userEvent.click(await screen.findByRole("button", { name: t.editMeeting }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: fr.common.save }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(frozen);
+  });
+
+  it("shows a 403 refusal in the form", async () => {
+    renderMission(PATH, "RAI", {
+      handlers: [
+        ...handlers([aMeeting()]),
+        http.patch(`${API_URL}/api/v1/meetings/:id/`, () =>
+          HttpResponse.json({ detail: "Accès refusé.", errors: {} }, { status: 403 }),
+        ),
+      ],
+    });
+    await userEvent.click(await screen.findByRole("button", { name: t.editMeeting }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: fr.common.save }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Accès refusé.");
+  });
+
+  it("keeps a deactivated participant visible and removable", async () => {
+    let body: { participants?: number[] } = {};
+    const ghost = { ...kabore, id: 7, nom_complet: "Ancien Agent" };
+    renderMission(PATH, "RAI", {
+      handlers: [
+        ...handlers([aMeeting({ participants: [7], participants_detail: [ghost] })]),
+        http.patch(`${API_URL}/api/v1/meetings/:id/`, async ({ request }) => {
+          body = (await request.json()) as { participants?: number[] };
+          return HttpResponse.json(aMeeting());
+        }),
+      ],
+    });
+    await userEvent.click(await screen.findByRole("button", { name: t.editMeeting }));
+    const dialog = await screen.findByRole("dialog");
+    const box = await within(dialog).findByLabelText("Ancien Agent (compte désactivé)");
+    await userEvent.click(box);
+    await userEvent.click(within(dialog).getByRole("button", { name: fr.common.save }));
+    await waitFor(() => expect(body.participants).toEqual([]));
+  });
+
+  it("shows server errors on participants in the form alert", async () => {
+    renderMission(PATH, "RAI", {
+      handlers: [
+        ...handlers([aMeeting()]),
+        http.patch(`${API_URL}/api/v1/meetings/:id/`, () =>
+          HttpResponse.json(
+            {
+              detail: "Données invalides.",
+              errors: { participants: ['Clé primaire "99" invalide.'] },
+            },
+            { status: 400 },
+          ),
+        ),
+      ],
+    });
+    await userEvent.click(await screen.findByRole("button", { name: t.editMeeting }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: fr.common.save }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Clé primaire");
   });
 
   it("shows « Tenue le » once held", async () => {
