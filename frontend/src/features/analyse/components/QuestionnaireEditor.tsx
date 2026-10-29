@@ -62,7 +62,7 @@ export function QuestionnaireEditor({ questionnaire, editable, missionReference 
   return (
     <div className="grid gap-4">
       <header className="hidden print:block">
-        <h4 className="text-lg font-semibold">{TYPE_QUESTIONNAIRE_LABELS[questionnaire.type]}</h4>
+        <p className="text-lg font-semibold">{TYPE_QUESTIONNAIRE_LABELS[questionnaire.type]}</p>
         {missionReference && (
           <p className="text-sm">{t.missionRef.replace("{reference}", missionReference)}</p>
         )}

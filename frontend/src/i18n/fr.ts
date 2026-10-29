@@ -869,10 +869,8 @@ export const fr = {
     noProcess: "Aucun processus n'est rattaché à la mission.",
     progress: "{done} / {total} questions renseignées",
     missionRef: "Mission {reference}",
-    appreciation: "Appréciation",
     appreciationOf: "Appréciation : {question}",
     answerOf: "Réponse : {question}",
-    answerLabel: "Réponse",
     notAnswered: "Non renseignée",
     noAnswer: "Aucune réponse.",
     saveQuestion: "Enregistrer la réponse",
@@ -918,7 +916,6 @@ export const fr = {
     gridDirty:
       "Modifications non enregistrées : les alertes ci-dessous datent du dernier enregistrement.",
     gridEmpty: "Aucune grille pour ce processus.",
-    gridStart: "Créer la grille",
     gridUnnamedTask: "Tâche {n}",
     gridUnnamedActor: "Acteur {n}",
     gridLabelRequired: "Chaque libellé doit être renseigné.",

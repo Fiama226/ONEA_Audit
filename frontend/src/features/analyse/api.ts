@@ -169,8 +169,19 @@ export function useDeleteQuestion() {
   return useMutation({
     mutationFn: ({ id }: Deleting & { questionnaireId?: string }) =>
       remove("analysis-questions", id),
-    onSuccess: (_, { missionId, questionnaireId }) =>
-      invalidateAnalyse(client, missionId, analyseKeys.questions(questionnaireId)),
+    onSuccess: (_, { id, missionId, questionnaireId }) => {
+      // Pas de requête par question : on retire l'élément supprimé de la liste en cache
+      // pour ne jamais l'afficher ni le recharger.
+      client.setQueryData<{ results: Question[]; count: number }>(
+        analyseKeys.questions(questionnaireId),
+        (old) =>
+          old && {
+            count: old.count - 1,
+            results: old.results.filter((q) => q.id !== id),
+          },
+      );
+      return invalidateAnalyse(client, missionId, analyseKeys.questions(questionnaireId));
+    },
   });
 }
 
