@@ -1,9 +1,10 @@
 """Objectifs d'audit de l'étape VII (D9 du plan du lot 5)."""
 
 from typing import Any
+from uuid import UUID
 
 from django.db import transaction
-from django.db.models import Max
+from django.db.models import Max, QuerySet
 
 from apps.core.services import appliquer, enregistrer, refuser, relire
 from apps.missions.models import Mission
@@ -16,6 +17,16 @@ from ..models import LigneMARC, MotifNonTest, ObjectifAudit
 MSG_ETAPE_VII = "Commencez l'étape VII pour sélectionner les objectifs d'audit."
 PREFIXE_LIBELLE = "S'assurer de l'efficacité et de l'efficience du contrôle : "
 _MODIFIABLES = {"libelle", "retenu", "motif_non_test", "justification"}
+
+
+def objectifs_retenus(mission: Mission | UUID) -> QuerySet[ObjectifAudit]:
+    """Objectifs d'audit retenus (non supprimés) de la mission, par numéro."""
+    return ObjectifAudit.objects.filter(mission=mission, retenu=True).order_by("numero")
+
+
+def code_objectif(objectif: ObjectifAudit) -> str:
+    """Code affiché d'un objectif : OA-01, OA-02..."""
+    return f"OA-{objectif.numero:02d}"
 
 
 def ouvrir_ecriture(mission: Mission) -> Mission:

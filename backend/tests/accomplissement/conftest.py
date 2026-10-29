@@ -70,3 +70,8 @@ from tests.accomplissement.fixtures_fiches import (  # noqa: E402, F401
     superviseur_non_leve,
     test_prevu,
 )
+from tests.accomplissement.fixtures_programme import (  # noqa: E402, F401
+    mission_programme_complet,
+    mission_viii,
+    programme_viii,
+)

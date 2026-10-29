@@ -8,7 +8,10 @@ class AccomplissementConfig(AppConfig):
 
     def ready(self) -> None:
         from apps.core.audit import register
+        from apps.missions.services.livrables import enregistrer_controles
 
+        from . import recepteurs  # noqa: F401
+        from .controles import programme as controles_programme
         from .models import (
             EvenementFiche,
             FicheDeTest,
@@ -28,9 +31,8 @@ class AccomplissementConfig(AppConfig):
         ):
             register(modele)
 
-        from apps.missions.services.livrables import enregistrer_controles
-
         from .controles import fiches as controles_fiches
 
-        for numero, controles in controles_fiches.CONTROLES_ETAPE.items():
-            enregistrer_controles(numero, controles)
+        for module in (controles_programme, controles_fiches):
+            for numero, controles in module.CONTROLES_ETAPE.items():
+                enregistrer_controles(numero, controles)

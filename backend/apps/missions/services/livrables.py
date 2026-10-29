@@ -20,7 +20,8 @@ from ..models import (
 )
 
 MSG_ORDRE = "L'ordre de mission n'a pas été émis."
-Controle = Callable[[EtapeMission], str | None]
+# Un contrôle renvoie un message, plusieurs (un par objet en défaut) ou rien.
+Controle = Callable[[EtapeMission], str | list[str] | None]
 
 
 def declarations_en_attente(mission_id: object) -> list[str]:
@@ -136,5 +137,10 @@ def livrables_manquants(etape: EtapeMission) -> list[str]:
             f"Les livrables de l'étape {definition.romain} sont gérés à partir du lot "
             f"{definition.lot_livrables}."
         ]
-    messages = (controle(etape) for controle in CONTROLES.get(etape.numero, []))
-    return [m for m in messages if m]
+    manquants: list[str] = []
+    for controle in CONTROLES.get(etape.numero, []):
+        resultat = controle(etape)
+        if isinstance(resultat, str):
+            resultat = [resultat]
+        manquants.extend(m for m in resultat or [] if m)
+    return manquants
