@@ -9,7 +9,8 @@ import { useAllUsers } from "../api";
 import type { RoleEnum } from "../types";
 
 type Props = {
-  role: RoleEnum;
+  /** Rôle recherché ; absent = tous les rôles. */
+  role?: RoleEnum;
   /** Identifiants des utilisateurs sélectionnés (sous forme de texte). */
   value: string[];
   onChange: (value: string[]) => void;
