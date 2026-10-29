@@ -8,3 +8,5 @@ export { applyApiErrors } from "@/features/referentiel/formErrors";
 export { FormField, ALERT_CLASS } from "@/features/referentiel/components/FormField";
 export { NativeSelect } from "@/features/referentiel/components/NativeSelect";
 export { ListIncompleteAlert } from "@/features/referentiel/components/ListIncompleteAlert";
+export { useAllProcesses } from "@/features/referentiel/allPages";
+export { ConfirmDeleteDialog } from "@/features/referentiel/components/ConfirmDeleteDialog";

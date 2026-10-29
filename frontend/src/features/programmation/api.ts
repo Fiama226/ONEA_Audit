@@ -89,7 +89,31 @@ export function useDeleteAuditPlan() {
   return useMutation({
     mutationFn: (id: string) =>
       apiFetch<undefined>(`${BASE}/audit-plans/${id}/`, { method: "DELETE" }),
-    onSuccess: () => invalidate(client, planKeys.all),
+    // Le programme n'existe plus : seul le rafraîchissement des listes a un sens (relire son
+    // détail ou sa synthèse donnerait 404). Voir `useForgetAuditPlan` pour le retrait du cache.
+    onSuccess: () => invalidate(client, [...ROOT, "plans", "list"]),
+  });
+}
+
+/**
+ * Retire du cache le détail, la synthèse et les lignes d'un programme supprimé. À appeler une fois
+ * que plus aucune page ne les observe, sinon l'observateur les relirait (404).
+ */
+export function useForgetAuditPlan() {
+  const client = useQueryClient();
+  return (id: string) => {
+    client.removeQueries({ queryKey: planKeys.plan(id) });
+    client.removeQueries({ queryKey: planKeys.summary(id) });
+    client.removeQueries({ queryKey: planKeys.lines(id) });
+  };
+}
+
+/** Tous les programmes (toutes les pages) : sert à choisir une année encore libre. */
+export function useAllAuditPlans(enabled = true) {
+  return useQuery({
+    queryKey: [...ROOT, "plans", "list", "all"] as QueryKey,
+    queryFn: () => fetchAllPages<AuditPlan>("audit-plans"),
+    enabled,
   });
 }
 
