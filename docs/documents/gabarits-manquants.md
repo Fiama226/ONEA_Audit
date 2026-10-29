@@ -1,10 +1,19 @@
 # Gabarits Word ONEA non reçus
 
-Au 28/10/2026, 22 des 27 fichiers du recueil de besoins ne sont pas parvenus à IKA SOLUTION :
-ils correspondent aux 20 documents ci-dessous (deux documents ont deux variantes). Tant que le
-modèle officiel n'est pas déposé, la plateforme génère un **gabarit provisoire** construit
-depuis le contrat de balises du type (bandeau « GABARIT PROVISOIRE — en attente du modèle
-officiel ONEA »).
+Au 28/10/2026, 22 fichiers du recueil de besoins ne sont pas parvenus à IKA SOLUTION : ils
+correspondent aux 20 documents « à récupérer » ci-dessous (le rapport d'orientation et le
+programme de vérification ont chacun deux variantes, soit 20 + 2 = 22 fichiers). Ce fichier
+est le suivi de ces gabarits, jusqu'à leur téléchargement depuis OneDrive.
+
+Écart de comptage : `docs/domaine/documents-mission.md` recense 23 documents (20 « à
+récupérer » et 3 « disponibles »), soit 25 fichiers avec les variantes, et non 27 comme
+l'indiquent le plan et la décision D15 du lot 4. Les deux fichiers manquants dans le décompte
+sont à identifier avec l'ONEA ; la liste ci-dessous fait foi pour les 22 fichiers à récupérer.
+
+Tant que le modèle officiel n'est pas déposé, la plateforme génère un **gabarit provisoire**
+construit depuis le contrat de balises du type (bandeau « GABARIT PROVISOIRE — en attente du
+modèle officiel ONEA »). Le maître d'ouvrage accepte ces gabarits provisoires (ou vierges)
+jusqu'à la récupération des 22 fichiers réels.
 
 Liste de référence : `docs/domaine/documents-mission.md`. Les codes de contrat des documents
 dont le lot consommateur n'est pas encore réalisé sont indicatifs et seront confirmés à la

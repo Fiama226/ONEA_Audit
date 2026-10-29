@@ -1,8 +1,9 @@
 """Versioned tag contracts: the typed tree of variables a Word template may use."""
 
+import copy
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
@@ -24,13 +25,23 @@ class Champ:
 
 @dataclass(frozen=True)
 class Contrat:
-    """`exemple` is a complete sample context, common blocks (`onea`, `document`) included."""
+    """`exemple` is a complete sample context, common blocks (`onea`, `document`) included.
+
+    It is deep-copied and validated at construction; it is excluded from equality and hashing
+    so that contracts (and the document types holding them) stay hashable.
+    """
 
     code: str
     libelle: str
     version: int
     champs: tuple[Champ, ...]
-    exemple: dict[str, Any]
+    exemple: dict[str, Any] = field(compare=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "exemple", copy.deepcopy(self.exemple))
+        ecarts = ecarts_contexte(self, self.exemple)
+        if ecarts:
+            raise ValueError(f"Exemple non conforme au contrat {self.code} : " + " ".join(ecarts))
 
 
 CHAMPS_COMMUNS: tuple[Champ, ...] = (
@@ -107,6 +118,25 @@ BLOC_MISSION = Champ(
         Champ("chef_mission", TypeChamp.TEXTE, "Chef de mission"),
     ),
 )
+
+
+def champ_vers_dict(champ: Champ) -> dict[str, Any]:
+    """JSON-serialisable form of a field tree (sent to the rendering subprocess)."""
+    return {
+        "nom": champ.nom,
+        "type": champ.type.value,
+        "description": champ.description,
+        "enfants": [champ_vers_dict(e) for e in champ.enfants],
+    }
+
+
+def champ_depuis_dict(donnees: dict[str, Any]) -> Champ:
+    return Champ(
+        donnees["nom"],
+        TypeChamp(donnees["type"]),
+        donnees["description"],
+        tuple(champ_depuis_dict(e) for e in donnees["enfants"]),
+    )
 
 
 def _tous_les_champs(c: Contrat) -> tuple[Champ, ...]:

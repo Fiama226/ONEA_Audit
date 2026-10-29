@@ -1,15 +1,24 @@
-"""Verification of untrusted Word templates before they are stored or activated."""
+"""Verification of untrusted Word templates before they are stored or activated.
+
+The template is never executed here: the archive is parsed defensively (hardened XML parser,
+allowlist of part types, no external relationship) and the tags are checked statically
+against the contract by `balises.AnalyseBalises`. Real rendering happens later, bounded, in
+`rendu.rendre_docx`.
+"""
 
 import io
+import re
 import zipfile
-from typing import Final
+from typing import Any, Final
 
 from docxtpl import DocxTemplate
 from jinja2 import TemplateSyntaxError
+from lxml import etree
 
-from .contrats import Contrat, balises_racines
-from .exceptions import GabaritInvalideError, RenduError
-from .rendu import environnement_jinja, rendre_docx
+from .bac_a_sable import environnement_jinja
+from .balises import AnalyseBalises
+from .contrats import Contrat
+from .exceptions import GabaritInvalideError
 
 MAX_ENTREES: Final = 2000
 MAX_OCTETS_DECOMPRESSES: Final = 50 * 1024 * 1024
@@ -23,9 +32,137 @@ MSG_DOC: Final = (
 )
 MSG_MACROS: Final = "Les gabarits contenant des macros sont refusés."
 MSG_DECOMPRESSE: Final = "Le fichier est trop volumineux une fois décompressé."
+MSG_EXTERNE: Final = (
+    "Le fichier contient des liens vers des ressources externes (images ou objets liés) : "
+    "intégrez-les au document."
+)
+MSG_CHAMPS: Final = (
+    "Le fichier contient des champs Word qui chargent des fichiers ou des données "
+    "externes (INCLUDETEXT, INCLUDEPICTURE, LINK, DDE) : supprimez-les."
+)
+MSG_ELEMENT: Final = "Le fichier contient un élément non pris en charge : {nom}."
 
-# Names Jinja treats as free variables although they are environment globals.
-_GLOBALS_JINJA: Final = frozenset({"range", "dict", "lipsum", "cycler", "joiner", "namespace"})
+_NS_CT: Final = "{http://schemas.openxmlformats.org/package/2006/content-types}"
+_NS_REL: Final = "{http://schemas.openxmlformats.org/package/2006/relationships}"
+_NS_W: Final = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+_TYPES_XML: Final = ("application/xml", "text/xml")
+_PREFIXES_AUTORISES: Final = (
+    "image/",
+    "application/vnd.openxmlformats-officedocument.",
+    "application/vnd.openxmlformats-package.",
+    "application/vnd.ms-word.",
+    "application/vnd.ms-office.drawingml.",
+)
+_TYPES_AUTORISES: Final = frozenset({"application/x-fontdata", *_TYPES_XML})
+_MOTS_MACRO: Final = ("macroenabled", "vbaproject")
+_MOTS_REFUSES: Final = ("activex", "oleobject", "officedocument.package", "embeddings")
+_CHAMP_DANGEREUX: Final = re.compile(
+    r"^\s*(INCLUDETEXT|INCLUDEPICTURE|INCLUDE|LINK|DDEAUTO|DDE|IMPORT)\b", re.IGNORECASE
+)
+_PROPRIETES: Final = ("title", "subject", "author", "comments", "keywords", "category")
+
+
+def _parseur() -> etree.XMLParser:
+    return etree.XMLParser(
+        resolve_entities=False,
+        no_network=True,
+        load_dtd=False,
+        dtd_validation=False,
+        huge_tree=False,
+    )
+
+
+def _lire_borne(archive: zipfile.ZipFile, info: zipfile.ZipInfo, limite: int) -> bytes | None:
+    """Read a whole entry, or None when it exceeds `limite` bytes once decompressed."""
+    morceaux: list[bytes] = []
+    total = 0
+    with archive.open(info) as flux:
+        while bloc := flux.read(_BLOC):
+            total += len(bloc)
+            if total > limite:
+                return None
+            morceaux.append(bloc)
+    return b"".join(morceaux)
+
+
+def _compter(archive: zipfile.ZipFile, info: zipfile.ZipInfo, limite: int) -> int | None:
+    total = 0
+    with archive.open(info) as flux:
+        while bloc := flux.read(_BLOC):
+            total += len(bloc)
+            if total > limite:
+                return None
+    return total
+
+
+def _nom_suspect(nom: str) -> bool:
+    return nom.startswith("/") or "\\" in nom or ".." in nom.split("/") or "\x00" in nom
+
+
+def _types_de_contenu(donnees: bytes) -> tuple[dict[str, str], dict[str, str]] | None:
+    """(defaults by extension, overrides by part name), or None when unparsable."""
+    try:
+        racine = etree.fromstring(donnees, _parseur())
+    except etree.XMLSyntaxError:
+        return None
+    defauts: dict[str, str] = {}
+    surcharges: dict[str, str] = {}
+    for element in racine:
+        if element.tag == f"{_NS_CT}Default":
+            defauts[element.get("Extension", "").lower()] = element.get("ContentType", "")
+        elif element.tag == f"{_NS_CT}Override":
+            surcharges[element.get("PartName", "")] = element.get("ContentType", "")
+    return defauts, surcharges
+
+
+def _est_xml(nom: str, type_contenu: str) -> bool:
+    return (
+        type_contenu.endswith("+xml")
+        or type_contenu in _TYPES_XML
+        or nom.lower().endswith((".xml", ".rels"))
+    )
+
+
+def _verifier_xml(nom: str, donnees: bytes) -> str | None:
+    """Parse one XML part with a hardened parser; reject DOCTYPE/ENTITY, external links, fields."""
+    try:
+        racine = etree.fromstring(donnees, _parseur())
+    except (etree.XMLSyntaxError, ValueError):
+        return MSG_NON_DOCX
+    arbre = racine.getroottree()
+    docinfo = arbre.docinfo
+    if docinfo.doctype or docinfo.internalDTD is not None or docinfo.externalDTD is not None:
+        return MSG_NON_DOCX
+    if any(True for _ in racine.iter(etree.Entity)):
+        return MSG_NON_DOCX
+    if nom.lower().endswith(".rels"):
+        for relation in racine.iter(f"{_NS_REL}Relationship"):
+            genre = (relation.get("Type") or "").lower()
+            if any(mot in genre for mot in _MOTS_MACRO):
+                return MSG_MACROS
+            if relation.get("TargetMode") == "External" and not genre.endswith("/hyperlink"):
+                return MSG_EXTERNE
+    elif nom.startswith("word/"):
+        for element in racine.iter(f"{_NS_W}instrText", f"{_NS_W}fldSimple"):
+            instruction = (
+                element.text if element.tag.endswith("instrText") else element.get(f"{_NS_W}instr")
+            )
+            if instruction and _CHAMP_DANGEREUX.match(instruction):
+                return MSG_CHAMPS
+    return None
+
+
+def _type_refuse(nom: str, type_contenu: str | None) -> str | None:
+    if type_contenu is None or not type_contenu:
+        return MSG_ELEMENT.format(nom=nom)
+    bas = type_contenu.lower()
+    if any(mot in bas for mot in _MOTS_MACRO):
+        return MSG_MACROS
+    if any(mot in bas for mot in _MOTS_REFUSES):
+        return MSG_ELEMENT.format(nom=nom)
+    if bas in _TYPES_AUTORISES or bas.startswith(_PREFIXES_AUTORISES):
+        return None
+    return MSG_ELEMENT.format(nom=nom)
 
 
 def _verifier_archive(contenu: bytes) -> str | None:
@@ -35,31 +172,71 @@ def _verifier_archive(contenu: bytes) -> str | None:
             infos = archive.infolist()
             if len(infos) > MAX_ENTREES:
                 return MSG_DECOMPRESSE
-            noms = {i.filename for i in infos}
+            noms = [i.filename for i in infos]
+            if len(set(noms)) != len(noms) or any(_nom_suspect(n) for n in noms):
+                return MSG_NON_DOCX
             if "[Content_Types].xml" not in noms or "word/document.xml" not in noms:
                 return MSG_NON_DOCX
-            if any(n.lower().endswith("vbaproject.bin") for n in noms):
+            if any("vbaproject" in n.lower() for n in noms):
                 return MSG_MACROS
-            total = 0
+            restant = MAX_OCTETS_DECOMPRESSES
+            ct_info = archive.getinfo("[Content_Types].xml")
+            brut = _lire_borne(archive, ct_info, restant)
+            if brut is None:
+                return MSG_DECOMPRESSE
+            restant -= len(brut)
+            types = _types_de_contenu(brut)
+            if types is None:
+                return MSG_NON_DOCX
+            defauts, surcharges = types
+            probleme = _verifier_xml("[Content_Types].xml", brut)
+            if probleme:
+                return probleme
             for info in infos:
-                est_xml = info.filename.lower().endswith((".xml", ".rels"))
-                debut = b""
-                with archive.open(info) as flux:
-                    while bloc := flux.read(_BLOC):
-                        if not debut:
-                            debut = bloc
-                        total += len(bloc)
-                        if total > MAX_OCTETS_DECOMPRESSES:
-                            return MSG_DECOMPRESSE
-                        if est_xml and (b"<!ENTITY" in bloc or b"<!DOCTYPE" in bloc):
-                            return MSG_NON_DOCX
-                if info.filename == "[Content_Types].xml":
-                    with archive.open(info) as flux:
-                        if b"macroEnabled" in flux.read(MAX_OCTETS_DECOMPRESSES):
-                            return MSG_MACROS
+                nom = info.filename
+                if nom == "[Content_Types].xml" or info.is_dir():
+                    continue
+                extension = nom.rsplit(".", 1)[-1].lower() if "." in nom else ""
+                type_contenu = surcharges.get(f"/{nom}", defauts.get(extension))
+                probleme = _type_refuse(nom, type_contenu)
+                if probleme:
+                    return probleme
+                if _est_xml(nom, type_contenu or ""):
+                    donnees = _lire_borne(archive, info, restant)
+                    if donnees is None:
+                        return MSG_DECOMPRESSE
+                    restant -= len(donnees)
+                    probleme = _verifier_xml(nom, donnees)
+                    if probleme:
+                        return probleme
+                else:
+                    taille = _compter(archive, info, restant)
+                    if taille is None:
+                        return MSG_DECOMPRESSE
+                    restant -= taille
     except (zipfile.BadZipFile, RuntimeError, NotImplementedError, OSError, EOFError):
         return MSG_NON_DOCX
     return None
+
+
+def _sources_jinja(modele: DocxTemplate) -> list[str]:
+    """Every XML/text source docxtpl renders: body, headers, footers, footnotes, properties."""
+    modele.init_docx()
+    sources = [modele.patch_xml(modele.get_xml())]
+    for uri in (modele.HEADER_URI, modele.FOOTER_URI):
+        for _cle, partie in modele.get_headers_footers(uri):
+            sources.append(modele.patch_xml(modele.get_part_xml(partie)))
+    for partie in modele.docx.part.package.iter_parts():
+        if partie.content_type.endswith("wordprocessingml.footnotes+xml"):
+            blob: Any = partie.blob
+            texte = blob.decode("utf-8") if isinstance(blob, bytes) else str(blob)
+            sources.append(modele.patch_xml(texte))
+    proprietes = modele.docx.core_properties
+    for nom in _PROPRIETES:
+        valeur = getattr(proprietes, nom, "")
+        if valeur:
+            sources.append(valeur)
+    return sources
 
 
 def analyser_gabarit(
@@ -67,7 +244,7 @@ def analyser_gabarit(
 ) -> frozenset[str]:
     """Check a template against D4 and return its root tags; raise with every error found."""
     nom = nom_fichier.lower()
-    if nom.endswith(".doc") or (nom.endswith(".docx") is False and contenu[:4] == _MAGIC_OLE):
+    if nom.endswith(".doc") or contenu[:4] == _MAGIC_OLE:
         raise GabaritInvalideError([MSG_DOC])
     if nom.endswith(".docm"):
         raise GabaritInvalideError([MSG_MACROS])
@@ -79,26 +256,20 @@ def analyser_gabarit(
     if probleme:
         raise GabaritInvalideError([probleme])
 
-    erreurs: list[str] = []
     env = environnement_jinja()
+    analyse = AnalyseBalises(env, contrat)
     try:
         modele = DocxTemplate(io.BytesIO(contenu))
-        racines = frozenset(modele.get_undeclared_template_variables(env)) - _GLOBALS_JINJA
-    except TemplateSyntaxError as exc:
-        raise GabaritInvalideError(
-            [f"Erreur de syntaxe dans les balises : {exc.message} (ligne {exc.lineno})."]
-        ) from exc
+        sources = _sources_jinja(modele)
     except Exception as exc:
         raise GabaritInvalideError([MSG_NON_DOCX]) from exc
-
-    for balise in sorted(racines - balises_racines(contrat)):
-        erreurs.append(f"Balise inconnue du contrat « {contrat.libelle} » : {balise}.")
-    try:
-        rendre_docx(contenu, contrat.exemple, contrat)
-    except RenduError as exc:
-        erreurs.append(
-            f"Le rendu d'essai avec les données d'exemple a échoué : {str(exc).rstrip('.')}."
-        )
-    if erreurs:
-        raise GabaritInvalideError(erreurs)
-    return racines
+    for source in sources:
+        try:
+            analyse.analyser(source)
+        except TemplateSyntaxError as exc:
+            raise GabaritInvalideError(
+                [f"Erreur de syntaxe dans les balises : {exc.message}."]
+            ) from exc
+    if analyse.erreurs:
+        raise GabaritInvalideError(sorted(analyse.erreurs))
+    return frozenset(analyse.racines)
