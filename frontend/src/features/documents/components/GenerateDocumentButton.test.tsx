@@ -6,6 +6,7 @@ import { axe } from "vitest-axe";
 import { fr } from "@/i18n/fr";
 import { API_URL, server } from "@/test/msw";
 import { aDisponible, aDocument, aVersion, OBJET_ID, renderDocuments } from "../testUtils";
+import { DocumentStatusBadge } from "./DocumentStatusBadge";
 import { GenerateDocumentButton } from "./GenerateDocumentButton";
 
 const d = fr.documents;
@@ -42,6 +43,20 @@ describe("GenerateDocumentButton", () => {
   it("labels the button « Régénérer » when a document exists", () => {
     renderDocuments(<GenerateDocumentButton disponible={aDisponible({ document: aDocument() })} />);
     expect(screen.getByRole("button", { name: d.regenerate })).toBeEnabled();
+  });
+
+  it("announces a generation in progress through a live region", () => {
+    renderDocuments(<GenerateDocumentButton disponible={aDisponible({ en_cours: true })} />);
+    expect(screen.getByRole("status")).toHaveTextContent(d.generating);
+  });
+
+  it.each([
+    ["EN_COURS", "Génération en cours…"],
+    ["PRETE", "Prête"],
+    ["ECHEC", "Échec"],
+  ] as const)("announces the status %s in a live region", (statut, text) => {
+    renderDocuments(<DocumentStatusBadge version={{ statut, statut_pdf: "NON_DEMANDE" }} />);
+    expect(screen.getByRole("status")).toHaveTextContent(text);
   });
 
   it("displays a 422 as an alert", async () => {

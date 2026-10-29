@@ -10,7 +10,8 @@ import type { DocumentDisponible } from "../types";
 export function GenerateDocumentButton({ disponible }: { disponible: DocumentDisponible }) {
   const helpId = useId();
   const generate = useGenerateDocument();
-  const disabled = !disponible.peut_generer || disponible.en_cours || generate.isPending;
+  const busy = disponible.en_cours || generate.isPending;
+  const disabled = !disponible.peut_generer || busy;
   const help = !disponible.peut_generer ? disponible.raison : null;
   const error = generate.error
     ? isApiError(generate.error)
@@ -29,12 +30,15 @@ export function GenerateDocumentButton({ disponible }: { disponible: DocumentDis
           generate.mutate({ type_document: disponible.type_document, objet: disponible.objet_id })
         }
       >
-        {disponible.en_cours || generate.isPending
+        {busy
           ? fr.documents.generating
           : disponible.document
             ? fr.documents.regenerate
             : fr.documents.generate}
       </Button>
+      <span role="status" className="sr-only">
+        {busy ? fr.documents.generating : ""}
+      </span>
       {help ? (
         <span id={helpId} className="text-xs text-text-muted">
           {help}

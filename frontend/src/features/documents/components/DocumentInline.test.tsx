@@ -35,6 +35,15 @@ describe("DocumentInline", () => {
     ).toEqual([]);
   });
 
+  it("shows a loading status, then an explicit empty state when the item is unknown", async () => {
+    server.use(http.get(`${API_URL}/api/v1/documents/available/`, () => HttpResponse.json([])));
+    renderDocuments(
+      <DocumentInline typeDocument="ORDRE_MISSION" objetId={OBJET_ID} missionId={MISSION_ID} />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(fr.common.loading);
+    expect(await screen.findByText(d.noDocument)).toBeInTheDocument();
+  });
+
   it("offers « Générer » and no download when nothing was generated yet", async () => {
     server.use(
       http.get(`${API_URL}/api/v1/documents/available/`, () => HttpResponse.json([aDisponible()])),

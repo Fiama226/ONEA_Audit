@@ -12,10 +12,19 @@ export function DocumentInline({ typeDocument, objetId, missionId }: Props) {
   if (available.isError) {
     return <p className="text-sm text-text-muted">{fr.documents.loadError}</p>;
   }
-  const disponible = available.data?.find(
+  if (!available.data) {
+    return (
+      <p role="status" className="text-sm text-text-muted">
+        {fr.common.loading}
+      </p>
+    );
+  }
+  const disponible = available.data.find(
     (d) => d.type_document === typeDocument && d.objet_id === objetId,
   );
-  if (!disponible) return null;
+  if (!disponible) {
+    return <p className="text-sm text-text-muted">{fr.documents.noDocument}</p>;
+  }
   const version = disponible.document?.derniere_version ?? null;
 
   return (
@@ -34,6 +43,11 @@ export function DocumentInline({ typeDocument, objetId, missionId }: Props) {
       )}
       <GenerateDocumentButton disponible={disponible} />
       {version ? <DownloadButtons version={version} /> : null}
+      {available.timeoutError ? (
+        <p role="alert" className="w-full text-xs text-text-muted">
+          {available.timeoutError.detail}
+        </p>
+      ) : null}
     </div>
   );
 }

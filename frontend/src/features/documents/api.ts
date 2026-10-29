@@ -5,7 +5,7 @@ import {
   type QueryClient,
   type QueryKey,
 } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { apiDownload, apiFetch, apiUpload } from "@/api/client";
 import { ApiError } from "@/api/errors";
 import { toQuery } from "@/api/query";
@@ -137,23 +137,58 @@ export function useDocument(id: string | undefined) {
   });
 }
 
+/**
+ * Budget d'interrogation : `signature` identifie le traitement en cours ("" = aucun). Après
+ * 3 minutes, `timedOut` passe à vrai et `stoppedRef.current` coupe l'interrogation ; un changement de
+ * signature (nouvelle génération, nouvel état) ou la fin du traitement remet le compteur à zéro.
+ */
+function usePollBudget(signature: string, stoppedRef: RefObject<boolean>) {
+  const [expired, setExpired] = useState<string | null>(null);
+  const timedOut = signature !== "" && expired === signature;
+  useEffect(() => {
+    stoppedRef.current = timedOut;
+  }, [timedOut, stoppedRef]);
+  useEffect(() => {
+    if (signature === "") return;
+    const timer = setTimeout(() => setExpired(signature), POLL_TIMEOUT_MS);
+    return () => {
+      clearTimeout(timer);
+      setExpired(null);
+    };
+  }, [signature]);
+  return timedOut;
+}
+
+function timeoutError(timedOut: boolean): ApiError | null {
+  return timedOut ? new ApiError(0, GENERATION_TIMEOUT_MESSAGE) : null;
+}
+
+function pendingSignature(items: DocumentDisponible[] | undefined): string {
+  return (items ?? [])
+    .flatMap((d) => {
+      const v = d.document?.derniere_version;
+      if (v && isInProgress(v)) return [`${v.id}:${v.statut}:${v.statut_pdf}`];
+      return d.en_cours ? [`${d.type_document}:${d.objet_id}`] : [];
+    })
+    .sort()
+    .join("|");
+}
+
 export function useAvailableDocuments(missionId: string | undefined) {
-  return useQuery({
+  const stoppedRef = useRef(false);
+  const query = useQuery({
     queryKey: documentKeys.available(missionId),
     queryFn: () =>
       apiFetch<DocumentDisponible[]>(
         `${BASE}/documents/available/${toQuery({ mission: missionId })}`,
       ),
     enabled: missionId !== undefined,
-    // Génération Word ou PDF en cours : le statut est relu toutes les 2 s.
+    // Génération Word ou PDF en cours : le statut est relu toutes les 2 s, pendant 3 minutes au plus.
     refetchInterval: (q) =>
-      q.state.data?.some(
-        (d) =>
-          d.en_cours || (d.document?.derniere_version && isInProgress(d.document.derniere_version)),
-      )
-        ? POLL_INTERVAL_MS
-        : false,
+      pendingSignature(q.state.data) !== "" && !stoppedRef.current ? POLL_INTERVAL_MS : false,
   });
+  const timedOut = usePollBudget(pendingSignature(query.data), stoppedRef);
+  return Object.assign(query, { timeoutError: timeoutError(timedOut) });
 }
 
 /** Toute mutation de génération rafraîchit les documents disponibles, les listes et le détail. */
@@ -181,24 +216,21 @@ export function useGenerateDocument() {
  * abandonne après 3 minutes (`timeoutError` renseigné).
  */
 export function useVersion(id: string | undefined) {
-  const [timedOut, setTimedOut] = useState(false);
+  const stoppedRef = useRef(false);
   const query = useQuery({
     queryKey: documentKeys.version(id),
     queryFn: () => apiFetch<DocumentVersion>(`${BASE}/document-versions/${id}/`),
     enabled: id !== undefined,
     refetchInterval: (q) => {
       const data = q.state.data;
-      return data && isInProgress(data) && !timedOut ? POLL_INTERVAL_MS : false;
+      return data && isInProgress(data) && !stoppedRef.current ? POLL_INTERVAL_MS : false;
     },
   });
-  const polling = query.data !== undefined && isInProgress(query.data);
-  useEffect(() => {
-    if (!polling) return;
-    const timer = setTimeout(() => setTimedOut(true), POLL_TIMEOUT_MS);
-    return () => clearTimeout(timer);
-  }, [polling, id]);
-  const timeoutError = timedOut && polling ? new ApiError(0, GENERATION_TIMEOUT_MESSAGE) : null;
-  return Object.assign(query, { timeoutError });
+  const data = query.data;
+  const signature =
+    data && isInProgress(data) ? `${data.id}:${data.statut}:${data.statut_pdf}` : "";
+  const timedOut = usePollBudget(signature, stoppedRef);
+  return Object.assign(query, { timeoutError: timeoutError(timedOut) });
 }
 
 export function useRetryPdf() {

@@ -12,7 +12,8 @@ export function DocumentStatusBadge({ version }: { version: VersionStatus }) {
         : "secondary";
   const pdfNote = version.statut_pdf === "EN_COURS" || version.statut_pdf === "ECHEC";
   return (
-    <span className="inline-flex flex-wrap items-center gap-1">
+    // role="status" (aria-live polite) : le passage « en cours » -> « Prête » / « Échec » est annoncé.
+    <span role="status" className="inline-flex flex-wrap items-center gap-1">
       <Badge variant={variant}>{STATUT_GENERATION_LABELS[version.statut]}</Badge>
       {version.statut === "PRETE" && pdfNote ? (
         <Badge variant={version.statut_pdf === "ECHEC" ? "destructive" : "secondary"}>

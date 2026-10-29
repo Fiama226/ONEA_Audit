@@ -5,6 +5,24 @@ import { API_URL, server } from "@/test/msw";
 import { apiDownload, apiFetch, apiUpload, setTokenProvider } from "./client";
 import { ApiError, isApiError } from "./errors";
 
+describe("apiDownload filename sanitising", () => {
+  it("strips path segments and control characters", async () => {
+    server.use(
+      http.get(
+        `${API_URL}/api/v1/evil/`,
+        () =>
+          new HttpResponse("x", {
+            headers: {
+              "Content-Disposition": "attachment; filename*=UTF-8''..%2F..%5Cetc%2Fpasswd%0A.docx",
+            },
+          }),
+      ),
+    );
+    const { filename } = await apiDownload("/api/v1/evil/");
+    expect(filename).toBe("passwd.docx");
+  });
+});
+
 describe("apiUpload", () => {
   it("sends FormData with a multipart boundary (no forced JSON type) and the Bearer token", async () => {
     let contentType: string | null = null;

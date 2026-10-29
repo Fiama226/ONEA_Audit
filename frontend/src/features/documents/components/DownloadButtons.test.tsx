@@ -1,7 +1,7 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import { fr } from "@/i18n/fr";
 import { API_URL, server } from "@/test/msw";
@@ -9,6 +9,8 @@ import { aVersion, renderDocuments, VERSION_ID } from "../testUtils";
 import { DownloadButtons } from "./DownloadButtons";
 
 const d = fr.documents;
+
+afterEach(() => vi.restoreAllMocks());
 
 describe("DownloadButtons", () => {
   it("disables the PDF button with the reason while the PDF is not ready", async () => {
@@ -34,12 +36,24 @@ describe("DownloadButtons", () => {
         });
       }),
     );
-    URL.createObjectURL = () => "blob:x";
-    URL.revokeObjectURL = () => undefined;
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:x");
+    vi.spyOn(URL, "revokeObjectURL").mockReturnValue(undefined);
     renderDocuments(<DownloadButtons version={aVersion()} />);
     await userEvent.click(screen.getByRole("button", { name: d.downloadPdf }));
-    await screen.findByRole("button", { name: d.downloadPdf });
-    expect(format).toBe("pdf");
+    await waitFor(() => expect(format).toBe("pdf"));
+  });
+
+  it("shows a clear French message on a 409 integrity error, not the raw detail", async () => {
+    server.use(
+      http.get(`${API_URL}/api/v1/document-versions/${VERSION_ID}/download/`, () =>
+        HttpResponse.json({ detail: "IntegriteError: sha mismatch", errors: {} }, { status: 409 }),
+      ),
+    );
+    renderDocuments(<DownloadButtons version={aVersion()} />);
+    await userEvent.click(screen.getByRole("button", { name: d.downloadWord }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(d.integrityError);
+    expect(alert).not.toHaveTextContent("sha mismatch");
   });
 
   it("shows the retry button only when the server allows it", async () => {
