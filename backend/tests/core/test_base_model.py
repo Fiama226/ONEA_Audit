@@ -1,6 +1,7 @@
 import pytest
 from auditlog.models import LogEntry
 from django.apps import apps
+from django.utils import timezone
 
 from apps.core.exceptions import SuppressionPhysiqueInterditeError
 from apps.core.models import BaseModel
@@ -52,9 +53,27 @@ def test_soft_delete_logs_actor_and_deleted_at(user: User) -> None:
     e.soft_delete(by=user)
     entries = LogEntry.objects.get_for_object(e)
     assert entries.count() == before + 1
-    last = entries.latest("timestamp")
-    assert "deleted_at" in last.changes_dict
-    assert last.actor == user
+    suppression = [
+        x for x in entries if x.action == LogEntry.Action.UPDATE and "deleted_at" in x.changes_dict
+    ]
+    assert len(suppression) == 1
+    assert suppression[0].actor == user
+
+
+def test_soft_delete_audit_independant_de_l_egalite_d_horodatage(user: User) -> None:
+    """Horloge Windows ~15,6 ms : création et suppression peuvent partager le même instant."""
+    e = Exemple.objects.create(nom="a")
+    e.soft_delete(by=user)
+    instant = timezone.now()
+    LogEntry.objects.get_for_object(e).update(timestamp=instant)
+    entries = LogEntry.objects.get_for_object(e)
+    assert entries.values("timestamp").distinct().count() == 1
+    suppression = [
+        x for x in entries if x.action == LogEntry.Action.UPDATE and "deleted_at" in x.changes_dict
+    ]
+    assert len(suppression) == 1
+    assert suppression[0].actor == user
+    assert entries.order_by("-timestamp", "-pk").first() == suppression[0]
 
 
 def test_soft_delete_twice_is_noop(user: User) -> None:

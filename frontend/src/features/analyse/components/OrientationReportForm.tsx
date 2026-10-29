@@ -87,7 +87,9 @@ function ReportForm({
     setFormError(null);
     setSaved(false);
     try {
-      await save.mutateAsync({ missionId, data: values });
+      const data =
+        values.couverture_ordre === "EXACTE" ? { ...values, justification_couverture: "" } : values;
+      await save.mutateAsync({ missionId, data });
       setSaved(true);
     } catch (e) {
       setFormError(applyApiErrors(e, setError, FIELDS));
@@ -99,6 +101,7 @@ function ReportForm({
     <form
       onSubmit={(e) => void handleSubmit(submit)(e)}
       noValidate
+      onChange={() => setSaved(false)}
       aria-labelledby={`report-${missionId}`}
       className="grid gap-4"
     >

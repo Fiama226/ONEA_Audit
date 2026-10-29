@@ -16,7 +16,7 @@ import {
 import { fr } from "@/i18n/fr";
 import { useAuditObjectives, useInitializeObjectives, useSaveAuditObjective } from "../api";
 import { MOTIF_NON_TEST_LABELS } from "../labels";
-import type { ObjectifAudit } from "../types";
+import type { MotifNonTest, ObjectifAudit } from "../types";
 import { NonTestDialog } from "./NonTestDialog";
 
 const t = fr.analyseVII;
@@ -24,6 +24,17 @@ const t = fr.analyseVII;
 function errorText(e: unknown, field?: string): string {
   if (!isApiError(e)) return fr.errors.generic;
   return (field ? e.errors[field]?.join(" ") : undefined) ?? e.detail;
+}
+
+/** Détail du serveur suivi de toutes les erreurs de champ, sans doublon (échec atomique). */
+function fullErrorText(e: unknown): string {
+  if (!isApiError(e)) return fr.errors.generic;
+  const parts = [e.detail, ...Object.values(e.errors).flat()].filter(Boolean);
+  return [...new Set(parts)].join(" ");
+}
+
+function isMotif(value: string): value is MotifNonTest {
+  return value in MOTIF_NON_TEST_LABELS;
 }
 
 function ObjectiveRow({
@@ -40,17 +51,20 @@ function ObjectiveRow({
   const [draft, setDraft] = useState(objective.libelle ?? "");
   const [prev, setPrev] = useState(objective.libelle ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   if (prev !== (objective.libelle ?? "")) {
     setPrev(objective.libelle ?? "");
     setDraft(objective.libelle ?? "");
   }
 
   async function run(data: { libelle?: string; retenu?: boolean }) {
-    setError(null);
+    const isLabel = data.libelle !== undefined;
+    const report = isLabel ? setError : setActionError;
+    report(null);
     try {
       await save.mutateAsync({ id: objective.id, data });
     } catch (e) {
-      setError(errorText(e, "libelle"));
+      report(errorText(e, isLabel ? "libelle" : undefined));
     }
   }
 
@@ -105,8 +119,9 @@ function ObjectiveRow({
         ) : (
           <span className="inline-flex items-center gap-1">
             <MinusCircle aria-hidden className="size-4" />
-            {t.notTested}
-            {objective.motif_non_test ? MOTIF_NON_TEST_LABELS[objective.motif_non_test] : ""}
+            {objective.motif_non_test
+              ? `${t.notTested} : ${MOTIF_NON_TEST_LABELS[objective.motif_non_test]}`
+              : t.notTested}
           </span>
         )}
       </TableCell>
@@ -134,6 +149,11 @@ function ObjectiveRow({
               {t.test}
             </Button>
           )}
+          {actionError && (
+            <p role="alert" className="mt-1 text-sm text-destructive">
+              {actionError}
+            </p>
+          )}
         </TableCell>
       )}
     </TableRow>
@@ -152,7 +172,7 @@ export function ObjectivesTable({ missionId, editable }: { missionId: string; ed
     try {
       await init.mutateAsync({ missionId });
     } catch (e) {
-      setInitError(errorText(e));
+      setInitError(fullErrorText(e));
     }
   }
 
@@ -220,7 +240,7 @@ export function ObjectivesTable({ missionId, editable }: { missionId: string; ed
             id: o.id,
             data: {
               retenu: false,
-              motif_non_test: values.motif_non_test as keyof typeof MOTIF_NON_TEST_LABELS,
+              motif_non_test: isMotif(values.motif_non_test) ? values.motif_non_test : "",
               justification: values.justification,
             },
           })

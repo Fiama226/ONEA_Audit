@@ -1,10 +1,30 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from auditlog.middleware import AuditlogMiddleware
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from django.http.response import HttpResponseBase
 from django.utils.functional import SimpleLazyObject, empty
+
+from apps.core.reseau import PROXY_META, adresse_reelle
+
+
+class AdresseClientMiddleware:
+    """Remplace ``REMOTE_ADDR`` par l'adresse réelle du client (proxy de confiance seulement).
+
+    L'adresse du proxy est conservée dans ``META["ONEA_PROXY_ADDR"]``.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        pair = request.META.get("REMOTE_ADDR")
+        reelle = adresse_reelle(request.META)
+        if reelle is not None and reelle != pair:
+            request.META[PROXY_META] = pair
+            request.META["REMOTE_ADDR"] = reelle
+        return self.get_response(request)
 
 
 class PasDeCacheApiMiddleware:
@@ -50,3 +70,8 @@ class LazyActorAuditlogMiddleware(AuditlogMiddleware):  # type: ignore[misc]
         data: dict[str, Any] = super().get_extra_data(request)
         data["actor"] = _LazyActor(lambda: self._get_actor(request))
         return data
+
+    @staticmethod
+    def _get_remote_addr(request: HttpRequest) -> str | None:
+        # Jamais X-Forwarded-For : REMOTE_ADDR a déjà été fiabilisé par AdresseClientMiddleware.
+        return cast("str | None", request.META.get("REMOTE_ADDR"))

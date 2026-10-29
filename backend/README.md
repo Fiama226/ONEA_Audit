@@ -172,3 +172,40 @@ est refusé sauf si `E2E_ALLOW_DB_CLEANUP=1`. Pour une seconde pile à côté de
 `WEB_PORT`, `E2E_API_URL`, `E2E_OIDC_AUTHORITY`, `E2E_DB_CONTAINER` et `POSTGRES_DB`
 (le client Keycloak de dev doit autoriser l'URI de redirection du port choisi).
 
+
+## Dependencies and container images (reproducible builds)
+
+`backend/uv.lock` is committed (runtime + `dev` group). CI uses `uv sync --frozen`; the
+backend image installs `uv export --frozen --no-dev --no-emit-project` with
+`pip install --require-hashes`. The `uv` binary is copied from a pinned
+`ghcr.io/astral-sh/uv:<version>@sha256:...` image.
+
+Update a dependency:
+
+```
+cd backend
+uv lock --upgrade-package <name>     # or edit pyproject.toml, then: uv lock
+uv lock --check                      # must exit 0 (pre-commit hook does the same)
+uv sync --frozen                     # local environment
+```
+
+Commit `pyproject.toml` and `uv.lock` together.
+
+Check that an image matches the lock (`pip freeze` inside the image vs the export):
+
+```
+docker build -f docker/backend.Dockerfile -t onea-backend:check .
+docker run --rm --entrypoint pip onea-backend:check freeze | sort > /tmp/image.txt
+uv export --frozen --no-dev --no-emit-project --no-hashes --format requirements-txt \
+  | grep -v '^#' | grep -v '^ ' | sed 's/ ;.*//' | sort > /tmp/lock.txt
+diff /tmp/image.txt /tmp/lock.txt && echo identical
+```
+
+Update a container image: pick the exact tag (never a floating one), then read the digest of
+the multi-architecture index and write `tag@sha256:...` in `docker/compose.prod.yml` and the
+Dockerfiles (tag only in `compose.yml`, `compose.dev.yml` and the CI services):
+
+```
+docker buildx imagetools inspect <image>:<exact-tag>   # first "Digest:" line = index digest
+sh scripts/verifier-epinglage.sh                       # must exit 0
+```

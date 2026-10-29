@@ -144,7 +144,12 @@ def test_settings_declarent_les_reglages_documents() -> None:
 
 def test_compose_sans_minio() -> None:
     root = Path(settings.BASE_DIR).parent
-    cibles = [*(root / "docker").glob("*.yml"), *root.glob(".env*.example"), root / "Makefile"]
+    cibles = [
+        *root.glob(".env*.example"),
+        root / "Makefile",
+        root / "frontend/.env.example",
+        *(f for d in ("docker", "scripts") for f in (root / d).rglob("*") if f.is_file()),
+    ]
     assert cibles
     for fichier in cibles:
         assert "minio" not in fichier.read_text(encoding="utf-8").lower(), fichier

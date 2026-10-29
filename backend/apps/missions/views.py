@@ -30,6 +30,7 @@ from rest_framework.serializers import BaseSerializer, Serializer
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
 from apps.core.filters import StableOrderingFilter
+from apps.core.reseau import adresse_client
 from apps.core.schema import ERROR_400, ERROR_404, ERROR_422, ERROR_RESPONSES, crud_schema
 from apps.referentiel.models import NiveauRisque
 from apps.signatures.models import Confirmation, TypeDocumentSignable
@@ -109,7 +110,7 @@ class MissionApiViewSet(GenericViewSet[Any]):
 
     @property
     def adresse_ip(self) -> str | None:
-        return cast("str | None", self.request.META.get("REMOTE_ADDR"))
+        return adresse_client(self.request)
 
     def get_object(self) -> Any:
         objet = super().get_object()

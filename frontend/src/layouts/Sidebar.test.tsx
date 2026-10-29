@@ -6,11 +6,11 @@ import { renderWithAuth } from "@/test/shell";
 import { Sidebar } from "./Sidebar";
 
 const HIDDEN: Record<Role, string[]> = {
-  ADMIN: [fr.nav.missions],
+  ADMIN: [fr.nav.missions, fr.nav.documents],
   RAI: [fr.nav.administration],
   AUDITEUR: [fr.nav.administration],
   AUDITE: [fr.nav.programmeAnnuel, fr.nav.referentiel, fr.nav.administration],
-  DG: [fr.nav.missions, fr.nav.administration],
+  DG: [fr.nav.missions, fr.nav.documents, fr.nav.administration],
 };
 const ALL = [
   fr.nav.dashboard,
@@ -42,9 +42,9 @@ describe("Sidebar", () => {
     expect(nav.queryByText(fr.nav.administration)).not.toBeInTheDocument();
   });
 
-  it("gives ADMIN the six entries", () => {
+  it("gives ADMIN the five entries", () => {
     const nav = renderSidebar("ADMIN");
-    expect(nav.getAllByRole("link")).toHaveLength(6);
+    expect(nav.getAllByRole("link")).toHaveLength(5);
   });
 
   it("lists Programme annuel before Missions", () => {
