@@ -1,6 +1,4 @@
 import type { RouteObject } from "react-router-dom";
-import { PlaceholderPage } from "@/pages/PlaceholderPage";
-import { fr } from "@/i18n/fr";
 import { NumberingPage } from "./pages/NumberingPage";
 import { TemplateDetailPage } from "./pages/TemplateDetailPage";
 import { TemplatesPage } from "./pages/TemplatesPage";
