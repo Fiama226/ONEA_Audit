@@ -23,6 +23,7 @@ function labelFor(segment: string, previous: string | undefined): string {
   if (previous === "etapes" && /^\d+$/.test(segment)) {
     return `${fr.missions.stepPrefix} ${toRoman(Number(segment))}`;
   }
+  if (previous === "utilisateurs" && /^\d+$/.test(segment)) return fr.utilisateurs.crumbUser;
   if (segment === "nouveau" && previous === "risques") return fr.refCartographie.crumbNewRisk;
   return SEGMENT_LABELS[segment] ?? segment;
 }

@@ -7,6 +7,7 @@ import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { missionRoutes } from "@/features/missions/routes";
 import { ReferentielLayout } from "@/features/referentiel/components/ReferentielLayout";
 import { referentielRoutes } from "@/features/referentiel/routes";
+import { administrationRoutes } from "@/features/utilisateurs/routes";
 import { fr } from "@/i18n/fr";
 import { AppShell } from "@/layouts/AppShell";
 import { rolesFor } from "@/layouts/navigation";
@@ -68,7 +69,8 @@ export const appRoutes: RouteObject[] = [
           { path: "/documents", element: <PlaceholderPage title={fr.nav.documents} /> },
           {
             path: "/administration",
-            element: guarded("/administration", <PlaceholderPage title={fr.nav.administration} />),
+            element: guarded("/administration", <Outlet />),
+            children: administrationRoutes,
           },
           { path: "*", element: <NotFound /> },
         ],

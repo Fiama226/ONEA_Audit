@@ -13,6 +13,7 @@ dependencies = [
     "django-auditlog>=3.0",
     "django-fsm>=2.8",
     "psycopg[binary]>=3.2",
+    "requests>=2.32",
     "celery[redis]>=5.4",
     "mozilla-django-oidc>=4.0",
     "django-storages[s3]>=1.14",

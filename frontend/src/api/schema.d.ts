@@ -1213,6 +1213,160 @@ export interface paths {
         patch: operations["v1_risks_partial_update"];
         trace?: never;
     };
+    "/api/v1/user-accounts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : comptes utilisateurs */
+        get: operations["v1_user_accounts_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : compte utilisateur */
+        get: operations["v1_user_accounts_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Modifier le profil d'un compte */
+        patch: operations["v1_user_accounts_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/user-accounts/{id}/deactivate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Désactiver un compte */
+        post: operations["v1_user_accounts_deactivate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/{id}/reactivate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Réactiver un compte */
+        post: operations["v1_user_accounts_reactivate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/{id}/resync-profile/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rendre direction et fonction à l'annuaire */
+        post: operations["v1_user_accounts_resync_profile_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/{id}/retry-keycloak-sync/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Relancer la synchronisation avec Keycloak */
+        post: operations["v1_user_accounts_retry_keycloak_sync_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/directory-search/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rechercher dans l'annuaire Keycloak */
+        get: operations["v1_user_accounts_directory_search_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/import-csv/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Importer des comptes depuis un fichier CSV */
+        post: operations["v1_user_accounts_import_csv_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/import-directory/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Importer des comptes depuis l'annuaire Keycloak */
+        post: operations["v1_user_accounts_import_directory_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/": {
         parameters: {
             query?: never;
@@ -1258,6 +1412,14 @@ export interface components {
          * @enum {string}
          */
         ActionEtapeEnum: "DEMARRER" | "TERMINER" | "VALIDER" | "RENVOYER" | "ROUVRIR" | "NON_APPLICABLE" | "RETABLIR" | "PLANIFIER";
+        /** @description Actions que l'administrateur connecté peut effectuer sur le compte. */
+        ActionsCompte: {
+            modifier_profil: boolean;
+            desactiver: boolean;
+            reactiver: boolean;
+            resynchroniser_profil: boolean;
+            relancer_synchro_keycloak: boolean;
+        };
         Affectation: {
             /** Format: uuid */
             readonly id: string;
@@ -1369,6 +1531,85 @@ export interface components {
             ajoutes: components["schemas"]["RisqueResume"][];
             retires: components["schemas"]["RisqueResume"][];
             modifies: components["schemas"]["RisqueModifie"][];
+        };
+        CompteUtilisateur: {
+            readonly id: number;
+            /**
+             * Nom d’utilisateur
+             * @description Requis. 150 caractères maximum. Uniquement des lettres, nombres et les caractères « @ », « . », « + », « - » et « _ ».
+             */
+            readonly username: string;
+            readonly nom_complet: string;
+            /**
+             * Adresse électronique
+             * Format: email
+             */
+            readonly email: string;
+            readonly role: components["schemas"]["RoleEnum"];
+            readonly direction_code: string;
+            readonly direction_libelle: string | null;
+            readonly fonction: string;
+            readonly matricule: string;
+            /**
+             * Actif
+             * @description Précise si l’utilisateur doit être considéré comme actif. Décochez ceci plutôt que de supprimer le compte.
+             */
+            readonly is_active: boolean;
+            readonly origine: components["schemas"]["OrigineCompteEnum"];
+            readonly en_attente_connexion: boolean;
+            readonly keycloak_sync_statut: components["schemas"]["KeycloakSyncStatutEnum"];
+            /**
+             * Date d’inscription
+             * Format: date-time
+             */
+            readonly date_joined: string;
+            /** Prénom */
+            readonly first_name: string;
+            /** Nom */
+            readonly last_name: string;
+            readonly keycloak_lie: boolean;
+            readonly role_provisoire: boolean;
+            /** Format: date-time */
+            readonly premiere_connexion_le: string | null;
+            readonly profil_gere_localement: boolean;
+            /** Format: date-time */
+            readonly desactive_le: string | null;
+            readonly desactive_par: components["schemas"]["UserRef"] | null;
+            readonly motif_desactivation: string;
+            readonly keycloak_sync: components["schemas"]["SyncKeycloak"];
+            readonly actions: components["schemas"]["ActionsCompte"];
+        };
+        CompteUtilisateurListe: {
+            readonly id: number;
+            /**
+             * Nom d’utilisateur
+             * @description Requis. 150 caractères maximum. Uniquement des lettres, nombres et les caractères « @ », « . », « + », « - » et « _ ».
+             */
+            readonly username: string;
+            readonly nom_complet: string;
+            /**
+             * Adresse électronique
+             * Format: email
+             */
+            readonly email: string;
+            readonly role: components["schemas"]["RoleEnum"];
+            readonly direction_code: string;
+            readonly direction_libelle: string | null;
+            readonly fonction: string;
+            readonly matricule: string;
+            /**
+             * Actif
+             * @description Précise si l’utilisateur doit être considéré comme actif. Décochez ceci plutôt que de supprimer le compte.
+             */
+            readonly is_active: boolean;
+            readonly origine: components["schemas"]["OrigineCompteEnum"];
+            readonly en_attente_connexion: boolean;
+            readonly keycloak_sync_statut: components["schemas"]["KeycloakSyncStatutEnum"];
+            /**
+             * Date d’inscription
+             * Format: date-time
+             */
+            readonly date_joined: string;
         };
         ConfirmationRequest: {
             /** @description Doit être vrai : la confirmation explicite de l'utilisateur. */
@@ -1486,6 +1727,16 @@ export interface components {
             contribuer: boolean;
             voir_travaux: boolean;
             confirmer_ma_declaration: boolean;
+        };
+        EntreeAnnuaire: {
+            /** Format: uuid */
+            keycloak_id: string;
+            username: string;
+            email: string;
+            nom_complet: string;
+            direction: string;
+            fonction: string;
+            compte_id: number | null;
         };
         Entretien: {
             /** Format: uuid */
@@ -1658,6 +1909,30 @@ export interface components {
         Health: {
             status: string;
             version: string;
+        };
+        ImportAnnuaireRequest: {
+            keycloak_ids: string[];
+        };
+        ImportCsvRequest: {
+            /** Format: binary */
+            fichier: string;
+            /**
+             * @description Simulation sans écriture (par défaut).
+             * @default true
+             */
+            dry_run: boolean;
+        };
+        /**
+         * @description * `A_JOUR` - À jour
+         *     * `EN_ATTENTE` - En attente
+         *     * `ECHEC` - Échec
+         * @enum {string}
+         */
+        KeycloakSyncStatutEnum: "A_JOUR" | "EN_ATTENTE" | "ECHEC";
+        LigneImportIgnoree: {
+            ligne: number | null;
+            identifiant: string;
+            motif: string;
         };
         LigneSuivi: {
             numero: number;
@@ -1843,6 +2118,9 @@ export interface components {
             readonly reference: string;
             readonly titre: string;
         };
+        MotifDesactivationRequest: {
+            motif: string;
+        };
         MotifRequest: {
             motif: string;
         };
@@ -1891,6 +2169,13 @@ export interface components {
             description?: string;
             ordre?: number;
         };
+        /**
+         * @description * `CONNEXION` - Première connexion
+         *     * `ANNUAIRE` - Import annuaire
+         *     * `CSV` - Import CSV
+         * @enum {string}
+         */
+        OrigineCompteEnum: "CONNEXION" | "ANNUAIRE" | "CSV";
         PaginatedAffectationList: {
             /** @example 123 */
             count: number;
@@ -1935,6 +2220,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["CartographieVersion"][];
+        };
+        PaginatedCompteUtilisateurListeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["CompteUtilisateurListe"][];
         };
         PaginatedDeclarationList: {
             /** @example 123 */
@@ -2220,6 +2520,12 @@ export interface components {
             /** @description Identifiants des directions (type DIRECTION uniquement) rattachées (écriture). */
             directions?: string[];
         };
+        /** @description Champs de profil modifiables ; tout autre champ est refusé explicitement. */
+        PatchedProfilUtilisateurRequest: {
+            matricule?: string;
+            direction_code?: string;
+            fonction?: string;
+        };
         PatchedReunionRequest: {
             /** Format: uuid */
             mission?: string;
@@ -2310,6 +2616,12 @@ export interface components {
             ordre?: number;
             /** @description Identifiants des directions (type DIRECTION uniquement) rattachées (écriture). */
             directions?: string[];
+        };
+        RapportImport: {
+            dry_run: boolean;
+            crees: string[];
+            mis_a_jour: string[];
+            ignores: components["schemas"]["LigneImportIgnoree"][];
         };
         RemplacerChefRequest: {
             utilisateur: number;
@@ -2559,6 +2871,16 @@ export interface components {
          * @enum {string}
          */
         StatutMissionEnum: "BROUILLON" | "PLANIFIEE" | "EN_PLANIFICATION" | "EN_ACCOMPLISSEMENT" | "EN_COMMUNICATION" | "RAPPORT_DIFFUSE" | "EN_SUIVI" | "CLOTUREE" | "SUSPENDUE" | "ANNULEE";
+        /** @description État de la propagation du compte vers Keycloak. */
+        SyncKeycloak: {
+            readonly statut: components["schemas"]["KeycloakSyncStatutEnum"];
+            readonly erreur: string;
+            /** Format: date-time */
+            readonly derniere_tentative_le: string | null;
+            readonly tentatives: number;
+            /** @description Échec permanent : seule une relance manuelle peut le résoudre. */
+            readonly manuel: boolean;
+        };
         /**
          * @description * `ORDRE_MISSION` - Ordre de mission
          *     * `DECLARATION_INDEPENDANCE` - Déclaration d'indépendance
@@ -2597,6 +2919,15 @@ export interface components {
          * @enum {string}
          */
         TypeReunionEnum: "OUVERTURE" | "LANCEMENT" | "CLOTURE";
+        UserRef: {
+            readonly id: number;
+            /**
+             * Nom d’utilisateur
+             * @description Requis. 150 caractères maximum. Uniquement des lettres, nombres et les caractères « @ », « . », « + », « - » et « _ ».
+             */
+            readonly username: string;
+            readonly nom_complet: string;
+        };
         /** @description Représentation minimale d'un utilisateur dans les réponses (annuaire, équipes). */
         UtilisateurResume: {
             readonly id: number;
@@ -7487,6 +7818,594 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_list: {
+        parameters: {
+            query?: {
+                direction_code?: string;
+                /** @description Compte qui ne s'est jamais connecté. */
+                en_attente_connexion?: boolean;
+                is_active?: boolean;
+                /**
+                 * @description * `A_JOUR` - À jour
+                 *     * `EN_ATTENTE` - En attente
+                 *     * `ECHEC` - Échec
+                 */
+                keycloak_sync?: "A_JOUR" | "ECHEC" | "EN_ATTENTE";
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /**
+                 * @description * `CONNEXION` - Première connexion
+                 *     * `ANNUAIRE` - Import annuaire
+                 *     * `CSV` - Import CSV
+                 */
+                origine?: "ANNUAIRE" | "CONNEXION" | "CSV";
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /** @description Recherche insensible à la casse sur l'identifiant, le prénom, le nom, l'e-mail et le matricule. */
+                q?: string;
+                /**
+                 * @description * `ADMIN` - Administrateur
+                 *     * `RAI` - Responsable de l'audit interne
+                 *     * `AUDITEUR` - Auditeur interne
+                 *     * `AUDITE` - Audité
+                 *     * `DG` - Direction générale
+                 */
+                role?: "ADMIN" | "AUDITE" | "AUDITEUR" | "DG" | "RAI";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCompteUtilisateurListeList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedProfilUtilisateurRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedProfilUtilisateurRequest"];
+                "multipart/form-data": components["schemas"]["PatchedProfilUtilisateurRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_deactivate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifDesactivationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifDesactivationRequest"];
+                "multipart/form-data": components["schemas"]["MotifDesactivationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_reactivate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_resync_profile_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_retry_keycloak_sync_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_directory_search_list: {
+        parameters: {
+            query: {
+                /** @description 2 à 100 caractères. */
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntreeAnnuaire"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_import_csv_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ImportCsvRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RapportImport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_import_directory_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportAnnuaireRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ImportAnnuaireRequest"];
+                "multipart/form-data": components["schemas"]["ImportAnnuaireRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RapportImport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

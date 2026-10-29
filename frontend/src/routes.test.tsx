@@ -28,7 +28,7 @@ beforeAll(() => {
 const RESTRICTED: [string, string, readonly Role[]][] = [
   ["/missions", fr.nav.missions, ["RAI", "AUDITEUR", "AUDITE"]],
   ["/referentiel", fr.nav.referentiel, ["ADMIN", "RAI", "AUDITEUR", "DG"]],
-  ["/administration", fr.nav.administration, ["ADMIN"]],
+  ["/administration", fr.utilisateurs.title, ["ADMIN"]],
 ];
 
 describe("guarded routes", () => {
@@ -41,9 +41,6 @@ describe("guarded routes", () => {
       renderRoutes(appRoutes, role, { path });
       if (roles.includes(role)) {
         expect(screen.getByRole("heading", { level: 1, name: title })).toBeInTheDocument();
-        if (path === "/administration") {
-          expect(screen.getByText(fr.shell.comingSoonTitle)).toBeInTheDocument();
-        }
         expect(screen.queryByText(fr.errors.forbiddenTitle)).not.toBeInTheDocument();
       } else {
         expect(
@@ -102,6 +99,21 @@ describe("referentiel routes", () => {
 
   it("shows the forbidden view to an AUDITE on a sub-route", () => {
     renderRoutes(appRoutes, "AUDITE", { path: "/referentiel/cartographies" });
+    expect(screen.getByText(fr.errors.forbiddenTitle)).toBeInTheDocument();
+  });
+});
+
+describe("administration routes", () => {
+  it("redirects an ADMIN from /administration to the users list", () => {
+    const { router } = renderRoutes(appRoutes, "ADMIN", { path: "/administration" });
+    expect(router.state.location.pathname).toBe("/administration/utilisateurs");
+    expect(
+      screen.getByRole("heading", { level: 1, name: fr.utilisateurs.title }),
+    ).toBeInTheDocument();
+  });
+
+  it.each(["RAI", "AUDITE"] as const)("denies %s on the users sub-route", (role) => {
+    renderRoutes(appRoutes, role, { path: "/administration/utilisateurs/7" });
     expect(screen.getByText(fr.errors.forbiddenTitle)).toBeInTheDocument();
   });
 });

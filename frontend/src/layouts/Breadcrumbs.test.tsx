@@ -82,6 +82,15 @@ describe("Breadcrumbs", () => {
     ]);
   });
 
+  it("labels a numeric id under utilisateurs as the user sheet", () => {
+    expect(crumbs("/administration/utilisateurs/7")).toEqual([
+      "Tableau de bord",
+      "Administration",
+      "Utilisateurs",
+      "Fiche utilisateur",
+    ]);
+  });
+
   it("links the map crumb back to the map from the add-risk page", () => {
     renderWithAuth(<Breadcrumbs />, "RAI", `/referentiel/cartographies/${ID}/risques/nouveau`);
     expect(screen.getByRole("link", { name: "Cartographie" })).toHaveAttribute(
