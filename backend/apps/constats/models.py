@@ -20,6 +20,8 @@ from .managers import (
     JournalConstatManager,
     ReponseAllManager,
     ReponseManager,
+    SansUpsertAllManager,
+    SansUpsertManager,
 )
 
 
@@ -113,7 +115,7 @@ class Constat(MissionEnfantModel):
             default=Value(NiveauRisque.FAIBLE),
             output_field=CharField(max_length=8),
         ),
-        output_field=CharField(max_length=8, null=True),
+        output_field=CharField(max_length=8, null=True, choices=NiveauRisque.choices),
         db_persist=True,
         verbose_name="niveau",
     )
@@ -150,6 +152,9 @@ class Constat(MissionEnfantModel):
     empreinte_soumise = models.CharField("empreinte SHA-256 soumise", max_length=64, blank=True)
 
     _rouverture: bool = False
+
+    objects: ClassVar[SansUpsertManager[Any]] = SansUpsertManager()
+    all_objects: ClassVar[SansUpsertAllManager[Any]] = SansUpsertAllManager()  # noqa: DJ012
 
     class Meta:
         verbose_name = "constat"
@@ -233,6 +238,9 @@ class CauseConstat(MissionEnfantModel):
     description = models.TextField("description")
     ordre = models.PositiveIntegerField("ordre", default=0)
 
+    objects: ClassVar[SansUpsertManager[Any]] = SansUpsertManager()
+    all_objects: ClassVar[SansUpsertAllManager[Any]] = SansUpsertAllManager()  # noqa: DJ012
+
     class Meta:
         verbose_name = "cause de constat"
         verbose_name_plural = "causes de constat"
@@ -257,6 +265,9 @@ class Recommandation(MissionEnfantModel):
     libelle = models.TextField("libellé")
     priorite = models.CharField("priorité", max_length=8, choices=PrioriteRecommandation.choices)
     ordre = models.PositiveIntegerField("ordre", default=0)
+
+    objects: ClassVar[SansUpsertManager[Any]] = SansUpsertManager()
+    all_objects: ClassVar[SansUpsertAllManager[Any]] = SansUpsertAllManager()  # noqa: DJ012
 
     class Meta:
         verbose_name = "recommandation"

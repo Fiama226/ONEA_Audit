@@ -11,9 +11,10 @@ from contextvars import ContextVar
 from typing import Any
 from uuid import UUID
 
-from apps.missions.gardes import exiger_etape_ouverte
+from apps.core.exceptions import RegleMetierError
+from apps.missions.gardes import controler_ecriture, exiger_etape_ouverte
 
-from .exceptions import ConstatValideError
+from .exceptions import MSG_AUTRE_MISSION, ConstatValideError
 from .models import Constat, StatutConstat
 
 ETAPE_CONSTATS = 14
@@ -35,32 +36,59 @@ def reouverture(constat_id: UUID) -> Iterator[None]:
         _REOUVERTURE.reset(jeton)
 
 
+# Seuls champs que la sauvegarde de `rouvrir` peut changer sur un constat VALIDE.
+CHAMPS_REOUVERTURE: frozenset[str] = frozenset(
+    {"statut", "validee_par", "validee_le", "motif_renvoi"}
+)
+# Champs sans effet métier (calculés ou techniques) : ignorés par la comparaison.
+_CHAMPS_IGNORES: frozenset[str] = frozenset({"updated_at", "updated_by", "score", "niveau"})
+
+
+def _champs_modifies(constat: Constat, en_base: Constat) -> set[str]:
+    return {
+        f.name
+        for f in Constat._meta.concrete_fields
+        if f.name not in _CHAMPS_IGNORES
+        and getattr(constat, f.attname) != getattr(en_base, f.attname)
+    }
+
+
 def controler_constat(constat: Constat) -> None:
     """Gel D10 : ligne VALIDE en base -> refus (sauf réouverture) ; XIV close -> refus."""
     if not constat._state.adding:
-        en_base = Constat.all_objects.filter(pk=constat.pk).values_list("statut", "reference")
-        ligne = en_base.first()
-        if (
-            ligne is not None
-            and ligne[0] == StatutConstat.VALIDE
-            and _REOUVERTURE.get() != constat.pk
-        ):
-            raise ConstatValideError(ligne[1])
+        en_base = Constat.all_objects.filter(pk=constat.pk).first()
+        if en_base is not None and en_base.statut == StatutConstat.VALIDE:
+            if _REOUVERTURE.get() != constat.pk or _champs_modifies(constat, en_base) - (
+                CHAMPS_REOUVERTURE
+            ):
+                raise ConstatValideError(en_base.reference)
     exiger_etape_ouverte(constat.mission_id, ETAPE_CONSTATS)
+
+
+def _constat_du_dependant(objet: Any) -> tuple[str, str, UUID] | None:
+    return (
+        Constat.all_objects.filter(pk=objet.constat_id)
+        .values_list("statut", "reference", "mission_id")
+        .first()
+    )
 
 
 def controler_dependant(objet: Any) -> None:
     """Cause ou recommandation : même gel que le constat auquel elle est rattachée."""
-    ligne = (
-        Constat.all_objects.filter(pk=objet.constat_id).values_list("statut", "reference").first()
-    )
-    if ligne is not None and ligne[0] == StatutConstat.VALIDE:
-        raise ConstatValideError(ligne[1])
+    ligne = _constat_du_dependant(objet)
+    if ligne is not None:
+        if ligne[2] != objet.mission_id:
+            raise RegleMetierError(MSG_AUTRE_MISSION)
+        if ligne[0] == StatutConstat.VALIDE:
+            raise ConstatValideError(ligne[1])
     exiger_etape_ouverte(objet.mission_id, ETAPE_CONSTATS)
 
 
 def controler_reponse(reponse: Any) -> None:
     """Gel D11 : une réponse s'ajoute tant que l'étape XV n'est pas close."""
+    ligne = _constat_du_dependant(reponse)
+    if ligne is not None and ligne[2] != reponse.mission_id:
+        raise RegleMetierError(MSG_AUTRE_MISSION)
     exiger_etape_ouverte(reponse.mission_id, ETAPE_REUNION_CLOTURE)
 
 
@@ -82,4 +110,24 @@ def garder_fiches(
     else:
         constats = list(Constat.all_objects.filter(pk__in=pk_set or []))
     for constat in constats:
-        controler_constat(constat)
+        controler_ecriture(constat)  # mission figée, puis VALIDE / XIV
+    if action == "pre_add":
+        _exiger_meme_mission(instance, reverse, constats, pk_set)
+
+
+def _exiger_meme_mission(
+    instance: Any, reverse: bool, constats: list[Constat], pk_set: set[Any] | None
+) -> None:
+    """Les fiches liées à un constat appartiennent à sa mission."""
+    from apps.accomplissement.models import FicheDeTest
+
+    if reverse:  # instance = la fiche
+        autres = {c.mission_id for c in constats}
+        attendue = instance.mission_id
+    else:  # instance = le constat
+        autres = set(
+            FicheDeTest.all_objects.filter(pk__in=pk_set or []).values_list("mission_id", flat=True)
+        )
+        attendue = instance.mission_id
+    if autres - {attendue}:
+        raise RegleMetierError(MSG_AUTRE_MISSION)

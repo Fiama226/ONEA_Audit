@@ -10,7 +10,7 @@ from collections.abc import Iterable
 from typing import Any
 from uuid import UUID
 
-from django.db import connection, transaction
+from django.db import connection
 from django.db.models import Max, Model
 
 from apps.core.exceptions import RegleMetierError
@@ -23,7 +23,7 @@ from apps.missions.managers import (
     MissionEnfantQuerySet,
 )
 
-from .exceptions import MSG_EVENEMENT_AJOUT_SEUL, ReponseAjoutSeulError
+from .exceptions import MSG_EVENEMENT_AJOUT_SEUL, MSG_UPSERT_INTERDIT, ReponseAjoutSeulError
 
 LOCK_NUMERO_CONSTAT = 0x434F4E53  # « CONS »
 
@@ -36,16 +36,36 @@ def prochain_numero_constat(mission_id: UUID) -> int:
     """
     from .models import Constat
 
-    with transaction.atomic():
-        with connection.cursor() as cur:
-            cur.execute(
-                "SELECT pg_advisory_xact_lock(%s, hashtext(%s))",
-                [LOCK_NUMERO_CONSTAT, str(mission_id)],
-            )
-        maximum = Constat._base_manager.filter(mission_id=mission_id).aggregate(  # noqa: SLF001
-            m=Max("numero")
-        )["m"]
+    if not connection.in_atomic_block:
+        raise RuntimeError("prochain_numero_constat doit être appelé dans une transaction.")
+    with connection.cursor() as cur:
+        cur.execute(
+            "SELECT pg_advisory_xact_lock(%s, hashtext(%s))",
+            [LOCK_NUMERO_CONSTAT, str(mission_id)],
+        )
+    maximum = Constat._base_manager.filter(mission_id=mission_id).aggregate(  # noqa: SLF001
+        m=Max("numero")
+    )["m"]
     return int(maximum or 0) + 1
+
+
+class SansUpsertQuerySet[T: Model](MissionEnfantQuerySet[T]):
+    """Refuse `bulk_create(update_conflicts=True)` : l'upsert réécrirait une ligne figée."""
+
+    def bulk_create(self, objs: Iterable[T], *args: Any, **kwargs: Any) -> list[T]:
+        if kwargs.get("update_conflicts"):
+            raise RegleMetierError(MSG_UPSERT_INTERDIT)
+        return super().bulk_create(objs, *args, **kwargs)
+
+
+class SansUpsertManager[T: Model](MissionEnfantManager[T]):
+    def get_queryset(self) -> SansUpsertQuerySet[T]:
+        return SansUpsertQuerySet(self.model, using=self._db).filter(deleted_at__isnull=True)
+
+
+class SansUpsertAllManager[T: Model](MissionEnfantAllManager[T]):
+    def get_queryset(self) -> SansUpsertQuerySet[T]:
+        return SansUpsertQuerySet(self.model, using=self._db)
 
 
 class ReponseQuerySet[T: Model](MissionEnfantQuerySet[T]):
