@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from apps.core.schema import ERROR_400, ERROR_RESPONSES
+from apps.documents.stockage import etat_stockage
 from apps.users.permissions import IsRAIOrAdmin
 from config import __version__
 
@@ -19,13 +20,18 @@ from .serializers import AuditLogSerializer
 @extend_schema(
     responses=inline_serializer(
         "Health",
-        {"status": serializers.CharField(), "version": serializers.CharField()},
+        {
+            "status": serializers.CharField(),
+            "version": serializers.CharField(),
+            "stockage_documents": serializers.CharField(),
+        },
     )
 )
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def health(request: Request) -> Response:
-    return Response({"status": "ok", "version": __version__})
+    # The documents storage state is informative: it never alters `status`.
+    return Response({"status": "ok", "version": __version__, "stockage_documents": etat_stockage()})
 
 
 @extend_schema_view(
