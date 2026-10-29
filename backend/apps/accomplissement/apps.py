@@ -27,3 +27,10 @@ class AccomplissementConfig(AppConfig):
             InstantaneProgramme,
         ):
             register(modele)
+
+        from apps.missions.services.livrables import enregistrer_controles
+
+        from .controles import fiches as controles_fiches
+
+        for numero, controles in controles_fiches.CONTROLES_ETAPE.items():
+            enregistrer_controles(numero, controles)
