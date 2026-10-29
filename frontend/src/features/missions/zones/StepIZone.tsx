@@ -97,7 +97,13 @@ export function StepIZone({ mission }: { mission: Mission; step: Etape }) {
               .replace("{reference}", mission.reference)
               .replace("{title}", mission.titre)}
             confirmLabel={m.issueOrderConfirm}
-            onConfirm={() => transition.mutateAsync({ id: mission.id, action: "issue-order" })}
+            onConfirm={() =>
+              transition.mutateAsync({
+                id: mission.id,
+                action: "issue-order",
+                body: { confirme: true },
+              })
+            }
           />
         </div>
       )}

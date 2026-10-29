@@ -104,3 +104,71 @@ supprimé.
 
 Une cartographie validée est figée (aucune modification ni suppression, 422) ; l'année
 suivante se crée par copie d'une version validée.
+
+## Missions : cycle de vie, droits et confirmation
+
+**Prérequis.** Une mission ne peut être créée que si une cartographie des risques est validée
+(`risk-maps/{id}/validate/`) ; sinon l'API répond 422 sur `errors.cartographie`. La mission garde
+la cartographie qui était validée à sa création, même si une version plus récente est validée
+ensuite.
+
+### Cycle de vie
+
+`BROUILLON` (saisie du RAI) → **planifier** → `PLANIFIEE` (inscrite au programme, référence
+`DAI/AAAA/Mnn` attribuée, unique même en concurrence) → **lancer** → `EN_PLANIFICATION` (l'étape I
+passe « En cours »). Les phases suivantes (`EN_ACCOMPLISSEMENT`, `EN_COMMUNICATION`) s'enchaînent
+automatiquement quand les étapes I–X, puis XI–XIV, sont closes et que leur jalon est validé. La
+mission peut être **suspendue** (motif) puis reprise, ou **annulée** (motif, définitif). Seul un
+brouillon se supprime (suppression logique). Une mission suspendue, annulée ou clôturée refuse
+toute écriture sur elle-même et ses objets (422). Les statuts `RAPPORT_DIFFUSE`, `EN_SUIVI` et
+`CLOTUREE` sont déclarés mais seront servis aux lots 7 et 8.
+
+### Droits
+
+La source unique est `apps/missions/acces.py` ; l'API expose `mes_droits` (mission) et
+`actions_possibles` (étape), et l'interface n'affiche que les boutons correspondants.
+
+| Action | Qui |
+|---|---|
+| Voir une mission | RAI : toutes ; AUDITEUR : celles où il est chef, auditeur ou superviseur (hors brouillon) ; AUDITE : celles où il est affecté, une fois l'ordre de mission émis ; **ADMIN et DG : aucune (403)** ; mission non visible : 404 |
+| Créer, modifier, planifier, lancer, émettre l'ordre, suspendre, reprendre, annuler, supprimer, affecter, remplacer le chef, arbitrer | RAI |
+| Confirmer sa déclaration d'indépendance | l'auditeur concerné |
+| Démarrer une étape, gérer réunions, entretiens et risques de mission | RAI ou intervenant dont la déclaration est confirmée ou arbitrée (sinon 403) |
+| Terminer une étape (sauf I), « non applicable », rétablir | chef de mission |
+| Valider ou renvoyer un jalon ; rouvrir | RAI ; superviseur pour VI, X, XIII (réouverture sauf XVIII) ; jamais l'auteur de la fin d'étape |
+| Étapes, fiche de suivi, risques, déclarations | RAI et intervenants ; l'audité y reçoit 403 |
+
+L'audité ne voit que l'en-tête de la mission (champs internes masqués), l'équipe, les réunions
+et les entretiens dont il est interlocuteur. « Non applicable » n'est ouvert que pour les
+missions de conseil et jamais sur un jalon. Chaque action est tracée dans `/api/v1/audit-log/`.
+
+### Livrables vérifiés au lot 3
+
+| Étape | Condition pour la terminer |
+|---|---|
+| I | l'ordre de mission est émis (c'est l'émission qui termine l'étape) |
+| II | réunion d'ouverture tenue, au moins un entretien planifié, déclarations de l'équipe levées |
+| IV | au moins un risque sélectionné pour la mission |
+| XI | réunion de lancement tenue |
+| III, V à X, XII à XVIII | démarrage et « non applicable » possibles ; la fin est refusée (422) avec « Les livrables de l'étape … sont gérés à partir du lot n » (lots 5, 6 ou 7) |
+
+### Mode « confirmation » et empreinte
+
+L'ordre de mission et les déclarations d'indépendance sont confirmés par l'utilisateur
+authentifié (`POST …/issue-order/` avec le corps `{"confirme": true}`, obligatoire). Chaque
+confirmation est enregistrée de façon immuable (`signatures.Confirmation`) avec le signataire,
+l'horodatage du serveur, le texte exact affiché, les données confirmées, l'adresse IP et une
+**empreinte SHA-256** du texte et des données (JSON canonique). `signatures.services.verifier`
+recalcule l'empreinte pour détecter toute altération. Aucune ré-authentification n'est exigée au
+lot 3 ; la signature électronique avancée relève du lot 7 bis. Après l'émission de l'ordre, les
+champs de l'étape I sont gelés ; rouvrir l'étape I impose une nouvelle émission (l'ancienne
+confirmation est conservée).
+
+### Parcours e2e
+
+`frontend/e2e/missions.spec.ts` rejoue le parcours complet contre la pile de dev. Il crée des
+missions dont le titre commence par « E2E — » et les supprime logiquement par SQL ; ce nettoyage
+est refusé sauf si `E2E_ALLOW_DB_CLEANUP=1`. Pour une seconde pile à côté de celle de dev :
+`WEB_PORT`, `E2E_API_URL`, `E2E_OIDC_AUTHORITY`, `E2E_DB_CONTAINER` et `POSTGRES_DB`
+(le client Keycloak de dev doit autoriser l'URI de redirection du port choisi).
+
