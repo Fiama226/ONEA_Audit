@@ -108,6 +108,17 @@ export async function apiDownload(path: string): Promise<{ blob: Blob; filename:
   };
 }
 
+/** Envoi multipart (dépôt de fichier) : même jeton et mêmes erreurs, sans en-tête Content-Type. */
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  // Pas de Content-Type : le navigateur y ajoute la frontière multipart.
+  const response = await send(path, { method: "POST", body: formData }, "application/json");
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw new ApiError(response.status, fr.errors.generic);
+  }
+}
+
 export async function apiFetch<T>(path: string, init: ApiInit = {}): Promise<T> {
   const response = await send(path, init, "application/json");
   if (response.status === 204) return undefined as T;
