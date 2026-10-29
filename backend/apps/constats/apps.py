@@ -24,4 +24,11 @@ class ConstatsConfig(AppConfig):
         for modele in (CauseConstat, Recommandation, ReponseAudite, EvenementConstat):
             register(modele)
 
+        from apps.missions.services.livrables import enregistrer_controles
+
+        from .controles import CONTROLES_ETAPE
+
+        for numero, controles in CONTROLES_ETAPE.items():
+            enregistrer_controles(numero, controles)
+
         m2m_changed.connect(gardes.garder_fiches, sender=Constat.fiches.through, weak=False)
