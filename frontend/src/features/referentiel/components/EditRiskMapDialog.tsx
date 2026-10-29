@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { fr } from "@/i18n/fr";
 import { useUpdateRiskMap } from "../api";
-import { applyApiErrors } from "../formErrors";
+import { applyApiErrors } from "@/api/formErrors";
 import { riskMapEditSchema, type RiskMapEditValues } from "../schemas/riskMap";
 import type { CartographieVersion } from "../types";
 

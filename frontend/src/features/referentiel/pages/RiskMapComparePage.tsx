@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fr } from "@/i18n/fr";
 import { useRiskMap, useRiskMapComparison, useRiskMaps } from "../api";
-import { NativeSelect } from "../components/NativeSelect";
+import { NativeSelect } from "@/components/form/NativeSelect";
 import { NIVEAU_LABELS, PRIORITE_LABELS, REPONSE_LABELS } from "../labels";
 import type { Comparaison } from "../types";
 

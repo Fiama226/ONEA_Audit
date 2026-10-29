@@ -15,6 +15,7 @@ import { fr } from "@/i18n/fr";
  * (routes.tsx) lisent cette table. Absent = tout utilisateur authentifié.
  */
 const ROUTE_ROLES: Readonly<Record<string, readonly Role[]>> = {
+  "/missions": ["RAI", "AUDITEUR", "AUDITE"],
   "/referentiel": ["ADMIN", "RAI", "AUDITEUR", "DG"],
   "/administration": ["ADMIN"],
 };
@@ -86,4 +87,11 @@ export const SEGMENT_LABELS: Record<string, string> = {
   "objets-auditables": fr.referentiel.tabObjets,
   nouveau: fr.referentiel.newItem,
   comparer: fr.referentiel.compare,
+  nouvelle: fr.missions.newMission,
+  modifier: fr.common.edit,
+  etapes: fr.missions.tabSteps,
+  equipe: fr.missions.tabTeam,
+  reunions: fr.missions.tabMeetings,
+  entretiens: fr.missions.tabInterviews,
+  suivi: fr.missions.tabTracking,
 };

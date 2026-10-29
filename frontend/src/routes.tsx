@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { Link, createBrowserRouter, type RouteObject } from "react-router-dom";
+import { Link, Outlet, createBrowserRouter, type RouteObject } from "react-router-dom";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
 import { EmptyState } from "@/components/EmptyState";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
+import { missionRoutes } from "@/features/missions/routes";
 import { ReferentielLayout } from "@/features/referentiel/components/ReferentielLayout";
 import { referentielRoutes } from "@/features/referentiel/routes";
 import { fr } from "@/i18n/fr";
@@ -18,6 +19,11 @@ import { PlaceholderPage } from "@/pages/PlaceholderPage";
 function guarded(path: string, element: ReactNode): ReactNode {
   const roles = rolesFor(path);
   return roles ? <RequireRole roles={roles}>{element}</RequireRole> : element;
+}
+
+/** Garde de rôle pour un groupe de routes enfants. */
+function guardedOutlet(path: string): ReactNode {
+  return guarded(path, <Outlet />);
 }
 
 function NotFound() {
@@ -49,7 +55,7 @@ export const appRoutes: RouteObject[] = [
         element: <AppShell />,
         children: [
           { path: "/", element: <DashboardPage /> },
-          { path: "/missions", element: <PlaceholderPage title={fr.nav.missions} /> },
+          { path: "/missions", children: missionRoutes, element: guardedOutlet("/missions") },
           {
             path: "/referentiel",
             element: guarded("/referentiel", <ReferentielLayout />),
