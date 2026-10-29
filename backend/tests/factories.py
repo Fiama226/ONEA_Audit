@@ -5,6 +5,20 @@ import factory
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
+from apps.analyse.models import (
+    AvisAudite,
+    DescriptionProcessus,
+    ForceFaiblesse,
+    GrilleSeparation,
+    LigneMARC,
+    ObjectifAudit,
+    Questionnaire,
+    QuestionQuestionnaire,
+    RapportOrientation,
+    TypeAvis,
+    TypeForceFaiblesse,
+    TypeQuestionnaire,
+)
 from apps.missions.models import (
     AffectationMission,
     DeclarationIndependance,
@@ -238,3 +252,92 @@ class RisqueMissionFactory(factory.django.DjangoModelFactory):
     libelle = factory.Sequence(lambda n: f"Risque de mission {n}")
     probabilite = 3
     impact = 3
+
+
+class QuestionnaireFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Questionnaire
+
+    mission = factory.SubFactory(MissionFactory)
+    type = TypeQuestionnaire.PRISE_CONNAISSANCE
+    titre = "Questionnaire de prise de connaissance"
+
+
+class QuestionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = QuestionQuestionnaire
+
+    questionnaire = factory.SubFactory(QuestionnaireFactory)
+    mission = factory.SelfAttribute("questionnaire.mission")
+    theme = "Objectifs"
+    libelle = factory.Sequence(lambda n: f"Question {n} ?")
+    ordre = factory.Sequence(lambda n: n)
+
+
+class DescriptionProcessusFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = DescriptionProcessus
+
+    mission = factory.SubFactory(MissionFactory)
+    processus = factory.SubFactory(ProcessusFactory)
+    description = "Description du processus."
+    objectifs = "Objectifs du processus."
+
+
+class GrilleSeparationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = GrilleSeparation
+
+    mission = factory.SubFactory(MissionFactory)
+    processus = factory.SubFactory(ProcessusFactory)
+    taches = factory.LazyFunction(lambda: ["Saisir la commande"])
+    acteurs = factory.LazyFunction(lambda: ["Agent"])
+    cellules = factory.LazyFunction(list)
+
+
+class LigneMARCFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = LigneMARC
+
+    mission = factory.SubFactory(MissionFactory)
+    risque = factory.SubFactory(RisqueMissionFactory, mission=factory.SelfAttribute("..mission"))
+    operation = factory.Sequence(lambda n: f"Opération {n}")
+    objectif_controle = "S'assurer de la régularité des opérations."
+    controle_attendu = "Double validation."
+    ordre = factory.Sequence(lambda n: n)
+
+
+class ForceFaiblesseFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ForceFaiblesse
+
+    mission = factory.SubFactory(MissionFactory)
+    type = TypeForceFaiblesse.FAIBLESSE
+    libelle = factory.Sequence(lambda n: f"Faiblesse {n}")
+    ordre = factory.Sequence(lambda n: n)
+
+
+class AvisAuditeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = AvisAudite
+
+    mission = factory.SubFactory(MissionFactory)
+    auteur = factory.SubFactory(UserFactory, role=Role.AUDITE)
+    avis = TypeAvis.ACCORD
+
+
+class ObjectifAuditFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ObjectifAudit
+
+    mission = factory.SubFactory(MissionFactory)
+    ligne_marc = factory.SubFactory(LigneMARCFactory, mission=factory.SelfAttribute("..mission"))
+    numero = factory.Sequence(lambda n: n + 1)
+    libelle = factory.Sequence(lambda n: f"Objectif {n}")
+
+
+class RapportOrientationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = RapportOrientation
+
+    mission = factory.SubFactory(MissionFactory)
