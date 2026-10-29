@@ -17,6 +17,7 @@ class TypeDocumentSignable(models.TextChoices):
     DECLARATION_INDEPENDANCE = "DECLARATION_INDEPENDANCE", "Déclaration d'indépendance"
     VALIDATION_RAPPORT = "VALIDATION_RAPPORT", "Validation du rapport"
     VALIDATION_REFERENTIEL = "VALIDATION_REFERENTIEL", "Validation du référentiel d'audit"
+    REPONSE_CONSTAT = "REPONSE_CONSTAT", "Réponse à un constat"
 
 
 class ModeSignature(models.TextChoices):
