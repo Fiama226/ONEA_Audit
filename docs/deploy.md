@@ -287,8 +287,9 @@ base 1 ; la base 0 sert à Celery).
   **uniquement par nginx** ; ceux émis par Django sont masqués. Django garde les réglages
   `SECURE_*` nécessaires à son bon fonctionnement (redirection HTTPS, en-tête proxy, cookies).
 - Authentification de l'API : jeton Bearer Keycloak uniquement. Un cookie de session Django
-  n'authentifie jamais `/api/v1/` ; la session ne sert qu'à `/admin/` (si activé) et à
-  `/api/docs/` / `/api/schema/` (ADMIN).
+  n'authentifie jamais `/api/v1/`. En production, `/api/docs/` et `/api/schema/` ne sont
+  accessibles que par une session `/admin/` d'un utilisateur staff (les utilisateurs OIDC ne
+  sont jamais staff) et exigent `DJANGO_ADMIN_ENABLED=true`.
 - Cookies : `__Host-onea-session` et `__Host-onea-csrf` (Secure, HttpOnly, `SameSite=Lax`,
   chemin `/`, sans domaine) ; durée de session 8 h. Toute réponse `/api/` sans en-tête
   `Cache-Control` propre reçoit `no-store, private`.
@@ -297,12 +298,8 @@ base 1 ; la base 0 sert à Celery).
 - Le code des images est en lecture seule pour l'utilisateur applicatif (non root) ;
   seul `/app/staticfiles` est inscriptible. Les conteneurs tournent avec
   `no-new-privileges` et sans capacités Linux superflues.
-- L'API n'accepte que le jeton Bearer Keycloak : un cookie de session Django ne l'authentifie
-  jamais (401). La session ne sert qu'à `/admin/` et à la documentation `/api/docs/` (ADMIN).
-- Cookies en production : `__Host-onea-session` et `__Host-onea-csrf` (`Secure`, `HttpOnly`,
-  `SameSite=Lax`, sans `Domain`), session de 8 h. Le préfixe `__Host-` impose HTTPS.
-- Toute réponse `/api/` sans `Cache-Control` reçoit `no-store, private`.
-- Le cache Django est partagé via Valkey (`CACHE_URL`, défaut `REDIS_URL` base 1).
+- Le cache Django est partagé via Valkey (`CACHE_URL`, défaut `REDIS_URL` base 1, préfixe de
+  clés `onea`).
 - HSTS (1 an, sous-domaines inclus) est actif : ne pas déployer sans certificat valide.
 - Adresse IP enregistrée (confirmations, journal de consultation, piste d'audit) :
   `nginx` transmet l'adresse du pair TCP dans `X-Real-IP`, et Django ne la croit que si le

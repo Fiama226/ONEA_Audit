@@ -1366,6 +1366,7 @@ dependencies = [
     { name = "openpyxl" },
     { name = "psycopg", extra = ["binary"] },
     { name = "python-docx" },
+    { name = "redis" },
     { name = "requests" },
 ]
 
@@ -1401,6 +1402,7 @@ requires-dist = [
     { name = "openpyxl", specifier = ">=3.1" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "python-docx", specifier = ">=1.1" },
+    { name = "redis", specifier = ">=5.0" },
     { name = "requests", specifier = ">=2.32" },
 ]
 
