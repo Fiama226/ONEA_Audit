@@ -31,4 +31,8 @@ class ConstatsConfig(AppConfig):
         for numero, controles in CONTROLES_ETAPE.items():
             enregistrer_controles(numero, controles)
 
+        from .documents import enregistrer_types
+
+        enregistrer_types()
+
         m2m_changed.connect(gardes.garder_fiches, sender=Constat.fiches.through, weak=False)
