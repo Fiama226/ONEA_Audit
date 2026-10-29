@@ -82,6 +82,24 @@ describe("Breadcrumbs", () => {
     ]);
   });
 
+  it("labels a numeric id under utilisateurs as the user sheet", () => {
+    expect(crumbs("/administration/utilisateurs/7")).toEqual([
+      "Tableau de bord",
+      "Administration",
+      "Utilisateurs",
+      "Fiche utilisateur",
+    ]);
+  });
+
+  it("labels the plan line creation page", () => {
+    expect(crumbs(`/programme-annuel/${ID}/nouvelle-ligne`)).toEqual([
+      "Tableau de bord",
+      "Programme annuel",
+      "Détail",
+      "Nouvelle mission prévue",
+    ]);
+  });
+
   it("links the map crumb back to the map from the add-risk page", () => {
     renderWithAuth(<Breadcrumbs />, "RAI", `/referentiel/cartographies/${ID}/risques/nouveau`);
     expect(screen.getByRole("link", { name: "Cartographie" })).toHaveAttribute(

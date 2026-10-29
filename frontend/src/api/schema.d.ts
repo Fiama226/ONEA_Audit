@@ -277,6 +277,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit-plan-lines/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : missions prévues du programme annuel */
+        get: operations["v1_audit_plan_lines_list"];
+        put?: never;
+        /** Créer : missions prévues du programme annuel */
+        post: operations["v1_audit_plan_lines_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-plan-lines/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : missions prévues du programme annuel */
+        get: operations["v1_audit_plan_lines_retrieve"];
+        put?: never;
+        post?: never;
+        /** Supprimer (logiquement) : missions prévues du programme annuel */
+        delete: operations["v1_audit_plan_lines_destroy"];
+        options?: never;
+        head?: never;
+        /** Modifier : missions prévues du programme annuel */
+        patch: operations["v1_audit_plan_lines_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/audit-plans/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : programmes annuels d'audit */
+        get: operations["v1_audit_plans_list"];
+        put?: never;
+        /** Créer : programmes annuels d'audit */
+        post: operations["v1_audit_plans_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-plans/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : programmes annuels d'audit */
+        get: operations["v1_audit_plans_retrieve"];
+        put?: never;
+        post?: never;
+        /** Supprimer (logiquement) : programmes annuels d'audit */
+        delete: operations["v1_audit_plans_destroy"];
+        options?: never;
+        head?: never;
+        /** Modifier : programmes annuels d'audit */
+        patch: operations["v1_audit_plans_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/audit-plans/{id}/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exporter un programme annuel (CSV ou XLSX)
+         * @description Télécharge le programme : missions prévues (CSV ou XLSX) ; le XLSX ajoute une feuille de synthèse.
+         */
+        get: operations["v1_audit_plans_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-plans/{id}/summary/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Synthèse d'un programme annuel */
+        get: operations["v1_audit_plans_summary_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-plans/{id}/validate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Valider (figer) un programme annuel */
+        post: operations["v1_audit_plans_validate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auditable-objects/": {
         parameters: {
             query?: never;
@@ -399,6 +527,165 @@ export interface paths {
          * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
          */
         patch: operations["v1_directions_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/document-types/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : types de documents
+         * @description Registre des types : contrat de balises, gabarit actif et format de numérotation.
+         */
+        get: operations["v1_document_types_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/document-versions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : version d'un document */
+        get: operations["v1_document_versions_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/document-versions/{id}/consultations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : consultations d'une version (RAI) */
+        get: operations["v1_document_versions_consultations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/document-versions/{id}/download/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Télécharger : fichier Word ou PDF d'une version (journalisé) */
+        get: operations["v1_document_versions_download_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/document-versions/{id}/retry-pdf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Relancer : la conversion PDF d'une version */
+        post: operations["v1_document_versions_retry_pdf_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : documents des missions visibles */
+        get: operations["v1_documents_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : document et ses versions */
+        get: operations["v1_documents_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/available/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Documents disponibles : générés ou générables d'une mission */
+        get: operations["v1_documents_available_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/generate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Générer : une nouvelle version d'un document (traitement en arrière-plan)
+         * @description Répond 202 : suivre `statut` et `statut_pdf` sur la version.
+         */
+        post: operations["v1_documents_generate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/health/": {
@@ -1285,6 +1572,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/numbering-formats/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : formats de numérotation */
+        get: operations["v1_numbering_formats_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/numbering-formats/{type_document}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : format de numérotation */
+        get: operations["v1_numbering_formats_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Modifier : format de numérotation (s'applique aux numéros suivants) */
+        patch: operations["v1_numbering_formats_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/numbering-formats/preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prévisualiser : un format de numérotation
+         * @description Le numéro d'exemple est `null` quand le format a des erreurs.
+         */
+        post: operations["v1_numbering_formats_preview_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orientation-reports/{id}/": {
         parameters: {
             query?: never;
@@ -1701,6 +2043,246 @@ export interface paths {
         patch: operations["v1_strengths_weaknesses_partial_update"];
         trace?: never;
     };
+    "/api/v1/templates/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : gabarits */
+        get: operations["v1_templates_list"];
+        put?: never;
+        /** Déposer : une version de gabarit (multipart) */
+        post: operations["v1_templates_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : gabarit */
+        get: operations["v1_templates_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}/activate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activer : un gabarit (archive l'actif précédent) */
+        post: operations["v1_templates_activate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}/file/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Télécharger : fichier d'un gabarit (journalisé) */
+        get: operations["v1_templates_file_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/templates/{id}/preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Aperçu : gabarit rempli avec les données d'exemple du contrat */
+        get: operations["v1_templates_preview_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : comptes utilisateurs */
+        get: operations["v1_user_accounts_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : compte utilisateur */
+        get: operations["v1_user_accounts_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Modifier le profil d'un compte */
+        patch: operations["v1_user_accounts_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/user-accounts/{id}/deactivate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Désactiver un compte */
+        post: operations["v1_user_accounts_deactivate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/{id}/reactivate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Réactiver un compte */
+        post: operations["v1_user_accounts_reactivate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/{id}/resync-profile/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rendre direction et fonction à l'annuaire */
+        post: operations["v1_user_accounts_resync_profile_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/{id}/retry-keycloak-sync/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Relancer la synchronisation avec Keycloak */
+        post: operations["v1_user_accounts_retry_keycloak_sync_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/directory-search/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rechercher dans l'annuaire Keycloak */
+        get: operations["v1_user_accounts_directory_search_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/import-csv/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Importer des comptes depuis un fichier CSV */
+        post: operations["v1_user_accounts_import_csv_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/import-directory/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Importer des comptes depuis l'annuaire Keycloak */
+        post: operations["v1_user_accounts_import_directory_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/": {
         parameters: {
             query?: never;
@@ -1746,6 +2328,14 @@ export interface components {
          * @enum {string}
          */
         ActionEtapeEnum: "DEMARRER" | "TERMINER" | "VALIDER" | "RENVOYER" | "ROUVRIR" | "NON_APPLICABLE" | "RETABLIR" | "PLANIFIER";
+        /** @description Actions que l'administrateur connecté peut effectuer sur le compte. */
+        ActionsCompte: {
+            modifier_profil: boolean;
+            desactiver: boolean;
+            reactiver: boolean;
+            resynchroniser_profil: boolean;
+            relancer_synchro_keycloak: boolean;
+        };
         Affectation: {
             /** Format: uuid */
             readonly id: string;
@@ -1766,6 +2356,17 @@ export interface components {
             taches_sans_acteur: string[];
             taches_multi_executants: string[];
             cumuls: components["schemas"]["Cumul"][];
+        };
+        ApercuFormatRequest: {
+            modele: string;
+            portee: string;
+            abreviation: string;
+        };
+        ApercuNumero: {
+            numero: string | null;
+            errors: {
+                [key: string]: string[];
+            };
         };
         /** @description Error body returned by the API exception handler (see apps.core.handlers). */
         ApiError: {
@@ -1898,6 +2499,12 @@ export interface components {
             nombre: number;
             codes: string[];
         };
+        ChampContrat: {
+            nom: string;
+            type: components["schemas"]["TypeChampEnum"];
+            description: string;
+            readonly enfants: components["schemas"]["ChampContrat"][];
+        };
         Comparaison: {
             reference: components["schemas"]["VersionResume"];
             cible: components["schemas"]["VersionResume"];
@@ -1911,6 +2518,85 @@ export interface components {
          * @enum {string}
          */
         ComposanteEnum: "ENVIRONNEMENT" | "ACTIVITE";
+        CompteUtilisateur: {
+            readonly id: number;
+            /**
+             * Nom d’utilisateur
+             * @description Requis. 150 caractères maximum. Uniquement des lettres, nombres et les caractères « @ », « . », « + », « - » et « _ ».
+             */
+            readonly username: string;
+            readonly nom_complet: string;
+            /**
+             * Adresse électronique
+             * Format: email
+             */
+            readonly email: string;
+            readonly role: components["schemas"]["RoleEnum"];
+            readonly direction_code: string;
+            readonly direction_libelle: string | null;
+            readonly fonction: string;
+            readonly matricule: string;
+            /**
+             * Actif
+             * @description Précise si l’utilisateur doit être considéré comme actif. Décochez ceci plutôt que de supprimer le compte.
+             */
+            readonly is_active: boolean;
+            readonly origine: components["schemas"]["OrigineCompteEnum"];
+            readonly en_attente_connexion: boolean;
+            readonly keycloak_sync_statut: components["schemas"]["KeycloakSyncStatutEnum"];
+            /**
+             * Date d’inscription
+             * Format: date-time
+             */
+            readonly date_joined: string;
+            /** Prénom */
+            readonly first_name: string;
+            /** Nom */
+            readonly last_name: string;
+            readonly keycloak_lie: boolean;
+            readonly role_provisoire: boolean;
+            /** Format: date-time */
+            readonly premiere_connexion_le: string | null;
+            readonly profil_gere_localement: boolean;
+            /** Format: date-time */
+            readonly desactive_le: string | null;
+            readonly desactive_par: components["schemas"]["UserRef"] | null;
+            readonly motif_desactivation: string;
+            readonly keycloak_sync: components["schemas"]["SyncKeycloak"];
+            readonly actions: components["schemas"]["ActionsCompte"];
+        };
+        CompteUtilisateurListe: {
+            readonly id: number;
+            /**
+             * Nom d’utilisateur
+             * @description Requis. 150 caractères maximum. Uniquement des lettres, nombres et les caractères « @ », « . », « + », « - » et « _ ».
+             */
+            readonly username: string;
+            readonly nom_complet: string;
+            /**
+             * Adresse électronique
+             * Format: email
+             */
+            readonly email: string;
+            readonly role: components["schemas"]["RoleEnum"];
+            readonly direction_code: string;
+            readonly direction_libelle: string | null;
+            readonly fonction: string;
+            readonly matricule: string;
+            /**
+             * Actif
+             * @description Précise si l’utilisateur doit être considéré comme actif. Décochez ceci plutôt que de supprimer le compte.
+             */
+            readonly is_active: boolean;
+            readonly origine: components["schemas"]["OrigineCompteEnum"];
+            readonly en_attente_connexion: boolean;
+            readonly keycloak_sync_statut: components["schemas"]["KeycloakSyncStatutEnum"];
+            /**
+             * Date d’inscription
+             * Format: date-time
+             */
+            readonly date_joined: string;
+        };
         ConfirmationRequest: {
             /** @description Doit être vrai : la confirmation explicite de l'utilisateur. */
             confirme: boolean;
@@ -1938,6 +2624,13 @@ export interface components {
             readonly confirme_le: string;
             /** Empreinte SHA-256 */
             readonly empreinte: string;
+        };
+        Consultation: {
+            readonly utilisateur: components["schemas"]["UtilisateurResume"];
+            /** Format: date-time */
+            readonly le: string;
+            readonly format: components["schemas"]["FormatFichierEnum"];
+            readonly adresse_ip: string | null;
         };
         /**
          * @description * `EXACTE` - Couverture exacte
@@ -2052,6 +2745,80 @@ export interface components {
             /** Libellé */
             readonly libelle: string;
         };
+        Document: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Type de document */
+            readonly type_document: string;
+            readonly type_document_libelle: string;
+            /** Numéro */
+            readonly numero: string;
+            readonly mission: components["schemas"]["MissionResume"];
+            readonly derniere_version: components["schemas"]["VersionDocumentResume"] | null;
+            readonly nombre_versions: number;
+            /** Format: uuid */
+            readonly objet_id: string;
+            readonly versions: components["schemas"]["DocumentVersion"][];
+        };
+        DocumentDisponible: {
+            type_document: string;
+            libelle: string;
+            etape: number | null;
+            /** Format: uuid */
+            objet_id: string;
+            document: components["schemas"]["DocumentListe"] | null;
+            peut_generer: boolean;
+            raison: string | null;
+            en_cours: boolean;
+        };
+        DocumentListe: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Type de document */
+            readonly type_document: string;
+            readonly type_document_libelle: string;
+            /** Numéro */
+            readonly numero: string;
+            readonly mission: components["schemas"]["MissionResume"];
+            readonly derniere_version: components["schemas"]["VersionDocumentResume"] | null;
+            readonly nombre_versions: number;
+        };
+        DocumentVersion: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly document: string;
+            /** Numéro de version */
+            readonly numero_version: number;
+            readonly statut: components["schemas"]["StatutGenerationEnum"];
+            /** Statut du PDF */
+            readonly statut_pdf: components["schemas"]["StatutPdfEnum"];
+            readonly gabarit: components["schemas"]["GabaritRef"];
+            readonly demandee_par: components["schemas"]["UtilisateurResume"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /**
+             * Généré le
+             * Format: date-time
+             */
+            readonly genere_le: string | null;
+            /**
+             * PDF produit le
+             * Format: date-time
+             */
+            readonly pdf_le: string | null;
+            /** Empreinte Word */
+            readonly empreinte_docx: string;
+            readonly empreinte_pdf: string;
+            /** Taille Word (octets) */
+            readonly taille_docx: number | null;
+            /** Taille PDF (octets) */
+            readonly taille_pdf: number | null;
+            readonly erreur: string;
+            readonly erreur_pdf: string;
+            readonly confirmation: components["schemas"]["ConfirmationResume"] | null;
+            readonly peut_relancer_pdf: boolean;
+        };
         DomaineArbre: {
             /** Format: uuid */
             readonly id: string;
@@ -2082,6 +2849,24 @@ export interface components {
             contribuer: boolean;
             voir_travaux: boolean;
             confirmer_ma_declaration: boolean;
+        };
+        EntiteResume: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly code: string;
+            /** Libellé */
+            readonly libelle: string;
+            readonly supprime: boolean;
+        };
+        EntreeAnnuaire: {
+            /** Format: uuid */
+            keycloak_id: string;
+            username: string;
+            email: string;
+            nom_complet: string;
+            direction: string;
+            fonction: string;
+            compte_id: number | null;
         };
         Entretien: {
             /** Format: uuid */
@@ -2290,6 +3075,83 @@ export interface components {
             commentaire?: string;
             ordre?: number;
         };
+        /**
+         * @description * `DOCX` - Word
+         *     * `PDF` - PDF
+         * @enum {string}
+         */
+        FormatFichierEnum: "DOCX" | "PDF";
+        FormatNumerotation: {
+            /** Type de document */
+            readonly type_document: string;
+            /** Modèle */
+            readonly modele: string;
+            /** Portée */
+            readonly portee: components["schemas"]["PorteeNumerotationEnum"];
+            /** Abréviation */
+            readonly abreviation: string;
+            readonly apercu: string | null;
+        };
+        GabaritDepotRequest: {
+            type_document: string;
+            /** Format: binary */
+            fichier: string;
+            /** @default  */
+            commentaire: string;
+        };
+        GabaritDocument: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Type de document */
+            readonly type_document: string;
+            readonly type_document_libelle: string;
+            readonly version: number;
+            /** @default DEPOSE */
+            readonly statut: components["schemas"]["StatutGabaritEnum"];
+            /** Nom d'origine */
+            readonly nom_original: string;
+            /** Taille (octets) */
+            readonly taille: number;
+            /** Empreinte SHA-256 */
+            readonly empreinte: string;
+            readonly balises: unknown;
+            /** Version du contrat */
+            readonly contrat_version: number;
+            readonly provisoire: boolean;
+            readonly commentaire: string;
+            readonly created_by: components["schemas"]["UtilisateurResume"] | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            readonly active_par: components["schemas"]["UtilisateurResume"] | null;
+            /**
+             * Activé le
+             * Format: date-time
+             */
+            readonly active_le: string | null;
+        };
+        GabaritRef: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly version: number;
+            readonly provisoire: boolean;
+        };
+        GabaritResume: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly version: number;
+            readonly statut: components["schemas"]["StatutGabaritEnum"];
+            readonly provisoire: boolean;
+            /**
+             * Activé le
+             * Format: date-time
+             */
+            readonly active_le: string | null;
+        };
+        GenerationRequest: {
+            type_document: string;
+            /** Format: uuid */
+            objet: string;
+        };
         /** @description Base des sérialiseurs qui exposent `etape_close` : statuts lus une fois par mission. */
         GrilleSeparation: {
             /** Format: uuid */
@@ -2322,11 +3184,35 @@ export interface components {
             version: string;
             stockage_documents: string;
         };
+        ImportAnnuaireRequest: {
+            keycloak_ids: string[];
+        };
+        ImportCsvRequest: {
+            /** Format: binary */
+            fichier: string;
+            /**
+             * @description Simulation sans écriture (par défaut).
+             * @default true
+             */
+            dry_run: boolean;
+        };
         InstantaneReferentiel: {
             confirmation: components["schemas"]["ConfirmationResume"];
             donnees: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * @description * `A_JOUR` - À jour
+         *     * `EN_ATTENTE` - En attente
+         *     * `ECHEC` - Échec
+         * @enum {string}
+         */
+        KeycloakSyncStatutEnum: "A_JOUR" | "EN_ATTENTE" | "ECHEC";
+        LigneImportIgnoree: {
+            ligne: number | null;
+            identifiant: string;
+            motif: string;
         };
         LigneMARC: {
             /** Format: uuid */
@@ -2383,6 +3269,77 @@ export interface components {
             cle?: boolean;
             commentaire?: string;
             ordre?: number;
+        };
+        LigneProgramme: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Écriture à la création seulement.
+             */
+            programme: string;
+            readonly programme_annee: number;
+            readonly programme_statut: components["schemas"]["StatutProgrammeEnum"];
+            /** Numéro */
+            readonly numero: number;
+            titre: string;
+            type: components["schemas"]["TypeMissionEnum"];
+            /** Format: uuid */
+            processus: string;
+            readonly processus_code: string;
+            readonly processus_libelle: string;
+            readonly processus_supprime: boolean;
+            /** Format: uuid */
+            objet_auditable?: string | null;
+            readonly objet_auditable_libelle: string | null;
+            readonly objet_auditable_supprime: boolean;
+            readonly entites_detail: components["schemas"]["EntiteResume"][];
+            /**
+             * Début prévu
+             * Format: date
+             */
+            debut_prevu: string;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            fin_prevue: string;
+            readonly trimestre: number;
+            /** Format: decimal */
+            charge_prevue_jours?: string | null;
+            justification?: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        LigneProgrammeRequest: {
+            /**
+             * Format: uuid
+             * @description Écriture à la création seulement.
+             */
+            programme: string;
+            titre: string;
+            type: components["schemas"]["TypeMissionEnum"];
+            /** Format: uuid */
+            processus: string;
+            /** Format: uuid */
+            objet_auditable?: string | null;
+            /** @description Identifiants des entités concernées (écriture). */
+            entites?: string[];
+            /**
+             * Début prévu
+             * Format: date
+             */
+            debut_prevu: string;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            fin_prevue: string;
+            /** Format: decimal */
+            charge_prevue_jours?: string | null;
+            justification?: string;
         };
         LigneSuivi: {
             numero: number;
@@ -2572,6 +3529,9 @@ export interface components {
             readonly reference: string;
             readonly titre: string;
         };
+        MotifDesactivationRequest: {
+            motif: string;
+        };
         /**
          * @description * `CONTROLE_NIVEAU_SUPERIEUR` - Contrôle de niveau supérieur
          *     * `AUTRES_CONTROLES` - Autres contrôles couvrant totalement le risque
@@ -2662,6 +3622,13 @@ export interface components {
             description?: string;
             ordre?: number;
         };
+        /**
+         * @description * `CONNEXION` - Première connexion
+         *     * `ANNUAIRE` - Import annuaire
+         *     * `CSV` - Import CSV
+         * @enum {string}
+         */
+        OrigineCompteEnum: "CONNEXION" | "ANNUAIRE" | "CSV";
         PaginatedAffectationList: {
             /** @example 123 */
             count: number;
@@ -2706,6 +3673,36 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["CartographieVersion"][];
+        };
+        PaginatedCompteUtilisateurListeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["CompteUtilisateurListe"][];
+        };
+        PaginatedConsultationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Consultation"][];
         };
         PaginatedDeclarationList: {
             /** @example 123 */
@@ -2752,6 +3749,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Direction"][];
         };
+        PaginatedDocumentListeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["DocumentListe"][];
+        };
         PaginatedEntretienList: {
             /** @example 123 */
             count: number;
@@ -2782,6 +3794,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["ForceFaiblesse"][];
         };
+        PaginatedGabaritDocumentList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["GabaritDocument"][];
+        };
         PaginatedGrilleSeparationList: {
             /** @example 123 */
             count: number;
@@ -2811,6 +3838,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["LigneMARC"][];
+        };
+        PaginatedLigneProgrammeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["LigneProgramme"][];
         };
         PaginatedMissionListeList: {
             /** @example 123 */
@@ -2871,6 +3913,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Processus"][];
+        };
+        PaginatedProgrammeAnnuelList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["ProgrammeAnnuel"][];
         };
         PaginatedQuestionnaireList: {
             /** @example 123 */
@@ -2951,6 +4008,16 @@ export interface components {
             FAIBLE: number;
             MOYEN: number;
             ELEVE: number;
+        };
+        ParTrimestre: {
+            1: number;
+            2: number;
+            3: number;
+            4: number;
+        };
+        ParType: {
+            ASSURANCE: number;
+            CONSEIL: number;
         };
         PatchedCartographieVersionRequest: {
             /** Année */
@@ -3048,6 +4115,11 @@ export interface components {
             commentaire?: string;
             ordre?: number;
         };
+        PatchedFormatNumerotationEcritureRequest: {
+            modele?: string;
+            portee?: components["schemas"]["PorteeNumerotationEnum"];
+            abreviation?: string;
+        };
         /** @description Base des sérialiseurs qui exposent `etape_close` : statuts lus une fois par mission. */
         PatchedGrilleSeparationRequest: {
             /** Format: uuid */
@@ -3081,6 +4153,34 @@ export interface components {
             cle?: boolean;
             commentaire?: string;
             ordre?: number;
+        };
+        PatchedLigneProgrammeRequest: {
+            /**
+             * Format: uuid
+             * @description Écriture à la création seulement.
+             */
+            programme?: string;
+            titre?: string;
+            type?: components["schemas"]["TypeMissionEnum"];
+            /** Format: uuid */
+            processus?: string;
+            /** Format: uuid */
+            objet_auditable?: string | null;
+            /** @description Identifiants des entités concernées (écriture). */
+            entites?: string[];
+            /**
+             * Début prévu
+             * Format: date
+             */
+            debut_prevu?: string;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            fin_prevue?: string;
+            /** Format: decimal */
+            charge_prevue_jours?: string | null;
+            justification?: string;
         };
         PatchedMissionRequest: {
             titre?: string;
@@ -3152,6 +4252,18 @@ export interface components {
             ordre?: number;
             /** @description Identifiants des directions (type DIRECTION uniquement) rattachées (écriture). */
             directions?: string[];
+        };
+        /** @description Champs de profil modifiables ; tout autre champ est refusé explicitement. */
+        PatchedProfilUtilisateurRequest: {
+            matricule?: string;
+            direction_code?: string;
+            fonction?: string;
+        };
+        PatchedProgrammeAnnuelRequest: {
+            /** @description Écriture à la création seulement : l'année est ensuite immuable. */
+            annee?: number;
+            libelle?: string;
+            commentaire?: string;
         };
         PatchedQuestionRequest: {
             /** Format: uuid */
@@ -3250,6 +4362,12 @@ export interface components {
          */
         PhaseEnum: "PLANIFICATION" | "ACCOMPLISSEMENT" | "COMMUNICATION";
         /**
+         * @description * `MISSION` - Par mission
+         *     * `ANNEE` - Par année
+         * @enum {string}
+         */
+        PorteeNumerotationEnum: "MISSION" | "ANNEE";
+        /**
          * @description * `1` - Prioritaire
          *     * `2` - Amélioration
          *     * `3` - Observation
@@ -3274,6 +4392,34 @@ export interface components {
             ordre?: number;
             /** @description Identifiants des directions (type DIRECTION uniquement) rattachées (écriture). */
             directions?: string[];
+        };
+        ProgrammeAnnuel: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Écriture à la création seulement : l'année est ensuite immuable. */
+            annee: number;
+            libelle?: string;
+            commentaire?: string;
+            readonly statut: components["schemas"]["StatutProgrammeEnum"];
+            /**
+             * Validé le
+             * Format: date-time
+             */
+            readonly valide_le: string | null;
+            readonly valide_par: components["schemas"]["Valideur"] | null;
+            readonly nb_lignes: number;
+            /** Format: decimal */
+            readonly charge_totale_jours: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        ProgrammeAnnuelRequest: {
+            /** @description Écriture à la création seulement : l'année est ensuite immuable. */
+            annee: number;
+            libelle?: string;
+            commentaire?: string;
         };
         Question: {
             /** Format: uuid */
@@ -3332,6 +4478,12 @@ export interface components {
             exclusions: string;
             clients: string;
             livrables_attendus: string;
+        };
+        RapportImport: {
+            dry_run: boolean;
+            crees: string[];
+            mis_a_jour: string[];
+            ignores: components["schemas"]["LigneImportIgnoree"][];
         };
         /** @description Base des sérialiseurs qui exposent `etape_close` : statuts lus une fois par mission. */
         RapportOrientation: {
@@ -3606,6 +4758,21 @@ export interface components {
          */
         StatutEtapeEnum: "A_FAIRE" | "EN_COURS" | "TERMINEE" | "VALIDEE" | "RENVOYEE" | "A_REVALIDER" | "NON_APPLICABLE";
         /**
+         * @description * `DEPOSE` - Déposé
+         *     * `ACTIF` - Actif
+         *     * `ARCHIVE` - Archivé
+         * @enum {string}
+         */
+        StatutGabaritEnum: "DEPOSE" | "ACTIF" | "ARCHIVE";
+        /**
+         * @description * `EN_ATTENTE` - En attente
+         *     * `EN_COURS` - En cours
+         *     * `PRETE` - Prête
+         *     * `ECHEC` - Échec
+         * @enum {string}
+         */
+        StatutGenerationEnum: "EN_ATTENTE" | "EN_COURS" | "PRETE" | "ECHEC";
+        /**
          * @description * `BROUILLON` - Brouillon
          *     * `PLANIFIEE` - Planifiée
          *     * `EN_PLANIFICATION` - En planification
@@ -3620,6 +4787,20 @@ export interface components {
          */
         StatutMissionEnum: "BROUILLON" | "PLANIFIEE" | "EN_PLANIFICATION" | "EN_ACCOMPLISSEMENT" | "EN_COMMUNICATION" | "RAPPORT_DIFFUSE" | "EN_SUIVI" | "CLOTUREE" | "SUSPENDUE" | "ANNULEE";
         /**
+         * @description * `NON_DEMANDE` - Non demandé
+         *     * `EN_COURS` - En cours
+         *     * `PRET` - Prêt
+         *     * `ECHEC` - Échec
+         * @enum {string}
+         */
+        StatutPdfEnum: "NON_DEMANDE" | "EN_COURS" | "PRET" | "ECHEC";
+        /**
+         * @description * `BROUILLON` - Brouillon
+         *     * `VALIDE` - Validé
+         * @enum {string}
+         */
+        StatutProgrammeEnum: "BROUILLON" | "VALIDE";
+        /**
          * @description * `BROUILLON` - En préparation
          *     * `SOUMIS` - Soumis au RAI
          *     * `RENVOYE` - Renvoyé
@@ -3628,12 +4809,48 @@ export interface components {
          * @enum {string}
          */
         StatutReferentielEnum: "BROUILLON" | "SOUMIS" | "RENVOYE" | "VALIDE" | "A_REVALIDER";
+        /** @description État de la propagation du compte vers Keycloak. */
+        SyncKeycloak: {
+            readonly statut: components["schemas"]["KeycloakSyncStatutEnum"];
+            readonly erreur: string;
+            /** Format: date-time */
+            readonly derniere_tentative_le: string | null;
+            readonly tentatives: number;
+            /** @description Échec permanent : seule une relance manuelle peut le résoudre. */
+            readonly manuel: boolean;
+        };
+        SyntheseProgramme: {
+            nb_lignes: number;
+            /** Format: decimal */
+            charge_totale_jours: string;
+            par_type: components["schemas"]["ParType"];
+            par_trimestre: components["schemas"]["ParTrimestre"];
+        };
         /**
          * @description * `ACCORD` - Accord
          *     * `REMARQUES` - Remarques
          * @enum {string}
          */
         TypeAvisEnum: "ACCORD" | "REMARQUES";
+        /**
+         * @description * `texte` - texte
+         *     * `texte_long` - texte_long
+         *     * `liste` - liste
+         *     * `bloc` - bloc
+         * @enum {string}
+         */
+        TypeChampEnum: "texte" | "texte_long" | "liste" | "bloc";
+        /** @description Entrée du registre : `champs` = contrat complet (blocs communs compris). */
+        TypeDocument: {
+            code: string;
+            libelle: string;
+            etape: number | null;
+            etape_romain: string | null;
+            contrat_version: number;
+            champs: components["schemas"]["ChampContrat"][];
+            gabarit_actif: components["schemas"]["GabaritResume"] | null;
+            format_numerotation: components["schemas"]["FormatNumerotation"];
+        };
         /**
          * @description * `ORDRE_MISSION` - Ordre de mission
          *     * `DECLARATION_INDEPENDANCE` - Déclaration d'indépendance
@@ -3693,6 +4910,15 @@ export interface components {
          * @enum {string}
          */
         TypologieProcessusEnum: "PILOTAGE" | "SUPPORT" | "REALISATION" | "MESURE";
+        UserRef: {
+            readonly id: number;
+            /**
+             * Nom d’utilisateur
+             * @description Requis. 150 caractères maximum. Uniquement des lettres, nombres et les caractères « @ », « . », « + », « - » et « _ ».
+             */
+            readonly username: string;
+            readonly nom_complet: string;
+        };
         /** @description Représentation minimale d'un utilisateur dans les réponses (annuaire, équipes). */
         UtilisateurResume: {
             readonly id: number;
@@ -3721,6 +4947,20 @@ export interface components {
          * @enum {string}
          */
         VarianteOrientationEnum: "COMPLET" | "SIMPLIFIE";
+        VersionDocumentResume: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Numéro de version */
+            readonly numero_version: number;
+            readonly statut: components["schemas"]["StatutGenerationEnum"];
+            /** Statut du PDF */
+            readonly statut_pdf: components["schemas"]["StatutPdfEnum"];
+            /**
+             * Généré le
+             * Format: date-time
+             */
+            readonly genere_le: string | null;
+        };
         VersionResume: {
             /** Format: uuid */
             readonly id: string;
@@ -4923,6 +6163,743 @@ export interface operations {
             };
         };
     };
+    v1_audit_plan_lines_list: {
+        parameters: {
+            query?: {
+                entite?: string;
+                objet_auditable?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                processus?: string;
+                programme?: string;
+                /** @description Recherche insensible à la casse sur le titre. */
+                q?: string;
+                /**
+                 * @description Trimestre du début prévu (1 à 4).
+                 *
+                 *     * `1` - 1
+                 *     * `2` - 2
+                 *     * `3` - 3
+                 *     * `4` - 4
+                 */
+                trimestre?: "1" | "2" | "3" | "4";
+                /**
+                 * @description * `ASSURANCE` - Assurance
+                 *     * `CONSEIL` - Conseil
+                 */
+                type?: "ASSURANCE" | "CONSEIL";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedLigneProgrammeList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plan_lines_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LigneProgrammeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LigneProgrammeRequest"];
+                "multipart/form-data": components["schemas"]["LigneProgrammeRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LigneProgramme"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plan_lines_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) ligne de programme. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LigneProgramme"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plan_lines_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) ligne de programme. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plan_lines_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) ligne de programme. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedLigneProgrammeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedLigneProgrammeRequest"];
+                "multipart/form-data": components["schemas"]["PatchedLigneProgrammeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LigneProgramme"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_list: {
+        parameters: {
+            query?: {
+                annee?: number;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `BROUILLON` - Brouillon
+                 *     * `VALIDE` - Validé
+                 */
+                statut?: "BROUILLON" | "VALIDE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedProgrammeAnnuelList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgrammeAnnuelRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ProgrammeAnnuelRequest"];
+                "multipart/form-data": components["schemas"]["ProgrammeAnnuelRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgrammeAnnuel"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) programme annuel d'audit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgrammeAnnuel"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) programme annuel d'audit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) programme annuel d'audit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedProgrammeAnnuelRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedProgrammeAnnuelRequest"];
+                "multipart/form-data": components["schemas"]["PatchedProgrammeAnnuelRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgrammeAnnuel"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_export_retrieve: {
+        parameters: {
+            query: {
+                format?: "" | "json";
+                /** @description Format du fichier : csv (UTF-8, séparateur « ; ») ou xlsx. */
+                type: "csv" | "xlsx";
+            };
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) programme annuel d'audit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv; charset=utf-8": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_summary_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) programme annuel d'audit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyntheseProgramme"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_validate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) programme annuel d'audit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgrammeAnnuel"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_auditable_objects_list: {
         parameters: {
             query?: {
@@ -5497,6 +7474,545 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Direction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_document_types_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TypeDocument"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_document_versions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentVersion"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_document_versions_consultations_list: {
+        parameters: {
+            query?: {
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedConsultationList"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_document_versions_download_retrieve: {
+        parameters: {
+            query?: {
+                /**
+                 * @description * `docx` - docx
+                 *     * `pdf` - pdf
+                 */
+                format?: "docx" | "pdf";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_document_versions_retry_pdf_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentVersion"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_documents_list: {
+        parameters: {
+            query?: {
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /** @description Recherche insensible à la casse sur le numéro. */
+                q?: string;
+                type_document?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedDocumentListeList"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_documents_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Document"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_documents_available_list: {
+        parameters: {
+            query: {
+                mission: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDisponible"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_documents_generate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GenerationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["GenerationRequest"];
+                "multipart/form-data": components["schemas"]["GenerationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentVersion"];
+                };
+            };
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentVersion"];
                 };
             };
             400: {
@@ -8953,6 +11469,242 @@ export interface operations {
             };
         };
     };
+    v1_numbering_formats_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormatNumerotation"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_numbering_formats_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type_document: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormatNumerotation"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_numbering_formats_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type_document: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedFormatNumerotationEcritureRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedFormatNumerotationEcritureRequest"];
+                "multipart/form-data": components["schemas"]["PatchedFormatNumerotationEcritureRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FormatNumerotation"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_numbering_formats_preview_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApercuFormatRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ApercuFormatRequest"];
+                "multipart/form-data": components["schemas"]["ApercuFormatRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApercuNumero"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_orientation_reports_retrieve: {
         parameters: {
             query?: never;
@@ -11016,6 +13768,956 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_templates_list: {
+        parameters: {
+            query?: {
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `DEPOSE` - Déposé
+                 *     * `ACTIF` - Actif
+                 *     * `ARCHIVE` - Archivé
+                 */
+                statut?: "ACTIF" | "ARCHIVE" | "DEPOSE";
+                type_document?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedGabaritDocumentList"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_templates_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["GabaritDepotRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GabaritDocument"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_templates_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GabaritDocument"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_templates_activate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GabaritDocument"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_templates_file_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_templates_preview_retrieve: {
+        parameters: {
+            query?: {
+                /**
+                 * @description * `docx` - docx
+                 *     * `pdf` - pdf
+                 */
+                format?: "docx" | "pdf";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_list: {
+        parameters: {
+            query?: {
+                direction_code?: string;
+                /** @description Compte qui ne s'est jamais connecté. */
+                en_attente_connexion?: boolean;
+                is_active?: boolean;
+                /**
+                 * @description * `A_JOUR` - À jour
+                 *     * `EN_ATTENTE` - En attente
+                 *     * `ECHEC` - Échec
+                 */
+                keycloak_sync?: "A_JOUR" | "ECHEC" | "EN_ATTENTE";
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /**
+                 * @description * `CONNEXION` - Première connexion
+                 *     * `ANNUAIRE` - Import annuaire
+                 *     * `CSV` - Import CSV
+                 */
+                origine?: "ANNUAIRE" | "CONNEXION" | "CSV";
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /** @description Recherche insensible à la casse sur l'identifiant, le prénom, le nom, l'e-mail et le matricule. */
+                q?: string;
+                /**
+                 * @description * `ADMIN` - Administrateur
+                 *     * `RAI` - Responsable de l'audit interne
+                 *     * `AUDITEUR` - Auditeur interne
+                 *     * `AUDITE` - Audité
+                 *     * `DG` - Direction générale
+                 */
+                role?: "ADMIN" | "AUDITE" | "AUDITEUR" | "DG" | "RAI";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedCompteUtilisateurListeList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedProfilUtilisateurRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedProfilUtilisateurRequest"];
+                "multipart/form-data": components["schemas"]["PatchedProfilUtilisateurRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_deactivate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifDesactivationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifDesactivationRequest"];
+                "multipart/form-data": components["schemas"]["MotifDesactivationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_reactivate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_resync_profile_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_retry_keycloak_sync_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_directory_search_list: {
+        parameters: {
+            query: {
+                /** @description 2 à 100 caractères. */
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntreeAnnuaire"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_import_csv_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["ImportCsvRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RapportImport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_import_directory_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportAnnuaireRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ImportAnnuaireRequest"];
+                "multipart/form-data": components["schemas"]["ImportAnnuaireRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RapportImport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

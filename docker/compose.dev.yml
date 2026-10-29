@@ -29,6 +29,8 @@ services:
       KC_HTTP_ENABLED: "true"
       # Substituted into realm-onea.json (${OIDC_RP_CLIENT_SECRET}) at import time.
       OIDC_RP_CLIENT_SECRET: ${OIDC_RP_CLIENT_SECRET:?OIDC_RP_CLIENT_SECRET is required (see .env.example)}
+      # Secret of the onea-admin-sync service account (${KEYCLOAK_ADMIN_API_CLIENT_SECRET} in the realm).
+      KEYCLOAK_ADMIN_API_CLIENT_SECRET: ${KEYCLOAK_ADMIN_API_CLIENT_SECRET:?KEYCLOAK_ADMIN_API_CLIENT_SECRET is required (see .env.example)}
     volumes:
       - ./keycloak/realm-onea.json:/opt/keycloak/data/import/realm-onea.json:ro
     ports:

@@ -28,7 +28,7 @@ beforeAll(() => {
 const RESTRICTED: [string, string, readonly Role[]][] = [
   ["/missions", fr.nav.missions, ["RAI", "AUDITEUR", "AUDITE"]],
   ["/referentiel", fr.nav.referentiel, ["ADMIN", "RAI", "AUDITEUR", "DG"]],
-  ["/administration", fr.nav.administration, ["ADMIN"]],
+  ["/administration", fr.utilisateurs.title, ["ADMIN"]],
 ];
 
 describe("guarded routes", () => {
@@ -41,9 +41,6 @@ describe("guarded routes", () => {
       renderRoutes(appRoutes, role, { path });
       if (roles.includes(role)) {
         expect(screen.getByRole("heading", { level: 1, name: title })).toBeInTheDocument();
-        if (path === "/administration") {
-          expect(screen.getByText(fr.shell.comingSoonTitle)).toBeInTheDocument();
-        }
         expect(screen.queryByText(fr.errors.forbiddenTitle)).not.toBeInTheDocument();
       } else {
         expect(
@@ -106,6 +103,21 @@ describe("referentiel routes", () => {
   });
 });
 
+describe("administration routes", () => {
+  it("redirects an ADMIN from /administration to the users list", () => {
+    const { router } = renderRoutes(appRoutes, "ADMIN", { path: "/administration" });
+    expect(router.state.location.pathname).toBe("/administration/utilisateurs");
+    expect(
+      screen.getByRole("heading", { level: 1, name: fr.utilisateurs.title }),
+    ).toBeInTheDocument();
+  });
+
+  it.each(["RAI", "AUDITE"] as const)("denies %s on the users sub-route", (role) => {
+    renderRoutes(appRoutes, role, { path: "/administration/utilisateurs/7" });
+    expect(screen.getByText(fr.errors.forbiddenTitle)).toBeInTheDocument();
+  });
+});
+
 describe("referentiel risk map routes", () => {
   it("renders the risk map list page", async () => {
     renderRoutes(appRoutes, "RAI", { path: "/referentiel/cartographies" });
@@ -124,6 +136,36 @@ describe("referentiel risk map routes", () => {
   it("renders the risk form page and asks for a map when none is given", () => {
     renderRoutes(appRoutes, "RAI", { path: "/referentiel/risques/nouveau" });
     expect(screen.getByText(fr.refCartographie.riskMapMissing)).toBeInTheDocument();
+  });
+});
+
+describe("programme annuel routes", () => {
+  it("shows the forbidden view to an AUDITE", () => {
+    renderRoutes(appRoutes, "AUDITE", { path: "/programme-annuel" });
+    expect(
+      screen.getByRole("heading", { level: 1, name: fr.errors.forbiddenTitle }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(fr.errors.forbiddenText);
+  });
+
+  it("lets a DG reach the list page", () => {
+    renderRoutes(appRoutes, "DG", { path: "/programme-annuel" });
+    expect(
+      screen.getByRole("heading", { level: 1, name: fr.programmation.title }),
+    ).toBeInTheDocument();
+  });
+
+  it("mounts the line creation route", async () => {
+    const planId = "3f2b8c1e-8a4d-4c55-9a0e-1b2c3d4e5f60";
+    server.use(
+      http.get(`${API_URL}/api/v1/audit-plans/${planId}/`, () =>
+        HttpResponse.json({ id: planId, annee: 2026, statut: "BROUILLON" }),
+      ),
+    );
+    renderRoutes(appRoutes, "RAI", { path: `/programme-annuel/${planId}/nouvelle-ligne` });
+    expect(
+      await screen.findByRole("heading", { level: 1, name: fr.programmationLignes.newTitle }),
+    ).toBeInTheDocument();
   });
 });
 

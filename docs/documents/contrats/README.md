@@ -6,6 +6,8 @@ Fichiers générés par `python manage.py contrats_documents --ecrire`.
 - [Tableau des forces et faiblesses](FORCES_FAIBLESSES.md)
 - [Grille de séparation des tâches](GRILLE_SEPARATION_TACHES.md)
 - [Matrice d'analyse des risques et contrôles (MARC)](MARC.md)
+- [Ordre de mission](ORDRE_MISSION.md)
+- [PV de la réunion d'ouverture](PV_OUVERTURE.md)
 - [Questionnaire de contrôle interne (QCI)](QCI.md)
 - [Questionnaire de prise de connaissance](QUESTIONNAIRE_PRISE_CONNAISSANCE.md)
 - [Rapport d'orientation](RAPPORT_ORIENTATION.md)

@@ -20,6 +20,7 @@ ERROR_400 = {400: ApiErrorSerializer}
 ERROR_401 = {401: ApiErrorSerializer}
 ERROR_403 = {403: ApiErrorSerializer}
 ERROR_404 = {404: ApiErrorSerializer}
+ERROR_409 = {409: ApiErrorSerializer}
 ERROR_422 = {422: ApiErrorSerializer}
 ERROR_503 = {503: ApiErrorSerializer}
 

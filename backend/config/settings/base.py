@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "apps.referentiel",
     "apps.signatures",
     "apps.missions",
+    "apps.programmation",
     "apps.analyse",
     "apps.documents",
 ]
@@ -179,6 +180,17 @@ SPECTACULAR_SETTINGS = {
         "StatutEntretienEnum": "apps.missions.models.StatutEntretien.choices",
         "ActionEtapeEnum": "apps.missions.services.etapes.ActionEtape.choices",
         "TypeDocumentSignableEnum": "apps.signatures.models.TypeDocumentSignable.choices",
+        "KeycloakSyncStatutEnum": "apps.users.models.KeycloakSyncStatut.choices",
+        "OrigineCompteEnum": "apps.users.models.OrigineCompte.choices",
+        "StatutProgrammeEnum": "apps.programmation.models.StatutProgramme.choices",
+        # programmation.TypeIntervention a les mêmes choix que missions.TypeMission
+        # (ASSURANCE / CONSEIL) : drf-spectacular les fusionne sous TypeMissionEnum.
+        "StatutGabaritEnum": "apps.documents.models.StatutGabarit.choices",
+        "StatutGenerationEnum": "apps.documents.models.StatutGeneration.choices",
+        "StatutPdfEnum": "apps.documents.models.StatutPdf.choices",
+        "PorteeNumerotationEnum": "apps.documents.models.PorteeNumerotation.choices",
+        "FormatFichierEnum": "apps.documents.models.FormatFichier.choices",
+        "TypeChampEnum": "apps.documents.serializers.TYPE_CHAMP_CHOICES",
         "TypeQuestionnaireEnum": "apps.analyse.models.TypeQuestionnaire.choices",
         "AppreciationEnum": "apps.analyse.models.Appreciation.choices",
         "TypologieProcessusEnum": "apps.analyse.models.TypologieProcessus.choices",
@@ -210,6 +222,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.tasks.heartbeat",
         "schedule": crontab(hour=6, minute=0),
     },
+    "users-keycloak-sync": {
+        "task": "users.synchroniser_comptes_keycloak",
+        "schedule": crontab(minute="*/15"),
+    },
+    "documents-balayage": {
+        "task": "documents.balayer_generations_bloquees",
+        "schedule": crontab(minute="*/10"),
+    },
 }
 
 # --- Email: EMAIL_URL = smtp://mailpit:1025 in compose, smtp://localhost:1025 on host ---
@@ -240,6 +260,12 @@ OIDC_VERIFY_SSL: bool = env.bool("OIDC_VERIFY_SSL", default=True)
 OIDC_TIMEOUT = 5  # seconds; Keycloak calls must never hang a request worker
 # Accepted `azp` (issuing client) of bearer access tokens; other realm clients are refused.
 OIDC_ALLOWED_AZP: list[str] = env.list("OIDC_ALLOWED_AZP", default=["onea-frontend"])
+
+# --- Keycloak Admin API (service account of the realm, least privilege) ---
+# Client-credentials grant of `onea-admin-sync` (view-users + manage-users only). Never an
+# accepted `azp` of bearer tokens. Empty secret = synchronisation not configured.
+KEYCLOAK_ADMIN_API_CLIENT_ID: str = env("KEYCLOAK_ADMIN_API_CLIENT_ID", default="onea-admin-sync")
+KEYCLOAK_ADMIN_API_CLIENT_SECRET: str = env("KEYCLOAK_ADMIN_API_CLIENT_SECRET", default="")
 # The OIDC backend is wired for the DRF bearer path only, NOT in AUTHENTICATION_BACKENDS,
 # so that django authenticate() (admin/session) can never trigger a code-flow exchange.
 OIDC_DRF_AUTH_BACKEND = "apps.users.oidc.OneaOIDCBackend"

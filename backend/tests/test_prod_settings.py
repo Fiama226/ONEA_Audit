@@ -18,6 +18,7 @@ PROD_ENV = {
     "CORS_ALLOWED_ORIGINS": "https://audit.onea.bf",
     "CSRF_TRUSTED_ORIGINS": "https://audit.onea.bf",
     "OIDC_OP_BASE_URL": "https://sso.onea.bf/realms/onea",
+    "KEYCLOAK_ADMIN_API_CLIENT_SECRET": "prod-sync-secret",
     "DOCUMENTS_ROOT": "/var/lib/onea/documents",
 }
 

@@ -17,6 +17,25 @@ class DocumentsConfig(AppConfig):
         if settings.DOCUMENTS_CREER_DOSSIER and settings.DOCUMENTS_STORAGE == "filesystem":
             Path(settings.DOCUMENTS_ROOT).mkdir(parents=True, exist_ok=True)
 
+        from apps.core.audit import register
+
+        from .models import (
+            ConsultationDocument,
+            Document,
+            DocumentVersion,
+            FormatNumerotation,
+            GabaritDocument,
+        )
+
+        for modele in (
+            GabaritDocument,
+            FormatNumerotation,
+            Document,
+            DocumentVersion,
+            ConsultationDocument,
+        ):
+            register(modele)
+
         # Document types register themselves on import: no need to edit this file.
         from . import generators
 

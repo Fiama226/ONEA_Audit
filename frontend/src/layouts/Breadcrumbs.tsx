@@ -23,6 +23,7 @@ function labelFor(segment: string, previous: string | undefined): string {
   if (previous === "etapes" && /^\d+$/.test(segment)) {
     return `${fr.missions.stepPrefix} ${toRoman(Number(segment))}`;
   }
+  if (previous === "utilisateurs" && /^\d+$/.test(segment)) return fr.utilisateurs.crumbUser;
   if (segment === "nouveau" && previous === "risques") return fr.refCartographie.crumbNewRisk;
   return SEGMENT_LABELS[segment] ?? segment;
 }
@@ -54,7 +55,7 @@ function crumbsFor(pathname: string): Crumb[] {
   const crumbs: Crumb[] = [root];
   segments.forEach((segment, i) => {
     // « risques » n'a pas de page propre : il n'apparaît que s'il est le dernier segment.
-    if (segment === "risques" && i < segments.length - 1) return;
+    if ((segment === "risques" || segment === "lignes") && i < segments.length - 1) return;
     crumbs.push({
       to: `/${segments.slice(0, i + 1).join("/")}`,
       label: labelFor(segment, segments[i - 1]),
