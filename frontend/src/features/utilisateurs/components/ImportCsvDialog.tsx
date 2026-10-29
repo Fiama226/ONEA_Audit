@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +17,8 @@ import type { RapportImport } from "../types";
 import { ImportReport } from "./ImportReport";
 
 const t = fr.utilisateurs.import;
+/** Limite serveur (1 Mo) : inutile d'envoyer un fichier plus gros. */
+const MAX_BYTES = 1024 * 1024;
 const ALERT_CLASS = "rounded-md border border-destructive/40 p-3 text-sm text-destructive";
 
 type Props = { open: boolean; onOpenChange: (open: boolean) => void };
@@ -45,15 +47,23 @@ function CsvImport({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const mutation = useImportCsv();
 
+  const busy = useRef(false);
+
   function onFileChange(next: File | null) {
-    setFile(next);
     setVerified(null);
     setReport(null);
+    if (next !== null && next.size > MAX_BYTES) {
+      setFile(null);
+      setError(t.csvTooLarge);
+      return;
+    }
+    setFile(next);
     setError(null);
   }
 
   async function run(dryRun: boolean) {
-    if (!file) return;
+    if (!file || busy.current) return;
+    busy.current = true;
     setError(null);
     try {
       const result = await mutation.mutateAsync({ file, dryRun });
@@ -63,6 +73,8 @@ function CsvImport({ onClose }: { onClose: () => void }) {
       setReport(null);
       setVerified(null);
       setError(errorMessage(e));
+    } finally {
+      busy.current = false;
     }
   }
 
@@ -90,6 +102,7 @@ function CsvImport({ onClose }: { onClose: () => void }) {
             id="csv-file"
             type="file"
             accept=".csv,text/csv"
+            disabled={mutation.isPending}
             onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
           />
         </div>

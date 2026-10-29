@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -51,10 +52,13 @@ function errorMessage(error: unknown): string {
   return fr.errors.generic;
 }
 
+type Selected = { id: string; name: string };
+
 function DirectoryImport({ onClose }: { onClose: () => void }) {
   const [input, setInput] = useState("");
   const [term, setTerm] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<Selected[]>([]);
+  const busy = useRef(false);
   const [limitReached, setLimitReached] = useState(false);
   const [report, setReport] = useState<RapportImport | null>(null);
   const search = useDirectorySearch(term);
@@ -67,23 +71,27 @@ function DirectoryImport({ onClose }: { onClose: () => void }) {
 
   const results = term.trim().length >= 2 ? (search.data ?? []) : [];
 
-  function toggle(id: string, checked: boolean) {
+  function toggle(entry: Selected, checked: boolean) {
     if (!checked) {
       setLimitReached(false);
-      setSelected((s) => s.filter((x) => x !== id));
+      setSelected((s) => s.filter((x) => x.id !== entry.id));
     } else if (selected.length >= MAX_SELECTION) {
       setLimitReached(true);
     } else {
-      setSelected((s) => [...s, id]);
+      setSelected((s) => [...s, entry]);
     }
   }
 
   async function submit() {
+    if (busy.current) return;
+    busy.current = true;
     importer.reset();
     try {
-      setReport(await importer.mutateAsync({ keycloak_ids: selected }));
+      setReport(await importer.mutateAsync({ keycloak_ids: selected.map((x) => x.id) }));
     } catch {
       // affiché via importer.error
+    } finally {
+      busy.current = false;
     }
   }
 
@@ -117,6 +125,7 @@ function DirectoryImport({ onClose }: { onClose: () => void }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           autoComplete="off"
+          maxLength={100}
           aria-describedby="directory-search-hint"
         />
         <p id="directory-search-hint" className="text-xs text-text-muted">
@@ -172,8 +181,10 @@ function DirectoryImport({ onClose }: { onClose: () => void }) {
                         </div>
                       ) : (
                         <Checkbox
-                          checked={selected.includes(entry.keycloak_id)}
-                          onCheckedChange={(c) => toggle(entry.keycloak_id, c === true)}
+                          checked={selected.some((x) => x.id === entry.keycloak_id)}
+                          onCheckedChange={(c) =>
+                            toggle({ id: entry.keycloak_id, name: entry.nom_complet }, c === true)
+                          }
                           aria-label={`${t.select} ${entry.nom_complet}`}
                         />
                       )}
@@ -196,6 +207,42 @@ function DirectoryImport({ onClose }: { onClose: () => void }) {
           <span className="ml-2 font-medium text-destructive">{t.maxSelection}</span>
         )}
       </p>
+      {selected.length > 0 && (
+        <div className="grid gap-1">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-sm font-semibold">{t.selectionTitle}</h4>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSelected([]);
+                setLimitReached(false);
+              }}
+            >
+              {t.clearSelection}
+            </Button>
+          </div>
+          <ul aria-label={t.selectionTitle} className="flex max-h-24 flex-wrap gap-1 overflow-auto">
+            {selected.map((x) => (
+              <li
+                key={x.id}
+                className="flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-xs"
+              >
+                {x.name}
+                <button
+                  type="button"
+                  aria-label={`${t.removeSelected} ${x.name}`}
+                  className="rounded-sm px-1 hover:bg-surface-subtle"
+                  onClick={() => toggle(x, false)}
+                >
+                  <X className="size-3" aria-hidden />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {importer.isError && (
         <p role="alert" className={ALERT_CLASS}>
           {errorMessage(importer.error)}

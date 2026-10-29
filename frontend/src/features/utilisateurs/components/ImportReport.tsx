@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import {
   Table,
   TableBody,
@@ -33,20 +34,27 @@ function NameList({ title, items }: { title: string; items: string[] }) {
 
 /** Rapport d'import (vérification à blanc ou import réel) avec le motif de chaque ligne ignorée. */
 export function ImportReport({ report }: { report: RapportImport }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // Le résultat remplace des boutons qui disparaissent : le focus va sur le titre du rapport.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, [report]);
   const summary = [
-    `${plural(report.crees.length, `compte ${t.created}`, `comptes ${t.created}s`)}`,
+    plural(report.crees.length, t.createdOne, t.createdMany),
     `${report.mis_a_jour.length} ${t.updated}`,
-    `${plural(report.ignores.length, `${t.line} ${t.ignored}`, `${t.line}s ${t.ignored}s`)}`,
+    plural(report.ignores.length, t.ignoredOne, t.ignoredMany),
   ].join(", ");
   return (
     <section
       className="grid gap-3"
       aria-label={report.dry_run ? t.reportDryRunTitle : t.reportDoneTitle}
     >
-      <h3 className="text-base font-semibold">
+      <h3 ref={headingRef} tabIndex={-1} className="text-base font-semibold outline-none">
         {report.dry_run ? t.reportDryRunTitle : t.reportDoneTitle}
       </h3>
-      <p className="text-sm">{summary}</p>
+      <p role="status" className="text-sm">
+        {summary}
+      </p>
       <NameList title={t.createdList} items={report.crees} />
       <NameList title={t.updatedList} items={report.mis_a_jour} />
       {report.ignores.length > 0 && (

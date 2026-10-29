@@ -46,4 +46,12 @@ describe("ImportReport", () => {
     const row = screen.getByRole("row", { name: /kc/ });
     expect(within(row).getByText("—")).toBeInTheDocument();
   });
+
+  it("announces the summary and focuses the heading", () => {
+    render(<ImportReport report={aReport()} />);
+    expect(screen.getByRole("status")).toHaveTextContent("1 compte créé, 0 mis à jour");
+    expect(
+      screen.getByRole("heading", { name: "Vérification — aucun compte n'a encore été créé" }),
+    ).toHaveFocus();
+  });
 });

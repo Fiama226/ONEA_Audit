@@ -91,4 +91,35 @@ describe("ImportCsvDialog", () => {
     const results = await axe(document.body, { rules: { "color-contrast": { enabled: false } } });
     expect(results.violations).toEqual([]);
   });
+
+  it("rejects a file over 1 MB before any upload", async () => {
+    let calls = 0;
+    server.use(
+      http.post(URL_CSV, () => {
+        calls += 1;
+        return HttpResponse.json(aReport());
+      }),
+    );
+    renderDialog();
+    const big = new File([new Uint8Array(1024 * 1024 + 1)], "gros.csv", { type: "text/csv" });
+    await choose(big);
+    expect(screen.getByRole("alert")).toHaveTextContent("Le fichier dépasse 1 Mo.");
+    expect(screen.getByRole("button", { name: "Vérifier le fichier" })).toBeDisabled();
+    expect(calls).toBe(0);
+  });
+
+  it("disables the file input while the check runs", async () => {
+    server.use(
+      http.post(URL_CSV, async () => {
+        await new Promise((r) => setTimeout(r, 300));
+        return HttpResponse.json(aReport());
+      }),
+    );
+    renderDialog();
+    await choose();
+    await userEvent.click(screen.getByRole("button", { name: "Vérifier le fichier" }));
+    expect(screen.getByLabelText("Fichier CSV")).toBeDisabled();
+    await screen.findByRole("table");
+    expect(screen.getByLabelText("Fichier CSV")).toBeEnabled();
+  });
 });
