@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 import environ
 from celery.schedules import crontab
@@ -47,6 +48,7 @@ AUTH_USER_MODEL = "users.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.core.middleware.PasDeCacheApiMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -134,7 +136,8 @@ CORS_EXPOSE_HEADERS: list[str] = ["Content-Disposition"]
 
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.core.handlers.api_exception_handler",
-    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.users.authentication.SessionAuthentication401"],
+    # Bearer-only (D4): the Django session authenticates /admin/ and the schema views only.
+    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.users.authentication.OIDCBearerAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.StandardPagination",
@@ -270,12 +273,27 @@ KEYCLOAK_ADMIN_API_CLIENT_SECRET: str = env("KEYCLOAK_ADMIN_API_CLIENT_SECRET", 
 # so that django authenticate() (admin/session) can never trigger a code-flow exchange.
 OIDC_DRF_AUTH_BACKEND = "apps.users.oidc.OneaOIDCBackend"
 AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
-REST_FRAMEWORK = {
-    **REST_FRAMEWORK,
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "apps.users.authentication.OIDCBearerAuthentication",
-        "apps.users.authentication.SessionAuthentication401",
-    ],
+
+# --- T5: cookies, cache ---
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_AGE = 8 * 3600
+CSRF_COOKIE_SAMESITE = "Lax"
+
+
+def _cache_url() -> str:
+    explicit: str = env("CACHE_URL", default="")
+    if explicit:
+        return explicit
+    parts = urlsplit(REDIS_URL)  # same Redis, database 1 (0 is Celery's)
+    return urlunsplit(parts._replace(path="/1"))
+
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": _cache_url(),
+    }
 }
 
 LOGGING = {

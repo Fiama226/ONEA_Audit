@@ -3,8 +3,12 @@
 from typing import Any
 
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
+from drf_spectacular.settings import spectacular_settings
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import serializers
+from rest_framework.permissions import BasePermission
+from rest_framework.request import Request
+from rest_framework.views import APIView
 from rest_framework.serializers import BaseSerializer
 
 
@@ -83,6 +87,17 @@ def crud_schema(
             responses={204: None, **ERROR_RESPONSES, **ERROR_404, **ERROR_422},
         ),
     )
+
+
+class SchemaAccess(BasePermission):
+    """Permission of the schema/docs views: ``SPECTACULAR_SETTINGS["SERVE_PERMISSIONS"]``,
+    read at request time (IsAdminUser in production, open in dev/test)."""
+
+    def has_permission(self, request: Request, view: APIView) -> bool:
+        # spectacular_settings resolves the dotted paths to classes and follows overrides
+        return all(
+            cls().has_permission(request, view) for cls in spectacular_settings.SERVE_PERMISSIONS
+        )
 
 
 class SessionAuthentication401Scheme(OpenApiAuthenticationExtension):  # type: ignore[no-untyped-call]

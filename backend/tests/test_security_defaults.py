@@ -30,6 +30,29 @@ def test_health_stays_anonymous(api_client: APIClient) -> None:
     assert api_client.get("/api/v1/health/").status_code == 200
 
 
+def test_default_cache_is_usable() -> None:
+    from django.core.cache import caches
+
+    cache = caches["default"]
+    cache.set("t5-probe", {"a": 1}, 5)
+    assert cache.get("t5-probe") == {"a": 1}
+
+
+def test_api_default_authentication_is_bearer_only() -> None:
+    from django.conf import settings
+
+    auth = settings.REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]
+    assert auth == ["apps.users.authentication.OIDCBearerAuthentication"]
+
+
+def test_session_cookie_policy_defaults() -> None:
+    from django.conf import settings
+
+    assert settings.SESSION_COOKIE_SAMESITE == "Lax"
+    assert settings.SESSION_COOKIE_AGE == 8 * 3600
+    assert settings.SESSION_COOKIE_HTTPONLY is True
+
+
 def test_logging_is_configured() -> None:
     from django.conf import settings
 

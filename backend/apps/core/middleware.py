@@ -1,8 +1,27 @@
+from collections.abc import Callable
 from typing import Any
 
 from auditlog.middleware import AuditlogMiddleware
 from django.http import HttpRequest
+from django.http.response import HttpResponseBase
 from django.utils.functional import SimpleLazyObject, empty
+
+
+class PasDeCacheApiMiddleware:
+    """Mark every ``/api/`` response that sets no Cache-Control as ``no-store, private``.
+
+    API payloads are per-user and sensitive: no browser or proxy cache may keep them.
+    Responses that already choose their policy (file downloads) are left alone.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponseBase]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponseBase:
+        response = self.get_response(request)
+        if request.path.startswith("/api/") and "Cache-Control" not in response:
+            response["Cache-Control"] = "no-store, private"
+        return response
 
 
 class _LazyActor(SimpleLazyObject):  # type: ignore[type-arg]
