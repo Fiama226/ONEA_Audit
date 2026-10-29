@@ -1,5 +1,5 @@
 import { fr } from "@/i18n/fr";
-import { ALERT_CLASS } from "./FormField";
+import { ALERT_CLASS } from "@/components/form/FormField";
 
 /** Alerte visible si le serveur annonce plus d'éléments que ceux chargés. */
 export function ListIncompleteAlert({ count, loaded }: { count: number; loaded: number }) {

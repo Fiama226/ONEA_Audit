@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { fr } from "@/i18n/fr";
 import { NIVEAU_LABELS } from "../labels";
 import type { NiveauRisque, Processus } from "../types";
-import { NativeSelect } from "./NativeSelect";
+import { NativeSelect } from "@/components/form/NativeSelect";
 
 export type RiskFilterValues = { processus: string; niveau: string; q: string };
 

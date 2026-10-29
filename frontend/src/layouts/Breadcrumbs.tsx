@@ -20,8 +20,31 @@ function labelFor(segment: string, previous: string | undefined): string {
     if (previous === "risques") return fr.refCartographie.crumbRisk;
     return fr.referentiel.detail;
   }
+  if (previous === "etapes" && /^\d+$/.test(segment)) {
+    return `${fr.missions.stepPrefix} ${toRoman(Number(segment))}`;
+  }
   if (segment === "nouveau" && previous === "risques") return fr.refCartographie.crumbNewRisk;
   return SEGMENT_LABELS[segment] ?? segment;
+}
+
+const ROMAN: [number, string][] = [
+  [10, "X"],
+  [9, "IX"],
+  [5, "V"],
+  [4, "IV"],
+  [1, "I"],
+];
+
+function toRoman(n: number): string {
+  let out = "";
+  let rest = n;
+  for (const [value, symbol] of ROMAN) {
+    while (rest >= value) {
+      out += symbol;
+      rest -= value;
+    }
+  }
+  return out || String(n);
 }
 
 function crumbsFor(pathname: string): Crumb[] {
@@ -35,7 +58,8 @@ function crumbsFor(pathname: string): Crumb[] {
     crumbs.push({
       to: `/${segments.slice(0, i + 1).join("/")}`,
       label: labelFor(segment, segments[i - 1]),
-      linkable: true,
+      // « etapes » n'a pas de page propre : simple libellé intermédiaire.
+      linkable: !(segment === "etapes" && i < segments.length - 1),
     });
   });
   return crumbs;

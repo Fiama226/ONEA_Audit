@@ -106,7 +106,7 @@ describe("AppShell", () => {
 
   it("closes the drawer after navigating", async () => {
     const user = userEvent.setup();
-    renderRoutes(routes, "ADMIN");
+    renderRoutes(routes, "RAI");
     await user.click(screen.getByRole("button", { name: fr.shell.openMenu }));
     const drawer = await screen.findByRole("dialog");
     await user.click(within(drawer).getByRole("link", { name: fr.nav.missions }));

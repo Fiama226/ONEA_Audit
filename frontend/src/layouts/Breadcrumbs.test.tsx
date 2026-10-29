@@ -89,4 +89,19 @@ describe("Breadcrumbs", () => {
       `/referentiel/cartographies/${ID}`,
     );
   });
+
+  it("labels a mission step path as Missions > Détail > Étapes > Étape IV", () => {
+    renderWithAuth(
+      <Breadcrumbs />,
+      "RAI",
+      "/missions/0b8f1c1e-9c1a-4d0e-8f3a-2b7d5c9e1a11/etapes/4",
+    );
+    const nav = screen.getByRole("navigation", { name: fr.common.breadcrumb });
+    const labels = within(nav)
+      .getAllByRole("listitem")
+      .map((li) => li.textContent);
+    expect(labels).toEqual(["Tableau de bord", "Missions", "Détail", "Étapes", "Étape IV"]);
+    expect(within(nav).getByText("Étape IV")).toHaveAttribute("aria-current", "page");
+    expect(within(nav).queryByRole("link", { name: "Étapes" })).not.toBeInTheDocument();
+  });
 });
