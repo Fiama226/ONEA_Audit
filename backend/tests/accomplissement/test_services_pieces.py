@@ -229,3 +229,67 @@ def test_xii_close_gele_les_pieces(
     forcer_etapes(mission_en_accomplissement, {12: StatutEtape.TERMINEE})
     with pytest.raises(RegleMetierError):
         modifier_piece(p, by=auditeur_mission, libelle="B")
+
+
+def test_droit_verifie_avant_le_contenu_du_fichier(
+    tmp_path: Path, fiche_auditeur: FicheDeTest, autre_auditeur: User
+) -> None:
+    """Un non-rédacteur reçoit 403, jamais une réponse sur le type ou la taille du fichier."""
+    with pytest.raises(PermissionDenied):
+        deposer_piece(
+            fiche_auditeur,
+            fichier=pdf("virus.exe", b"MZ" + b"0" * 30),
+            libelle="x",
+            by=autre_auditeur,
+        )
+    with pytest.raises(PermissionDenied):
+        deposer_piece(fiche_auditeur, fichier=pdf("v.pdf", b""), libelle="x", by=autre_auditeur)
+    assert not _fichiers(tmp_path)
+
+
+def test_renvoi_du_meme_fichier_signale_le_doublon(
+    fiche_auditeur: FicheDeTest, auditeur_mission: User
+) -> None:
+    premiere = deposer_piece(fiche_auditeur, fichier=pdf(), libelle="Facture", by=auditeur_mission)
+    assert premiere.doublon is False
+    seconde = deposer_piece(
+        fiche_auditeur, fichier=pdf(), libelle="Autre libellé", by=auditeur_mission
+    )
+    assert seconde.pk == premiere.pk
+    assert seconde.doublon is True
+    seconde.refresh_from_db()
+    assert seconde.libelle == "Facture"  # le libellé existant n'est pas écrasé
+
+
+def test_nom_normalise_nfc_et_sans_rlo(fiche_auditeur: FicheDeTest, auditeur_mission: User) -> None:
+    p = deposer_piece(
+        fiche_auditeur,
+        fichier=pdf("café‮fdp.pdf"),
+        libelle="A",
+        by=auditeur_mission,
+    )
+    assert p.nom_fichier_original == "caféfdp.pdf"
+
+
+def test_texte_avec_octet_de_controle_tardif_refuse(
+    tmp_path: Path, fiche_auditeur: FicheDeTest, auditeur_mission: User
+) -> None:
+    contenu = b"a" * 2_000_000 + b"\x00" + b"b" * 10
+    with pytest.raises(RegleMetierError) as exc:
+        deposer_piece(
+            fiche_auditeur, fichier=pdf("t.txt", contenu), libelle="x", by=auditeur_mission
+        )
+    assert str(exc.value) == "Le contenu du fichier ne correspond pas à son extension."
+    assert not _fichiers(tmp_path)
+
+
+def test_piece_retiree_ne_suffit_pas_a_soumettre(
+    fiche_complete: FicheDeTest, auditeur_mission: User
+) -> None:
+    from apps.accomplissement.services.fiches import soumettre_fiche
+
+    p = deposer_piece(fiche_complete, fichier=pdf(), libelle="A", by=auditeur_mission)
+    retirer_piece(p, by=auditeur_mission)
+    with pytest.raises(RegleMetierError) as exc:
+        soumettre_fiche(fiche_complete, by=auditeur_mission)
+    assert str(exc.value) == "Déposez une pièce justificative ou justifiez son absence."

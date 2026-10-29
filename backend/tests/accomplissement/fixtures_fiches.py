@@ -38,9 +38,24 @@ def superviseur_non_leve(mission_en_accomplissement: Mission) -> User:
 
 
 @pytest.fixture
-def test_prevu(mission_en_accomplissement: Mission) -> TestPrevu:
-    test: TestPrevu = mission_en_accomplissement.tests_prevus.order_by("numero").first()
-    return test
+def autre_auditeur(mission_en_accomplissement: Mission) -> User:
+    """Intervenant levé, auditeur d'un AUTRE test."""
+    user = make_user(Role.AUDITEUR)
+    affecter(mission_en_accomplissement, user, RoleMission.AUDITEUR)
+    return user
+
+
+@pytest.fixture
+def test_prevu(mission_en_accomplissement: Mission, auditeur_mission: User) -> TestPrevu:
+    """Premier test, confié à `auditeur_mission` ; le second l'est à `autre_auditeur`."""
+    forcer_etapes(mission_en_accomplissement, {9: StatutEtape.EN_COURS})
+    premier, second = mission_en_accomplissement.tests_prevus.order_by("numero")
+    premier.auditeur = auditeur_mission
+    premier.save()
+    forcer_etapes(mission_en_accomplissement, {9: StatutEtape.TERMINEE})
+    premier.refresh_from_db()
+    assert second.auditeur_id is None
+    return premier
 
 
 @pytest.fixture
