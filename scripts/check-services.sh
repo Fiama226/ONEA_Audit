@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
 # Probe the infrastructure services; exit 1 if any is down.
-# Usage: check-services.sh [--with-storage]   (or WITH_STORAGE=1)
+# Usage: check-services.sh
 # Reads the repo-root .env (KEY=VALUE lines, parsed, never sourced).
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-WITH_STORAGE="${WITH_STORAGE:-0}"
 for arg in "$@"; do
-  case "$arg" in
-    --with-storage) WITH_STORAGE=1 ;;
-    *) echo "unknown argument: $arg" >&2; exit 2 ;;
-  esac
+  echo "unknown argument: $arg" >&2; exit 2
 done
 
 # Safe .env loader: only KEY=VALUE lines, optional surrounding quotes, no expansion.
@@ -29,7 +25,6 @@ fi
 COMPOSE=(docker compose "${ENV_ARGS[@]}" -f "$ROOT/docker/compose.yml" -f "$ROOT/docker/compose.dev.yml")
 
 KC_PORT="${KEYCLOAK_PORT:-8080}"
-MINIO_API="${MINIO_API_PORT:-9000}"
 MEILI="${MEILI_PORT:-7700}"
 GOTENBERG="${GOTENBERG_PORT:-3000}"
 MAILPIT_UI="${MAILPIT_HTTP_PORT:-8025}"
@@ -46,8 +41,8 @@ check keycloak curl -fsS "http://localhost:${KC_PORT}/realms/onea"
 check meilisearch curl -fsS "http://localhost:${MEILI}/health"
 check gotenberg curl -fsS "http://localhost:${GOTENBERG}/health"
 check mailpit curl -fsS "http://localhost:${MAILPIT_UI}/livez"
-if [ "$WITH_STORAGE" = "1" ]; then
-  check minio curl -fsS "http://localhost:${MINIO_API}/minio/health/live"
-fi
+# Documents folder (dev): created on demand by the storage layer, so only report its state.
+DOCS_DIR="${DOCUMENTS_ROOT:-$ROOT/.dev/documents}"
+if [ -d "$DOCS_DIR" ] && [ -w "$DOCS_DIR" ]; then echo "documents: OK"; else echo "documents: absent (créé à la première écriture)"; fi
 
 exit $fail

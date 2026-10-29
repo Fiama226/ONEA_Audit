@@ -2,6 +2,7 @@ import { fr } from "@/i18n/fr";
 import { useInterviews } from "../api";
 import { InterviewTable } from "../components/InterviewTable";
 import type { Etape, Mission } from "../types";
+import { ZoneComplement } from "./index";
 
 const t = fr.missionTravaux;
 
@@ -30,8 +31,7 @@ export function StepIIIZone({ mission, step }: { mission: Mission; step: Etape }
           />
         )}
       </section>
-      {/* LOT5-SLOT: questionnaire de prise de connaissance et description des processus. */}
-      <p className="text-sm text-text-muted">{t.stepIIILater}</p>
+      <ZoneComplement numero={3} mission={mission} step={step} />
     </div>
   );
 }

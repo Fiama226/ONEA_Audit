@@ -104,4 +104,13 @@ describe("Breadcrumbs", () => {
     expect(within(nav).getByText("Étape IV")).toHaveAttribute("aria-current", "page");
     expect(within(nav).queryByRole("link", { name: "Étapes" })).not.toBeInTheDocument();
   });
+
+  it("labels the audit framework tab of a mission", () => {
+    expect(crumbs(`/missions/${ID}/referentiel-audit`)).toEqual([
+      "Tableau de bord",
+      "Missions",
+      "Détail",
+      "Référentiel d'audit",
+    ]);
+  });
 });
