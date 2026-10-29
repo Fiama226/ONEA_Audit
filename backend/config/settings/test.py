@@ -1,3 +1,6 @@
+import tempfile
+from pathlib import Path
+
 from .base import *  # noqa: F403
 from .base import SPECTACULAR_SETTINGS, env
 
@@ -14,6 +17,10 @@ CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
+STOCKAGE_PREUVES = {
+    "BACKEND": "tests.accomplissement.fakes.StockageDisqueTemporaire",
+    "OPTIONS": {"RACINE": str(Path(tempfile.gettempdir()) / "onea-tests-preuves")},
+}
 
 INSTALLED_APPS = [*INSTALLED_APPS, "tests.testapp"]  # noqa: F405
 ROOT_URLCONF = "tests.testapp.root_urls"

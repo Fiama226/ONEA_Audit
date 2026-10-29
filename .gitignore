@@ -32,3 +32,6 @@ test-results/
 certs/*.pem
 frontend/e2e/screens/
 .dev/
+
+# Pièces justificatives (lot 6) : jamais dans le dépôt
+/var/
