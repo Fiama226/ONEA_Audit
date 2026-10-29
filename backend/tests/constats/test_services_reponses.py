@@ -1,10 +1,17 @@
+from typing import Any
+
 import pytest
 from django.core.exceptions import PermissionDenied
 
 from apps.constats.exceptions import ReponseAjoutSeulError
 from apps.constats.models import Constat, ReponseAudite
-from apps.constats.services.constats import soumettre_constat, valider_constat
-from apps.constats.services.reponses import derniere_reponse, repondre, texte_reponse
+from apps.constats.services.constats import (
+    modifier_constat,
+    soumettre_constat,
+    valider_constat,
+)
+from apps.constats.services.reponses import derniere_reponse, texte_reponse
+from apps.constats.services.reponses import repondre as _repondre
 from apps.core.exceptions import RegleMetierError
 from apps.missions.exceptions import EtapeCloseError
 from apps.missions.models import Mission, StatutEtape, StatutMission
@@ -17,16 +24,25 @@ from tests.missions.conftest import affecter, forcer_etapes
 pytestmark = pytest.mark.django_db
 
 
+def repondre(constat: Constat, **kwargs: Any) -> ReponseAudite:
+    """Répond en lisant la version courante (l'empreinte vue par l'audité)."""
+    kwargs.setdefault("empreinte_soumise", constat.empreinte_soumise)
+    return _repondre(constat, **kwargs)
+
+
 @pytest.fixture
 def rai() -> User:
     return make_user(Role.RAI)
 
 
 @pytest.fixture
-def constat_soumis(mission_en_xiv: Mission, chef: User) -> Constat:
+def constat_soumis(mission_en_xiv: Mission, chef: User, audite_affecte: User) -> Constat:
     c = ConstatFactory(mission=mission_en_xiv)
     soumettre_constat(c, by=chef)
     c.refresh_from_db()
+    # L'audité affecté appartient à l'entité du constat.
+    audite_affecte.direction_code = c.entite.code
+    audite_affecte.save(update_fields=["direction_code"])
     return c
 
 
@@ -125,3 +141,73 @@ def test_texte_reponse(constat_soumis: Constat, audite_affecte: User) -> None:
     )
     assert f"avec le constat {constat_soumis.reference} « {constat_soumis.titre} »" in texte
     assert constat_soumis.soumis_le.strftime("%d/%m/%Y") in texte  # type: ignore[union-attr]
+
+
+def test_audite_de_la_direction_parente_repond(
+    constat_soumis: Constat, audite_affecte: User
+) -> None:
+    from tests.factories import DirectionFactory
+
+    parent = DirectionFactory()
+    entite = constat_soumis.entite
+    entite.type = "DEPARTEMENT"
+    entite.parent = parent
+    entite.save()
+    audite_affecte.direction_code = parent.code
+    audite_affecte.save(update_fields=["direction_code"])
+    repondre(constat_soumis, position="ACCORD", commentaire="", by=audite_affecte)
+
+
+def test_audite_d_une_autre_entite_refuse(constat_soumis: Constat, audite_affecte: User) -> None:
+    from apps.constats.droits import actions_constat, contexte_constats
+
+    audite_affecte.direction_code = "AUTRE"
+    audite_affecte.save(update_fields=["direction_code"])
+    with pytest.raises(PermissionDenied) as e:
+        repondre(constat_soumis, position="ACCORD", commentaire="", by=audite_affecte)
+    assert "entité" in str(e.value)
+    ctx = contexte_constats(constat_soumis.mission, audite_affecte)
+    assert "REPONDRE" not in actions_constat(constat_soumis, audite_affecte, contexte=ctx)
+    assert not ReponseAudite.all_objects.exists()
+
+
+def test_audite_sans_direction_refuse(constat_soumis: Constat, audite_affecte: User) -> None:
+    from apps.constats.droits import actions_constat, contexte_constats
+
+    audite_affecte.direction_code = ""
+    audite_affecte.save(update_fields=["direction_code"])
+    with pytest.raises(PermissionDenied) as e:
+        repondre(constat_soumis, position="ACCORD", commentaire="", by=audite_affecte)
+    assert "direction" in str(e.value)
+    ctx = contexte_constats(constat_soumis.mission, audite_affecte)
+    assert "REPONDRE" not in actions_constat(constat_soumis, audite_affecte, contexte=ctx)
+
+
+def test_reponse_sur_version_perimee_refusee(
+    constat_soumis: Constat, audite_affecte: User, chef: User, rai: User
+) -> None:
+    from apps.constats.services.constats import renvoyer_constat
+
+    lue = constat_soumis.empreinte_soumise
+    with pytest.raises(RegleMetierError):
+        _repondre(
+            constat_soumis,
+            position="ACCORD",
+            commentaire="",
+            by=audite_affecte,
+            empreinte_soumise="0" * 64,
+        )
+    renvoyer_constat(constat_soumis, motif="Revoir", by=rai)
+    modifier_constat(constat_soumis, by=chef, titre="Titre revu")
+    soumettre_constat(constat_soumis, by=chef)
+    constat_soumis.refresh_from_db()
+    assert constat_soumis.empreinte_soumise != lue
+    with pytest.raises(RegleMetierError):
+        _repondre(
+            constat_soumis,
+            position="ACCORD",
+            commentaire="",
+            by=audite_affecte,
+            empreinte_soumise=lue,
+        )
+    assert not ReponseAudite.all_objects.exists()

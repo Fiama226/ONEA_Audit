@@ -53,3 +53,14 @@ def test_xiv_termine_et_xiii_valide_passent_en_communication(
     mission_en_xiv.refresh_from_db()
     assert mission_en_xiv.statut == StatutMission.EN_COMMUNICATION
     assert _xiv(mission_en_xiv).statut == StatutEtape.TERMINEE
+
+
+def test_un_message_par_constat_non_valide(mission_en_xiv: Mission, chef: User, rai: User) -> None:
+    valide = ConstatFactory(mission=mission_en_xiv)
+    soumettre_constat(valide, by=chef)
+    valider_constat(valide, by=rai)
+    a, b = ConstatFactory(mission=mission_en_xiv), ConstatFactory(mission=mission_en_xiv)
+    assert livrables_manquants(_xiv(mission_en_xiv)) == [
+        f"Le constat {a.reference} n'est pas validé.",
+        f"Le constat {b.reference} n'est pas validé.",
+    ]

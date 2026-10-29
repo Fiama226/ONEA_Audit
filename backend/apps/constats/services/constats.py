@@ -104,8 +104,8 @@ def _verifier_fiches(mission: Mission, fiches: Iterable[FicheDeTest]) -> list[Fi
             FicheDeTest.objects.select_related("test").filter(pk=fiche.pk, mission=mission).first()
         )
         if trouvee is None:
-            code = fiche.test.code
-            message = f"La fiche {code} n'appartient pas à la mission."
+            # L'identifiant seul : le code d'un test d'une autre mission ne doit pas fuiter.
+            message = f"La fiche {fiche.pk} n'appartient pas à la mission."
             raise refuser(message, fiches=message)
         resultat.append(trouvee)
     return resultat

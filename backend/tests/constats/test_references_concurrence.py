@@ -26,7 +26,7 @@ def test_references_constats_concurrentes(mission_lancee: Any, chef: User) -> No
     mission_lancee.entites.add(entite)
     mission_lancee.processus.add(processus)
     champs = {"entite": entite, "processus": processus}
-    with ThreadPoolExecutor(6) as ex:
-        refs = list(ex.map(lambda _: _creer(mission_lancee, chef, champs), range(6)))
-    assert sorted(refs) == [f"C-{n:02d}" for n in range(1, 7)]
-    assert Constat.objects.filter(mission=mission_lancee).count() == 6
+    with ThreadPoolExecutor(8) as ex:
+        refs = list(ex.map(lambda _: _creer(mission_lancee, chef, champs), range(8)))
+    assert sorted(refs) == [f"C-{n:02d}" for n in range(1, 9)]
+    assert Constat.objects.filter(mission=mission_lancee).count() == 8

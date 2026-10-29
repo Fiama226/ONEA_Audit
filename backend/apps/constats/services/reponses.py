@@ -2,6 +2,7 @@
 
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.utils import timezone
 
 from apps.core.exceptions import RegleMetierError
 from apps.core.services import enregistrer, refuser, relire
@@ -11,12 +12,14 @@ from apps.signatures.models import TypeDocumentSignable
 from apps.signatures.services import confirmer
 from apps.users.models import Role, User
 
+from ..droits import refus_entite
 from ..models import Constat, PositionAudite, ReponseAudite, StatutConstat
 from ._fenetres import ouvrir_xv
 
 MSG_DROIT = "Seul un audité affecté à la mission peut répondre à ses constats."
 MSG_DESACCORD = "Motivez votre désaccord."
 MSG_NON_SOUMIS = "Le constat n'a pas encore été soumis : vous ne pouvez pas y répondre."
+MSG_VERSION_PERIMEE = "Le constat a changé depuis votre lecture : relisez-le avant de répondre."
 MSG_POSITION = "La position doit être Accord ou Désaccord."
 _REPONDABLES = (StatutConstat.SOUMIS, StatutConstat.VALIDE)
 
@@ -24,7 +27,7 @@ _REPONDABLES = (StatutConstat.SOUMIS, StatutConstat.VALIDE)
 def texte_reponse(constat: Constat, position: str, *, by: User) -> str:
     """Texte exact confirmé par l'audité (à confirmer avec ONEA)."""
     soumis = constat.soumis_le
-    date = soumis.strftime("%d/%m/%Y") if soumis else ""
+    date = timezone.localtime(soumis).strftime("%d/%m/%Y") if soumis else ""
     qui = by.nom_complet + (f", {by.fonction}" if by.fonction else "")
     avis = "en accord" if position == PositionAudite.ACCORD else "en désaccord"
     return (
@@ -49,6 +52,7 @@ def repondre(
     *,
     position: str,
     commentaire: str,
+    empreinte_soumise: str,
     by: User,
     adresse_ip: str | None = None,
 ) -> ReponseAudite:
@@ -59,6 +63,11 @@ def repondre(
     constat = relire(constat)
     if constat.statut not in _REPONDABLES:
         raise RegleMetierError(MSG_NON_SOUMIS)
+    refus = refus_entite(by, constat)
+    if refus is not None:
+        raise PermissionDenied(refus)
+    if empreinte_soumise != constat.empreinte_soumise:
+        raise RegleMetierError(MSG_VERSION_PERIMEE, {"empreinte_soumise": [MSG_VERSION_PERIMEE]})
     if position not in PositionAudite.values:
         raise refuser(MSG_POSITION, position=MSG_POSITION)
     commentaire = commentaire.strip()
