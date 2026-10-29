@@ -1,6 +1,6 @@
 """Contrôles de livrables des étapes gérées au lot 3 (D7) ; les lots suivants ajoutent les leurs."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 from django.contrib.contenttypes.models import ContentType
 
@@ -105,9 +105,17 @@ CONTROLES: dict[int, list[Controle]] = {
 }
 
 
+def enregistrer_controles(numero: int, controles: Iterable[Controle]) -> None:
+    """Ajoute des contrôles à l'étape `numero` (idempotent ; plusieurs lots peuvent s'y brancher)"""
+    existants = CONTROLES.setdefault(numero, [])
+    for controle in controles:
+        if controle not in existants:
+            existants.append(controle)
+
+
 def livrables_manquants(etape: EtapeMission) -> list[str]:
     definition = etape.definition
-    if definition.lot_livrables > 3:
+    if definition.lot_livrables > 3 and etape.numero not in CONTROLES:
         return [
             f"Les livrables de l'étape {definition.romain} sont gérés à partir du lot "
             f"{definition.lot_livrables}."

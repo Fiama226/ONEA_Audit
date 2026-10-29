@@ -1,5 +1,6 @@
 """Risques de mission (étape IV, D15) : copie figée de la cartographie ou risque nouveau."""
 
+from collections.abc import Callable
 from typing import Any
 
 from django.db import transaction
@@ -17,6 +18,10 @@ from .travaux import verrouiller_travaux
 _DETAILS = {"description", "commentaire"}
 _MODIFIABLES = {"probabilite", "impact", "commentaire", "libelle", "description"}
 _ETAPE_RISQUES = 4
+
+# Gardes appelées avant le retrait d'un risque de mission ; elles lèvent `RegleMetierError` pour
+# l'interdire (ex. risque déjà utilisé par l'analyse, lot 5).
+GARDES_RETRAIT: list[Callable[[RisqueMission], None]] = []
 
 
 def _exiger_etape_iv(mission: Mission) -> None:
@@ -134,7 +139,10 @@ def modifier_risque_mission(rm: RisqueMission, *, by: User, **changes: Any) -> R
 def retirer_risque_mission(rm: RisqueMission, *, by: User) -> None:
     mission = verrouiller_travaux(rm.mission)
     _exiger_etape_iv(mission)
-    relire(rm).soft_delete(by)
+    rm = relire(rm)
+    for garde in GARDES_RETRAIT:
+        garde(rm)
+    rm.soft_delete(by)
 
 
 def matrice_mission(mission: Mission) -> list[CelluleMatrice]:

@@ -5,6 +5,7 @@ from apps.core.exceptions import RegleMetierError
 from apps.missions.exceptions import EtapeCloseError
 from apps.missions.models import Mission, RisqueMission, StatutEtape, StatutMission
 from apps.missions.services.risques import (
+    GARDES_RETRAIT,
     ajouter_risque_mission,
     matrice_mission,
     modifier_risque_mission,
@@ -155,6 +156,21 @@ def test_retirer_risque(mission_lancee: Mission, rai: User, risque: Risque) -> N
     retirer_risque_mission(copie, by=rai)
     assert not RisqueMission.objects.filter(mission=mission_lancee).exists()
     assert RisqueMission.all_objects.filter(pk=copie.pk, deleted_at__isnull=False).exists()
+
+
+@pytest.mark.usefixtures("iv_en_cours")
+def test_garde_retrait_appelee(mission_lancee: Mission, rai: User, risque: Risque) -> None:
+    def garde(rm: RisqueMission) -> None:
+        raise RegleMetierError("Risque utilisé par l'analyse.")
+
+    copie = ajouter_risque_mission(mission_lancee, by=rai, risque_source=risque)
+    GARDES_RETRAIT.append(garde)
+    try:
+        with pytest.raises(RegleMetierError):
+            retirer_risque_mission(copie, by=rai)
+    finally:
+        GARDES_RETRAIT.remove(garde)
+    assert RisqueMission.objects.filter(pk=copie.pk).exists()
 
 
 @pytest.mark.usefixtures("iv_en_cours")

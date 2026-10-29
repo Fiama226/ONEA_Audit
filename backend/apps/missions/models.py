@@ -527,7 +527,11 @@ class EvenementEtape(BaseModel):
         motif: str = "",
         statut_avant: str,
     ) -> "EvenementEtape":
-        """Écrit l'événement ; `statut_apres` est le statut courant de l'étape."""
+        """Écrit l'événement ; `statut_apres` est le statut courant de l'étape.
+
+        Émet ensuite `signals.etape_changee` dans la transaction de l'appelant : une exception
+        d'un récepteur annule la transition.
+        """
         evenement: EvenementEtape = cls.objects.create(
             etape=etape,
             type=type,
@@ -538,6 +542,9 @@ class EvenementEtape(BaseModel):
             statut_avant=statut_avant,
             statut_apres=etape.statut,
         )
+        from .signals import etape_changee
+
+        etape_changee.send(sender=EtapeMission, etape=etape, evenement=evenement, par=par)
         return evenement
 
 
