@@ -10,16 +10,28 @@ import type { DownloadableVersion, FormatFichier } from "../types";
 export function DownloadButtons({ version }: { version: DownloadableVersion }) {
   const reasonId = useId();
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const retry = useRetryPdf();
   const wordReady = version.statut === "PRETE";
   const pdfReady = wordReady && version.statut_pdf === "PRET";
 
   async function download(format: FormatFichier) {
+    if (downloading) return;
     setError(null);
+    setDownloading(true);
     try {
       await downloadVersion(version.id, format);
     } catch (e) {
-      setError(isApiError(e) ? e.detail : fr.documents.downloadError);
+      // 409 : empreinte du fichier stocké différente de l'empreinte enregistrée.
+      setError(
+        isApiError(e) && e.status === 409
+          ? fr.documents.integrityError
+          : isApiError(e)
+            ? e.detail
+            : fr.documents.downloadError,
+      );
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -33,7 +45,7 @@ export function DownloadButtons({ version }: { version: DownloadableVersion }) {
         type="button"
         variant="outline"
         size="sm"
-        disabled={!wordReady}
+        disabled={!wordReady || downloading}
         onClick={() => void download("docx")}
       >
         {fr.documents.downloadWord}
@@ -42,7 +54,7 @@ export function DownloadButtons({ version }: { version: DownloadableVersion }) {
         type="button"
         variant="outline"
         size="sm"
-        disabled={!pdfReady}
+        disabled={!pdfReady || downloading}
         aria-describedby={pdfReady ? undefined : reasonId}
         onClick={() => void download("pdf")}
       >

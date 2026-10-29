@@ -916,6 +916,9 @@ export const fr = {
     hashCopied: "Empreinte copiée.",
     notGenerated: "Non généré",
     loadError: "Impossible de charger les documents.",
+    integrityError:
+      "L'intégrité du fichier n'a pas pu être vérifiée : le téléchargement est bloqué. Contactez l'administrateur.",
+    noDocument: "Aucun document n'est prévu pour cet élément.",
     tabTemplates: "Gabarits",
     tabNumbering: "Numérotation",
   },

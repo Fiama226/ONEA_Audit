@@ -28,6 +28,8 @@ beforeAll(() => {
 const RESTRICTED: [string, string, readonly Role[]][] = [
   ["/missions", fr.nav.missions, ["RAI", "AUDITEUR", "AUDITE"]],
   ["/referentiel", fr.nav.referentiel, ["ADMIN", "RAI", "AUDITEUR", "DG"]],
+  // ADMIN et DG : 403 sur les documents de mission.
+  ["/documents", fr.nav.documents, ["RAI", "AUDITEUR", "AUDITE"]],
   ["/administration", fr.utilisateurs.title, ["ADMIN"]],
 ];
 

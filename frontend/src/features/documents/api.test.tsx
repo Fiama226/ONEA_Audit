@@ -2,8 +2,14 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { API_URL, server } from "@/test/msw";
-import { documentKeys, GENERATION_TIMEOUT_MESSAGE, useGenerateDocument, useVersion } from "./api";
-import { aVersion, OBJET_ID, queryWrapper, VERSION_ID } from "./testUtils";
+import {
+  documentKeys,
+  GENERATION_TIMEOUT_MESSAGE,
+  useAvailableDocuments,
+  useGenerateDocument,
+  useVersion,
+} from "./api";
+import { aDisponible, aVersion, MISSION_ID, OBJET_ID, queryWrapper, VERSION_ID } from "./testUtils";
 
 afterEach(() => vi.useRealTimers());
 
@@ -46,6 +52,61 @@ describe("useVersion", () => {
     await waitFor(() =>
       expect(result.current.timeoutError?.message).toBe(GENERATION_TIMEOUT_MESSAGE),
     );
+    await act(() => vi.advanceTimersByTimeAsync(2500));
+    const after = calls;
+    await act(() => vi.advanceTimersByTimeAsync(20_000));
+    expect(calls).toBe(after);
+  });
+});
+
+describe("polling budget", () => {
+  it("polls again after a timeout once the version was regenerated on the same hook", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let calls = 0;
+    let phase: "stuck" | "done" | "again" = "stuck";
+    server.use(
+      http.get(`${API_URL}/api/v1/document-versions/${VERSION_ID}/`, () => {
+        calls += 1;
+        return HttpResponse.json(
+          phase === "done"
+            ? aVersion()
+            : aVersion({ statut: "EN_COURS", statut_pdf: "NON_DEMANDE" }),
+        );
+      }),
+    );
+    const { Wrapper } = queryWrapper();
+    const { result } = renderHook(() => useVersion(VERSION_ID), { wrapper: Wrapper });
+    await waitFor(() => expect(calls).toBe(1));
+    await act(() => vi.advanceTimersByTimeAsync(3 * 60 * 1000 + 3000));
+    await waitFor(() => expect(result.current.timeoutError).not.toBeNull());
+    phase = "done";
+    await act(() => result.current.refetch());
+    await waitFor(() => expect(result.current.timeoutError).toBeNull());
+    phase = "again";
+    await act(() => result.current.refetch());
+    const before = calls;
+    await act(() => vi.advanceTimersByTimeAsync(2100));
+    await waitFor(() => expect(calls).toBeGreaterThan(before));
+    expect(result.current.timeoutError).toBeNull();
+  });
+
+  it("stops polling the available documents after 3 minutes and exposes the timeout", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let calls = 0;
+    server.use(
+      http.get(`${API_URL}/api/v1/documents/available/`, () => {
+        calls += 1;
+        return HttpResponse.json([aDisponible({ en_cours: true })]);
+      }),
+    );
+    const { Wrapper } = queryWrapper();
+    const { result } = renderHook(() => useAvailableDocuments(MISSION_ID), { wrapper: Wrapper });
+    await waitFor(() => expect(calls).toBe(1));
+    await act(() => vi.advanceTimersByTimeAsync(3 * 60 * 1000 + 3000));
+    await waitFor(() =>
+      expect(result.current.timeoutError?.message).toBe(GENERATION_TIMEOUT_MESSAGE),
+    );
+    await act(() => vi.advanceTimersByTimeAsync(2500));
     const after = calls;
     await act(() => vi.advanceTimersByTimeAsync(20_000));
     expect(calls).toBe(after);

@@ -83,8 +83,20 @@ async function send(path: string, init: ApiInit, accept: string): Promise<Respon
 export const DEFAULT_DOWNLOAD_NAME = "export";
 const DEFAULT_FILENAME = DEFAULT_DOWNLOAD_NAME;
 
+/** Retire chemin et caractères de contrôle d'un nom reçu du serveur. */
+function sanitizeFilename(name: string): string {
+  const printable = [...name].filter((c) => c.charCodeAt(0) > 0x1f && c.charCodeAt(0) !== 0x7f);
+  const base = printable.join("").split(/[\\/]/).pop() ?? "";
+  const cleaned = base.trim().replace(/^\.+/, "");
+  return cleaned || DEFAULT_FILENAME;
+}
+
 /** Nom de fichier de l'en-tête Content-Disposition ; `filename*=UTF-8''` est prioritaire. */
 function filenameFrom(disposition: string | null): string {
+  return sanitizeFilename(rawFilenameFrom(disposition));
+}
+
+function rawFilenameFrom(disposition: string | null): string {
   if (!disposition) return DEFAULT_FILENAME;
   const star = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(disposition);
   if (star?.[1]) {

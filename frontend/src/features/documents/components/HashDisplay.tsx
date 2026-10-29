@@ -13,6 +13,8 @@ export function HashDisplay({ value }: { value: string }) {
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
+      // Le message disparaît : une seconde copie sera de nouveau annoncée.
+      setTimeout(() => setCopied(false), 3000);
     } catch {
       setCopied(false);
     }
