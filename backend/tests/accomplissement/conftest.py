@@ -65,3 +65,14 @@ from tests.accomplissement.fixtures_programme import (  # noqa: E402, F401
     mission_viii,
     programme_viii,
 )
+
+# Fixtures de la tâche 5 (fiches, pièces, intégrité).
+from tests.accomplissement.fixtures_fiches import (  # noqa: E402, F401
+    fiche_auditeur,
+    fiche_complete,
+    fiche_soumise,
+    rai,
+    superviseur,
+    superviseur_non_leve,
+    test_prevu,
+)

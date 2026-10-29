@@ -31,5 +31,8 @@ class AccomplissementConfig(AppConfig):
         ):
             register(modele)
 
-        for numero, controles in controles_programme.CONTROLES_ETAPE.items():
-            enregistrer_controles(numero, controles)
+        from .controles import fiches as controles_fiches
+
+        for module in (controles_programme, controles_fiches):
+            for numero, controles in module.CONTROLES_ETAPE.items():
+                enregistrer_controles(numero, controles)

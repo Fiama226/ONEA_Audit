@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.programmation",
     "apps.analyse",
     "apps.accomplissement",
+    "apps.constats",
     "apps.documents",
 ]
 
