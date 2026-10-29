@@ -6,6 +6,8 @@ deux derniers). Un autre auditeur ou le superviseur ne rédige pas ; ils validen
 `peut_valider_travaux`. L'audité ne voit ni fiches ni pièces en v1.
 """
 
+from collections.abc import Mapping
+
 from django.core.exceptions import PermissionDenied
 
 from apps.missions import acces
@@ -48,7 +50,12 @@ def exiger_valideur(user: User, mission: Mission) -> None:
         raise PermissionDenied(MSG_DROIT)
 
 
-def _statut_etape(mission: Mission, numero: int) -> str | None:
+def _statut_etape(
+    mission: Mission, numero: int, statuts: Mapping[int, str] | None = None
+) -> str | None:
+    """Statut de l'étape : lu dans `statuts` (déjà chargé pour toute une liste) ou en base."""
+    if statuts is not None:
+        return statuts.get(numero)
     from apps.missions.models import EtapeMission
 
     statut: str | None = (
@@ -75,22 +82,39 @@ def _valide(user: User, contexte: ContexteActions) -> bool:
     )
 
 
-def actions_fiche(fiche: FicheDeTest, user: User, *, contexte: ContexteActions) -> list[str]:
-    """Actions possibles : MODIFIER, SOUMETTRE, DEPOSER_PIECE, VALIDER, RENVOYER, ROUVRIR."""
+def actions_fiche(
+    fiche: FicheDeTest,
+    user: User,
+    *,
+    contexte: ContexteActions,
+    statuts: Mapping[int, str] | None = None,
+    auditeur_id: object = "inconnu",
+) -> list[str]:
+    """Actions possibles : MODIFIER, SOUMETTRE, DEPOSER_PIECE, VALIDER, RENVOYER, ROUVRIR.
+
+    `statuts` (étapes XII et XIII) et `auditeur_id` (du test) évitent toute requête quand
+    l'appelant les a déjà chargés pour toute une liste.
+    """
     mission = contexte.mission
     if mission.statut in STATUTS_FIGES:
         return []
     actions: list[str] = []
-    auditeur_id = (
-        TestPrevu.all_objects.filter(pk=fiche.test_id).values_list("auditeur_id", flat=True).first()
-    )
+    if auditeur_id == "inconnu":
+        auditeur_id = (
+            TestPrevu.all_objects.filter(pk=fiche.test_id)
+            .values_list("auditeur_id", flat=True)
+            .first()
+        )
     if (
         _redige(user, contexte, auditeur_id)
         and fiche.statut in EDITABLES
-        and _statut_etape(mission, ETAPE_FICHES) in ACTIFS
+        and _statut_etape(mission, ETAPE_FICHES, statuts) in ACTIFS
     ):
         actions += ["MODIFIER", "SOUMETTRE", "DEPOSER_PIECE"]
-    if _valide(user, contexte) and _statut_etape(mission, ETAPE_VALIDATION_PREUVES) in ACTIFS:
+    if (
+        _valide(user, contexte)
+        and _statut_etape(mission, ETAPE_VALIDATION_PREUVES, statuts) in ACTIFS
+    ):
         if fiche.statut == StatutFiche.SOUMIS:
             if user.pk not in (fiche.auteur_id, fiche.soumise_par_id):
                 actions.append("VALIDER")
@@ -100,15 +124,25 @@ def actions_fiche(fiche: FicheDeTest, user: User, *, contexte: ContexteActions) 
     return actions
 
 
-def actions_piece(piece: PieceJustificative, user: User, *, contexte: ContexteActions) -> list[str]:
-    """Actions possibles : MODIFIER, RETIRER (rédacteur, fiche modifiable), TELECHARGER."""
+def actions_piece(
+    piece: PieceJustificative,
+    user: User,
+    *,
+    contexte: ContexteActions,
+    statuts: Mapping[int, str] | None = None,
+    fiche: tuple[str, object] | None = None,
+) -> list[str]:
+    """Actions possibles : MODIFIER, RETIRER (rédacteur, fiche modifiable), TELECHARGER.
+
+    `fiche` = (statut de la fiche, auditeur de son test), déjà chargés par l'appelant.
+    """
     mission = contexte.mission
     actions: list[str] = []
     if user.role == Role.RAI or contexte.role_mission in ROLES_INTERVENANTS:
         actions.append("TELECHARGER")
     if mission.statut in STATUTS_FIGES:
         return actions
-    ligne = (
+    ligne = fiche or (
         FicheDeTest.all_objects.filter(pk=piece.fiche_id)
         .values_list("statut", "test__auditeur_id")
         .first()
@@ -119,7 +153,7 @@ def actions_piece(piece: PieceJustificative, user: User, *, contexte: ContexteAc
     if (
         _redige(user, contexte, auditeur_id)
         and statut in EDITABLES
-        and _statut_etape(mission, ETAPE_FICHES) in ACTIFS
+        and _statut_etape(mission, ETAPE_FICHES, statuts) in ACTIFS
     ):
         actions += ["MODIFIER", "RETIRER"]
     return actions
