@@ -2,8 +2,46 @@ import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it } from "vitest";
 import { fr } from "@/i18n/fr";
 import { API_URL, server } from "@/test/msw";
-import { apiDownload, apiFetch, setTokenProvider } from "./client";
+import { apiDownload, apiFetch, apiUpload, setTokenProvider } from "./client";
 import { ApiError, isApiError } from "./errors";
+
+describe("apiUpload", () => {
+  it("sends FormData with a multipart boundary (no forced JSON type) and the Bearer token", async () => {
+    let contentType: string | null = null;
+    let auth: string | null = null;
+    let file: FormDataEntryValue | null = null;
+    server.use(
+      http.post(`${API_URL}/api/v1/up/`, async ({ request }) => {
+        contentType = request.headers.get("Content-Type");
+        auth = request.headers.get("Authorization");
+        file = (await request.formData()).get("fichier");
+        return HttpResponse.json({ id: "1" }, { status: 201 });
+      }),
+    );
+    setTokenProvider(() => "tok");
+    const body = new FormData();
+    body.append("fichier", new File(["x"], "g.docx"));
+    await expect(apiUpload("/api/v1/up/", body)).resolves.toEqual({ id: "1" });
+    expect(contentType).toMatch(/^multipart\/form-data; boundary=/);
+    expect(auth).toBe("Bearer tok");
+    expect(file).not.toBeNull();
+  });
+
+  it("turns a 422 into an ApiError with errors.fichier", async () => {
+    server.use(
+      http.post(`${API_URL}/api/v1/up/`, () =>
+        HttpResponse.json(
+          { detail: "Invalide", errors: { fichier: ["Balise manquante."] } },
+          { status: 422 },
+        ),
+      ),
+    );
+    const err = await apiUpload("/api/v1/up/", new FormData()).catch((e: unknown) => e);
+    expect(isApiError(err)).toBe(true);
+    expect((err as ApiError).status).toBe(422);
+    expect((err as ApiError).errors.fichier).toEqual(["Balise manquante."]);
+  });
+});
 
 afterEach(() => setTokenProvider(() => null));
 

@@ -4,6 +4,7 @@ import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
 import { EmptyState } from "@/components/EmptyState";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
+import { documentRoutes, documentsAdminRoutes } from "@/features/documents/routes";
 import { missionRoutes } from "@/features/missions/routes";
 import { programmationRoutes } from "@/features/programmation/routes";
 import { ReferentielLayout } from "@/features/referentiel/components/ReferentielLayout";
@@ -72,11 +73,14 @@ export const appRoutes: RouteObject[] = [
             path: "/recommandations",
             element: <PlaceholderPage title={fr.nav.recommandations} />,
           },
-          { path: "/documents", element: <PlaceholderPage title={fr.nav.documents} /> },
+          { path: "/documents", children: documentRoutes, element: guardedOutlet("/documents") },
           {
             path: "/administration",
             element: guarded("/administration", <Outlet />),
-            children: administrationRoutes,
+            children: [
+              ...administrationRoutes,
+              { path: "documents", children: documentsAdminRoutes },
+            ],
           },
           { path: "*", element: <NotFound /> },
         ],

@@ -19,6 +19,8 @@ const ROUTE_ROLES: Readonly<Record<string, readonly Role[]>> = {
   "/programme-annuel": ["ADMIN", "RAI", "AUDITEUR", "DG"],
   "/missions": ["RAI", "AUDITEUR", "AUDITE"],
   "/referentiel": ["ADMIN", "RAI", "AUDITEUR", "DG"],
+  // ADMIN et DG n'ont pas accès aux documents de mission (l'ADMIN gère les gabarits en /administration).
+  "/documents": ["RAI", "AUDITEUR", "AUDITE"],
   "/administration": ["ADMIN"],
 };
 
@@ -85,6 +87,8 @@ export const SEGMENT_LABELS: Record<string, string> = {
   referentiel: fr.nav.referentiel,
   recommandations: fr.nav.recommandations,
   documents: fr.nav.documents,
+  gabarits: fr.documents.tabTemplates,
+  numerotation: fr.documents.tabNumbering,
   administration: fr.nav.administration,
   utilisateurs: fr.utilisateurs.title,
   cartographies: fr.referentiel.tabCartographies,
