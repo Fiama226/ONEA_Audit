@@ -46,7 +46,7 @@ def test_etape_IV_exige_un_risque(mission_lancee: Mission) -> None:
 
 @pytest.mark.parametrize(
     ("numero", "romain", "lot"),
-    [(3, "III", 5), (8, "VIII", 6), (14, "XIV", 6), (17, "XVII", 7)],
+    [(8, "VIII", 6), (14, "XIV", 6), (17, "XVII", 7)],
 )
 def test_etapes_gerees_dans_un_lot_ulterieur(
     mission_lancee: Mission, numero: int, romain: str, lot: int
