@@ -178,6 +178,12 @@ SPECTACULAR_SETTINGS = {
         "StatutEntretienEnum": "apps.missions.models.StatutEntretien.choices",
         "ActionEtapeEnum": "apps.missions.services.etapes.ActionEtape.choices",
         "TypeDocumentSignableEnum": "apps.signatures.models.TypeDocumentSignable.choices",
+        "StatutGabaritEnum": "apps.documents.models.StatutGabarit.choices",
+        "StatutGenerationEnum": "apps.documents.models.StatutGeneration.choices",
+        "StatutPdfEnum": "apps.documents.models.StatutPdf.choices",
+        "PorteeNumerotationEnum": "apps.documents.models.PorteeNumerotation.choices",
+        "FormatFichierEnum": "apps.documents.models.FormatFichier.choices",
+        "TypeChampEnum": "apps.documents.serializers.TYPE_CHAMP_CHOICES",
     },
 }
 
