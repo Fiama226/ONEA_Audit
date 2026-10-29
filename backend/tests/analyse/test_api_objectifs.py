@@ -1,5 +1,6 @@
 from rest_framework.test import APIClient
 
+from apps.analyse.models import ObjectifAudit
 from apps.missions.models import EtapeMission, StatutEtape
 
 from .fixtures_api import EquipeVI, equipe_complete, equipe_en_vii  # noqa: F401
@@ -100,3 +101,21 @@ def test_rapport_orientation_lecture_vide_puis_patch(
     )
     api_client.force_authenticate(users["audite_affecte"])
     assert api_client.get(f"/api/v1/orientation-reports/{m.id}/").status_code == 403
+
+
+def test_creation_objectif_invalide_est_atomique(
+    api_client: APIClient,
+    equipe_en_vii: EquipeVI,  # noqa: F811
+) -> None:
+    """Un 422 à la création ne laisse aucun objectif et ne consomme pas le numéro."""
+    m, users, _ = equipe_en_vii
+    ligne = m.lignes_marc.get()
+    api_client.force_authenticate(users["chef"])
+    corps = {"mission": str(m.id), "ligne_marc": str(ligne.id)}
+    r = api_client.post("/api/v1/audit-objectives/", {**corps, "retenu": False}, format="json")
+    assert r.status_code == 422
+    assert "motif_non_test" in r.json()["errors"]
+    assert ObjectifAudit.all_objects.filter(mission=m).count() == 0
+    r = api_client.post("/api/v1/audit-objectives/", corps, format="json")
+    assert r.status_code == 201, r.json()
+    assert r.json()["numero"] == 1

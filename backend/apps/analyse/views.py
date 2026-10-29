@@ -21,7 +21,7 @@ from rest_framework.viewsets import ModelViewSet
 
 from apps.core.schema import ERROR_400, ERROR_404, ERROR_422, ERROR_RESPONSES, crud_schema
 from apps.missions import acces
-from apps.missions.models import Mission
+from apps.missions.models import Mission, StatutEtape
 from apps.missions.permissions import exiger, exiger_contribution, mission_visible
 from apps.missions.views import LECTURE, MissionApiViewSet, _action_schema
 from apps.signatures.services import verifier
@@ -232,6 +232,7 @@ class _UpsertViewSet(AnalyseViewSet):
     TAG_TRAVAUX,
     "descriptions de processus",
     creation_404=True,
+    upsert=True,
 )
 class DescriptionProcessusViewSet(_UpsertViewSet, ModelViewSet[DescriptionProcessus]):
     serializer_class = serializers.DescriptionProcessusSerializer
@@ -276,6 +277,7 @@ class DescriptionProcessusViewSet(_UpsertViewSet, ModelViewSet[DescriptionProces
     TAG_TRAVAUX,
     "grilles de séparation des tâches",
     creation_404=True,
+    upsert=True,
 )
 class GrilleSeparationViewSet(_UpsertViewSet, ModelViewSet[GrilleSeparation]):
     serializer_class = serializers.GrilleSeparationSerializer
@@ -296,13 +298,15 @@ class GrilleSeparationViewSet(_UpsertViewSet, ModelViewSet[GrilleSeparation]):
         self.existait = GrilleSeparation.objects.filter(
             mission=mission, processus=processus
         ).exists()
+        existante = GrilleSeparation.objects.filter(mission=mission, processus=processus).first()
+        # Comme la description : un POST sur une grille existante fusionne, il n'efface rien.
         grille = svc_grilles.enregistrer_grille(
             mission,
             processus=processus,
-            taches=donnees.pop("taches", []),
-            acteurs=donnees.pop("acteurs", []),
-            cellules=donnees.pop("cellules", []),
-            commentaire=donnees.pop("commentaire", ""),
+            taches=donnees.pop("taches", existante.taches if existante else []),
+            acteurs=donnees.pop("acteurs", existante.acteurs if existante else []),
+            cellules=donnees.pop("cellules", existante.cellules if existante else []),
+            commentaire=donnees.pop("commentaire", existante.commentaire if existante else ""),
             by=self.acteur,
         )
         self._publier(serializer, grille)
@@ -449,8 +453,8 @@ class ReferentielAuditViewSet(MissionApiViewSet):
             donnees: dict[str, Any] = {
                 "mission": mission.pk,
                 "statut": StatutReferentiel.BROUILLON,
-                "statut_v": "A_FAIRE",
-                "statut_vi": "A_FAIRE",
+                "statut_v": StatutEtape.A_FAIRE,
+                "statut_vi": StatutEtape.A_FAIRE,
                 "nb_lignes": 0,
                 "nb_forces": 0,
                 "nb_faiblesses": 0,
@@ -545,14 +549,15 @@ class ObjectifAuditViewSet(AnalyseViewSet, ModelViewSet[ObjectifAudit]):
 
     def perform_create(self, serializer: BaseSerializer[ObjectifAudit]) -> None:
         donnees = dict(serializer.validated_data)
-        objectif = svc_objectifs.ajouter_objectif(
-            donnees.pop("mission"),
-            ligne_marc=donnees.pop("ligne_marc"),
-            libelle=donnees.pop("libelle", ""),
-            by=self.acteur,
-        )
-        if donnees:
-            objectif = svc_objectifs.modifier_objectif(objectif, by=self.acteur, **donnees)
+        with transaction.atomic():  # un 422 de la modification ne laisse aucun objectif
+            objectif = svc_objectifs.ajouter_objectif(
+                donnees.pop("mission"),
+                ligne_marc=donnees.pop("ligne_marc"),
+                libelle=donnees.pop("libelle", ""),
+                by=self.acteur,
+            )
+            if donnees:
+                objectif = svc_objectifs.modifier_objectif(objectif, by=self.acteur, **donnees)
         self._publier(serializer, objectif)
 
     def perform_update(self, serializer: BaseSerializer[ObjectifAudit]) -> None:

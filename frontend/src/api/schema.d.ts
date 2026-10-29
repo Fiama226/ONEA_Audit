@@ -3351,8 +3351,8 @@ export interface components {
             /** Format: uuid */
             mission: string;
             statut: components["schemas"]["StatutReferentielEnum"];
-            statut_v: string;
-            statut_vi: string;
+            statut_v: components["schemas"]["StatutEtapeEnum"];
+            statut_vi: components["schemas"]["StatutEtapeEnum"];
             nb_lignes: number;
             nb_forces: number;
             nb_faiblesses: number;
@@ -9134,6 +9134,14 @@ export interface operations {
             };
         };
         responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DescriptionProcessus"];
+                };
+            };
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -10502,6 +10510,14 @@ export interface operations {
             };
         };
         responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrilleSeparation"];
+                };
+            };
             201: {
                 headers: {
                     [name: string]: unknown;

@@ -13,7 +13,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.missions.gardes import STATUTS_ETAPE_CLOSE
-from apps.missions.models import Mission, RisqueMission
+from apps.missions.models import Mission, RisqueMission, StatutEtape
 from apps.missions.serializers import CleRelation
 from apps.referentiel.models import ObjetAuditable, Processus
 from apps.signatures.serializers import ConfirmationResumeSerializer
@@ -334,8 +334,8 @@ class ReferentielAuditSerializer(serializers.Serializer[Any]):
 
     mission = serializers.UUIDField()
     statut = serializers.ChoiceField(choices=StatutReferentiel.choices)
-    statut_v = serializers.CharField()
-    statut_vi = serializers.CharField()
+    statut_v = serializers.ChoiceField(choices=StatutEtape.choices)
+    statut_vi = serializers.ChoiceField(choices=StatutEtape.choices)
     nb_lignes = serializers.IntegerField()
     nb_forces = serializers.IntegerField()
     nb_faiblesses = serializers.IntegerField()
