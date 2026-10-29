@@ -9,7 +9,8 @@ from django.db import connection
 
 from apps.core.exceptions import RegleMetierError
 from apps.documents import pdf
-from apps.documents.exceptions import ContratNonRespecteError, IntegriteError
+from apps.documents.exceptions import ContratNonRespecteError
+from apps.documents.integrite import IntegriteError
 from apps.documents.models import ConsultationDocument, DocumentVersion, GabaritDocument
 from apps.documents.moteur.registre import TypeDocument
 from apps.documents.pdf import GotenbergIndisponibleError
