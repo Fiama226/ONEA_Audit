@@ -1,12 +1,11 @@
 import { Pencil, Plus, Printer, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { isApiError } from "@/api/errors";
 import { useRole } from "@/auth/useRole";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAllProcesses } from "@/features/referentiel/allPages";
 import { fr } from "@/i18n/fr";
 import { useAuditPlan, useAuditPlanLines } from "../api";
 import { AuditPlanCalendar } from "../components/AuditPlanCalendar";
@@ -20,7 +19,7 @@ import { PlanStatusBadge } from "../components/PlanStatusBadge";
 import { PlanSummary } from "../components/PlanSummary";
 import { ValidatePlanDialog } from "../components/ValidatePlanDialog";
 import { canEditAuditPlan } from "../permissions";
-import { ListIncompleteAlert } from "../shared";
+import { ListIncompleteAlert, useAllProcesses } from "../shared";
 
 const p = fr.programmation;
 const c = fr.programmationPlans;
@@ -33,6 +32,8 @@ export function AuditPlanDetailPage() {
   const [validating, setValidating] = useState(false);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const [deleted, setDeleted] = useState(false);
   // Message transmis par le formulaire de mission (état de navigation) : lu une fois, puis retiré.
   const location = useLocation();
   const [flash, setFlash] = useState<string | null>(() => {
@@ -48,8 +49,8 @@ export function AuditPlanDetailPage() {
     }
   }, [location, navigate]);
 
-  const plan = useAuditPlan(id);
-  const lines = useAuditPlanLines(id);
+  const plan = useAuditPlan(deleted ? undefined : id);
+  const lines = useAuditPlanLines(deleted ? undefined : id);
   const processes = useAllProcesses();
 
   const view = params.get("vue") === "calendrier" ? "calendrier" : "liste";
@@ -74,9 +75,10 @@ export function AuditPlanDetailPage() {
     );
   }
 
+  if (deleted) return null;
   if (plan.isLoading) {
     return (
-      <div aria-busy="true" aria-label={fr.common.loading} className="grid gap-4">
+      <div role="status" aria-busy="true" aria-label={fr.common.loading} className="grid gap-4">
         <Skeleton className="h-8 w-80" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -106,6 +108,7 @@ export function AuditPlanDetailPage() {
       (!filters.trimestre || String(l.trimestre) === filters.trimestre) &&
       (!needle || l.titre.toLocaleLowerCase("fr").includes(needle)),
   );
+  const filteredOut = all.length > 0 && shown.length !== all.length;
   const noProcess = processes.data !== undefined && processes.data.results.length === 0;
   const addLine = (
     <Button type="button" onClick={() => void navigate(`/programme-annuel/${id}/nouvelle-ligne`)}>
@@ -173,15 +176,18 @@ export function AuditPlanDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="grid gap-2">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold">{`${p.title} ${data.annee}`}</h1>
+            <h1 ref={titleRef} tabIndex={-1} className="text-2xl font-semibold outline-none">
+              {`${p.title} ${data.annee}`}
+            </h1>
             <PlanStatusBadge statut={data.statut} />
           </div>
+          <p className="text-sm text-text-muted">{data.libelle}</p>
           {data.commentaire && <p className="max-w-[70ch] text-sm">{data.commentaire}</p>}
         </div>
         <div className="flex flex-wrap items-start gap-3 print:hidden">
           {canEdit && (
             <>
-              {addLine}
+              {!noProcess && addLine}
               <Button type="button" variant="outline" onClick={() => setEditing(true)}>
                 <Pencil aria-hidden />
                 {c.editAction}
@@ -246,7 +252,14 @@ export function AuditPlanDetailPage() {
               onChange={(next) => update(next)}
             />
             {lines.data && <ListIncompleteAlert loaded={all.length} count={lines.data.count} />}
-            {linesBody}
+            {/* Les filtres sont masqués à l'impression : le papier porte donc toujours le tableau
+                complet, à côté du calendrier complet. */}
+            <div className={filteredOut ? "print:hidden" : undefined}>{linesBody}</div>
+            {filteredOut && (
+              <div data-print-full aria-hidden="true" className="hidden print:block">
+                <PlanLinesTable lines={all} />
+              </div>
+            )}
           </TabsContent>
           <TabsContent
             value="calendrier"
@@ -258,9 +271,23 @@ export function AuditPlanDetailPage() {
         </Tabs>
       </section>
 
-      {canEdit && <ValidatePlanDialog id={id} open={validating} onOpenChange={setValidating} />}
+      {canEditAuditPlan(role) && (
+        <ValidatePlanDialog
+          id={id}
+          open={validating}
+          onOpenChange={setValidating}
+          onValidated={() => titleRef.current?.focus()}
+        />
+      )}
       {canEdit && <EditPlanDialog plan={data} open={editing} onOpenChange={setEditing} />}
-      {canEdit && <DeletePlanDialog id={id} open={deleting} onOpenChange={setDeleting} />}
+      {canEdit && (
+        <DeletePlanDialog
+          id={id}
+          open={deleting}
+          onOpenChange={setDeleting}
+          onDeleted={() => setDeleted(true)}
+        />
+      )}
     </div>
   );
 }

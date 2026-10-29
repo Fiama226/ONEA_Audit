@@ -96,7 +96,7 @@ describe("AuditPlanDetailPage", () => {
       },
     });
     renderPlan(path, "RAI");
-    expect(await screen.findByRole("status")).toHaveTextContent("Programme validé le 20/01/2026");
+    expect(await screen.findByText(/Programme validé le 20\/01\/2026/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Exporter en Excel" })).toBeInTheDocument();
     for (const name of [
       "Ajouter une mission prévue",
@@ -245,11 +245,19 @@ describe("AuditPlanDetailPage", () => {
   it("deletes the plan then returns to the list", async () => {
     mock();
     let deleted = false;
+    let readsAfterDelete = 0;
+    const gone = () => {
+      readsAfterDelete += 1;
+      return HttpResponse.json({ detail: "Introuvable." }, { status: 404 });
+    };
     server.use(
       http.delete(planUrl, () => {
         deleted = true;
         return new HttpResponse(null, { status: 204 });
       }),
+      // Une fois supprimé, le programme n'existe plus : lire son détail ou sa synthèse donne 404.
+      http.get(planUrl, () => (deleted ? gone() : HttpResponse.json(aPlan()))),
+      http.get(`${planUrl}summary/`, () => (deleted ? gone() : HttpResponse.json(aSummary()))),
       listHandler("audit-plans", []),
     );
     const user = userEvent.setup();
@@ -257,8 +265,156 @@ describe("AuditPlanDetailPage", () => {
     await user.click(await screen.findByRole("button", { name: "Supprimer le programme" }));
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
-    await waitFor(() => expect(deleted).toBe(true));
     await waitFor(() => expect(router.state.location.pathname).toBe("/programme-annuel"));
+    expect(
+      await screen.findByText("Aucun programme annuel n'a encore été créé."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Ce programme annuel est introuvable.")).not.toBeInTheDocument();
+    expect(readsAfterDelete).toBe(0);
+  });
+
+  it("shows the 422 of an edit inside the dialog", async () => {
+    mock();
+    server.use(
+      http.patch(planUrl, () =>
+        HttpResponse.json(
+          { detail: "Données invalides.", errors: { libelle: ["Ce libellé est déjà utilisé."] } },
+          { status: 422 },
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderPlan(path, "RAI");
+    await user.click(await screen.findByRole("button", { name: "Modifier" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+    expect(await within(dialog).findByText("Ce libellé est déjà utilisé.")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("gives the ADMIN a read-only view", async () => {
+    mock();
+    renderPlan(path, "ADMIN");
+    await screen.findByRole("heading", { level: 1 });
+    expect(screen.getByRole("button", { name: "Exporter en CSV" })).toBeInTheDocument();
+    for (const name of ["Ajouter une mission prévue", "Modifier", "Valider le programme"]) {
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    }
+  });
+
+  it("shows the editable label under the title", async () => {
+    mock({ plan: { libelle: "Programme révisé 2026" } });
+    renderPlan(path, "AUDITEUR");
+    expect(await screen.findByText("Programme révisé 2026")).toBeInTheDocument();
+  });
+
+  it("hides the add action when the referential has no process", async () => {
+    mock({ processes: [], lines: [] });
+    renderPlan(path, "RAI");
+    await screen.findByText("Créez d'abord les processus dans le référentiel.");
+    expect(
+      screen.queryByRole("button", { name: "Ajouter une mission prévue" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("filters by process, type and search text", async () => {
+    mock({
+      lines: [
+        ...LINES,
+        aLine({
+          id: "l-conseil",
+          numero: 4,
+          titre: "Conseil sur la trésorerie",
+          type: "CONSEIL",
+          processus: "other-process",
+          processus_code: "FIN",
+          processus_libelle: "Finances",
+        }),
+      ],
+      processes: [PROCESS, { id: "other-process", code: "FIN", libelle: "Finances" }],
+    });
+    const user = userEvent.setup();
+    const { router } = renderPlan(path, "AUDITEUR");
+    await screen.findByRole("link", { name: "Audit des achats" });
+    await user.selectOptions(screen.getByLabelText("Type"), "CONSEIL");
+    expect(router.state.location.search).toContain("type=CONSEIL");
+    expect(screen.getAllByRole("link", { name: /^(Audit|Revue|Conseil)/ })).toHaveLength(1);
+    await user.selectOptions(screen.getByLabelText("Type"), "");
+    await user.selectOptions(screen.getByLabelText("Processus"), "other-process");
+    expect(router.state.location.search).toContain("processus=other-process");
+    expect(screen.getByRole("link", { name: "Conseil sur la trésorerie" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Audit des achats" })).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Processus"), "");
+    await user.type(screen.getByLabelText("Recherche"), "stocks");
+    expect(router.state.location.search).toContain("q=stocks");
+    expect(screen.getByRole("link", { name: "Audit des stocks" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Audit des achats" })).not.toBeInTheDocument();
+  });
+
+  it("prints the full table even when filters are applied", async () => {
+    mock();
+    const { container } = renderPlan(`${path}?trimestre=3`, "AUDITEUR");
+    await screen.findByRole("link", { name: "Audit des stocks" });
+    const printCopy = container.querySelector("[data-print-full]");
+    expect(printCopy).not.toBeNull();
+    expect(printCopy).toHaveClass("hidden", "print:block");
+    expect(printCopy?.querySelectorAll("tbody")).toHaveLength(3);
+    // La copie complète n'existe que si les filtres masquent des lignes.
+    expect(printCopy).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("does not duplicate the table for print when nothing is filtered", async () => {
+    mock();
+    const { container } = renderPlan(path, "AUDITEUR");
+    await screen.findByRole("link", { name: "Audit des stocks" });
+    expect(container.querySelector("[data-print-full]")).toBeNull();
+  });
+
+  it("keeps the table header sticky inside its own scroll container", async () => {
+    mock();
+    const { container } = renderPlan(path, "AUDITEUR");
+    await screen.findByRole("link", { name: "Audit des stocks" });
+    const wrapper = container.querySelector("table")?.parentElement;
+    expect(wrapper?.className).toMatch(/max-h-/);
+    expect(wrapper).toHaveClass("overflow-auto", "print:overflow-visible", "print:max-h-none");
+    const header = container.querySelector("thead th");
+    expect(header).toHaveClass("sticky", "top-0");
+  });
+
+  it("shows a dash for a zero load and uses a rowgroup header per quarter", async () => {
+    mock({ lines: [aLine({ charge_prevue_jours: "0.0" })] });
+    const { container } = renderPlan(path, "AUDITEUR");
+    await screen.findByRole("link", { name: "Audit des achats" });
+    const cells = container.querySelectorAll("tbody tr:nth-child(2) td");
+    expect(cells[cells.length - 1]).toHaveTextContent("-");
+    expect(container.querySelector("tbody th")).toHaveAttribute("scope", "rowgroup");
+  });
+
+  it("locks the validation dialog while running, then moves focus to the title", async () => {
+    mock();
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      http.post(`${planUrl}validate/`, async () => {
+        await gate;
+        return HttpResponse.json(aPlan({ statut: "VALIDE" }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderPlan(path, "RAI");
+    await user.click(await screen.findByRole("button", { name: "Valider le programme" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Valider définitivement" }));
+    await waitFor(() =>
+      expect(within(dialog).getByRole("button", { name: "Annuler" })).toBeDisabled(),
+    );
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    release();
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toHaveFocus());
   });
 
   it("calls the xlsx export endpoint", async () => {
@@ -280,9 +436,17 @@ describe("AuditPlanDetailPage", () => {
       URL.createObjectURL = originalCreate;
       URL.revokeObjectURL = originalRevoke;
     };
+    const saved: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+      this: HTMLAnchorElement,
+    ) {
+      saved.push(this.download);
+    });
     const user = userEvent.setup();
     renderPlan(path, "RAI");
     await user.click(await screen.findByRole("button", { name: "Exporter en Excel" }));
+    await waitFor(() => expect(saved).toEqual(["programme.xlsx"]));
+    expect(URL.createObjectURL).toHaveBeenCalledOnce();
     await waitFor(() => expect(type).toBe("xlsx"));
   });
 

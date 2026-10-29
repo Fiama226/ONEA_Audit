@@ -36,7 +36,9 @@ const TH = "sticky top-0 bg-surface px-2 py-2 text-left text-xs font-medium text
 export function PlanLinesTable({ lines }: { lines: AuditPlanLine[] }) {
   const groups = groupByQuarter(lines);
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-surface">
+    // Conteneur à défilement propre : `sticky` se cale sur lui (un `overflow-x` seul le rendrait
+    // inopérant). À l'impression, tout le tableau sort, sans rognage.
+    <div className="max-h-[70vh] overflow-auto rounded-lg border border-border bg-surface print:max-h-none print:overflow-visible">
       <table className="w-full text-sm tabular-nums">
         <caption className="sr-only">{c.linesCaption}</caption>
         <thead>
@@ -74,7 +76,7 @@ export function PlanLinesTable({ lines }: { lines: AuditPlanLine[] }) {
           <tbody key={quarter} className="break-inside-avoid">
             <tr className="bg-surface-subtle">
               <th
-                scope="colgroup"
+                scope="rowgroup"
                 colSpan={9}
                 className="px-2 py-2 text-left text-sm font-semibold"
               >
@@ -114,7 +116,9 @@ export function PlanLinesTable({ lines }: { lines: AuditPlanLine[] }) {
                 <td className="px-2 py-2 whitespace-nowrap">{formatDate(line.debut_prevu)}</td>
                 <td className="px-2 py-2 whitespace-nowrap">{formatDate(line.fin_prevue)}</td>
                 <td className="px-2 py-2 text-right">
-                  {formatDays(line.charge_prevue_jours ?? 0)}
+                  {line.charge_prevue_jours && Number(line.charge_prevue_jours) > 0
+                    ? formatDays(line.charge_prevue_jours)
+                    : c.noValue}
                 </td>
               </tr>
             ))}

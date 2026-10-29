@@ -7,7 +7,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { fr } from "@/i18n/fr";
 import { formatDate } from "@/lib/dates";
-import { useAuditPlans } from "../api";
+import { useAllAuditPlans, useAuditPlans } from "../api";
 import { CreatePlanDialog } from "../components/CreatePlanDialog";
 import { PlanStatusBadge } from "../components/PlanStatusBadge";
 import { formatDays } from "../format";
@@ -75,6 +75,7 @@ export function AuditPlanListPage() {
   const [creating, setCreating] = useState(false);
   const query = useAuditPlans({ page, page_size: PAGE_SIZE, ordering: "-annee" });
   const plans = query.data?.results ?? [];
+  const allPlans = useAllAuditPlans(canEdit);
 
   const createButton = canEdit ? (
     <Button type="button" onClick={() => setCreating(true)}>
@@ -139,7 +140,7 @@ export function AuditPlanListPage() {
         <CreatePlanDialog
           open={creating}
           onOpenChange={setCreating}
-          existingYears={plans.map((plan) => plan.annee)}
+          existingYears={(allPlans.data?.results ?? plans).map((plan) => plan.annee)}
         />
       )}
     </div>

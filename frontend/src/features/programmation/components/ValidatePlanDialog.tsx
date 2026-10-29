@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { isApiError } from "@/api/errors";
 import {
   AlertDialog,
@@ -18,16 +18,22 @@ export function ValidatePlanDialog({
   id,
   open,
   onOpenChange,
+  onValidated,
 }: {
   id: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Appelé à la fermeture après une validation réussie (le déclencheur a disparu : à la page de replacer le focus). */
+  onValidated?: () => void;
 }) {
   const validate = useValidateAuditPlan();
   const [error, setError] = useState<string | null>(null);
+  const validated = useRef(false);
   const c = fr.programmationPlans;
 
   function handleOpenChange(next: boolean) {
+    // Aucune fermeture (Annuler, Échap) pendant que la validation est en cours.
+    if (validate.isPending) return;
     if (!next) setError(null);
     onOpenChange(next);
   }
@@ -36,7 +42,8 @@ export function ValidatePlanDialog({
     setError(null);
     try {
       await validate.mutateAsync(id);
-      handleOpenChange(false);
+      validated.current = true;
+      onOpenChange(false);
     } catch (e) {
       setError(isApiError(e) ? e.detail : fr.errors.generic);
     }
@@ -44,7 +51,15 @@ export function ValidatePlanDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent
+        onCloseAutoFocus={(e) => {
+          if (validated.current) {
+            e.preventDefault();
+            validated.current = false;
+            onValidated?.();
+          }
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{c.validateTitle}</AlertDialogTitle>
           <AlertDialogDescription>{c.validateWarning}</AlertDialogDescription>
@@ -55,7 +70,7 @@ export function ValidatePlanDialog({
           </p>
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel>{fr.common.cancel}</AlertDialogCancel>
+          <AlertDialogCancel disabled={validate.isPending}>{fr.common.cancel}</AlertDialogCancel>
           <AlertDialogAction
             disabled={validate.isPending}
             onClick={(e) => {

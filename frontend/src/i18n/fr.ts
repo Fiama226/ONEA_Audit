@@ -348,7 +348,6 @@ export const fr = {
     clearFilters: "Effacer les filtres",
     noProcess: "Créez d'abord les processus dans le référentiel.",
     noProcessLink: "Aller au référentiel des processus",
-    days: "jours",
     loadColumn: "Charge (jours)",
     dismissFlash: "Fermer le message",
     totalLoadColumn: "Charge totale (jours)",

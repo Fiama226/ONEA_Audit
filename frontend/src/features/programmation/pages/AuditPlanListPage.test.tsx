@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
@@ -73,6 +73,45 @@ describe("AuditPlanListPage", () => {
     expect(within(dialog).getByLabelText("Année")).toHaveValue(String(year + 1));
     expect(within(dialog).getByLabelText("Libellé")).toHaveValue(
       `Programme annuel d'audit interne ${year + 1}`,
+    );
+  });
+
+  it("looks at every page of plans to propose a free year", async () => {
+    const year = new Date().getFullYear();
+    server.use(
+      http.get(plansUrl, ({ request }) => {
+        const url = new URL(request.url);
+        const pageSize = url.searchParams.get("page_size");
+        const pageNumber = url.searchParams.get("page");
+        // La liste affichée (25 par page) ne voit que l'ancien programme ; le chargement complet
+        // (200 par page) trouve celui de l'année en cours sur la page 2.
+        if (pageSize === "25") {
+          return HttpResponse.json({
+            count: 2,
+            next: "more",
+            previous: null,
+            results: [aPlan({ id: "old", annee: year - 3 })],
+          });
+        }
+        return HttpResponse.json(
+          pageNumber === "1"
+            ? {
+                count: 2,
+                next: `${plansUrl}?page=2`,
+                previous: null,
+                results: [aPlan({ id: "old", annee: year - 3 })],
+              }
+            : { count: 2, next: null, previous: null, results: [aPlan({ annee: year })] },
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderPlan(path, "RAI");
+    await screen.findByRole("link", { name: String(year - 3) });
+    await user.click(screen.getByRole("button", { name: "Créer un programme" }));
+    const dialog = await screen.findByRole("dialog");
+    await waitFor(() =>
+      expect(within(dialog).getByLabelText("Année")).toHaveValue(String(year + 1)),
     );
   });
 
