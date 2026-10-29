@@ -4,7 +4,14 @@ import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import { axe } from "vitest-axe";
 import { API_URL } from "@/test/msw";
-import { allSteps, aMission, missionHandlers, MISSION_ID, renderMission } from "../testUtils";
+import {
+  allSteps,
+  aMission,
+  missionHandlers,
+  MISSION_ID,
+  pageOf,
+  renderMission,
+} from "../testUtils";
 
 const NO_CONTRAST = { rules: { "color-contrast": { enabled: false } } };
 const stepUrl = (n: number) => `/missions/${MISSION_ID}/etapes/${n}`;
@@ -18,7 +25,15 @@ function render(
 ) {
   return renderMission(stepUrl(numero), role, {
     ...extra,
-    handlers: [...missionHandlers(aMission(), steps), ...(extra.handlers ?? [])],
+    handlers: [
+      ...missionHandlers(aMission(), steps),
+      ...(extra.handlers ?? []),
+      // Les panneaux de l'étape II (entretiens, déclarations, réunions) chargent leurs listes :
+      // sans handler, la requête non gérée rend une alerte d'erreur concurrente.
+      ...["interviews", "independence-declarations", "meetings"].map((path) =>
+        http.get(`${API_URL}/api/v1/${path}/`, () => HttpResponse.json(pageOf([]))),
+      ),
+    ],
   });
 }
 
@@ -164,7 +179,7 @@ describe("StepPage", () => {
       .find((a) => a.getAttribute("href") === `/missions/${MISSION_ID}/etapes/3`);
     await user.click(next as HTMLElement);
     await screen.findByRole("heading", { level: 2, name: /Étape III —/ });
-    expect(screen.queryByText(/Aucun entretien/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Aucun entretien n'est planifié.")).not.toBeInTheDocument();
   });
 
   it("requires a reason to reopen a step and sends it", async () => {
