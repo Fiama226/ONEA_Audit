@@ -36,11 +36,11 @@ import {
   useSaveRisk,
 } from "../api";
 import { FrozenBanner } from "../components/FrozenBanner";
-import { NativeSelect } from "../components/NativeSelect";
+import { NativeSelect } from "@/components/form/NativeSelect";
 import { RiskLevelBadge } from "../components/RiskLevelBadge";
 import { NIVEAU_LABELS, PRIORITE_LABELS, REPONSE_LABELS } from "../labels";
 import { canEditCartographie } from "../permissions";
-import { applyApiErrors } from "../formErrors";
+import { applyApiErrors } from "@/api/formErrors";
 import {
   niveauFromScore,
   prioriteFromNiveau,

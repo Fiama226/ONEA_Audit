@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { isApiError } from "@/api/errors";
 import { fr } from "@/i18n/fr";
-import { ALERT_CLASS } from "./FormField";
+import { ALERT_CLASS } from "@/components/form/FormField";
 
 type Props = {
   open: boolean;

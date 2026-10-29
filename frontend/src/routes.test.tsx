@@ -7,6 +7,7 @@ import { fr } from "@/i18n/fr";
 import { NAV_GROUPS, navFor, rolesFor } from "@/layouts/navigation";
 import { API_URL, server } from "@/test/msw";
 import { renderRoutes } from "@/test/shell";
+import { aMission, allRights, allSteps, MISSION_ID } from "@/features/missions/testUtils";
 import { appRoutes } from "./routes";
 
 // La page d'accueil du référentiel (cartographies) interroge l'API.
@@ -25,6 +26,7 @@ beforeAll(() => {
 });
 
 const RESTRICTED: [string, string, readonly Role[]][] = [
+  ["/missions", fr.nav.missions, ["RAI", "AUDITEUR", "AUDITE"]],
   ["/referentiel", fr.nav.referentiel, ["ADMIN", "RAI", "AUDITEUR", "DG"]],
   ["/administration", fr.nav.administration, ["ADMIN"]],
 ];
@@ -39,7 +41,7 @@ describe("guarded routes", () => {
       renderRoutes(appRoutes, role, { path });
       if (roles.includes(role)) {
         expect(screen.getByRole("heading", { level: 1, name: title })).toBeInTheDocument();
-        if (path !== "/referentiel") {
+        if (path === "/administration") {
           expect(screen.getByText(fr.shell.comingSoonTitle)).toBeInTheDocument();
         }
         expect(screen.queryByText(fr.errors.forbiddenTitle)).not.toBeInTheDocument();
@@ -133,5 +135,46 @@ describe("page introuvable", () => {
       "href",
       "/",
     );
+  });
+});
+
+describe("mission routes", () => {
+  const path = `/missions/${MISSION_ID}`;
+
+  function serve(mission = aMission()) {
+    server.use(
+      http.get(`${API_URL}/api/v1/missions/${MISSION_ID}/`, () => HttpResponse.json(mission)),
+      http.get(`${API_URL}/api/v1/mission-steps/`, () => HttpResponse.json(allSteps())),
+    );
+  }
+
+  it.each(["DG", "ADMIN"] as const)("denies /missions to %s", (role) => {
+    renderRoutes(appRoutes, role, { path: "/missions" });
+    expect(
+      screen.getByRole("heading", { level: 1, name: fr.errors.forbiddenTitle }),
+    ).toBeInTheDocument();
+  });
+
+  it("sends an AUDITE on a mission to its meetings", async () => {
+    serve(aMission({ mes_droits: { ...allRights(false), voir_travaux: false } }));
+    const { router } = renderRoutes(appRoutes, "AUDITE", { path });
+    await waitFor(() => expect(router.state.location.pathname).toBe(`${path}/reunions`));
+  });
+
+  it("sends an auditor to the current step", async () => {
+    serve();
+    const { router } = renderRoutes(appRoutes, "AUDITEUR", { path });
+    await waitFor(() => expect(router.state.location.pathname).toBe(`${path}/etapes/4`));
+    expect(await screen.findAllByRole("link", { current: "step" })).toHaveLength(1);
+  });
+
+  it("hides the work tabs when the server denies voir_travaux", async () => {
+    serve(aMission({ mes_droits: { ...allRights(false), voir_travaux: false } }));
+    renderRoutes(appRoutes, "AUDITE", { path });
+    expect(await screen.findByRole("link", { name: fr.missions.tabMeetings })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: fr.missions.tabInterviews })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: fr.missions.tabSteps })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: fr.missions.tabTracking })).not.toBeInTheDocument();
+    expect(screen.getByText(fr.missions.documentsSoon)).toBeInTheDocument();
   });
 });

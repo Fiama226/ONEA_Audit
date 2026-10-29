@@ -14,10 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { fr } from "@/i18n/fr";
 import { useSaveAuditableObject } from "../api";
-import { applyApiErrors } from "../formErrors";
+import { applyApiErrors } from "@/api/formErrors";
 import { auditableObjectSchema, type AuditableObjectFormValues } from "../schemas/auditableObject";
 import type { NatureObjet } from "../types";
-import { ALERT_CLASS, FormField } from "./FormField";
+import { ALERT_CLASS, FormField } from "@/components/form/FormField";
 
 const s = fr.refStructure;
 
