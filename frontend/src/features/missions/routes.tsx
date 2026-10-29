@@ -1,4 +1,5 @@
 import { Navigate, useParams, type RouteObject } from "react-router-dom";
+import { AuditFrameworkPage } from "@/features/analyse/pages/AuditFrameworkPage";
 import { useRole } from "@/auth/useRole";
 import { fr } from "@/i18n/fr";
 import { useMission } from "./api";
@@ -44,6 +45,7 @@ export const missionRoutes: RouteObject[] = [
       { path: "reunions", element: <MeetingsPage /> },
       { path: "entretiens", element: <InterviewsPage /> },
       { path: "suivi", element: <TrackingPage /> },
+      { path: "referentiel-audit", element: <AuditFrameworkPage /> },
     ],
   },
 ];
