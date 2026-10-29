@@ -287,3 +287,10 @@ Le backend en production refuse de démarrer si `SECRET_KEY`, `DATABASE_URL`, `E
   seul `/app/staticfiles` est inscriptible. Les conteneurs tournent avec
   `no-new-privileges` et sans capacités Linux superflues.
 - HSTS (1 an, sous-domaines inclus) est actif : ne pas déployer sans certificat valide.
+- Adresse IP enregistrée (confirmations, journal de consultation, piste d'audit) :
+  `nginx` transmet l'adresse du pair TCP dans `X-Real-IP`, et Django ne la croit que si le
+  pair appartient à `TRUSTED_PROXY_CIDRS` (aussi utilisé pour `--forwarded-allow-ips` de
+  gunicorn via `FORWARDED_ALLOW_IPS`). La valeur par défaut `172.16.0.0/12` du compose de
+  production couvre tout l'espace Docker : **la restreindre au sous-réseau réel du proxy**.
+  Si `nginx` est lui-même derrière un autre proxy, un répartiteur ou un NAT, l'adresse
+  enregistrée est celle de ce dernier (adresse amont), pas celle du poste de l'utilisateur.
