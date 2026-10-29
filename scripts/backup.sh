@@ -5,6 +5,7 @@
 #   sh scripts/backup.sh [backup-dir]        (default: ./backups)
 # Run from the repository root on the server. Dumps are written to a .tmp file first and
 # renamed only when pg_dump succeeded, so a failed run never leaves a truncated dump.
+# Must run as root (sudo): the documents folder is owned by uid 10001 with mode 0750.
 # Restore: see docs/deploy.md ("Sauvegardes et restauration").
 set -eu
 umask 077
@@ -43,8 +44,22 @@ DOCUMENTS_HOST_DIR=$(sed -n 's/^DOCUMENTS_HOST_DIR=//p' "$ENV_FILE" | tail -n 1 
   echo "ERREUR : DOCUMENTS_HOST_DIR absent de $ENV_FILE ou dossier introuvable." >&2
   exit 1
 }
+case "$DOCUMENTS_HOST_DIR" in
+  /*) ;;
+  *) echo "ERREUR : DOCUMENTS_HOST_DIR doit être un chemin absolu." >&2; exit 1 ;;
+esac
+DOCS_REAL=$(cd "$DOCUMENTS_HOST_DIR" && pwd -P)
+case "$DOCS_REAL/" in
+  "$ROOT"/*|/|/app/*|/etc/*|/proc/*|/sys/*|/dev/*)
+    echo "ERREUR : DOCUMENTS_HOST_DIR ne doit pas être dans le dépôt ni un dossier système." >&2
+    exit 1 ;;
+esac
+[ "$(id -u)" -eq 0 ] || {
+  echo "ERREUR : la sauvegarde des documents doit être lancée en root (sudo)." >&2
+  exit 1
+}
 tmp="$DEST/documents-$STAMP.tar.gz.tmp"
-if tar -czf "$tmp" -C "$DOCUMENTS_HOST_DIR" .; then
+if tar -czf "$tmp" -C "$DOCS_REAL" .; then
   mv "$tmp" "$DEST/documents-$STAMP.tar.gz"
 else
   rm -f "$tmp"

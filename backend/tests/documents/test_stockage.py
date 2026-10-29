@@ -16,10 +16,12 @@ from apps.core.exceptions import RegleMetierError
 from apps.documents.stockage import (
     EspaceInsuffisantError,
     FichierExistantError,
+    StockageIndisponibleError,
     cle_gabarit,
     cle_version,
     configuration_stockage,
     ecrire,
+    ecrire_avec_empreinte,
     etat_stockage,
     lire,
     stockage_documents,
@@ -122,6 +124,7 @@ def test_configuration_s3() -> None:
     )
     assert conf["BACKEND"] == "storages.backends.s3.S3Storage"
     assert conf["OPTIONS"]["file_overwrite"] is False
+    assert conf["OPTIONS"]["querystring_auth"] is False
     assert conf["OPTIONS"]["bucket_name"] == "b"
 
 
@@ -149,5 +152,103 @@ def test_compose_sans_minio() -> None:
 
 def test_compose_prod_monte_le_volume_documents_sur_web_et_worker_seulement() -> None:
     texte = (Path(settings.BASE_DIR).parent / "docker/compose.prod.yml").read_text(encoding="utf-8")
-    assert "DOCUMENTS_HOST_DIR:?DOCUMENTS_HOST_DIR is required" in texte
-    assert texte.count(":/var/lib/onea/documents") == 2
+    assert texte.count("source: ${DOCUMENTS_HOST_DIR:?DOCUMENTS_HOST_DIR is required}") == 2
+    assert texte.count("target: /var/lib/onea/documents") == 2
+    assert texte.count("create_host_path: false") == 2
+    assert "--profile storage" not in texte
+
+
+def _fichiers_sous(racine: Path) -> list[Path]:
+    return [p for p in racine.rglob("*") if p.is_file()]
+
+
+def test_empreinte_sha256_calculee_a_l_ecriture(stockage_tmp: Path) -> None:
+    import hashlib
+
+    contenu = b"PK" + b"x" * 200_000
+    cle, empreinte = ecrire_avec_empreinte("versions/e/v001.docx", contenu)
+    assert empreinte == hashlib.sha256(contenu).hexdigest()
+    assert lire(cle) == contenu
+
+
+def test_echec_d_ecriture_ne_laisse_ni_fichier_final_ni_temporaire_puis_reessai(
+    stockage_tmp: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def echec(_fd: int) -> None:
+        raise OSError("disque plein simule")
+
+    monkeypatch.setattr(os, "fsync", echec)
+    with pytest.raises(StockageIndisponibleError) as exc:
+        ecrire("versions/f/v001.docx", b"PK")
+    assert isinstance(exc.value, RegleMetierError)
+    assert _fichiers_sous(stockage_tmp) == []
+    monkeypatch.undo()
+    assert lire(ecrire("versions/f/v001.docx", b"PK")) == b"PK"
+    assert [p.name for p in _fichiers_sous(stockage_tmp)] == ["v001.docx"]
+
+
+def test_ecriture_existante_n_ecrase_pas_et_ne_laisse_pas_de_temporaire(
+    stockage_tmp: Path,
+) -> None:
+    ecrire("versions/g/v001.docx", b"original")
+    with pytest.raises(FichierExistantError):
+        ecrire("versions/g/v001.docx", b"autre")
+    assert [p.name for p in _fichiers_sous(stockage_tmp)] == ["v001.docx"]
+    assert lire("versions/g/v001.docx") == b"original"
+
+
+def test_suppression_interdite(stockage_tmp: Path) -> None:
+    cle = ecrire("versions/h/v001.docx", b"PK")
+    with pytest.raises(NotImplementedError):
+        stockage_documents().delete(cle)
+    assert lire(cle) == b"PK"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="symlinks need privileges on Windows")
+def test_lien_symbolique_dans_le_chemin_refuse(stockage_tmp: Path, tmp_path_factory: Any) -> None:
+    dehors = tmp_path_factory.mktemp("dehors")
+    (stockage_tmp / "versions").symlink_to(dehors, target_is_directory=True)
+    with pytest.raises(SuspiciousFileOperation):
+        ecrire("versions/i/v001.docx", b"PK")
+    assert list(dehors.rglob("*")) == []
+
+
+def test_cles_invalides_refusees() -> None:
+    for type_document, version, empreinte in [
+        ("../x", 1, "abcdef012345"),
+        ("Lettre", 1, "abcdef012345"),
+        ("", 1, "abcdef012345"),
+        ("lettre", -1, "abcdef012345"),
+        ("lettre", 1, "zz"),
+        ("lettre", 1, "../../etc/passwd"),
+    ]:
+        with pytest.raises(ValueError, match="invalide"):
+            cle_gabarit(type_document, version, empreinte)
+    with pytest.raises(ValueError, match="invalide"):
+        cle_version(uuid4(), 0, "exe")  # type: ignore[arg-type]
+
+
+def test_dev_cree_le_dossier_prod_non(tmp_path: Path, settings: Any) -> None:
+    from django.apps import apps
+
+    cible = tmp_path / "nouveau"
+    settings.DOCUMENTS_ROOT = str(cible)
+    settings.DOCUMENTS_CREER_DOSSIER = False
+    apps.get_app_config("documents").ready()
+    assert not cible.exists()
+    settings.DOCUMENTS_CREER_DOSSIER = True
+    apps.get_app_config("documents").ready()
+    assert cible.is_dir()
+
+
+def test_s3_existant_est_une_erreur_pas_un_renommage(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    from apps.documents import stockage as mod
+
+    faux = SimpleNamespace(
+        exists=lambda _c: True, save=lambda *_a, **_k: pytest.fail("saved over existing key")
+    )
+    monkeypatch.setattr(mod, "stockage_documents", lambda: faux)
+    with pytest.raises(FichierExistantError):
+        ecrire("versions/s/v001.docx", b"PK")

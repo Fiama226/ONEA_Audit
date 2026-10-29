@@ -15,7 +15,7 @@ téléchargement passe uniquement par l'API authentifiée (droits vérifiés à 
 | Propriétaire | `10001:10001` (utilisateur `onea` des images), mode `0750` |
 | Fichiers / dossiers créés | `0640` / `0750` |
 
-Les clés de stockage sont construites côté serveur (identifiants UUID, numéro de version) :
+Les écritures sont atomiques et à écriture unique (fichier temporaire, `fsync`, lien définitif qui échoue si la clé existe, puis `fsync` du dossier) ; l'empreinte SHA-256 est calculée à l'écriture. Les suppressions et les liens symboliques sont refusés. Les clés de stockage sont construites côté serveur (identifiants UUID, numéro de version) :
 `gabarits/<type>/<version>-<empreinte>.docx` et `versions/<uuid>/v001.docx|pdf`. Aucun nom
 de fichier fourni par l'utilisateur n'entre dans un chemin. Une clé existante n'est jamais
 réécrite (écriture unique).
@@ -28,7 +28,7 @@ réécrite (écriture unique).
 install -d -o 10001 -g 10001 -m 0750 /srv/onea/documents
 ```
 
-puis renseigner `DOCUMENTS_HOST_DIR=/srv/onea/documents` dans `.env.prod`. L'application
+puis renseigner `DOCUMENTS_HOST_DIR=/srv/onea/documents` dans `.env.prod`. Compose monte ce dossier sans le créer (`create_host_path: false`) et l'application ne le crée pas en production : s'il manque, `GET /api/v1/health/` renvoie `stockage_documents: indisponible`. L'application
 refuse de démarrer si `DOCUMENTS_ROOT` n'est pas un chemin absolu situé hors de `/app` et du
 dépôt.
 
@@ -41,7 +41,7 @@ données.
 | Réglage | Défaut | Effet |
 |---|---|---|
 | `DOCUMENTS_ESPACE_MIN_LIBRE_MO` | 1024 | en dessous, l'écriture est refusée (« Espace disque insuffisant sur le serveur de documents ») et l'état passe à `faible` |
-| `DOCUMENTS_QUOTA_MO` | 0 | quota total des documents ; 0 = sans quota |
+| `DOCUMENTS_QUOTA_MO` | 0 | réglage réservé : le quota (somme des tailles en base) sera appliqué par la couche documents (tâches suivantes du lot 4) ; le stockage seul ne l'applique pas ; 0 = sans quota |
 | `DOCUMENTS_MAX_GABARIT_MO` | 10 | taille maximale d'un gabarit Word téléversé |
 
 `GET /api/v1/health/` renvoie `stockage_documents` : `ok`, `faible` (espace libre sous le
@@ -50,7 +50,7 @@ seuil) ou `indisponible` (dossier absent ou non inscriptible). Cet indicateur n'
 
 ## Sauvegarde
 
-`scripts/backup.sh` sauvegarde, dans cet ordre, la base applicative, la base Keycloak, puis
+`scripts/backup.sh` (à lancer en root, `sudo` : le dossier appartient à l'utilisateur 10001 en mode `0750`) sauvegarde, dans cet ordre, la base applicative, la base Keycloak, puis
 archive le dossier des documents (`documents-AAAAMMJJ-HHMMSS.tar.gz`, écrite en `.tmp` puis
 renommée ; 14 archives conservées). Les bases passent en premier : l'archive contient donc
 tout fichier référencé par le dump.

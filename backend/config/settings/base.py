@@ -5,8 +5,8 @@ import environ
 from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
-from apps.documents.stockage import configuration_stockage
 from config import __version__
+from config.documents_settings import configuration_stockage
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -110,6 +110,7 @@ DOCUMENTS_ESPACE_MIN_LIBRE_MO: int = env.int("DOCUMENTS_ESPACE_MIN_LIBRE_MO", de
 DOCUMENTS_QUOTA_MO: int = env.int("DOCUMENTS_QUOTA_MO", default=0)  # 0 = no quota
 DOCUMENTS_PDFA: bool = env.bool("DOCUMENTS_PDFA", default=True)
 GOTENBERG_URL: str = env("GOTENBERG_URL", default="http://localhost:3000").rstrip("/")
+DOCUMENTS_CREER_DOSSIER = False  # dev.py enables it; production must not create it
 GOTENBERG_TIMEOUT = 90  # seconds (read timeout of the docx -> PDF conversion)
 
 STORAGES = {

@@ -5,12 +5,10 @@ no localhost/mailpit fallbacks. A missing variable raises ImproperlyConfigured a
 """
 
 import os
-import posixpath
-from pathlib import Path, PurePosixPath
 
 from django.core.exceptions import ImproperlyConfigured
 
-from apps.documents.stockage import S3_VARIABLES, configuration_stockage
+from config.documents_settings import S3_VARIABLES, configuration_stockage, valider_documents_root
 
 from .base import *  # noqa: F403
 from .base import REST_FRAMEWORK, env
@@ -42,17 +40,7 @@ if not env.bool("OIDC_VERIFY_SSL", default=True):
 # --- Documents storage: explicit, absolute, outside the code (D2). ---
 if DOCUMENTS_STORAGE == "filesystem":  # noqa: F405
     _root = env("DOCUMENTS_ROOT")  # required in production, no dev default
-    if not (_root.startswith("/") or Path(_root).is_absolute()):
-        raise ImproperlyConfigured("DOCUMENTS_ROOT must be an absolute path")
-    # Normalise ".." segments, then refuse the container code dir and the repository.
-    _posix_root = PurePosixPath(posixpath.normpath(_root.replace("\\", "/")))
-    _forbidden_posix = PurePosixPath("/app")
-    if _posix_root == _forbidden_posix or _forbidden_posix in _posix_root.parents:
-        raise ImproperlyConfigured("DOCUMENTS_ROOT must be outside the application code (/app)")
-    _repo = Path(BASE_DIR).parent.resolve()  # noqa: F405
-    _native_root = Path(os.path.normpath(_root)).resolve()
-    if _native_root == _repo or _repo in _native_root.parents:
-        raise ImproperlyConfigured("DOCUMENTS_ROOT must be outside the repository")
+    valider_documents_root(_root, repo_root=str(BASE_DIR.parent), code_dir=str(BASE_DIR))  # noqa: F405
     DOCUMENTS_ROOT = _root
 else:
     for _name in S3_VARIABLES:

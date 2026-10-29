@@ -23,7 +23,7 @@ from .serializers import AuditLogSerializer
         {
             "status": serializers.CharField(),
             "version": serializers.CharField(),
-            "stockage_documents": serializers.ChoiceField(choices=["ok", "faible", "indisponible"]),
+            "stockage_documents": serializers.CharField(),
         },
     )
 )

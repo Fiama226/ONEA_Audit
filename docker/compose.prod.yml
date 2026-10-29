@@ -2,7 +2,6 @@
 # or compose.dev.yml). See docs/deploy.md.
 #
 #   docker compose --env-file .env.prod -f docker/compose.prod.yml up -d --build
-#   docker compose --env-file .env.prod -f docker/compose.prod.yml --profile storage up -d
 #
 # Every secret is REQUIRED (${VAR:?}); copy .env.prod.example to .env.prod and fill it in.
 # Only nginx publishes host ports (80/443).
@@ -82,7 +81,11 @@ services:
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-3}
     volumes:
       - *ca-volume
-      - ${DOCUMENTS_HOST_DIR:?DOCUMENTS_HOST_DIR is required}:/var/lib/onea/documents
+      - type: bind
+        source: ${DOCUMENTS_HOST_DIR:?DOCUMENTS_HOST_DIR is required}
+        target: /var/lib/onea/documents
+        bind:
+          create_host_path: false
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -95,7 +98,11 @@ services:
     environment: *backend-env
     volumes:
       - *ca-volume
-      - ${DOCUMENTS_HOST_DIR:?DOCUMENTS_HOST_DIR is required}:/var/lib/onea/documents
+      - type: bind
+        source: ${DOCUMENTS_HOST_DIR:?DOCUMENTS_HOST_DIR is required}
+        target: /var/lib/onea/documents
+        bind:
+          create_host_path: false
     healthcheck:
       test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME -t 5 >/dev/null 2>&1"]
       interval: 60s
