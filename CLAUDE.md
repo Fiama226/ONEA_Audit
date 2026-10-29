@@ -31,7 +31,7 @@ Maître d'œuvre : IKA SOLUTION LTD. Langue de travail et de l'interface : **fra
 | Tâches de fond | Celery + Redis (Valkey) |
 | Documents | docxtpl (remplissage des gabarits Word ONEA), Gotenberg (docx → PDF) |
 | Recherche | Meilisearch |
-| Fichiers | MinIO (S3) via django-storages |
+| Fichiers | Disque du serveur (volume hôte) via l'API de stockage Django ; S3 compatible branchable |
 | Auth | Keycloak (OIDC) via mozilla-django-oidc ; la SPA n'utilise que Keycloak (pas d'auth Django locale ; admin Django en session, hors SPA) |
 | Tests | pytest + pytest-django + factory_boy ; Vitest + Testing Library ; Playwright (e2e) |
 | Qualité | ruff, mypy, ESLint, Prettier, pre-commit |
@@ -74,7 +74,7 @@ Les agents fixent déjà leur modèle dans leur frontmatter ; ne pas le surcharg
 ## Commandes
 
 ```
-make up            # docker compose up (postgres, redis, meilisearch, gotenberg, keycloak ; MinIO via WITH_STORAGE=1, profil storage)
+make up            # docker compose up (postgres, redis, meilisearch, gotenberg, keycloak)
 make backend       # python manage.py runserver
 make frontend      # npm run dev
 make test          # pytest + vitest
