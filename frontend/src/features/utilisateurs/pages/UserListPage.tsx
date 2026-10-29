@@ -1,5 +1,4 @@
 import { TriangleAlert } from "lucide-react";
-import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
@@ -8,7 +7,7 @@ import { fr } from "@/i18n/fr";
 import { formatDate } from "@/lib/dates";
 import { useDirectionOptions, useUserAccounts, type UserAccountParams } from "../api";
 import { ImportActions } from "../components/ImportActions";
-import { UserFilters, type UserFilterValues } from "../components/UserFilters";
+import { SEARCH_MAX_LENGTH, UserFilters, type UserFilterValues } from "../components/UserFilters";
 import { UserStatusBadge } from "../components/UserStatusBadge";
 import { directionLabel, ROLE_LABELS } from "../labels";
 import type { CompteUtilisateurListe, KeycloakSyncStatut, Role } from "../types";
@@ -16,6 +15,16 @@ import type { CompteUtilisateurListe, KeycloakSyncStatut, Role } from "../types"
 const PAGE_SIZE = 25;
 const DEFAULT_ORDERING = "last_name";
 const t = fr.utilisateurs.liste;
+
+const ROLES = Object.keys(ROLE_LABELS);
+const STATUSES = ["actif", "inactif", "attente"];
+const SYNCS = ["ECHEC", "EN_ATTENTE"];
+const SORTABLE = ["last_name", "role", "direction_code", "is_active", "date_joined"];
+
+/** Valeur d'URL retenue si elle appartient à la liste, sinon vide (jamais envoyée à l'API). */
+function oneOf(value: string | null, allowed: string[]): string {
+  return value !== null && allowed.includes(value) ? value : "";
+}
 
 const FILTER_KEYS = ["q", "role", "statut", "direction", "sync"] as const;
 
@@ -95,16 +104,19 @@ function toApiParams(f: UserFilterValues, page: number, ordering: string): UserA
 
 export function UserListPage() {
   const [search, setSearch] = useSearchParams();
-  const [resetKey, setResetKey] = useState(0);
   const filters: UserFilterValues = {
-    q: search.get("q") ?? "",
-    role: search.get("role") ?? "",
-    statut: search.get("statut") ?? "",
+    q: (search.get("q") ?? "").trim().slice(0, SEARCH_MAX_LENGTH),
+    role: oneOf(search.get("role"), ROLES),
+    statut: oneOf(search.get("statut"), STATUSES),
     direction: search.get("direction") ?? "",
-    sync: search.get("sync") ?? "",
+    sync: oneOf(search.get("sync"), SYNCS),
   };
-  const page = Math.max(1, Number(search.get("page")) || 1);
-  const ordering = search.get("ordering") || DEFAULT_ORDERING;
+  const rawPage = Number(search.get("page"));
+  const page = Number.isInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
+  const rawOrdering = search.get("ordering") ?? "";
+  const ordering = SORTABLE.includes(rawOrdering.replace(/^-/, ""))
+    ? rawOrdering
+    : DEFAULT_ORDERING;
   const hasFilters = FILTER_KEYS.some((k) => filters[k] !== "");
 
   const query = useUserAccounts(toApiParams(filters, page, ordering));
@@ -129,7 +141,6 @@ export function UserListPage() {
       for (const key of [...FILTER_KEYS, "page"]) next.delete(key);
       return next;
     });
-    setResetKey((k) => k + 1);
   }
 
   let body;
@@ -191,11 +202,15 @@ export function UserListPage() {
         </div>
       </div>
       <UserFilters
-        key={resetKey}
         values={filters}
         directions={directions.options}
         onChange={(next) => update(next)}
       />
+      <p role="status" aria-live="polite" className="sr-only">
+        {query.data
+          ? `${query.data.count} ${query.data.count === 1 ? fr.table.result : fr.table.results}`
+          : ""}
+      </p>
       {body}
     </div>
   );

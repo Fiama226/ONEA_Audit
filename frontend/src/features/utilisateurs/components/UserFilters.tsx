@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/features/referentiel/components/NativeSelect";
@@ -15,6 +15,8 @@ export type UserFilterValues = {
 };
 
 const SEARCH_DELAY_MS = 300;
+/** Limite du backend : au-delà, la requête est refusée (400). */
+export const SEARCH_MAX_LENGTH = 100;
 const ROLES = Object.keys(ROLE_LABELS) as Role[];
 
 /** Filtres de la liste ; la recherche n'est transmise qu'après 300 ms d'inactivité. */
@@ -29,13 +31,24 @@ export function UserFilters({
 }) {
   const t = fr.utilisateurs.liste;
   const [text, setText] = useState(values.q);
+  const [syncedQ, setSyncedQ] = useState(values.q);
+  const onChangeRef = useRef(onChange);
 
   useEffect(() => {
-    if (text === values.q) return;
-    const timer = setTimeout(() => onChange({ q: text }), SEARCH_DELAY_MS);
+    onChangeRef.current = onChange;
+  });
+
+  // L'URL fait foi : retour/avance du navigateur ou « Effacer les filtres » réinitialisent la saisie.
+  if (values.q !== syncedQ) {
+    setSyncedQ(values.q);
+    setText(values.q);
+  }
+
+  useEffect(() => {
+    const term = text.trim();
+    if (term === values.q) return;
+    const timer = setTimeout(() => onChangeRef.current({ q: term }), SEARCH_DELAY_MS);
     return () => clearTimeout(timer);
-    // `onChange` change à chaque rendu parent : seul le texte saisi relance le délai.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, values.q]);
 
   return (
@@ -50,6 +63,7 @@ export function UserFilters({
         <Input
           id="user-filter-q"
           type="search"
+          maxLength={SEARCH_MAX_LENGTH}
           value={text}
           onChange={(e) => setText(e.target.value)}
         />

@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
@@ -136,6 +136,91 @@ describe("UserListPage", () => {
     server.use(http.get(LIST, () => HttpResponse.json({}, { status: 500 })));
     renderAdministration("/administration/utilisateurs");
     expect(await screen.findByRole("alert")).toHaveTextContent("Impossible de charger");
+  });
+
+  it("limits the search input to 100 characters", async () => {
+    mockList();
+    renderAdministration("/administration/utilisateurs");
+    await findRow();
+    expect(screen.getByLabelText("Rechercher (nom, identifiant, matricule)")).toHaveAttribute(
+      "maxlength",
+      "100",
+    );
+  });
+
+  it("does not push stale search text back after browser Back", async () => {
+    const urls = mockList();
+    const user = userEvent.setup();
+    const { router } = renderAdministration("/administration/utilisateurs");
+    await findRow();
+    const input = screen.getByLabelText("Rechercher (nom, identifiant, matricule)");
+    await user.type(input, "ouedr");
+    await waitFor(() => expect(router.state.location.search).toContain("q=ouedr"));
+    await act(() => router.navigate(-1));
+    await waitFor(() => expect(input).toHaveValue(""));
+    await new Promise((r) => setTimeout(r, 500));
+    expect(router.state.location.search).not.toContain("q=");
+    expect(urls.at(-1)?.searchParams.has("q")).toBe(false);
+  });
+
+  it("ignores a whitespace-only search and invalid URL values", async () => {
+    const urls = mockList();
+    renderAdministration(
+      "/administration/utilisateurs?q=%20%20&role=BOSS&sync=NOPE&statut=zzz&page=abc&ordering=password",
+    );
+    await findRow();
+    expect(urls[0]?.search).toBe("?page=1&ordering=last_name");
+  });
+
+  it("writes the sort order to the URL and requests it", async () => {
+    const urls = mockList();
+    const user = userEvent.setup();
+    const { router } = renderAdministration("/administration/utilisateurs");
+    await findRow();
+    await user.click(screen.getByRole("button", { name: /Rôle/ }));
+    await waitFor(() => expect(router.state.location.search).toBe("?ordering=role"));
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get("ordering")).toBe("role"));
+  });
+
+  it("writes the page to the URL when paginating", async () => {
+    const urls: URL[] = [];
+    server.use(
+      http.get(LIST, ({ request }) => {
+        urls.push(new URL(request.url));
+        return HttpResponse.json({
+          count: 60,
+          next: null,
+          previous: null,
+          results: [aListAccount()],
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    const { router } = renderAdministration("/administration/utilisateurs");
+    await findRow();
+    await user.click(screen.getByRole("button", { name: "Page suivante" }));
+    await waitFor(() => expect(router.state.location.search).toBe("?page=2"));
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get("page")).toBe("2"));
+  });
+
+  it("goes back to page 1 when the search changes", async () => {
+    const urls = mockList();
+    const user = userEvent.setup();
+    renderAdministration("/administration/utilisateurs?page=3");
+    await findRow();
+    await user.type(screen.getByLabelText("Rechercher (nom, identifiant, matricule)"), "kab");
+    await waitFor(() => expect(urls.at(-1)?.searchParams.get("q")).toBe("kab"));
+    expect(urls.at(-1)?.searchParams.get("page")).toBe("1");
+  });
+
+  it("announces the result count politely", async () => {
+    mockList();
+    renderAdministration("/administration/utilisateurs");
+    await findRow();
+    const status = screen
+      .getAllByRole("status")
+      .find((el) => el.getAttribute("aria-live") === "polite" && /1 résultat/.test(el.textContent));
+    expect(status).toBeDefined();
   });
 
   it("has no accessibility violation", async () => {
