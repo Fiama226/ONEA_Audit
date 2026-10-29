@@ -20,19 +20,14 @@ def _constat_valide(etape: EtapeMission) -> str | None:
     return "Aucun constat n'est validé." if anomalie else None
 
 
-def _constats_non_valides(etape: EtapeMission) -> str | None:
+def _constats_non_valides(etape: EtapeMission) -> list[str]:
     restants = (
         Constat.objects.filter(mission_id=etape.mission_id)
         .exclude(statut=StatutConstat.VALIDE)
         .order_by("numero")
         .values_list("reference", flat=True)
     )
-    refs = list(restants)
-    if not refs:
-        return None
-    if len(refs) == 1:
-        return f"Le constat {refs[0]} n'est pas validé."
-    return "Constats non validés : " + ", ".join(refs) + "."
+    return [f"Le constat {reference} n'est pas validé." for reference in restants]
 
 
 CONTROLES_ETAPE: dict[int, list[Controle]] = {14: [_constat_valide, _constats_non_valides]}

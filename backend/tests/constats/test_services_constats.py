@@ -18,8 +18,9 @@ from apps.constats.services.constats import (
     valider_constat,
 )
 from apps.core.exceptions import RegleMetierError
-from apps.missions.exceptions import EtapeCloseError
+from apps.missions.exceptions import EtapeCloseError, MissionFigeeError
 from apps.missions.models import Mission, StatutEtape, StatutMission
+from apps.signatures.services import empreinte, normaliser
 from apps.users.models import Role, User
 from tests.constats.factories import fiche_anomalie
 from tests.factories import DirectionFactory, MissionFactory, ProcessusFactory, make_user
@@ -86,7 +87,7 @@ def test_references_croisees_refusees(
     fiche_autre = fiche_anomalie(autre)
     with pytest.raises(RegleMetierError) as e:
         creer_constat(mission_en_xiv, titre="T", by=chef, fiches=[fiche_autre], **champs)
-    assert e.value.message == f"La fiche {fiche_autre.test.code} n'appartient pas à la mission."
+    assert e.value.message == f"La fiche {fiche_autre.pk} n'appartient pas à la mission."
     with pytest.raises(RegleMetierError) as e:
         creer_constat(
             mission_en_xiv,
@@ -159,6 +160,11 @@ def test_soumission_fige_la_version(
     c.refresh_from_db()
     assert (c.statut, c.cycle, c.soumis_par) == (StatutConstat.SOUMIS, 1, chef)
     assert len(c.empreinte_soumise) == 64
+    # recalculée depuis la version relue en base : l'empreinte stockée reste vérifiable
+    relu = Constat.objects.get(pk=c.pk)
+    assert relu.empreinte_soumise == empreinte(
+        f"{relu.reference} {relu.titre}", normaliser(relu.version_soumise)
+    )
     assert c.version_soumise["causes"][0]["categorie"] == "METHODES"
     assert EvenementConstat.objects.filter(constat=c, type="SOUMIS").count() == 1
 
@@ -218,7 +224,16 @@ def test_resoumission_incremente_le_cycle_et_garde_les_reponses(
 
     c = _complet(mission_en_xiv, chef, champs)
     soumettre_constat(c, by=chef)
-    repondre(c, position="ACCORD", commentaire="", by=audite_affecte)
+    c.refresh_from_db()
+    audite_affecte.direction_code = champs["entite"].code  # type: ignore[attr-defined]
+    audite_affecte.save(update_fields=["direction_code"])
+    repondre(
+        c,
+        position="ACCORD",
+        commentaire="",
+        by=audite_affecte,
+        empreinte_soumise=c.empreinte_soumise,
+    )
     renvoyer_constat(c, motif="Revoir", by=rai)
     soumettre_constat(c, by=chef)
     c.refresh_from_db()
@@ -291,18 +306,26 @@ def test_ecritures_refusees_xiv_fermee_ou_non_commencee(
 def test_gel_suspendue_toutes_ecritures_lot6_constats(
     mission_en_xiv: Mission, chef: User, rai: User, champs: dict[str, object]
 ) -> None:
-    from apps.core.exceptions import RegleMetierError as Err
-
-    c = _complet(mission_en_xiv, chef, champs)
+    brouillon = _complet(mission_en_xiv, chef, champs)
+    soumis = _complet(mission_en_xiv, chef, champs)
+    soumettre_constat(soumis, by=chef)
+    valide = _complet(mission_en_xiv, chef, champs)
+    soumettre_constat(valide, by=chef)
+    valider_constat(valide, by=rai)
     Mission.objects.filter(pk=mission_en_xiv.pk).update(statut=StatutMission.SUSPENDUE)
     for appel in (
         lambda: creer_constat(mission_en_xiv, titre="T", by=chef, **champs),
-        lambda: modifier_constat(c, by=chef, titre="x"),
-        lambda: soumettre_constat(c, by=chef),
-        lambda: supprimer_constat(c, by=chef),
+        lambda: modifier_constat(brouillon, by=chef, titre="x"),
+        lambda: soumettre_constat(brouillon, by=chef),
+        lambda: supprimer_constat(brouillon, by=chef),
+        lambda: valider_constat(soumis, by=rai),
+        lambda: renvoyer_constat(soumis, motif="m", by=rai),
+        lambda: rouvrir_constat(valide, motif="m", by=rai),
     ):
-        with pytest.raises(Err):
+        with pytest.raises(MissionFigeeError):
             appel()
+    assert Constat.objects.get(pk=soumis.pk).statut == StatutConstat.SOUMIS
+    assert Constat.objects.get(pk=valide.pk).statut == StatutConstat.VALIDE
 
 
 def test_droits_contribuer(

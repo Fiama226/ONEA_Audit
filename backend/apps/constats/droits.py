@@ -45,6 +45,28 @@ class ContexteConstats:
     xv_ouverte: bool = False
 
 
+MSG_DIRECTION_ABSENTE = (
+    "Votre direction n'est pas renseignée sur votre profil : vous ne pouvez pas répondre."
+)
+MSG_AUTRE_ENTITE = "Ce constat concerne une autre entité que votre direction."
+
+
+def refus_entite(user: User, constat: Constat) -> str | None:
+    """D11 : la direction de l'audité est l'entité du constat ou sa direction de rattachement.
+
+    Échoue fermé : sans `direction_code` ou sans entité, la réponse est refusée.
+    """
+    if not user.direction_code:
+        return MSG_DIRECTION_ABSENTE
+    entite = constat.entite if constat.entite_id else None
+    if entite is None:
+        return MSG_AUTRE_ENTITE
+    codes = {entite.code}
+    if entite.parent is not None:
+        codes.add(entite.parent.code)
+    return None if user.direction_code in codes else MSG_AUTRE_ENTITE
+
+
 def contexte_constats(mission: Mission, user: User) -> ContexteConstats:
     libre = mission.statut in STATUTS_TRAVAUX
     statuts = dict(
@@ -81,7 +103,12 @@ def actions_constat(constat: Constat, user: User, *, contexte: ContexteConstats)
                 actions += [VALIDER, RENVOYER]
             elif statut == StatutConstat.VALIDE:
                 actions.append(ROUVRIR)
-    if contexte.audite and contexte.xv_ouverte and statut in _REPONDABLES:
+    if (
+        contexte.audite
+        and contexte.xv_ouverte
+        and statut in _REPONDABLES
+        and refus_entite(user, constat) is None
+    ):
         actions.append(REPONDRE)
     return actions
 
