@@ -24,6 +24,12 @@ _ETAPE_RISQUES = 4
 GARDES_RETRAIT: list[Callable[[RisqueMission], None]] = []
 
 
+def enregistrer_garde_retrait(garde: Callable[[RisqueMission], None]) -> None:
+    """Ajoute une garde de retrait (idempotent)."""
+    if garde not in GARDES_RETRAIT:
+        GARDES_RETRAIT.append(garde)
+
+
 def _exiger_etape_iv(mission: Mission) -> None:
     """IV doit être EN_COURS ou RENVOYEE ; terminée ou validée : étape close (422)."""
     exiger_etape_ouverte(mission.pk, _ETAPE_RISQUES)

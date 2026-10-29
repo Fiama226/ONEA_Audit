@@ -7,6 +7,7 @@ from apps.missions.models import Mission, RisqueMission, StatutEtape, StatutMiss
 from apps.missions.services.risques import (
     GARDES_RETRAIT,
     ajouter_risque_mission,
+    enregistrer_garde_retrait,
     matrice_mission,
     modifier_risque_mission,
     retirer_risque_mission,
@@ -164,7 +165,9 @@ def test_garde_retrait_appelee(mission_lancee: Mission, rai: User, risque: Risqu
         raise RegleMetierError("Risque utilisé par l'analyse.")
 
     copie = ajouter_risque_mission(mission_lancee, by=rai, risque_source=risque)
-    GARDES_RETRAIT.append(garde)
+    enregistrer_garde_retrait(garde)
+    enregistrer_garde_retrait(garde)
+    assert GARDES_RETRAIT.count(garde) == 1
     try:
         with pytest.raises(RegleMetierError):
             retirer_risque_mission(copie, by=rai)

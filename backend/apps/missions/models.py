@@ -27,6 +27,7 @@ from .managers import (
     MissionEnfantManager,
     MissionManager,
 )
+from .signals import etape_changee
 
 if TYPE_CHECKING:
     from apps.users.models import User
@@ -542,9 +543,15 @@ class EvenementEtape(BaseModel):
             statut_avant=statut_avant,
             statut_apres=etape.statut,
         )
-        from .signals import etape_changee
-
-        etape_changee.send(sender=EtapeMission, etape=etape, evenement=evenement, par=par)
+        etape_changee.send(
+            sender=EtapeMission,
+            etape=etape,
+            evenement=evenement,
+            par=par,
+            type_evenement=type,
+            motif=motif,
+            statut_avant=statut_avant,
+        )
         return evenement
 
 
