@@ -3,7 +3,7 @@
 Comme celles du lot 3, elles lisent l'état EN BASE.
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from uuid import UUID
 
 from apps.core.exceptions import RegleMetierError
@@ -29,14 +29,17 @@ def statuts_etapes(mission_id: UUID, numeros: Iterable[int]) -> dict[int, str]:
     )
 
 
+def fenetre_marc_close(statuts: Mapping[int, str]) -> bool:
+    """Vrai si la MARC, le QCI et les forces/faiblesses sont gelés (règle de la garde)."""
+    vi = statuts.get(6)
+    return vi in STATUTS_ETAPE_CLOSE or (statuts.get(5) in STATUTS_ETAPE_CLOSE and vi not in ACTIFS)
+
+
 def exiger_fenetre_marc(mission_id: UUID) -> None:
     """Gel de la MARC, du QCI et des forces/faiblesses : VI close, ou V close et VI inactive."""
     statuts = statuts_etapes(mission_id, (5, 6))
-    vi = statuts.get(6)
-    if vi in STATUTS_ETAPE_CLOSE:
-        raise EtapeCloseError("VI")
-    if statuts.get(5) in STATUTS_ETAPE_CLOSE and vi not in ACTIFS:
-        raise EtapeCloseError("V")
+    if fenetre_marc_close(statuts):
+        raise EtapeCloseError("VI" if statuts.get(6) in STATUTS_ETAPE_CLOSE else "V")
 
 
 def exiger_gel_questionnaire(mission_id: UUID, type_: str) -> None:
