@@ -64,11 +64,16 @@ def test_validation_renseigne_valideur_et_historisee(rai: User) -> None:
     p.refresh_from_db()
     assert p.statut == StatutProgramme.VALIDE
     assert p.valide_par == rai and p.valide_le is not None
-    entree = LogEntry.objects.filter(
-        content_type=ContentType.objects.get_for_model(ProgrammeAnnuel),
-        object_pk=str(p.pk),
-        action=LogEntry.Action.UPDATE,
-    ).latest("timestamp")
+    entree = (
+        LogEntry.objects.filter(
+            content_type=ContentType.objects.get_for_model(ProgrammeAnnuel),
+            object_pk=str(p.pk),
+            action=LogEntry.Action.UPDATE,
+        )
+        .order_by("-timestamp", "-pk")
+        .first()
+    )
+    assert entree is not None
     assert entree.actor == rai
     assert entree.changes["statut"] == ["BROUILLON", "VALIDE"]
 

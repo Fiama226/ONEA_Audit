@@ -25,6 +25,20 @@ make backend                 # voir backend/README.md (venv, migrations)
 cp frontend/.env.example frontend/.env && make frontend
 ```
 
+## Poste Windows
+
+Le dépôt peut se trouver dans OneDrive ou dans un chemin avec espaces : le venv Python est donc créé hors du dépôt.
+
+```
+pwsh scripts/dev-setup.ps1   # uv venv + uv sync --frozen dans $env:ONEA_VENV (défaut %LOCALAPPDATA%\oneaenv) + npm ci
+pwsh scripts/dev-up.ps1      # base, Valkey, Keycloak, API (8000), Vite (5173)
+pwsh scripts/dev-down.ps1
+```
+
+`dev-up.ps1` cherche l'interpréteur dans `$env:ONEA_VENV`, puis `backend\.venv` ; à défaut il s'arrête (code 1) en indiquant `scripts/dev-setup.ps1`.
+
+Le stockage des documents est sur disque (plus de service d'objets). Si l'ancien volume Docker orphelin du stockage objet existe, le repérer avec `docker volume ls -q -f name=onea_mini` puis le supprimer par `docker volume rm <nom>`.
+
 ## Tests de bout en bout (Playwright)
 
 Les parcours e2e (`frontend/e2e/`) tournent sur la pile de développement : Keycloak (realm
