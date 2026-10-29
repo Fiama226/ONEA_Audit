@@ -1,8 +1,11 @@
+import os
 from pathlib import Path
 
 import environ
 from celery.schedules import crontab
+from django.core.exceptions import ImproperlyConfigured
 
+from apps.documents.stockage import configuration_stockage
 from config import __version__
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -35,6 +38,7 @@ INSTALLED_APPS = [
     "apps.referentiel",
     "apps.signatures",
     "apps.missions",
+    "apps.documents",
 ]
 
 AUTH_USER_MODEL = "users.User"
@@ -94,6 +98,27 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = env("STATIC_ROOT", default=str(BASE_DIR / "staticfiles"))
+
+# --- Documents: files live on the server disk (or S3), never in Git, never at a public URL.
+# No MEDIA_URL on purpose: downloads go through the authenticated API only.
+DOCUMENTS_STORAGE: str = env("DOCUMENTS_STORAGE", default="filesystem")
+if DOCUMENTS_STORAGE not in {"filesystem", "s3"}:
+    raise ImproperlyConfigured("DOCUMENTS_STORAGE must be 'filesystem' or 's3'")
+DOCUMENTS_ROOT: str = env("DOCUMENTS_ROOT", default=str(BASE_DIR.parent / ".dev" / "documents"))
+DOCUMENTS_MAX_GABARIT_MO: int = env.int("DOCUMENTS_MAX_GABARIT_MO", default=10)
+DOCUMENTS_ESPACE_MIN_LIBRE_MO: int = env.int("DOCUMENTS_ESPACE_MIN_LIBRE_MO", default=1024)
+DOCUMENTS_QUOTA_MO: int = env.int("DOCUMENTS_QUOTA_MO", default=0)  # 0 = no quota
+DOCUMENTS_PDFA: bool = env.bool("DOCUMENTS_PDFA", default=True)
+GOTENBERG_URL: str = env("GOTENBERG_URL", default="http://localhost:3000").rstrip("/")
+GOTENBERG_TIMEOUT = 90  # seconds (read timeout of the docx -> PDF conversion)
+
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "documents": configuration_stockage(
+        {**os.environ, "DOCUMENTS_STORAGE": DOCUMENTS_STORAGE, "DOCUMENTS_ROOT": DOCUMENTS_ROOT}
+    ),
+}
 
 # Django admin (/admin/) is mounted only when enabled; prod.py defaults it to False.
 DJANGO_ADMIN_ENABLED: bool = env.bool("DJANGO_ADMIN_ENABLED", default=True)

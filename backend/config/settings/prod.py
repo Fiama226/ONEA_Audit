@@ -4,7 +4,13 @@ Everything security- or deployment-relevant is REQUIRED from the environment: th
 no localhost/mailpit fallbacks. A missing variable raises ImproperlyConfigured at startup.
 """
 
+import os
+import posixpath
+from pathlib import Path, PurePosixPath
+
 from django.core.exceptions import ImproperlyConfigured
+
+from apps.documents.stockage import S3_VARIABLES, configuration_stockage
 
 from .base import *  # noqa: F403
 from .base import REST_FRAMEWORK, env
@@ -32,6 +38,29 @@ if not env("OIDC_OP_BASE_URL").startswith("https://"):  # required in production
     raise ImproperlyConfigured("OIDC_OP_BASE_URL must be an https:// URL in production")
 if not env.bool("OIDC_VERIFY_SSL", default=True):
     raise ImproperlyConfigured("OIDC_VERIFY_SSL must not be disabled in production")
+
+# --- Documents storage: explicit, absolute, outside the code (D2). ---
+if DOCUMENTS_STORAGE == "filesystem":  # noqa: F405
+    _root = env("DOCUMENTS_ROOT")  # required in production, no dev default
+    if not (_root.startswith("/") or Path(_root).is_absolute()):
+        raise ImproperlyConfigured("DOCUMENTS_ROOT must be an absolute path")
+    # Normalise ".." segments, then refuse the container code dir and the repository.
+    _posix_root = PurePosixPath(posixpath.normpath(_root.replace("\\", "/")))
+    _forbidden_posix = PurePosixPath("/app")
+    if _posix_root == _forbidden_posix or _forbidden_posix in _posix_root.parents:
+        raise ImproperlyConfigured("DOCUMENTS_ROOT must be outside the application code (/app)")
+    _repo = Path(BASE_DIR).parent.resolve()  # noqa: F405
+    _native_root = Path(os.path.normpath(_root)).resolve()
+    if _native_root == _repo or _repo in _native_root.parents:
+        raise ImproperlyConfigured("DOCUMENTS_ROOT must be outside the repository")
+    DOCUMENTS_ROOT = _root
+else:
+    for _name in S3_VARIABLES:
+        env(_name)  # each one required for s3
+STORAGES = {
+    **STORAGES,  # noqa: F405
+    "documents": configuration_stockage({**os.environ, "DOCUMENTS_ROOT": DOCUMENTS_ROOT}),  # noqa: F405
+}
 
 REST_FRAMEWORK = {
     **REST_FRAMEWORK,

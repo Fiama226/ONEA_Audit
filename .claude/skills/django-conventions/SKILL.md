@@ -52,9 +52,9 @@ n'orchestrent jamais la logique. Les services lèvent `core.exceptions.RegleMeti
 
 ## Documents
 - Un gabarit `.docx` par document, nom identique au type (`pv_ouverture.docx`).
-- `documents/generators/<type>.py` expose `build_context(obj) -> dict` et `render(obj) -> bytes`.
+- `documents/generators/<domaine>.py` expose `build_context(obj) -> dict` et `render(obj) -> bytes`.
 - Rendu docx via docxtpl, PDF via Gotenberg (`POST /forms/libreoffice/convert`).
-- Chaque rendu validé crée un `DocumentVersion` immuable (sha256, chemin MinIO, auteur).
+- Chaque rendu validé crée un `DocumentVersion` immuable (sha256, clé de stockage, auteur).
 
 ## Tâches Celery
 Génération de documents, indexation Meilisearch, relances d'échéances. Idempotentes,
