@@ -23,3 +23,10 @@ class ReponseAjoutSeulError(RegleMetierError):
 
     def __init__(self) -> None:
         super().__init__(MSG_REPONSE_AJOUT_SEUL)
+
+
+MSG_UPSERT_INTERDIT = (
+    "L'écriture avec résolution de conflit est interdite sur les constats : "
+    "elle contournerait leur gel."
+)
+MSG_AUTRE_MISSION = "Cet objet n'appartient pas à la mission du constat."
