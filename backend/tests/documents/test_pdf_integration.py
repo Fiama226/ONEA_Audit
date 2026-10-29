@@ -56,3 +56,12 @@ def _docx_minimal(texte: str) -> bytes:
 @override_settings(GOTENBERG_URL=GOTENBERG_URL, GOTENBERG_TIMEOUT=60)
 def test_integration_docx_reel_vers_pdf() -> None:
     assert convertir_en_pdf(_docx_minimal("Bonjour"), pdfa=False).startswith(b"%PDF-")
+
+
+@pytest.mark.gotenberg
+@pytest.mark.skipif(not _gotenberg_disponible(), reason="Gotenberg indisponible")
+@override_settings(GOTENBERG_URL=GOTENBERG_URL, GOTENBERG_TIMEOUT=60)
+def test_integration_pdfa_contient_pdfaid() -> None:
+    pdf = convertir_en_pdf(_docx_minimal("Bonjour"), pdfa=True)
+    assert pdf.startswith(b"%PDF-")
+    assert b"pdfaid" in pdf

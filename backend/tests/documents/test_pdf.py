@@ -50,6 +50,12 @@ def test_pdfa_suit_le_reglage_par_defaut() -> None:
     assert post.call_args.kwargs["data"] == {}
 
 
+@pytest.fixture(autouse=True)
+def _sans_attente() -> Any:
+    with patch("apps.documents.pdf.time.sleep") as sleep:
+        yield sleep
+
+
 @override_settings(DOCUMENTS_PDFA=True, **REGLAGES)
 @pytest.mark.parametrize(
     "effet",
@@ -79,3 +85,45 @@ def test_4xx_ou_reponse_non_pdf(reponse: MagicMock) -> None:
         pytest.raises(ConversionPdfError),
     ):
         convertir_en_pdf(b"x")
+
+
+@override_settings(DOCUMENTS_PDFA=True, **REGLAGES)
+def test_503_au_demarrage_a_froid_est_retente(_sans_attente: MagicMock) -> None:
+    with patch(
+        "apps.documents.pdf.requests.post",
+        side_effect=[_reponse(503, b""), requests.ConnectionError("x"), _reponse()],
+    ) as post:
+        assert convertir_en_pdf(b"x") == PDF
+    assert post.call_count == 3
+    assert _sans_attente.call_count == 2
+
+
+@override_settings(DOCUMENTS_PDFA=True, **REGLAGES)
+def test_retry_borne_apres_trois_tentatives() -> None:
+    with (
+        patch("apps.documents.pdf.requests.post", return_value=_reponse(503, b"")) as post,
+        pytest.raises(GotenbergIndisponibleError),
+    ):
+        convertir_en_pdf(b"x")
+    assert post.call_count == 3
+
+
+@override_settings(DOCUMENTS_PDFA=True, **REGLAGES)
+@pytest.mark.parametrize("reponse", [_reponse(500, b""), _reponse(400, b"bad")])
+def test_pas_de_retry_hors_503(reponse: MagicMock) -> None:
+    with (
+        patch("apps.documents.pdf.requests.post", return_value=reponse) as post,
+        pytest.raises((GotenbergIndisponibleError, ConversionPdfError)),
+    ):
+        convertir_en_pdf(b"x")
+    assert post.call_count == 1
+
+
+@override_settings(DOCUMENTS_PDFA=True, **REGLAGES)
+def test_pas_de_retry_sur_timeout() -> None:
+    with (
+        patch("apps.documents.pdf.requests.post", side_effect=requests.Timeout("lent")) as post,
+        pytest.raises(GotenbergIndisponibleError),
+    ):
+        convertir_en_pdf(b"x")
+    assert post.call_count == 1
