@@ -54,8 +54,12 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.middleware.AdresseClientMiddleware",
     "apps.core.middleware.LazyActorAuditlogMiddleware",
 ]
+
+# T6 : pairs (CIDR) dont X-Real-IP est cru ; vide = personne.
+TRUSTED_PROXY_CIDRS: list[str] = env.list("TRUSTED_PROXY_CIDRS", default=[])
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"

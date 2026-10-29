@@ -34,6 +34,7 @@ from rest_framework.viewsets import GenericViewSet
 from apps.core.exceptions import RegleMetierError
 from apps.core.filters import StableOrderingFilter
 from apps.core.handlers import FORBIDDEN
+from apps.core.reseau import adresse_client
 from apps.core.schema import ERROR_400, ERROR_404, ERROR_409, ERROR_422, ERROR_RESPONSES
 from apps.missions.acces import missions_visibles
 from apps.missions.etapes import romain
@@ -152,7 +153,7 @@ class DocumentsApiViewSet(GenericViewSet[Any]):
 
     @property
     def adresse_ip(self) -> str | None:
-        return cast("str | None", self.request.META.get("REMOTE_ADDR"))
+        return adresse_client(self.request)
 
 
 # --------------------------------------------------------------------- types de documents
