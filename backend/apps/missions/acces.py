@@ -59,6 +59,11 @@ def peut_valider_jalon(user: User, mission: Mission, numero: int) -> bool:
     )
 
 
+def peut_valider_travaux(user: User, mission: Mission) -> bool:
+    """Validation des travaux (jalon XIII) : RAI, ou superviseur à déclaration levée."""
+    return peut_valider_jalon(user, mission, 13)
+
+
 def missions_visibles(user: User) -> QuerySet[Mission]:
     if user.role == Role.RAI:
         return Mission.objects.all()
