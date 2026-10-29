@@ -38,6 +38,8 @@ x-backend-env: &backend-env
   CSRF_TRUSTED_ORIGINS: https://${PUBLIC_HOST}
   # Reverse-proxy peers (CIDR) whose X-Real-IP is trusted; adjust to the docker network subnet.
   TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-172.16.0.0/12}
+  # gunicorn: same value (read from the environment by gunicorn, no longer "*").
+  FORWARDED_ALLOW_IPS: ${TRUSTED_PROXY_CIDRS:-172.16.0.0/12}
   OIDC_OP_BASE_URL: https://${SSO_HOST:?SSO_HOST is required}/realms/onea
   OIDC_RP_CLIENT_ID: onea-backend
   # Unused by the Bearer path; mozilla-django-oidc reads it at init, hence required.

@@ -3,11 +3,12 @@
 from typing import Any
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpRequest
 from django.test import RequestFactory, override_settings
 
 from apps.core.middleware import AdresseClientMiddleware, LazyActorAuditlogMiddleware
-from apps.core.reseau import adresse_client
+from apps.core.reseau import adresse_client, reseaux_de_confiance
 
 PROXY = "172.18.0.5"
 
@@ -80,7 +81,28 @@ def test_piste_d_audit_ignore_x_forwarded_for(rf: RequestFactory) -> None:
     assert data["remote_addr"] == "203.0.113.7"
 
 
-@override_settings(TRUSTED_PROXY_CIDRS=["not-a-cidr", "172.18.0.0/16"])
-def test_cidr_mal_forme_ignore(rf: RequestFactory) -> None:
-    request = _passer(rf, PROXY, **{"X-Real-IP": "203.0.113.7"})
-    assert adresse_client(request) == "203.0.113.7"
+def test_cidr_mal_forme_echec_franc() -> None:
+    with override_settings(TRUSTED_PROXY_CIDRS=["not-a-cidr", "172.18.0.0/16"]):
+        with pytest.raises(ImproperlyConfigured):
+            reseaux_de_confiance()
+
+
+@override_settings(TRUSTED_PROXY_CIDRS=["172.18.0.0/16"])
+def test_port_distant_non_fourni_par_le_client(rf: RequestFactory) -> None:
+    request = _passer(rf, PROXY, **{"X-Forwarded-Port": "1234"})
+    data = LazyActorAuditlogMiddleware(lambda r: None).get_extra_data(request)  # type: ignore[arg-type,return-value]
+    assert data["remote_port"] is None
+
+
+@override_settings(TRUSTED_PROXY_CIDRS=["172.18.0.0/16"])
+@pytest.mark.parametrize(
+    ("brut", "attendu"),
+    [
+        ("::ffff:203.0.113.7", "203.0.113.7"),
+        ("fe80::1%eth0", PROXY),
+        ("2001:DB8::9", "2001:db8::9"),
+    ],
+)
+def test_x_real_ip_normalise(rf: RequestFactory, brut: str, attendu: str) -> None:
+    request = _passer(rf, PROXY, **{"X-Real-IP": brut})
+    assert adresse_client(request) == attendu

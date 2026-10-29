@@ -54,6 +54,11 @@ class LazyActorAuditlogMiddleware(AuditlogMiddleware):  # type: ignore[misc]
         return data
 
     @staticmethod
+    def _get_remote_port(request: HttpRequest) -> int | None:
+        # X-Forwarded-Port est fourni par le client : on ne l'enregistre pas.
+        return None
+
+    @staticmethod
     def _get_remote_addr(request: HttpRequest) -> str | None:
         # Jamais X-Forwarded-For : REMOTE_ADDR a déjà été fiabilisé par AdresseClientMiddleware.
         return cast("str | None", request.META.get("REMOTE_ADDR"))
