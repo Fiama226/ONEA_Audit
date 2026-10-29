@@ -7,7 +7,9 @@ import pytest
 import requests
 from django.http import HttpResponse
 from django.test import Client
+from drf_spectacular.settings import spectacular_settings
 from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import IsAdminUser
 from rest_framework.test import APIClient
 
 from apps.core.middleware import PasDeCacheApiMiddleware
@@ -114,11 +116,9 @@ def test_django_admin_session_still_works_for_admin(session_client: Client) -> N
 
 
 @pytest.fixture
-def docs_restricted(settings: Any) -> None:
-    settings.SPECTACULAR_SETTINGS = {
-        **settings.SPECTACULAR_SETTINGS,
-        "SERVE_PERMISSIONS": ["rest_framework.permissions.IsAdminUser"],
-    }
+def docs_restricted(monkeypatch: pytest.MonkeyPatch) -> None:
+    # production value of SERVE_PERMISSIONS (drf-spectacular has no settings reload hook)
+    monkeypatch.setattr(spectacular_settings, "SERVE_PERMISSIONS", [IsAdminUser])
 
 
 @pytest.mark.usefixtures("docs_restricted")
@@ -129,7 +129,9 @@ def test_docs_admin_session_is_200(session_client: Client) -> None:
 
 @pytest.mark.usefixtures("docs_restricted")
 def test_docs_non_admin_token_is_403(api_client: APIClient, db: None) -> None:
-    with mock.patch.object(OneaOIDCBackend, "get_userinfo", return_value=claims(roles=["AUDITEUR"])):
+    with mock.patch.object(
+        OneaOIDCBackend, "get_userinfo", return_value=claims(roles=["AUDITEUR"])
+    ):
         assert _bearer(api_client).get("/api/docs/").status_code == 403
 
 

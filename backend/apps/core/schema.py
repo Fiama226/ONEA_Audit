@@ -8,8 +8,8 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import serializers
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
-from rest_framework.views import APIView
 from rest_framework.serializers import BaseSerializer
+from rest_framework.views import APIView
 
 
 class ApiErrorSerializer(serializers.Serializer[dict[str, object]]):
@@ -98,16 +98,6 @@ class SchemaAccess(BasePermission):
         return all(
             cls().has_permission(request, view) for cls in spectacular_settings.SERVE_PERMISSIONS
         )
-
-
-class SessionAuthentication401Scheme(OpenApiAuthenticationExtension):  # type: ignore[no-untyped-call]
-    """Document the project session (cookie) authentication in the schema."""
-
-    target_class = "apps.users.authentication.SessionAuthentication401"
-    name = "cookieAuth"
-
-    def get_security_definition(self, auto_schema: object) -> dict[str, str]:
-        return {"type": "apiKey", "in": "cookie", "name": "sessionid"}
 
 
 class OIDCBearerAuthenticationScheme(OpenApiAuthenticationExtension):  # type: ignore[no-untyped-call]
