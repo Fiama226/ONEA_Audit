@@ -1,11 +1,14 @@
 import hashlib
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from django.db import connection
 
 from apps.core.exceptions import RegleMetierError
+from apps.documents.integrite import IntegriteError
 from apps.documents.models import (
     ConsultationDocument,
     GabaritDocument,
@@ -21,6 +24,7 @@ from apps.documents.services.gabarits import (
     fichier_gabarit,
     gabarit_actif,
 )
+from apps.documents.stockage import stockage_documents
 from apps.users.models import User
 
 from .fabrique import CONTRAT_TEST, docx_avec, texte_docx
@@ -165,3 +169,67 @@ def test_telechargement_gabarit_journalise(type_test: TypeDocument, rai: User) -
         "DOCX",
         "10.0.0.1",
     )
+
+
+def test_integrite_telechargement_altere(type_test: TypeDocument, rai: User) -> None:
+    g = _deposer(type_test, rai)
+    chemin = Path(stockage_documents().path(g.fichier.name or ""))
+    chemin.chmod(0o666)
+    chemin.write_bytes(b"altere")
+    with pytest.raises(IntegriteError):
+        fichier_gabarit(g, by=rai, adresse_ip=None)
+    with pytest.raises(IntegriteError):
+        activer_gabarit(g, by=rai)
+    with pytest.raises(IntegriteError):
+        apercu_gabarit(g, format="docx")
+
+
+def test_activer_gabarit_supprime_refuse(type_test: TypeDocument, rai: User) -> None:
+    g = _deposer(type_test, rai)
+    g.soft_delete(rai)
+    with pytest.raises(RegleMetierError, match="supprimé"):
+        activer_gabarit(g, by=rai)
+
+
+def test_nom_original_assaini(type_test: TypeDocument, rai: User) -> None:
+    g = deposer_gabarit(
+        type_document=type_test.code,
+        contenu=docx_avec("{{ mission.titre }}"),
+        nom_original="C:\\dossier\\..\\sous/rep/mo\x00dele" + "x" * 300 + ".docx",
+        by=rai,
+    )
+    assert len(g.nom_original) <= 255
+    assert g.nom_original.endswith(".docx")
+    assert "/" not in g.nom_original
+    assert "\\" not in g.nom_original
+    assert "\x00" not in g.nom_original
+
+
+def test_echec_apres_ecriture_puis_reessai(type_test: TypeDocument, rai: User) -> None:
+    with (
+        patch("apps.documents.services.gabarits.enregistrer", side_effect=RuntimeError("boom")),
+        pytest.raises(RuntimeError),
+    ):
+        _deposer(type_test, rai)
+    assert GabaritDocument.all_objects.count() == 0
+    # retry: the identical leftover file is reused instead of failing
+    assert _deposer(type_test, rai).version == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_premier_depot_concurrent(type_test: TypeDocument, rai: User) -> None:
+    def un(i: int) -> int:
+        try:
+            return deposer_gabarit(
+                type_document=type_test.code,
+                contenu=docx_avec(f"Mission {i} : {{{{ mission.titre }}}}"),
+                nom_original=f"m{i}.docx",
+                by=rai,
+            ).version
+        finally:
+            connection.close()
+
+    with ThreadPoolExecutor(2) as ex:
+        versions = sorted(ex.map(un, range(2)))
+    assert versions == [1, 2]
+    assert GabaritDocument.all_objects.count() == 2
