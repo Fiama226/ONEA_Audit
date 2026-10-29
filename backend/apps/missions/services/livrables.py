@@ -1,6 +1,6 @@
 """Contrôles de livrables des étapes gérées au lot 3 (D7) ; les lots suivants ajoutent les leurs."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 from django.contrib.contenttypes.models import ContentType
 
@@ -103,11 +103,35 @@ CONTROLES: dict[int, list[Controle]] = {
     4: [_risque_selectionne],
     11: [_reunion_tenue(TypeReunion.LANCEMENT, "de lancement")],
 }
+# Étapes dont les livrables sont contrôlés (au moins un contrôle enregistré).
+ETAPES_GEREES: set[int] = {1, 2, 4, 11}
+
+
+def enregistrer_controles(numero: int, *controles: Controle | Iterable[Controle]) -> None:
+    """Ajoute des contrôles à l'étape `numero` : `(1, c1, c2)` ou `(1, [c1, c2])`.
+
+    Idempotent par identité de fonction : une fabrique de contrôles (fermeture) doit être
+    appelée une seule fois, au niveau du module. Plusieurs lots peuvent s'y brancher. L'étape
+    n'est « gérée » (`ETAPES_GEREES`) que si au moins un contrôle est enregistré.
+    """
+    plats: list[Controle] = []
+    for element in controles:
+        if callable(element):
+            plats.append(element)
+        else:
+            plats.extend(element)
+    if not plats:
+        return
+    existants = CONTROLES.setdefault(numero, [])
+    for controle in plats:
+        if controle not in existants:
+            existants.append(controle)
+    ETAPES_GEREES.add(numero)
 
 
 def livrables_manquants(etape: EtapeMission) -> list[str]:
     definition = etape.definition
-    if definition.lot_livrables > 3:
+    if definition.lot_livrables > 3 and etape.numero not in ETAPES_GEREES:
         return [
             f"Les livrables de l'étape {definition.romain} sont gérés à partir du lot "
             f"{definition.lot_livrables}."

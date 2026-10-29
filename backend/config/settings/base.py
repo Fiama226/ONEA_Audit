@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "apps.signatures",
     "apps.missions",
     "apps.programmation",
+    "apps.analyse",
     "apps.documents",
 ]
 
@@ -190,6 +191,20 @@ SPECTACULAR_SETTINGS = {
         "PorteeNumerotationEnum": "apps.documents.models.PorteeNumerotation.choices",
         "FormatFichierEnum": "apps.documents.models.FormatFichier.choices",
         "TypeChampEnum": "apps.documents.serializers.TYPE_CHAMP_CHOICES",
+        "TypeQuestionnaireEnum": "apps.analyse.models.TypeQuestionnaire.choices",
+        "AppreciationEnum": "apps.analyse.models.Appreciation.choices",
+        "TypologieProcessusEnum": "apps.analyse.models.TypologieProcessus.choices",
+        "CategorieObjectifEnum": "apps.analyse.models.CategorieObjectif.choices",
+        "RoleTacheEnum": "apps.analyse.models.RoleTache.choices",
+        "ComposanteEnum": "apps.analyse.models.Composante.choices",
+        "NatureControleEnum": "apps.analyse.models.NatureControle.choices",
+        "EvaluationConceptionEnum": "apps.analyse.models.EvaluationConception.choices",
+        "TypeForceFaiblesseEnum": "apps.analyse.models.TypeForceFaiblesse.choices",
+        "TypeAvisEnum": "apps.analyse.models.TypeAvis.choices",
+        "MotifNonTestEnum": "apps.analyse.models.MotifNonTest.choices",
+        "CouvertureOrdreEnum": "apps.analyse.models.CouvertureOrdre.choices",
+        "VarianteOrientationEnum": "apps.analyse.models.VarianteOrientation.choices",
+        "StatutReferentielEnum": "apps.analyse.models.StatutReferentiel.choices",
     },
 }
 

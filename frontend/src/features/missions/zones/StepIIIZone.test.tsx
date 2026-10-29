@@ -19,7 +19,10 @@ describe("StepIIIZone", () => {
         }),
       ],
     });
-    expect(await screen.findByText(t.stepIIILater)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: fr.analyse.stepIIITitle }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/disponibles au lot 5/)).not.toBeInTheDocument();
     expect(await screen.findByText(t.noInterview)).toBeInTheDocument();
     expect(queries[0]).toContain("etape=00000000-0000-4000-8000-000000000003");
     expect(queries[0]).toContain(`mission=${MISSION_ID}`);

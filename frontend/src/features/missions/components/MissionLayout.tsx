@@ -16,6 +16,12 @@ function tabsFor(currentStep: number): Tab[] {
     { to: "reunions", label: fr.missions.tabMeetings, section: "reunions", work: false },
     { to: "entretiens", label: fr.missions.tabInterviews, section: "entretiens", work: false },
     { to: "suivi", label: fr.missions.tabTracking, section: "suivi", work: true },
+    {
+      to: "referentiel-audit",
+      label: fr.missions.tabAuditFramework,
+      section: "referentiel-audit",
+      work: false,
+    },
   ];
 }
 
