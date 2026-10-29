@@ -65,6 +65,7 @@ def avec_entrees(
     types = types or {}
     tampon = io.BytesIO()
     with zipfile.ZipFile(io.BytesIO(contenu)) as src:
+        existants = set(src.namelist())
         with zipfile.ZipFile(tampon, "w", zipfile.ZIP_DEFLATED) as dst:
             for item in src.infolist():
                 if item.filename in entrees:
@@ -74,7 +75,7 @@ def avec_entrees(
                     overrides = b""
                     for nom in entrees:
                         ct = types.get(nom, types_par_defaut)
-                        if ct and nom != "[Content_Types].xml":
+                        if ct and nom not in existants:
                             overrides += (
                                 f'<Override PartName="/{nom}" ContentType="{ct}"/>'.encode()
                             )

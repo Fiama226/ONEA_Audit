@@ -24,6 +24,9 @@ _INSTRUCTIONS_INTERDITES: Final = (
     nodes.Macro,
     nodes.CallBlock,
     nodes.Block,
+    nodes.EvalContextModifier,  # {% autoescape false %} and friends (also the scoped form)
+    nodes.MarkSafe,
+    nodes.MarkSafeIfAutoescape,
 )
 
 
@@ -101,6 +104,8 @@ class AnalyseBalises:
             if isinstance(noeud.arg, nodes.Const) and isinstance(noeud.arg.value, str):
                 return self._attribut(base, noeud.arg.value, noeud)
             self._visiter(noeud.arg, portee)
+            if base.type is TypeChamp.BLOC and base is not _INCONNU:
+                self._erreur(f"Indice non littéral interdit sur un bloc : {self._chemin(noeud)}.")
             if base.type is TypeChamp.LISTE and base is not _INCONNU:
                 return self._element(base)
             return _INCONNU

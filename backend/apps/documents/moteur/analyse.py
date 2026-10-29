@@ -1,13 +1,12 @@
 """Verification of untrusted Word templates before they are stored or activated.
 
 The template is never executed here: the archive is parsed defensively (hardened XML parser,
-allowlist of part types, no external relationship) and the tags are checked statically
-against the contract by `balises.AnalyseBalises`. Real rendering happens later, bounded, in
-`rendu.rendre_docx`.
+allowlist of part types, controlled external links, forbidden fields) and the tags are checked
+statically against the contract by `balises.AnalyseBalises`. Real rendering happens later,
+bounded, in `rendu.rendre_docx`, whose output is scanned again by `controle_ooxml`.
 """
 
 import io
-import re
 import zipfile
 from typing import Any, Final
 
@@ -18,6 +17,14 @@ from lxml import etree
 from .bac_a_sable import environnement_jinja
 from .balises import AnalyseBalises
 from .contrats import Contrat
+from .controle_ooxml import (
+    MSG_MACROS,
+    MSG_NON_DOCX,
+    ids_hyperliens_externes,
+    nom_des_relations,
+    parseur,
+    verifier_xml,
+)
 from .exceptions import GabaritInvalideError
 
 MAX_ENTREES: Final = 2000
@@ -25,51 +32,28 @@ MAX_OCTETS_DECOMPRESSES: Final = 50 * 1024 * 1024
 _BLOC: Final = 64 * 1024
 _MAGIC_OLE: Final = b"\xd0\xcf\x11\xe0"
 
-MSG_NON_DOCX: Final = "Le fichier n'est pas un document Word .docx valide."
 MSG_DOC: Final = (
     "Les fichiers .doc ne sont pas acceptés : enregistrez le gabarit au format .docx "
     "(Word ou LibreOffice), puis déposez-le à nouveau."
 )
-MSG_MACROS: Final = "Les gabarits contenant des macros sont refusés."
 MSG_DECOMPRESSE: Final = "Le fichier est trop volumineux une fois décompressé."
-MSG_EXTERNE: Final = (
-    "Le fichier contient des liens vers des ressources externes (images ou objets liés) : "
-    "intégrez-les au document."
-)
-MSG_CHAMPS: Final = (
-    "Le fichier contient des champs Word qui chargent des fichiers ou des données "
-    "externes (INCLUDETEXT, INCLUDEPICTURE, LINK, DDE) : supprimez-les."
-)
 MSG_ELEMENT: Final = "Le fichier contient un élément non pris en charge : {nom}."
+MSG_IMBRIQUE: Final = "Erreur de syntaxe dans les balises : expression trop imbriquée."
 
 _NS_CT: Final = "{http://schemas.openxmlformats.org/package/2006/content-types}"
-_NS_REL: Final = "{http://schemas.openxmlformats.org/package/2006/relationships}"
-_NS_W: Final = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 _TYPES_XML: Final = ("application/xml", "text/xml")
 _PREFIXES_AUTORISES: Final = (
     "image/",
     "application/vnd.openxmlformats-officedocument.",
     "application/vnd.openxmlformats-package.",
     "application/vnd.ms-word.",
-    "application/vnd.ms-office.drawingml.",
+    "application/vnd.ms-office.",  # drawingml, chart styles/colors, classification labels...
 )
 _TYPES_AUTORISES: Final = frozenset({"application/x-fontdata", *_TYPES_XML})
 _MOTS_MACRO: Final = ("macroenabled", "vbaproject")
 _MOTS_REFUSES: Final = ("activex", "oleobject", "officedocument.package", "embeddings")
-_CHAMP_DANGEREUX: Final = re.compile(
-    r"^\s*(INCLUDETEXT|INCLUDEPICTURE|INCLUDE|LINK|DDEAUTO|DDE|IMPORT)\b", re.IGNORECASE
-)
-_PROPRIETES: Final = ("title", "subject", "author", "comments", "keywords", "category")
-
-
-def _parseur() -> etree.XMLParser:
-    return etree.XMLParser(
-        resolve_entities=False,
-        no_network=True,
-        load_dtd=False,
-        dtd_validation=False,
-        huge_tree=False,
-    )
+# The properties docxtpl renders (docxtpl.render_properties).
+_PROPRIETES: Final = ("author", "comments", "identifier", "language", "subject", "title")
 
 
 def _lire_borne(archive: zipfile.ZipFile, info: zipfile.ZipInfo, limite: int) -> bytes | None:
@@ -102,7 +86,7 @@ def _nom_suspect(nom: str) -> bool:
 def _types_de_contenu(donnees: bytes) -> tuple[dict[str, str], dict[str, str]] | None:
     """(defaults by extension, overrides by part name), or None when unparsable."""
     try:
-        racine = etree.fromstring(donnees, _parseur())
+        racine = etree.fromstring(donnees, parseur())
     except etree.XMLSyntaxError:
         return None
     defauts: dict[str, str] = {}
@@ -123,37 +107,8 @@ def _est_xml(nom: str, type_contenu: str) -> bool:
     )
 
 
-def _verifier_xml(nom: str, donnees: bytes) -> str | None:
-    """Parse one XML part with a hardened parser; reject DOCTYPE/ENTITY, external links, fields."""
-    try:
-        racine = etree.fromstring(donnees, _parseur())
-    except (etree.XMLSyntaxError, ValueError):
-        return MSG_NON_DOCX
-    arbre = racine.getroottree()
-    docinfo = arbre.docinfo
-    if docinfo.doctype or docinfo.internalDTD is not None or docinfo.externalDTD is not None:
-        return MSG_NON_DOCX
-    if any(True for _ in racine.iter(etree.Entity)):
-        return MSG_NON_DOCX
-    if nom.lower().endswith(".rels"):
-        for relation in racine.iter(f"{_NS_REL}Relationship"):
-            genre = (relation.get("Type") or "").lower()
-            if any(mot in genre for mot in _MOTS_MACRO):
-                return MSG_MACROS
-            if relation.get("TargetMode") == "External" and not genre.endswith("/hyperlink"):
-                return MSG_EXTERNE
-    elif nom.startswith("word/"):
-        for element in racine.iter(f"{_NS_W}instrText", f"{_NS_W}fldSimple"):
-            instruction = (
-                element.text if element.tag.endswith("instrText") else element.get(f"{_NS_W}instr")
-            )
-            if instruction and _CHAMP_DANGEREUX.match(instruction):
-                return MSG_CHAMPS
-    return None
-
-
 def _type_refuse(nom: str, type_contenu: str | None) -> str | None:
-    if type_contenu is None or not type_contenu:
+    if not type_contenu:
         return MSG_ELEMENT.format(nom=nom)
     bas = type_contenu.lower()
     if any(mot in bas for mot in _MOTS_MACRO):
@@ -180,8 +135,7 @@ def _verifier_archive(contenu: bytes) -> str | None:
             if any("vbaproject" in n.lower() for n in noms):
                 return MSG_MACROS
             restant = MAX_OCTETS_DECOMPRESSES
-            ct_info = archive.getinfo("[Content_Types].xml")
-            brut = _lire_borne(archive, ct_info, restant)
+            brut = _lire_borne(archive, archive.getinfo("[Content_Types].xml"), restant)
             if brut is None:
                 return MSG_DECOMPRESSE
             restant -= len(brut)
@@ -189,24 +143,34 @@ def _verifier_archive(contenu: bytes) -> str | None:
             if types is None:
                 return MSG_NON_DOCX
             defauts, surcharges = types
-            probleme = _verifier_xml("[Content_Types].xml", brut)
+            probleme = verifier_xml("[Content_Types].xml", brut, set())
             if probleme:
                 return probleme
+            noms_presents = set(noms)
             for info in infos:
                 nom = info.filename
                 if nom == "[Content_Types].xml" or info.is_dir():
                     continue
                 extension = nom.rsplit(".", 1)[-1].lower() if "." in nom else ""
                 type_contenu = surcharges.get(f"/{nom}", defauts.get(extension))
-                probleme = _type_refuse(nom, type_contenu)
-                if probleme:
-                    return probleme
+                if not nom.startswith("[trash]/"):
+                    probleme = _type_refuse(nom, type_contenu)
+                    if probleme:
+                        return probleme
                 if _est_xml(nom, type_contenu or ""):
                     donnees = _lire_borne(archive, info, restant)
                     if donnees is None:
                         return MSG_DECOMPRESSE
                     restant -= len(donnees)
-                    probleme = _verifier_xml(nom, donnees)
+                    ids: set[str] = set()
+                    relations = nom_des_relations(nom)
+                    if nom.startswith("word/") and relations in noms_presents:
+                        brut_rels = _lire_borne(archive, archive.getinfo(relations), 5_000_000)
+                        ids = ids_hyperliens_externes(brut_rels)
+                    svg = (type_contenu or "").lower() == "image/svg+xml" or nom.lower().endswith(
+                        ".svg"
+                    )
+                    probleme = verifier_xml(nom, donnees, ids, svg=svg)
                     if probleme:
                         return probleme
                 else:
@@ -270,6 +234,8 @@ def analyser_gabarit(
             raise GabaritInvalideError(
                 [f"Erreur de syntaxe dans les balises : {exc.message}."]
             ) from exc
+        except RecursionError as exc:
+            raise GabaritInvalideError([MSG_IMBRIQUE]) from exc
     if analyse.erreurs:
         raise GabaritInvalideError(sorted(analyse.erreurs))
     return frozenset(analyse.racines)
