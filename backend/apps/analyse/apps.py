@@ -12,6 +12,7 @@ class AnalyseConfig(AppConfig):
 
         from . import recepteurs  # noqa: F401
         from .controles import etape_iii, etape_v_vi, etape_vii
+        from .documents import enregistrer_types
         from .models import (
             AvisAudite,
             DescriptionProcessus,
@@ -41,3 +42,5 @@ class AnalyseConfig(AppConfig):
             for numero, controles in module.CONTROLES_ETAPE.items():
                 if controles:
                     enregistrer_controles(numero, controles)
+
+        enregistrer_types()
