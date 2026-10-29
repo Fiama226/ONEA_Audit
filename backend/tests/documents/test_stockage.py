@@ -216,7 +216,7 @@ def test_lien_symbolique_dans_le_chemin_refuse(stockage_tmp: Path, tmp_path_fact
 def test_cles_invalides_refusees() -> None:
     for type_document, version, empreinte in [
         ("../x", 1, "abcdef012345"),
-        ("Lettre", 1, "abcdef012345"),
+        ("1lettre", 1, "abcdef012345"),
         ("", 1, "abcdef012345"),
         ("lettre", -1, "abcdef012345"),
         ("lettre", 1, "zz"),

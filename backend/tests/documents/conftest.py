@@ -119,7 +119,7 @@ def objet_test(mission_planifiee: Mission) -> Mission:
 def gabarit_actif_test(type_test: TypeDocument, rai: User) -> GabaritDocument:
     contenu = docx_avec("Mission : {{ mission.titre }}")
     empreinte = hashlib.sha256(contenu).hexdigest()
-    nom = ecrire(cle_gabarit("test_doc", 1, empreinte), contenu)
+    nom = ecrire(cle_gabarit("TEST_DOC", 1, empreinte), contenu)
     gabarit: GabaritDocument = GabaritDocument.objects.create(
         type_document="TEST_DOC",
         version=1,

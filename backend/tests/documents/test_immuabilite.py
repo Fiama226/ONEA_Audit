@@ -4,6 +4,7 @@ from django.utils import timezone
 
 from apps.documents.exceptions import (
     ConsultationImmuableError,
+    DocumentFigeError,
     GabaritFigeError,
     VersionFigeeError,
 )
@@ -149,3 +150,33 @@ def test_consultation_ajout_seul_et_cible_unique(
             ConsultationDocument.objects.create(
                 utilisateur=rai, le=timezone.now(), format=FormatFichier.PDF, **cibles
             )
+
+
+def test_identite_et_numero_du_document_figes(version_prete: DocumentVersion) -> None:
+    d = version_prete.document
+    d.numero = "AUTRE/9"
+    with pytest.raises(DocumentFigeError):
+        d.save()
+    with pytest.raises(DocumentFigeError):
+        Document.objects.filter(pk=d.pk).update(sequence=9)
+    with pytest.raises(DocumentFigeError):
+        Document.objects.bulk_update([d], ["annee"])
+    d.refresh_from_db()
+    d.save()
+
+
+def test_bulk_create_update_conflicts_refuse(version_prete: DocumentVersion) -> None:
+    with pytest.raises(VersionFigeeError):
+        DocumentVersion.objects.bulk_create(
+            [version_prete],
+            update_conflicts=True,
+            update_fields=["erreur"],
+            unique_fields=["document", "numero_version"],
+        )
+    with pytest.raises(GabaritFigeError):
+        GabaritDocument.objects.bulk_create(
+            [version_prete.gabarit],
+            update_conflicts=True,
+            update_fields=["commentaire"],
+            unique_fields=["type_document", "version"],
+        )

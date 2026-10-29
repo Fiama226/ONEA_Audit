@@ -6,16 +6,25 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models import Q
 
+from apps.core.exceptions import RegleMetierError
 from apps.core.models import BaseModel
 from apps.missions.models import Mission
 from apps.signatures.models import Confirmation
 from apps.users.models import User
 
-from .exceptions import ConsultationImmuableError, GabaritFigeError, VersionFigeeError
+from .exceptions import (
+    ConsultationImmuableError,
+    DocumentFigeError,
+    GabaritFigeError,
+    VersionFigeeError,
+)
 from .managers import (
+    CHAMPS_DOCUMENT_FIGES,
     CHAMPS_GABARIT_FIGES,
     ConsultationAllManager,
     ConsultationManager,
+    DocumentAllManager,
+    DocumentManager,
     GabaritAllManager,
     GabaritManager,
     VersionAllManager,
@@ -112,6 +121,11 @@ class GabaritDocument(BaseModel):
     def __str__(self) -> str:
         return f"{self.type_document} v{self.version}"
 
+    def soft_delete(self, by: User) -> None:
+        if self.statut == StatutGabarit.ACTIF:
+            raise RegleMetierError("Un gabarit actif ne peut pas être supprimé : archivez-le.")
+        super().soft_delete(by)
+
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self._state.adding:
             en_base = _en_base(self, sorted(CHAMPS_GABARIT_FIGES))
@@ -138,6 +152,9 @@ class FormatNumerotation(BaseModel):
     def __str__(self) -> str:
         return f"{self.type_document} : {self.modele}"
 
+    def soft_delete(self, by: User) -> None:
+        raise RegleMetierError("Un format de numérotation ne peut pas être supprimé.")
+
 
 class Document(BaseModel):
     """A business document of one source object; its generated versions are kept."""
@@ -161,8 +178,23 @@ class Document(BaseModel):
             )
         ]
 
+    objects: ClassVar[DocumentManager] = DocumentManager()
+    all_objects: ClassVar[DocumentAllManager] = DocumentAllManager()  # noqa: DJ012
+
     def __str__(self) -> str:
         return self.numero
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self._state.adding:
+            noms = [
+                f.attname for f in self._meta.concrete_fields if f.name in CHAMPS_DOCUMENT_FIGES
+            ]
+            en_base = _en_base(self, noms)
+            if en_base is not None and any(
+                _valeur(self, n) != valeur for n, valeur in en_base.items()
+            ):
+                raise DocumentFigeError
+        super().save(*args, **kwargs)
 
 
 class DocumentVersion(BaseModel):

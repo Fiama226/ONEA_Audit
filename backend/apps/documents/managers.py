@@ -9,7 +9,12 @@ from typing import Any
 
 from apps.core.managers import AllObjectsManager, SoftDeleteManager, SoftDeleteQuerySet
 
-from .exceptions import ConsultationImmuableError, GabaritFigeError, VersionFigeeError
+from .exceptions import (
+    ConsultationImmuableError,
+    DocumentFigeError,
+    GabaritFigeError,
+    VersionFigeeError,
+)
 
 # Fields of a finished version that may still change (PDF conversion and bookkeeping).
 CHAMPS_VERSION_MODIFIABLES = frozenset(
@@ -38,6 +43,9 @@ CHAMPS_VERSION_LUS = (
     "empreinte_pdf",
     "deleted_at",
 )
+CHAMPS_DOCUMENT_FIGES = frozenset(
+    {"type_document", "mission", "content_type", "object_id", "numero", "annee", "sequence"}
+)
 CHAMPS_GABARIT_FIGES = frozenset(
     {"fichier", "taille", "empreinte", "version", "type_document", "nom_original"}
 )
@@ -58,6 +66,34 @@ def controler_version(en_base: Mapping[str, Any], changements: Mapping[str, Any]
             raise VersionFigeeError
         if champ in CHAMPS_VERSION_UNE_FOIS and en_base.get(champ) not in ("", None, valeur):
             raise VersionFigeeError
+
+
+class DocumentQuerySet(SoftDeleteQuerySet[Any]):
+    def update(self, **kwargs: Any) -> int:
+        if CHAMPS_DOCUMENT_FIGES & {_nom(k) for k in kwargs}:
+            raise DocumentFigeError
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs: Iterable[Any], fields: Iterable[str], *a: Any, **kw: Any) -> int:
+        noms = list(fields)
+        if CHAMPS_DOCUMENT_FIGES & {_nom(f) for f in noms}:
+            raise DocumentFigeError
+        return super().bulk_update(objs, noms, *a, **kw)
+
+    def bulk_create(self, objs: Any, *args: Any, **kwargs: Any) -> list[Any]:
+        if kwargs.get("update_conflicts"):
+            raise DocumentFigeError
+        return super().bulk_create(objs, *args, **kwargs)
+
+
+class DocumentManager(SoftDeleteManager[Any]):
+    def get_queryset(self) -> DocumentQuerySet:
+        return DocumentQuerySet(self.model, using=self._db).filter(deleted_at__isnull=True)
+
+
+class DocumentAllManager(AllObjectsManager[Any]):
+    def get_queryset(self) -> DocumentQuerySet:
+        return DocumentQuerySet(self.model, using=self._db)
 
 
 class VersionQuerySet(SoftDeleteQuerySet[Any]):
@@ -87,6 +123,11 @@ class VersionQuerySet(SoftDeleteQuerySet[Any]):
             controler_version(ligne, changements)
         return super().bulk_update(objs, noms, *a, **kw)
 
+    def bulk_create(self, objs: Any, *args: Any, **kwargs: Any) -> list[Any]:
+        if kwargs.get("update_conflicts"):
+            raise VersionFigeeError
+        return super().bulk_create(objs, *args, **kwargs)
+
 
 class VersionManager(SoftDeleteManager[Any]):
     def get_queryset(self) -> VersionQuerySet:
@@ -109,6 +150,11 @@ class GabaritQuerySet(SoftDeleteQuerySet[Any]):
         if CHAMPS_GABARIT_FIGES & {_nom(f) for f in noms}:
             raise GabaritFigeError
         return super().bulk_update(objs, noms, *a, **kw)
+
+    def bulk_create(self, objs: Any, *args: Any, **kwargs: Any) -> list[Any]:
+        if kwargs.get("update_conflicts"):
+            raise GabaritFigeError
+        return super().bulk_create(objs, *args, **kwargs)
 
 
 class GabaritManager(SoftDeleteManager[Any]):

@@ -91,6 +91,7 @@ def stockage_documents() -> Storage:
 
 
 def cle_gabarit(type_document: str, version: int, empreinte: str) -> str:
+    type_document = type_document.lower()  # registry codes may be upper case; keys never are
     if (
         not _TYPE_RE.match(type_document)
         or not isinstance(version, int)

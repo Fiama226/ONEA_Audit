@@ -15,6 +15,13 @@ class GabaritFigeError(RegleMetierError):
         super().__init__("Le fichier d'un gabarit est définitif : déposez une nouvelle version.")
 
 
+class DocumentFigeError(RegleMetierError):
+    """The identity and number of a document are final."""
+
+    def __init__(self) -> None:
+        super().__init__("L'identité et le numéro d'un document sont définitifs.")
+
+
 class ConsultationImmuableError(RegleMetierError):
     """A consultation record is append-only."""
 

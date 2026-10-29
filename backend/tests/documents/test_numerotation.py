@@ -1,10 +1,13 @@
+from dataclasses import replace
 from typing import Any
 
 import pytest
 from django.contrib.contenttypes.models import ContentType
 
 from apps.core.exceptions import RegleMetierError
-from apps.documents.models import Document
+from apps.documents.models import Document, FormatNumerotation, GabaritDocument
+from apps.documents.moteur import registre
+from apps.documents.moteur.registre import TypeDocument
 from apps.documents.numerotation import (
     apercu_numero,
     attribuer_numero,
@@ -19,7 +22,7 @@ pytestmark = pytest.mark.django_db
 
 
 def _creer(mission: Mission, numero: str, annee: int, sequence: int, **kw: Any) -> Document:
-    return Document.objects.create(
+    document: Document = Document.objects.create(
         type_document="TEST_DOC",
         mission=mission,
         content_type=ContentType.objects.get_for_model(Mission),
@@ -28,6 +31,7 @@ def _creer(mission: Mission, numero: str, annee: int, sequence: int, **kw: Any) 
         annee=annee,
         sequence=sequence,
     )
+    return document
 
 
 def test_premier_numero(type_test: object, mission_planifiee: Mission) -> None:
@@ -92,7 +96,7 @@ def test_erreurs_modele() -> None:
     assert erreurs_modele("{mission}/" + "x" * 40 + "{sequence}", "MISSION") == [
         "Le numéro dépasse 40 caractères."
     ]
-    assert erreurs_modele("{sequence!r}{mission}", "MISSION")[0].startswith("Champ inconnu")
+    assert erreurs_modele("{sequence!r}{mission}", "MISSION")[0].startswith("Aucune mise en forme")
     assert erreurs_modele("{mission.__class__}{sequence}", "MISSION")[0].startswith("Champ inconnu")
     assert erreurs_modele("{mission", "MISSION")
 
@@ -106,3 +110,53 @@ def test_modifier_format_refuse_invalide(type_test: object, rai: User) -> None:
     with pytest.raises(RegleMetierError) as e:
         modifier_format("TEST_DOC", by=rai, modele="{mission}", abreviation="TROP-LONGUE")
     assert set(e.value.errors) == {"modele", "abreviation"}
+
+
+def test_sequence_avec_mise_en_forme_refusee() -> None:
+    assert erreurs_modele("{mission}/{sequence:02d}", "MISSION") == [
+        "Aucune mise en forme n'est permise dans {sequence:02d} : "
+        "la séquence compte toujours 2 chiffres.",
+        "Le modèle doit contenir {sequence}.",
+    ]
+
+
+def test_format_enregistre_invalide_refuse(type_test: TypeDocument) -> None:
+    registre._TYPES["TEST_DOC"] = replace(type_test, modele_numero="{mission}/{code}")
+    with pytest.raises(RegleMetierError):
+        format_de("TEST_DOC")
+
+
+def test_modele_sans_sequence_ne_boucle_pas(type_test: object, mission_planifiee: Mission) -> None:
+    FormatNumerotation.objects.create(
+        type_document="TEST_DOC", modele="{mission}", portee="MISSION", abreviation="TD"
+    )
+    with pytest.raises(RegleMetierError):
+        attribuer_numero("TEST_DOC", mission=mission_planifiee)
+
+
+def test_reference_vide_refusee(type_test: object, mission_planifiee: Mission) -> None:
+    mission_planifiee.reference = ""
+    with pytest.raises(RegleMetierError, match="référence"):
+        attribuer_numero("TEST_DOC", mission=mission_planifiee)
+
+
+def test_longueur_avec_reference_maximale() -> None:
+    assert erreurs_modele("{mission}/{code}-{sequence}", "MISSION") == []
+    assert erreurs_modele("{mission}/" + "x" * 18 + "{sequence}", "MISSION") == [
+        "Le numéro dépasse 40 caractères."
+    ]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_attribuer_exige_une_transaction(type_test: object, mission_planifiee: Mission) -> None:
+    with pytest.raises(RuntimeError, match="transaction"):
+        attribuer_numero("TEST_DOC", mission=mission_planifiee)
+
+
+def test_format_et_gabarit_actif_non_supprimables(
+    type_test: object, gabarit_actif_test: GabaritDocument, rai: User
+) -> None:
+    with pytest.raises(RegleMetierError):
+        format_de("TEST_DOC").soft_delete(by=rai)
+    with pytest.raises(RegleMetierError):
+        gabarit_actif_test.soft_delete(by=rai)
