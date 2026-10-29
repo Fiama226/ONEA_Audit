@@ -115,7 +115,8 @@ class Constat(MissionEnfantModel):
             default=Value(NiveauRisque.FAIBLE),
             output_field=CharField(max_length=8),
         ),
-        output_field=CharField(max_length=8, null=True, choices=NiveauRisque.choices),
+        output_field=CharField(max_length=8, null=True),
+        choices=NiveauRisque.choices,
         db_persist=True,
         verbose_name="niveau",
     )
