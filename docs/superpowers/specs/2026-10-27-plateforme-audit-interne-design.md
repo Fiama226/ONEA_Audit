@@ -64,7 +64,7 @@ de toutes les recommandations ouvertes.
 | Fond | Celery + Redis (Valkey) |
 | Documents | docxtpl pour remplir les gabarits Word, Gotenberg (conteneur) pour PDF |
 | Recherche | Meilisearch |
-| Fichiers | MinIO (S3) |
+| Fichiers | Disque du serveur (S3 compatible branchable) |
 | Auth | Keycloak (OIDC) ; connexion possible à l'annuaire ONEA ; auth locale Django en dev |
 | Tests | pytest, factory_boy, Vitest, Testing Library, MSW, Playwright |
 | Qualité | ruff, mypy, ESLint, Prettier, pre-commit |
@@ -116,7 +116,7 @@ supervision d'une mission à un auditeur « superviseur » (note IFACI étape I)
 - Réunion de lancement, PV.
 
 ### 6.5 Accomplissement (étapes XII à XIV)
-- Fiches de test : objectif, procédure, échantillon, pièces justificatives (upload MinIO), résultat, conclusion (satisfaisant / point fort / anomalie). Feuille de couverture de test et feuille de travail générées.
+- Fiches de test : objectif, procédure, échantillon, pièces justificatives (téléversement sur le stockage des fichiers), résultat, conclusion (satisfaisant / point fort / anomalie). Feuille de couverture de test et feuille de travail générées.
 - Validation des preuves par le RAI ou superviseur (jalon XIII) ; renvoi possible avec commentaire.
 - Fiches d'observation (constats) : fait constaté, référentiel, cause (diagramme cause/effet en champs), conséquence, niveau de risque, recommandation(s). Validation par l'audité (accord / désaccord motivé).
 
@@ -148,7 +148,7 @@ supervision d'une mission à un auditeur « superviseur » (note IFACI étape I)
 - Utilisateurs via Keycloak (rôles mappés), gestion des affectations dans la plateforme.
 - Piste d'audit consultable par l'ADMIN et le RAI : qui, quand, quoi, avant/après.
 - Journal des consultations des documents sensibles.
-- Sauvegardes PostgreSQL et MinIO planifiées (script fourni).
+- Sauvegardes PostgreSQL et du dossier des documents planifiées (script fourni).
 
 ## 7. Modèle de données (vue d'ensemble)
 
@@ -185,7 +185,7 @@ Tous les écrans de document ont un rendu print. Responsive 1280/1024/tablette ;
 ## 10. Déploiement
 
 Docker Compose : `web` (Django + gunicorn), `worker` (Celery), `beat`, `frontend` (build
-statique servi par Nginx), `db` (PostgreSQL), `redis`, `meilisearch`, `minio`, `gotenberg`,
+statique servi par Nginx), `db` (PostgreSQL), `redis`, `meilisearch`, `gotenberg`,
 `keycloak`, `nginx` (reverse proxy TLS). Variables dans `.env`. Script de sauvegarde et
 de restauration. CI : lint + tests + build d'images à chaque push.
 
@@ -273,3 +273,4 @@ pour la version suivante. La cartographie est tenue par le RAI ; l'ADMIN n'a qu'
    serveur SMTP interne (relances e-mail). Aucune échéance contractuelle ; priorité à la
    vitesse de livraison : le plan est découpé pour maximiser le travail en parallèle
    d'agents indépendants, avec un contrat d'API figé en amont de chaque lot.
+4. **Stockage : disque du serveur ONEA, décision du 28/10/2026.** Les fichiers (gabarits Word, versions Word et PDF) sont écrits sur le disque du serveur, dans un dossier hôte monté dans les conteneurs `web` et `worker`, jamais dans Git et jamais exposés par une URL publique : le téléchargement passe uniquement par l'API authentifiée. MinIO est retiré. Un stockage S3 compatible reste branchable par configuration.
