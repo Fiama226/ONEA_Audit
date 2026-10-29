@@ -62,7 +62,7 @@ Permissions Claude Code suggérées : copier `docs/settings.suggested.json` vers
 ## Stack
 
 Django 5 + DRF, React 19 + TypeScript + shadcn/ui, PostgreSQL 16, Celery/Redis, docxtpl,
-Gotenberg, Meilisearch, MinIO, Keycloak, Docker Compose. Détail et justification dans `CLAUDE.md`.
+Gotenberg, Meilisearch, Keycloak, Docker Compose. Détail et justification dans `CLAUDE.md`.
 
 ## Licence
 
