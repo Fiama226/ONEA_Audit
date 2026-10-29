@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -5,7 +6,7 @@ from django.core.management.base import BaseCommand, CommandError, CommandParser
 
 from apps.documents.models import DocumentVersion, GabaritDocument
 from apps.documents.services.generation import verifier_integrite
-from apps.documents.stockage import stockage_documents
+from apps.documents.stockage import lire, stockage_documents
 
 
 def _fichiers_stockes(dossier: str = "") -> list[str]:
@@ -50,6 +51,17 @@ class Command(BaseCommand):
                     )
         for gabarit in GabaritDocument.all_objects.all():
             references[gabarit.fichier.name] = gabarit.empreinte
+            verifies += 1
+            try:
+                lu = hashlib.sha256(lire(str(gabarit.fichier.name))).hexdigest()
+                ok = lu == gabarit.empreinte
+            except (OSError, ValueError):
+                ok = False
+            if not ok:
+                anomalies += 1
+                self.stderr.write(
+                    f"ANOMALIE : {gabarit.fichier.name} (gabarit {gabarit.pk}) absent ou altéré."
+                )
         self.stdout.write(f"{verifies} fichier(s) vérifié(s), {anomalies} anomalie(s).")
         if options["manifeste"]:
             for cle in sorted(references):

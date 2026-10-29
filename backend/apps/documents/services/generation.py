@@ -14,6 +14,7 @@ from typing import Any
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import SuspiciousFileOperation
 from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
@@ -51,6 +52,7 @@ from ..stockage import (
 logger = logging.getLogger(__name__)
 
 DELAI_BLOCAGE = timedelta(minutes=15)
+DELAI_BLOCAGE_PDF = timedelta(minutes=30)  # longer than the whole retry chain
 _MO = 1024 * 1024
 _ORGANISATION_DEFAUT = {
     "nom": "Office National de l'Eau et de l'Assainissement",
@@ -179,7 +181,7 @@ def demander_generation(*, type_document: str, objet_id: Any, by: User) -> Docum
         demandee_par=by,
         created_by=by,
     )
-    transaction.on_commit(lambda: tasks.generer_version.delay(str(version.pk)))
+    transaction.on_commit(lambda: tasks.generer_version.delay(str(version.pk)), robust=True)
     return version
 
 
@@ -191,6 +193,10 @@ def _echec(version_id: str, message: str) -> None:
         version.statut = StatutGeneration.ECHEC
         version.erreur = message
         version.save(update_fields=["statut", "erreur", "updated_at"])
+
+
+def _sha(contenu: bytes) -> str:
+    return hashlib.sha256(contenu).hexdigest()
 
 
 def executer_generation(version_id: str) -> None:
@@ -205,28 +211,46 @@ def executer_generation(version_id: str) -> None:
         )
         if version.statut in (StatutGeneration.PRETE, StatutGeneration.ECHEC):
             return
+        reprise = version.statut == StatutGeneration.EN_COURS
         version.statut = StatutGeneration.EN_COURS
         version.debut_traitement = timezone.now()
         version.save(update_fields=["statut", "debut_traitement", "updated_at"])
     t = type_enregistre(version.document.type_document)
     cle = cle_version(version.document_id, version.numero_version, "docx")
     try:
+        modele = lire(str(version.gabarit.fichier.name))
+        if _sha(modele) != version.gabarit.empreinte:
+            logger.critical("Intégrité compromise : gabarit %s altéré.", version.gabarit_id)
+            _echec(version_id, IntegriteError().message)
+            return
+        contenu = rendre_docx(modele, version.contexte, t.contrat)
         try:
-            contenu = rendre_docx(
-                lire(str(version.gabarit.fichier.name)), version.contexte, t.contrat
-            )
             _, empreinte = ecrire_avec_empreinte(cle, contenu)
         except FichierExistantError:
-            contenu = lire(cle)  # left by an interrupted attempt: complete (atomic write)
-            empreinte = hashlib.sha256(contenu).hexdigest()
+            if not reprise:
+                logger.critical("Fichier inattendu à la clé %s (version %s).", cle, version_id)
+                _echec(
+                    version_id,
+                    "Un fichier étranger occupe l'emplacement : contactez l'administrateur.",
+                )
+                return
+            logger.warning("Reprise : fichier existant adopté pour %s.", cle)
+            contenu = lire(cle)
+            empreinte = _sha(contenu)
     except RenduError as exc:
         _echec(version_id, str(exc))
         return
     except (EspaceInsuffisantError, StockageIndisponibleError) as exc:
         _echec(version_id, exc.message)
         return
+    except (OSError, SuspiciousFileOperation):
+        logger.exception("Fichier introuvable pour la version %s.", version_id)
+        _echec(version_id, "Un fichier est introuvable : contactez l'administrateur.")
+        return
     with transaction.atomic():
         version = DocumentVersion.objects.select_for_update().get(pk=version_id)
+        if version.statut != StatutGeneration.EN_COURS:
+            return
         version.fichier_docx = cle
         version.empreinte_docx = empreinte
         version.taille_docx = len(contenu)
@@ -235,7 +259,7 @@ def executer_generation(version_id: str) -> None:
         version.genere_le = timezone.now()
         version.debut_traitement = timezone.now()
         version.save()
-        transaction.on_commit(lambda: tasks.convertir_pdf.delay(version_id))
+        transaction.on_commit(lambda: tasks.convertir_pdf.delay(version_id), robust=True)
 
 
 def marquer_echec_pdf(version_id: str, raison: str) -> None:
@@ -257,22 +281,43 @@ def executer_conversion(version_id: str) -> None:
         return
     cle = cle_version(version.document_id, version.numero_version, "pdf")
     try:
+        docx = lire(str(version.fichier_docx.name))
+    except (OSError, SuspiciousFileOperation):
+        logger.exception("Fichier Word introuvable pour la version %s.", version_id)
+        marquer_echec_pdf(version_id, "le fichier Word est introuvable")
+        return
+    if _sha(docx) != version.empreinte_docx:
+        logger.critical("Intégrité compromise : Word de la version %s altéré.", version_id)
+        marquer_echec_pdf(version_id, "le fichier Word est altéré")
+        return
+    try:
         contenu = pdf.convertir_en_pdf(
-            lire(str(version.fichier_docx.name)),
-            nom=f"{version.document.numero.replace('/', '-')}.docx",
+            docx, nom=f"{version.document.numero.replace('/', '-')}.docx"
         )
-        _, empreinte = ecrire_avec_empreinte(cle, contenu)
-    except FichierExistantError:
-        contenu = lire(cle)
-        empreinte = hashlib.sha256(contenu).hexdigest()
+        try:
+            _, empreinte = ecrire_avec_empreinte(cle, contenu)
+        except FichierExistantError:
+            existant = lire(cle)
+            if not existant.startswith(b"%PDF-"):
+                logger.critical("Fichier inattendu à la clé %s (version %s).", cle, version_id)
+                marquer_echec_pdf(version_id, "un fichier étranger occupe l'emplacement")
+                return
+            logger.warning("Reprise : PDF existant adopté pour %s.", cle)
+            contenu, empreinte = existant, _sha(existant)
     except pdf.ConversionPdfError as exc:
         marquer_echec_pdf(version_id, str(exc).rstrip("."))
         return
     except (EspaceInsuffisantError, StockageIndisponibleError) as exc:
         marquer_echec_pdf(version_id, exc.message.rstrip("."))
         return
+    except (OSError, SuspiciousFileOperation):
+        logger.exception("Stockage en erreur pour la version %s.", version_id)
+        marquer_echec_pdf(version_id, "le stockage est en erreur")
+        return
     with transaction.atomic():
         version = DocumentVersion.objects.select_for_update().get(pk=version_id)
+        if version.statut_pdf != StatutPdf.EN_COURS:
+            return
         version.fichier_pdf = cle
         version.empreinte_pdf = empreinte
         version.taille_pdf = len(contenu)
@@ -282,22 +327,43 @@ def executer_conversion(version_id: str) -> None:
         version.save()
 
 
+def _balayer_un(pk: Any, champs: dict[str, Any], garde: dict[str, Any]) -> bool:
+    """Apply `champs` to one version if it still matches `garde` once locked (audited save)."""
+    with transaction.atomic():
+        v = DocumentVersion.objects.select_for_update().filter(pk=pk, **garde).first()
+        if v is None:
+            return False
+        for nom, valeur in champs.items():
+            setattr(v, nom, valeur)
+        v.save(update_fields=[*champs, "updated_at"])
+        return True
+
+
 def balayer() -> int:
-    """Fail generations and conversions stuck for more than 15 minutes; return the count."""
-    limite = timezone.now() - DELAI_BLOCAGE
-    nombre = DocumentVersion.objects.filter(
-        statut=StatutGeneration.EN_ATTENTE, created_at__lt=limite
-    ).update(statut=StatutGeneration.ECHEC, erreur="La génération a été interrompue : relancez-la.")
-    nombre += DocumentVersion.objects.filter(
-        statut=StatutGeneration.EN_COURS, debut_traitement__lt=limite
-    ).update(statut=StatutGeneration.ECHEC, erreur="La génération a été interrompue : relancez-la.")
-    nombre += DocumentVersion.objects.filter(
-        statut=StatutGeneration.PRETE, statut_pdf=StatutPdf.EN_COURS, debut_traitement__lt=limite
-    ).update(
-        statut_pdf=StatutPdf.ECHEC,
-        erreur_pdf="La conversion PDF a été interrompue : relancez-la. "
+    """Fail stuck generations (15 min) and conversions (30 min: longer than the retry chain)."""
+    maintenant = timezone.now()
+    gen = maintenant - DELAI_BLOCAGE
+    conv = maintenant - DELAI_BLOCAGE_PDF
+    echec = {
+        "statut": StatutGeneration.ECHEC,
+        "erreur": "La génération a été interrompue : relancez-la.",
+    }
+    echec_pdf = {
+        "statut_pdf": StatutPdf.ECHEC,
+        "erreur_pdf": "La conversion PDF a été interrompue : relancez-la. "
         "Le document Word reste disponible.",
-    )
+    }
+    g_attente: dict[str, Any] = {"statut": StatutGeneration.EN_ATTENTE, "created_at__lt": gen}
+    g_cours: dict[str, Any] = {"statut": StatutGeneration.EN_COURS, "debut_traitement__lt": gen}
+    g_pdf: dict[str, Any] = {
+        "statut": StatutGeneration.PRETE,
+        "statut_pdf": StatutPdf.EN_COURS,
+        "debut_traitement__lt": conv,
+    }
+    nombre = 0
+    for garde, champs in ((g_attente, echec), (g_cours, echec), (g_pdf, echec_pdf)):
+        for pk in list(DocumentVersion.objects.filter(**garde).values_list("pk", flat=True)):
+            nombre += _balayer_un(pk, champs, garde)
     return nombre
 
 

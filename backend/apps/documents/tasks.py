@@ -33,8 +33,8 @@ def generer_version(version_id: str) -> None:
     autoretry_for=(GotenbergIndisponibleError,),
     max_retries=3,
     retry_backoff=True,
-    soft_time_limit=330,
-    time_limit=360,
+    soft_time_limit=420,
+    time_limit=480,
 )
 def convertir_pdf(self: Any, version_id: str) -> None:
     """Convert the Word file to PDF; retried with backoff while Gotenberg is unavailable."""

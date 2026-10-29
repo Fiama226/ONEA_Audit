@@ -10,7 +10,7 @@ from apps.documents import pdf
 from apps.documents.models import DocumentVersion, GabaritDocument, StatutGeneration
 from apps.documents.moteur.registre import TypeDocument
 from apps.documents.pdf import ConversionPdfError
-from apps.documents.services.generation import demander_generation
+from apps.documents.services.generation import demander_generation, relancer_pdf
 from apps.documents.stockage import cle_version, ecrire
 from apps.documents.tasks import (
     balayer_generations_bloquees,
@@ -20,6 +20,7 @@ from apps.documents.tasks import (
 from apps.missions.models import Mission
 from apps.users.models import User
 
+from .conftest import chemin_fichier
 from .fabrique import docx_avec
 
 pytestmark = pytest.mark.django_db
@@ -104,9 +105,61 @@ def test_balayage_generations_bloquees(
     assert recente.statut == "EN_COURS"
 
 
-def test_balayage_conversion_pdf_bloquee(version_prete: DocumentVersion) -> None:
+def test_fichier_etranger_non_adopte(
+    type_test: TypeDocument,
+    gabarit_actif_test: GabaritDocument,
+    objet_test: Mission,
+    rai: User,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    v = demander_generation(type_document="TEST_DOC", objet_id=objet_test.pk, by=rai)
+    ecrire(cle_version(v.document_id, 1, "docx"), docx_avec("Restauré d'ailleurs"))
+    generer_version(str(v.pk))
+    v.refresh_from_db()
+    assert v.statut == "ECHEC" and not v.empreinte_docx
+    assert any(r.levelname == "CRITICAL" for r in caplog.records)
+
+
+def test_gabarit_altere_echec(
+    type_test: TypeDocument,
+    gabarit_actif_test: GabaritDocument,
+    objet_test: Mission,
+    rai: User,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    v = demander_generation(type_document="TEST_DOC", objet_id=objet_test.pk, by=rai)
+    chemin_fichier(gabarit_actif_test.fichier.name).write_bytes(b"altere")
+    generer_version(str(v.pk))
+    v.refresh_from_db()
+    assert v.statut == "ECHEC" and "altéré" in v.erreur
+    assert any(r.levelname == "CRITICAL" for r in caplog.records)
+
+
+def test_word_altere_pas_de_pdf_meme_apres_relance(
+    version_prete: DocumentVersion, rai: User, pdf_factice: bytes, caplog: pytest.LogCaptureFixture
+) -> None:
+    DocumentVersion.all_objects.filter(pk=version_prete.pk).update(statut_pdf="EN_COURS")
+    chemin_fichier(version_prete.fichier_docx.name).write_bytes(b"altere")
+    convertir_pdf(str(version_prete.pk))
+    version_prete.refresh_from_db()
+    assert version_prete.statut_pdf == "ECHEC" and not version_prete.fichier_pdf
+    assert any(r.levelname == "CRITICAL" for r in caplog.records)
+    relancer_pdf(version_prete, by=rai)
+    convertir_pdf(str(version_prete.pk))  # on_commit does not run in this test transaction
+    version_prete.refresh_from_db()
+    assert version_prete.statut_pdf == "ECHEC" and not version_prete.empreinte_pdf
+
+
+def test_balayage_conversion_recente_inchangee(version_prete: DocumentVersion) -> None:
     DocumentVersion.all_objects.filter(pk=version_prete.pk).update(
         statut_pdf="EN_COURS", debut_traitement=timezone.now() - timedelta(minutes=20)
+    )
+    assert balayer_generations_bloquees() == 0
+
+
+def test_balayage_conversion_pdf_bloquee(version_prete: DocumentVersion) -> None:
+    DocumentVersion.all_objects.filter(pk=version_prete.pk).update(
+        statut_pdf="EN_COURS", debut_traitement=timezone.now() - timedelta(minutes=31)
     )
     assert balayer_generations_bloquees() == 1
     version_prete.refresh_from_db()
