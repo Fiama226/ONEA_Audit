@@ -17,6 +17,10 @@ import type { ForceFaiblesse } from "../types";
 
 const NO_CONTRAST = { rules: { "color-contrast": { enabled: false } } };
 const RISK_ID = "44444444-4444-4444-8444-444444444444";
+const RISK_2_ID = "44444444-4444-4444-8444-444444444445";
+const PROCESS_1 = "88888888-8888-4888-8888-888888888888";
+const PROCESS_2 = "88888888-8888-4888-8888-888888888889";
+const AUDITABLE_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
 function aForce(overrides: Partial<ForceFaiblesse> = {}): ForceFaiblesse {
   return {
@@ -92,13 +96,36 @@ function handlers(
             mission: MISSION_ID,
             code_source: "R-001",
             libelle: "Fraude à la facturation",
-            processus: "88888888-8888-4888-8888-888888888888",
+            processus: PROCESS_1,
             niveau: "ELEVE",
+          },
+          {
+            id: RISK_2_ID,
+            mission: MISSION_ID,
+            code_source: "R-002",
+            libelle: "Rupture de stock",
+            processus: PROCESS_2,
+            niveau: "MOYEN",
           },
         ]),
       ),
     ),
-    http.get(`${API_URL}/api/v1/auditable-objects/tree/`, () => HttpResponse.json([])),
+    http.get(`${API_URL}/api/v1/auditable-objects/tree/`, ({ request }) => {
+      const process = new URL(request.url).searchParams.get("processus");
+      return HttpResponse.json(
+        process === PROCESS_1
+          ? [
+              {
+                id: "d1",
+                libelle: "Domaine facturation",
+                description: "",
+                ordre: 0,
+                operations: [{ id: AUDITABLE_ID, libelle: "Émission des factures" }],
+              },
+            ]
+          : [],
+      );
+    }),
   ];
 }
 
@@ -177,6 +204,39 @@ describe("StepVZone", () => {
     await screen.findByText("Contrôle n°201");
     expect(screen.queryByRole("button", { name: "Ajouter un contrôle" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Modifier le contrôle/ })).not.toBeInTheDocument();
+  });
+
+  it("clears the auditable object when the risk changes", async () => {
+    const posts: unknown[] = [];
+    const user = userEvent.setup();
+    renderMission(url, "AUDITEUR", { handlers: handlers({ posts }) });
+    await user.click(await screen.findByRole("button", { name: "Ajouter un contrôle" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.selectOptions(await within(dialog).findByLabelText("Risque de la mission"), RISK_ID);
+    await within(dialog).findByRole("option", { name: "Émission des factures" });
+    const auditable = within(dialog).getByLabelText("Objet auditable");
+    await user.selectOptions(auditable, AUDITABLE_ID);
+    expect(auditable).toHaveValue(AUDITABLE_ID);
+    await user.selectOptions(within(dialog).getByLabelText("Risque de la mission"), RISK_2_ID);
+    expect(within(dialog).getByLabelText("Objet auditable")).toHaveValue("");
+    await user.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0]).toMatchObject({ risque: RISK_2_ID, objet_auditable: null });
+  });
+
+  it("shows no prefilled hint, uses h4 headings in the zone and unique line names", async () => {
+    renderMission(url, "AUDITEUR", { handlers: handlers() });
+    await screen.findByText("Contrôle n°201");
+    expect(screen.queryByText("Pré-rempli depuis la cartographie")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 4, name: "Matrice des risques et contrôles (MARC)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Modifier le contrôle : R-001 — Contrôle n°1" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Modifier le contrôle : R-001 — Contrôle n°2" }),
+    ).toBeInTheDocument();
   });
 
   it("has no axe violation with the control dialog open", async () => {

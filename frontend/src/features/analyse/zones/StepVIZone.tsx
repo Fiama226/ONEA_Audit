@@ -27,7 +27,7 @@ export function StepVIZone({ mission, step }: ZoneProps) {
           {fr.common.loading}
         </p>
       )}
-      {framework.data && <FrameworkStatusPanel framework={framework.data} />}
+      {framework.data && <FrameworkStatusPanel framework={framework.data} level={4} />}
       <p className="text-sm">{t.stepVIReminder}</p>
       <p>
         <Link

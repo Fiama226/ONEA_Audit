@@ -97,7 +97,7 @@ function OpinionForm({ missionId, onDone }: { missionId: string; onDone: () => v
         )}
       />
       <FormField label={t.opinionComment} error={errors.commentaire?.message}>
-        {(p) => <Textarea {...p} rows={4} {...register("commentaire")} />}
+        {(p) => <Textarea {...p} maxLength={2000} rows={4} {...register("commentaire")} />}
       </FormField>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone}>

@@ -11,6 +11,7 @@ import { STATUT_ETAPE_LABELS } from "@/features/missions/labels";
 import { fr } from "@/i18n/fr";
 import { formatDate } from "@/lib/dates";
 import { STATUT_REFERENTIEL_LABELS, TYPE_AVIS_LABELS } from "../labels";
+import { Heading, type HeadingLevel } from "./Heading";
 import type { ReferentielAudit } from "../types";
 
 const t = fr.analyseVVI;
@@ -21,7 +22,13 @@ function shortHash(hash: string): string {
 }
 
 /** Synthèse du référentiel : statut, avancement, validation (empreinte) et avis des audités. */
-export function FrameworkStatusPanel({ framework }: { framework: ReferentielAudit }) {
+export function FrameworkStatusPanel({
+  framework,
+  level = 3,
+}: {
+  framework: ReferentielAudit;
+  level?: HeadingLevel;
+}) {
   const v = framework.validation;
   const validation = v && {
     date: formatDate(v.confirme_le),
@@ -39,9 +46,9 @@ export function FrameworkStatusPanel({ framework }: { framework: ReferentielAudi
 
   return (
     <section aria-labelledby="framework-status-title" className="grid gap-3">
-      <h3 id="framework-status-title" className="text-base font-semibold">
+      <Heading level={level} id="framework-status-title" className="text-base font-semibold">
         {t.statusPanelTitle}
-      </h3>
+      </Heading>
       <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
         {stats.map(([label, value]) => (
           <div key={label} className="rounded-md border border-border p-3">
@@ -72,7 +79,9 @@ export function FrameworkStatusPanel({ framework }: { framework: ReferentielAudi
       ) : (
         <p className="text-sm text-text-muted">{t.notValidated}</p>
       )}
-      <h4 className="text-sm font-semibold">{t.opinionsTitle}</h4>
+      <Heading level={(level + 1) as HeadingLevel} className="text-sm font-semibold">
+        {t.opinionsTitle}
+      </Heading>
       {framework.avis.length === 0 ? (
         <p className="text-sm text-text-muted">{t.noOpinion}</p>
       ) : (

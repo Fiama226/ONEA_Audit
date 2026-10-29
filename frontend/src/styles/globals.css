@@ -107,3 +107,14 @@
     print-color-adjust: exact;
   }
 }
+
+/* MARC : page nommée en paysage, sans effet sur les autres impressions. */
+@page marc {
+  size: A4 landscape;
+}
+
+@media print {
+  .marc-print {
+    page: marc;
+  }
+}

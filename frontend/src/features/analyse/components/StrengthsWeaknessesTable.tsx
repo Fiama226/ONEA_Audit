@@ -31,11 +31,12 @@ import {
   strengthWeaknessSchema,
   type StrengthWeaknessFormValues,
 } from "../schemas/strengthWeakness";
+import { Heading, type HeadingLevel } from "./Heading";
 import type { ForceFaiblesse, TypeForceFaiblesse } from "../types";
 
 const t = fr.analyseVVI;
 
-type Props = { missionId: string; editable: boolean };
+type Props = { missionId: string; editable: boolean; level?: HeadingLevel };
 
 type DialogState = { line?: ForceFaiblesse; type?: TypeForceFaiblesse } | null;
 
@@ -137,10 +138,10 @@ function SwForm({
         {(p) => <Textarea {...p} rows={2} maxLength={500} required {...register("libelle")} />}
       </FormField>
       <FormField label={t.consequenceLabel} error={errors.consequence?.message}>
-        {(p) => <Textarea {...p} rows={2} {...register("consequence")} />}
+        {(p) => <Textarea {...p} maxLength={5000} rows={2} {...register("consequence")} />}
       </FormField>
       <FormField label={t.commentLabel} error={errors.commentaire?.message}>
-        {(p) => <Textarea {...p} rows={2} {...register("commentaire")} />}
+        {(p) => <Textarea {...p} maxLength={5000} rows={2} {...register("commentaire")} />}
       </FormField>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone}>
@@ -155,7 +156,7 @@ function SwForm({
 }
 
 /** Forces et faiblesses apparentes ; les lignes issues de la MARC ne se retirent pas ici. */
-export function StrengthsWeaknessesTable({ missionId, editable }: Props) {
+export function StrengthsWeaknessesTable({ missionId, editable, level = 3 }: Props) {
   const list = useStrengthsWeaknesses(missionId);
   const remove = useDeleteStrengthWeakness();
   const [dialog, setDialog] = useState<DialogState>(null);
@@ -163,9 +164,18 @@ export function StrengthsWeaknessesTable({ missionId, editable }: Props) {
 
   if (list.isError) {
     return (
-      <p role="alert" className={ALERT_CLASS}>
-        {t.loadError}
-      </p>
+      <div role="alert" className={ALERT_CLASS}>
+        <p>{t.loadError}</p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-2"
+          onClick={() => void list.refetch()}
+        >
+          {fr.common.retry}
+        </Button>
+      </div>
     );
   }
   if (list.isPending) {
@@ -184,9 +194,9 @@ export function StrengthsWeaknessesTable({ missionId, editable }: Props) {
 
   return (
     <section aria-labelledby="sw-title" className="grid gap-4">
-      <h3 id="sw-title" className="text-base font-semibold">
+      <Heading level={level} id="sw-title" className="text-base font-semibold">
         {t.swTitle}
-      </h3>
+      </Heading>
       <ListIncompleteAlert count={list.data.count} loaded={rows.length} />
       {sections.map((s) => {
         const items = rows.filter((r) => r.type === s.type);
@@ -194,9 +204,13 @@ export function StrengthsWeaknessesTable({ missionId, editable }: Props) {
         return (
           <div key={s.type} className="grid gap-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h4 id={headingId} className="text-sm font-semibold">
+              <Heading
+                level={(level + 1) as HeadingLevel}
+                id={headingId}
+                className="text-sm font-semibold"
+              >
                 {s.title}
-              </h4>
+              </Heading>
               {editable && (
                 <Button
                   type="button"

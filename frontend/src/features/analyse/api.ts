@@ -252,7 +252,10 @@ export function useDeleteMarcLine() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ id }: Deleting) => remove("marc-lines", id),
-    onSuccess: (_, { missionId }) => invalidateAnalyse(client, missionId),
+    onSuccess: (_, { id, missionId }) => {
+      client.removeQueries({ queryKey: [...analyseKeys.marcLines(missionId), id] });
+      return invalidateAnalyse(client, missionId);
+    },
   });
 }
 
@@ -291,7 +294,10 @@ export function useDeleteStrengthWeakness() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ id }: Deleting) => remove("strengths-weaknesses", id),
-    onSuccess: (_, { missionId }) => invalidateAnalyse(client, missionId),
+    onSuccess: (_, { id, missionId }) => {
+      client.removeQueries({ queryKey: [...analyseKeys.strengthsWeaknesses(missionId), id] });
+      return invalidateAnalyse(client, missionId);
+    },
   });
 }
 

@@ -35,8 +35,8 @@ export function StepVZone({ mission, step }: ZoneProps) {
         {t.stepVTitle}
       </h3>
       <QciSection mission={mission} editable={editable} />
-      <MarcTable missionId={mission.id} editable={editable} />
-      <StrengthsWeaknessesTable missionId={mission.id} editable={editable} />
+      <MarcTable missionId={mission.id} editable={editable} level={4} />
+      <StrengthsWeaknessesTable missionId={mission.id} editable={editable} level={4} />
     </section>
   );
 }
