@@ -34,11 +34,13 @@ def crud_schema(
     *,
     liste: type[BaseSerializer[Any]] | None = None,
     creation_404: bool = False,
+    upsert: bool = False,
 ) -> Any:
     """Documente list / retrieve / create / partial_update / destroy avec leurs erreurs.
 
     `liste` : sérialiseur allégé de la liste, quand il diffère de celui du détail.
     `creation_404` : la création répond 404 quand l'objet parent (mission) est invisible.
+    `upsert` : le POST répond aussi 200 quand l'objet existait déjà (mise à jour).
     """
     return extend_schema_view(
         list=extend_schema(
@@ -56,6 +58,7 @@ def crud_schema(
             summary=f"Créer : {nom}",
             responses={
                 201: serializer,
+                **({200: serializer} if upsert else {}),
                 **ERROR_400,
                 **ERROR_RESPONSES,
                 **(ERROR_404 if creation_404 else {}),

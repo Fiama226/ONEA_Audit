@@ -18,7 +18,8 @@ pytestmark = pytest.mark.django_db
 
 
 def test_controles_enregistres_pour_I_II_IV_XI() -> None:
-    assert sorted(CONTROLES) == [1, 2, 4, 11]
+    # Les lots suivants (analyse : III, V, VI, VII) y branchent les leurs.
+    assert {1, 2, 4, 11} <= set(CONTROLES)
 
 
 def test_etape_I_exige_l_ordre_de_mission(mission_lancee: Mission) -> None:
@@ -46,7 +47,7 @@ def test_etape_IV_exige_un_risque(mission_lancee: Mission) -> None:
 
 @pytest.mark.parametrize(
     ("numero", "romain", "lot"),
-    [(3, "III", 5), (7, "VII", 5), (8, "VIII", 6), (14, "XIV", 6), (17, "XVII", 7)],
+    [(8, "VIII", 6), (14, "XIV", 6), (17, "XVII", 7)],
 )
 def test_etapes_gerees_dans_un_lot_ulterieur(
     mission_lancee: Mission, numero: int, romain: str, lot: int

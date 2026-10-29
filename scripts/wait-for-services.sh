@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Wait (default 240 s) until every service answers; used by `make up`.
-# Usage: wait-for-services.sh [--with-storage]   (arguments go to check-services.sh)
+# Usage: wait-for-services.sh   (arguments go to check-services.sh)
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TIMEOUT="${WAIT_TIMEOUT:-240}"
 end=$((SECONDS + TIMEOUT))
