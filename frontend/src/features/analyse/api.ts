@@ -154,11 +154,11 @@ export function useDeleteQuestionnaire() {
 export function useSaveQuestion() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      missionId: _missionId,
-      ...vars
-    }: SaveVars<QuestionInput> & { missionId: string }) =>
-      save<QuestionInput, Question>("analysis-questions", vars as SaveVars<QuestionInput>),
+    mutationFn: (vars: SaveVars<QuestionInput> & { missionId: string }) =>
+      save<QuestionInput, Question>(
+        "analysis-questions",
+        vars.id === undefined ? { data: vars.data } : { id: vars.id, data: vars.data },
+      ),
     onSuccess: (q, { missionId }) =>
       invalidateAnalyse(client, missionId, analyseKeys.questions(q.questionnaire)),
   });
