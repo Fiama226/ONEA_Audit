@@ -195,6 +195,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.tasks.heartbeat",
         "schedule": crontab(hour=6, minute=0),
     },
+    "documents-balayage": {
+        "task": "documents.balayer_generations_bloquees",
+        "schedule": crontab(minute="*/10"),
+    },
 }
 
 # --- Email: EMAIL_URL = smtp://mailpit:1025 in compose, smtp://localhost:1025 on host ---

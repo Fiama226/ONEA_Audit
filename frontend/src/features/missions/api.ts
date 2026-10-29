@@ -1,5 +1,4 @@
 import {
-  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -38,6 +37,10 @@ type Query<K extends keyof operations> = NonNullable<operations[K]["parameters"]
 export type MissionParams = Query<"v1_missions_list">;
 export type UserParams = Query<"v1_users_list">;
 export type InterviewParams = Query<"v1_interviews_list">;
+export type DeclarationParams = Omit<
+  Query<"v1_independence_declarations_list">,
+  "page" | "page_size"
+>;
 
 const BASE = "/api/v1";
 
@@ -78,11 +81,25 @@ function invalidateMission(client: QueryClient, missionId: string, ...extra: Que
 
 // ---- Missions ------------------------------------------------------------------------------
 
+function filtersOf(params: object): string {
+  const filters: Record<string, unknown> = { ...params };
+  for (const key of ["page", "page_size", "ordering"]) delete filters[key];
+  return JSON.stringify(filters);
+}
+
+function sameFilters(previousKey: QueryKey, params: MissionParams): boolean {
+  return filtersOf(previousKey[2] as object) === filtersOf(params);
+}
+
 export function useMissions(params: MissionParams = {}) {
   return useQuery({
     queryKey: missionKeys.list(params),
     queryFn: () => apiFetch<S["PaginatedMissionListeList"]>(`${BASE}/missions/${toQuery(params)}`),
-    placeholderData: keepPreviousData,
+    // Garde la page précédente seulement si les filtres sont identiques (pagination, tri).
+    placeholderData: (previous, previousQuery) =>
+      previousQuery !== undefined && sameFilters(previousQuery.queryKey, params)
+        ? previous
+        : undefined,
   });
 }
 
@@ -106,7 +123,18 @@ export function useDeleteMission() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => remove("missions", id),
-    onSuccess: () => invalidate(client, missionKeys.all),
+    onSuccess: (_, id) => {
+      // La mission n'existe plus : la retirer du cache évite un refetch en 404 (flash « introuvable »).
+      for (const queryKey of [
+        missionKeys.detail(id),
+        missionKeys.steps(id),
+        missionKeys.tracking(id),
+        missionKeys.assignments(id),
+      ]) {
+        client.removeQueries({ queryKey });
+      }
+      return invalidate(client, missionKeys.lists());
+    },
   });
 }
 
@@ -186,10 +214,14 @@ export function useReplaceChief() {
   });
 }
 
-export function useDeclarations(params: { mission?: string; statut?: string } = {}) {
+export function useDeclarations(params: DeclarationParams = {}) {
   return useQuery({
     queryKey: missionKeys.declarations(params),
-    queryFn: () => fetchAllPages<Declaration>("independence-declarations", params),
+    queryFn: () =>
+      fetchAllPages<Declaration>("independence-declarations", {
+        ...params,
+        mine: params.mine === undefined ? undefined : String(params.mine),
+      }),
   });
 }
 

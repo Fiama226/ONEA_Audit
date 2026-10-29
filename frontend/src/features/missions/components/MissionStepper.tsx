@@ -39,12 +39,12 @@ export function MissionStepper({ steps, missionId, selected }: Props) {
         const headingId = `phase-${missionId}-${phase}`;
         return (
           <section key={phase} aria-labelledby={headingId}>
-            <h3 id={headingId} className="mb-2 text-sm font-semibold">
+            <h2 id={headingId} className="mb-2 text-sm font-semibold">
               {PHASE_LABELS[phase]}{" "}
               <span className="font-normal text-text-muted">
                 {fr.missions.stepRange.replace("{range}", PHASE_RANGES[phase])}
               </span>
-            </h3>
+            </h2>
             <ol className="grid gap-1">
               {items.map((step) => {
                 const current = step.numero === selected;

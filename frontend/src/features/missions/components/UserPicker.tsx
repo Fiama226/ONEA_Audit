@@ -20,6 +20,8 @@ type Props = {
   error?: string;
   /** Utilisateurs déjà enregistrés (pour nommer un compte devenu inactif). */
   known?: UtilisateurResume[];
+  /** Choix unique : boutons radio au lieu de cases à cocher. */
+  single?: boolean;
 };
 
 /**
@@ -35,6 +37,7 @@ export function UserPicker({
   label,
   error,
   known = [],
+  single = false,
 }: Props) {
   const searchId = useId();
   const [query, setQuery] = useState("");
@@ -62,6 +65,7 @@ export function UserPicker({
   }
 
   function toggle(id: string, checked: boolean) {
+    if (single) return onChange(checked ? [id] : []);
     onChange(checked ? [...value, id] : value.filter((v) => v !== id));
   }
 
@@ -115,11 +119,22 @@ export function UserPicker({
             const inputId = `${searchId}-${id}`;
             return (
               <li key={id} className="flex items-center gap-2 px-3 py-2 text-sm">
-                <Checkbox
-                  id={inputId}
-                  checked={value.includes(id)}
-                  onCheckedChange={(checked) => toggle(id, checked === true)}
-                />
+                {single ? (
+                  <input
+                    type="radio"
+                    id={inputId}
+                    name={`${searchId}-single`}
+                    className="size-4 accent-primary"
+                    checked={value.includes(id)}
+                    onChange={() => toggle(id, true)}
+                  />
+                ) : (
+                  <Checkbox
+                    id={inputId}
+                    checked={value.includes(id)}
+                    onCheckedChange={(checked) => toggle(id, checked === true)}
+                  />
+                )}
                 <Label htmlFor={inputId} className="font-normal">
                   {u.nom_complet}
                   {u.fonction && <span className="text-text-muted"> · {u.fonction}</span>}

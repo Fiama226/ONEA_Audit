@@ -67,7 +67,11 @@ class FournisseurTest:
 
     def contexte(self, objet: BaseModel) -> dict[str, Any]:
         assert isinstance(objet, Mission)
-        return {"mission": {"reference": objet.reference, "titre": objet.titre}}
+        return {
+            "mission": {"reference": objet.reference, "titre": objet.titre},
+            "equipe": [],
+            "notes": "",
+        }
 
     def confirmation(self, objet: BaseModel) -> Confirmation | None:
         return None
@@ -166,3 +170,26 @@ def version_prete(
         genere_le=timezone.now(),
     )
     return version
+
+
+@pytest.fixture
+def pdf_factice(monkeypatch: pytest.MonkeyPatch) -> bytes:
+    """Replace the Gotenberg call by a fake PDF (additive fixture, lot 4 task 6)."""
+    from unittest.mock import Mock
+
+    from apps.documents import pdf
+
+    contenu = b"%PDF-1.7 factice"
+    monkeypatch.setattr(pdf, "convertir_en_pdf", Mock(return_value=contenu))
+    return contenu
+
+
+def chemin_fichier(cle: str | None) -> Path:
+    """Absolute path of a stored key (to alter or remove it in integrity tests)."""
+    from django.core.files.storage import FileSystemStorage
+
+    from apps.documents.stockage import _chemin_sur, stockage_documents
+
+    stockage = stockage_documents()
+    assert isinstance(stockage, FileSystemStorage) and cle
+    return _chemin_sur(stockage, cle)

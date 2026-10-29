@@ -7,7 +7,10 @@ import { StepIZone } from "./StepIZone";
 
 export type ZoneProps = { mission: Mission; step: Etape };
 
-/** Zone de travail par numéro d'étape ; les étapes sans zone propre utilisent `GenericZone`. */
+/**
+ * Zone de travail par numéro d'étape ; les étapes sans zone propre utilisent `GenericZone`.
+ * Extensible : les lots suivants ajoutent leurs zones ici (le lot 5 y branchera son point d'extension).
+ */
 export const ZONES: Record<number, ComponentType<ZoneProps>> = {
   1: StepIZone,
   2: StepIIZone,
