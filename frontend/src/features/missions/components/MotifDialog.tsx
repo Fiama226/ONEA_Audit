@@ -64,7 +64,8 @@ export function MotifDialog({
       reset();
       onOpenChange(false);
     } catch (e) {
-      setError(isApiError(e) ? [...(e.errors.motif ?? []), e.detail].join(" ") : fr.errors.generic);
+      // Le serveur recopie souvent l'erreur du champ dans `detail` : ne montrer que l'un des deux.
+      setError(isApiError(e) ? (e.errors.motif?.join(" ") ?? e.detail) : fr.errors.generic);
       setPending(false);
     }
   }
