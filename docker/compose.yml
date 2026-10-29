@@ -6,7 +6,7 @@ name: ${COMPOSE_PROJECT_NAME:-onea}
 
 services:
   db:
-    image: postgres:16
+    image: postgres:16.14
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-onea}
       POSTGRES_USER: ${POSTGRES_USER:-onea}
@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: valkey/valkey:7
+    image: valkey/valkey:7.2.15
     volumes:
       - redis-data:/data
     healthcheck:
@@ -32,7 +32,7 @@ services:
     restart: unless-stopped
 
   meilisearch:
-    image: getmeili/meilisearch:v1.12
+    image: getmeili/meilisearch:v1.12.8
     environment:
       MEILI_ENV: production
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required (see .env.example)}
@@ -47,7 +47,7 @@ services:
     restart: unless-stopped
 
   gotenberg:
-    image: gotenberg/gotenberg:8
+    image: gotenberg/gotenberg:8.37.0
     command: ["gotenberg", "--api-port=3000"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]

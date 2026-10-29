@@ -1,18 +1,22 @@
 # ONEA backend image (Django + gunicorn / celery). Build context: repository root.
 #   docker build -f docker/backend.Dockerfile -t onea-backend .
-FROM python:3.12-slim AS builder
+FROM ghcr.io/astral-sh/uv:0.11.26@sha256:3d868e555f8f1dbc324afa005066cd11e1053fc4743b9808ca8025283e65efa5 AS uv
+
+FROM python:3.12.16-slim-bookworm@sha256:e697c81897302a4c4333bade000d98038fbb21eb064f8ee1fd42d02ebcd9d337 AS builder
 
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /build
-COPY backend/pyproject.toml ./
-# Runtime dependencies only (the dev group is not installed in the image).
-RUN python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']))" > requirements.txt \
-    && pip install -r requirements.txt
+COPY --from=uv /uv /usr/local/bin/uv
+COPY backend/pyproject.toml backend/uv.lock ./
+# Runtime dependencies only (no dev group), installed exactly as locked: versions and
+# hashes come from uv.lock; pip refuses anything whose hash does not match.
+RUN uv export --frozen --no-dev --no-emit-project --format requirements-txt -o requirements.txt \
+    && pip install --require-hashes -r requirements.txt
 
-FROM python:3.12-slim AS runtime
+FROM python:3.12.16-slim-bookworm@sha256:e697c81897302a4c4333bade000d98038fbb21eb064f8ee1fd42d02ebcd9d337 AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
