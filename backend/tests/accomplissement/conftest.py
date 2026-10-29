@@ -58,3 +58,10 @@ def fiche_brouillon(mission_en_accomplissement: Mission) -> FicheDeTest:
     test = mission_en_accomplissement.tests_prevus.order_by("numero").first()
     fiche: FicheDeTest = FicheFactory(mission=mission_en_accomplissement, test=test)
     return fiche
+
+
+from tests.accomplissement.fixtures_programme import (  # noqa: E402, F401
+    mission_programme_complet,
+    mission_viii,
+    programme_viii,
+)
