@@ -139,6 +139,36 @@ describe("referentiel risk map routes", () => {
   });
 });
 
+describe("programme annuel routes", () => {
+  it("shows the forbidden view to an AUDITE", () => {
+    renderRoutes(appRoutes, "AUDITE", { path: "/programme-annuel" });
+    expect(
+      screen.getByRole("heading", { level: 1, name: fr.errors.forbiddenTitle }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(fr.errors.forbiddenText);
+  });
+
+  it("lets a DG reach the list page", () => {
+    renderRoutes(appRoutes, "DG", { path: "/programme-annuel" });
+    expect(
+      screen.getByRole("heading", { level: 1, name: fr.programmation.title }),
+    ).toBeInTheDocument();
+  });
+
+  it("mounts the line creation route", async () => {
+    const planId = "3f2b8c1e-8a4d-4c55-9a0e-1b2c3d4e5f60";
+    server.use(
+      http.get(`${API_URL}/api/v1/audit-plans/${planId}/`, () =>
+        HttpResponse.json({ id: planId, annee: 2026, statut: "BROUILLON" }),
+      ),
+    );
+    renderRoutes(appRoutes, "RAI", { path: `/programme-annuel/${planId}/nouvelle-ligne` });
+    expect(
+      await screen.findByRole("heading", { level: 1, name: fr.programmationLignes.newTitle }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("page introuvable", () => {
   it("affiche une vue en français avec un lien vers l'accueil", () => {
     renderRoutes(appRoutes, "RAI", { path: "/inexistant" });

@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "apps.referentiel",
     "apps.signatures",
     "apps.missions",
+    "apps.programmation",
 ]
 
 AUTH_USER_MODEL = "users.User"
@@ -154,6 +155,9 @@ SPECTACULAR_SETTINGS = {
         "TypeDocumentSignableEnum": "apps.signatures.models.TypeDocumentSignable.choices",
         "KeycloakSyncStatutEnum": "apps.users.models.KeycloakSyncStatut.choices",
         "OrigineCompteEnum": "apps.users.models.OrigineCompte.choices",
+        "StatutProgrammeEnum": "apps.programmation.models.StatutProgramme.choices",
+        # programmation.TypeIntervention a les mêmes choix que missions.TypeMission
+        # (ASSURANCE / CONSEIL) : drf-spectacular les fusionne sous TypeMissionEnum.
     },
 }
 

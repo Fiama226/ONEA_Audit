@@ -41,6 +41,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit-plan-lines/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : missions prévues du programme annuel */
+        get: operations["v1_audit_plan_lines_list"];
+        put?: never;
+        /** Créer : missions prévues du programme annuel */
+        post: operations["v1_audit_plan_lines_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-plan-lines/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : missions prévues du programme annuel */
+        get: operations["v1_audit_plan_lines_retrieve"];
+        put?: never;
+        post?: never;
+        /** Supprimer (logiquement) : missions prévues du programme annuel */
+        delete: operations["v1_audit_plan_lines_destroy"];
+        options?: never;
+        head?: never;
+        /** Modifier : missions prévues du programme annuel */
+        patch: operations["v1_audit_plan_lines_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/audit-plans/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : programmes annuels d'audit */
+        get: operations["v1_audit_plans_list"];
+        put?: never;
+        /** Créer : programmes annuels d'audit */
+        post: operations["v1_audit_plans_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-plans/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Détail : programmes annuels d'audit */
+        get: operations["v1_audit_plans_retrieve"];
+        put?: never;
+        post?: never;
+        /** Supprimer (logiquement) : programmes annuels d'audit */
+        delete: operations["v1_audit_plans_destroy"];
+        options?: never;
+        head?: never;
+        /** Modifier : programmes annuels d'audit */
+        patch: operations["v1_audit_plans_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/audit-plans/{id}/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exporter un programme annuel (CSV ou XLSX)
+         * @description Télécharge le programme : missions prévues (CSV ou XLSX) ; le XLSX ajoute une feuille de synthèse.
+         */
+        get: operations["v1_audit_plans_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-plans/{id}/summary/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Synthèse d'un programme annuel */
+        get: operations["v1_audit_plans_summary_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-plans/{id}/validate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Valider (figer) un programme annuel */
+        post: operations["v1_audit_plans_validate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auditable-objects/": {
         parameters: {
             query?: never;
@@ -1728,6 +1856,14 @@ export interface components {
             voir_travaux: boolean;
             confirmer_ma_declaration: boolean;
         };
+        EntiteResume: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly code: string;
+            /** Libellé */
+            readonly libelle: string;
+            readonly supprime: boolean;
+        };
         EntreeAnnuaire: {
             /** Format: uuid */
             keycloak_id: string;
@@ -1933,6 +2069,77 @@ export interface components {
             ligne: number | null;
             identifiant: string;
             motif: string;
+        };
+        LigneProgramme: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description Écriture à la création seulement.
+             */
+            programme: string;
+            readonly programme_annee: number;
+            readonly programme_statut: components["schemas"]["StatutProgrammeEnum"];
+            /** Numéro */
+            readonly numero: number;
+            titre: string;
+            type: components["schemas"]["TypeMissionEnum"];
+            /** Format: uuid */
+            processus: string;
+            readonly processus_code: string;
+            readonly processus_libelle: string;
+            readonly processus_supprime: boolean;
+            /** Format: uuid */
+            objet_auditable?: string | null;
+            readonly objet_auditable_libelle: string | null;
+            readonly objet_auditable_supprime: boolean;
+            readonly entites_detail: components["schemas"]["EntiteResume"][];
+            /**
+             * Début prévu
+             * Format: date
+             */
+            debut_prevu: string;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            fin_prevue: string;
+            readonly trimestre: number;
+            /** Format: decimal */
+            charge_prevue_jours?: string | null;
+            justification?: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        LigneProgrammeRequest: {
+            /**
+             * Format: uuid
+             * @description Écriture à la création seulement.
+             */
+            programme: string;
+            titre: string;
+            type: components["schemas"]["TypeMissionEnum"];
+            /** Format: uuid */
+            processus: string;
+            /** Format: uuid */
+            objet_auditable?: string | null;
+            /** @description Identifiants des entités concernées (écriture). */
+            entites?: string[];
+            /**
+             * Début prévu
+             * Format: date
+             */
+            debut_prevu: string;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            fin_prevue: string;
+            /** Format: decimal */
+            charge_prevue_jours?: string | null;
+            justification?: string;
         };
         LigneSuivi: {
             numero: number;
@@ -2281,6 +2488,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Entretien"][];
         };
+        PaginatedLigneProgrammeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["LigneProgramme"][];
+        };
         PaginatedMissionListeList: {
             /** @example 123 */
             count: number;
@@ -2325,6 +2547,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["Processus"][];
+        };
+        PaginatedProgrammeAnnuelList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["ProgrammeAnnuel"][];
         };
         PaginatedReunionList: {
             /** @example 123 */
@@ -2390,6 +2627,16 @@ export interface components {
             FAIBLE: number;
             MOYEN: number;
             ELEVE: number;
+        };
+        ParTrimestre: {
+            1: number;
+            2: number;
+            3: number;
+            4: number;
+        };
+        ParType: {
+            ASSURANCE: number;
+            CONSEIL: number;
         };
         PatchedCartographieVersionRequest: {
             /** Année */
@@ -2459,6 +2706,34 @@ export interface components {
              */
             charge_reelle_jours?: string | null;
         };
+        PatchedLigneProgrammeRequest: {
+            /**
+             * Format: uuid
+             * @description Écriture à la création seulement.
+             */
+            programme?: string;
+            titre?: string;
+            type?: components["schemas"]["TypeMissionEnum"];
+            /** Format: uuid */
+            processus?: string;
+            /** Format: uuid */
+            objet_auditable?: string | null;
+            /** @description Identifiants des entités concernées (écriture). */
+            entites?: string[];
+            /**
+             * Début prévu
+             * Format: date
+             */
+            debut_prevu?: string;
+            /**
+             * Fin prévue
+             * Format: date
+             */
+            fin_prevue?: string;
+            /** Format: decimal */
+            charge_prevue_jours?: string | null;
+            justification?: string;
+        };
         PatchedMissionRequest: {
             titre?: string;
             type?: components["schemas"]["TypeMissionEnum"];
@@ -2525,6 +2800,12 @@ export interface components {
             matricule?: string;
             direction_code?: string;
             fonction?: string;
+        };
+        PatchedProgrammeAnnuelRequest: {
+            /** @description Écriture à la création seulement : l'année est ensuite immuable. */
+            annee?: number;
+            libelle?: string;
+            commentaire?: string;
         };
         PatchedReunionRequest: {
             /** Format: uuid */
@@ -2616,6 +2897,34 @@ export interface components {
             ordre?: number;
             /** @description Identifiants des directions (type DIRECTION uniquement) rattachées (écriture). */
             directions?: string[];
+        };
+        ProgrammeAnnuel: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Écriture à la création seulement : l'année est ensuite immuable. */
+            annee: number;
+            libelle?: string;
+            commentaire?: string;
+            readonly statut: components["schemas"]["StatutProgrammeEnum"];
+            /**
+             * Validé le
+             * Format: date-time
+             */
+            readonly valide_le: string | null;
+            readonly valide_par: components["schemas"]["Valideur"] | null;
+            readonly nb_lignes: number;
+            /** Format: decimal */
+            readonly charge_totale_jours: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        ProgrammeAnnuelRequest: {
+            /** @description Écriture à la création seulement : l'année est ensuite immuable. */
+            annee: number;
+            libelle?: string;
+            commentaire?: string;
         };
         RapportImport: {
             dry_run: boolean;
@@ -2871,6 +3180,12 @@ export interface components {
          * @enum {string}
          */
         StatutMissionEnum: "BROUILLON" | "PLANIFIEE" | "EN_PLANIFICATION" | "EN_ACCOMPLISSEMENT" | "EN_COMMUNICATION" | "RAPPORT_DIFFUSE" | "EN_SUIVI" | "CLOTUREE" | "SUSPENDUE" | "ANNULEE";
+        /**
+         * @description * `BROUILLON` - Brouillon
+         *     * `VALIDE` - Validé
+         * @enum {string}
+         */
+        StatutProgrammeEnum: "BROUILLON" | "VALIDE";
         /** @description État de la propagation du compte vers Keycloak. */
         SyncKeycloak: {
             readonly statut: components["schemas"]["KeycloakSyncStatutEnum"];
@@ -2880,6 +3195,13 @@ export interface components {
             readonly tentatives: number;
             /** @description Échec permanent : seule une relance manuelle peut le résoudre. */
             readonly manuel: boolean;
+        };
+        SyntheseProgramme: {
+            nb_lignes: number;
+            /** Format: decimal */
+            charge_totale_jours: string;
+            par_type: components["schemas"]["ParType"];
+            par_trimestre: components["schemas"]["ParTrimestre"];
         };
         /**
          * @description * `ORDRE_MISSION` - Ordre de mission
@@ -3063,6 +3385,743 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plan_lines_list: {
+        parameters: {
+            query?: {
+                entite?: string;
+                objet_auditable?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                processus?: string;
+                programme?: string;
+                /** @description Recherche insensible à la casse sur le titre. */
+                q?: string;
+                /**
+                 * @description Trimestre du début prévu (1 à 4).
+                 *
+                 *     * `1` - 1
+                 *     * `2` - 2
+                 *     * `3` - 3
+                 *     * `4` - 4
+                 */
+                trimestre?: "1" | "2" | "3" | "4";
+                /**
+                 * @description * `ASSURANCE` - Assurance
+                 *     * `CONSEIL` - Conseil
+                 */
+                type?: "ASSURANCE" | "CONSEIL";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedLigneProgrammeList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plan_lines_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LigneProgrammeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LigneProgrammeRequest"];
+                "multipart/form-data": components["schemas"]["LigneProgrammeRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LigneProgramme"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plan_lines_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) ligne de programme. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LigneProgramme"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plan_lines_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) ligne de programme. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plan_lines_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) ligne de programme. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedLigneProgrammeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedLigneProgrammeRequest"];
+                "multipart/form-data": components["schemas"]["PatchedLigneProgrammeRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LigneProgramme"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_list: {
+        parameters: {
+            query?: {
+                annee?: number;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `BROUILLON` - Brouillon
+                 *     * `VALIDE` - Validé
+                 */
+                statut?: "BROUILLON" | "VALIDE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedProgrammeAnnuelList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgrammeAnnuelRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ProgrammeAnnuelRequest"];
+                "multipart/form-data": components["schemas"]["ProgrammeAnnuelRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgrammeAnnuel"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) programme annuel d'audit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgrammeAnnuel"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) programme annuel d'audit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) programme annuel d'audit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedProgrammeAnnuelRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedProgrammeAnnuelRequest"];
+                "multipart/form-data": components["schemas"]["PatchedProgrammeAnnuelRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgrammeAnnuel"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_export_retrieve: {
+        parameters: {
+            query: {
+                format?: "" | "json";
+                /** @description Format du fichier : csv (UTF-8, séparateur « ; ») ou xlsx. */
+                type: "csv" | "xlsx";
+            };
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) programme annuel d'audit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv; charset=utf-8": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_summary_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) programme annuel d'audit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyntheseProgramme"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_audit_plans_validate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) programme annuel d'audit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgrammeAnnuel"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

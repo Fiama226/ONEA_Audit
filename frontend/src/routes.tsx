@@ -5,6 +5,7 @@ import { RequireRole } from "@/auth/RequireRole";
 import { EmptyState } from "@/components/EmptyState";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { missionRoutes } from "@/features/missions/routes";
+import { programmationRoutes } from "@/features/programmation/routes";
 import { ReferentielLayout } from "@/features/referentiel/components/ReferentielLayout";
 import { referentielRoutes } from "@/features/referentiel/routes";
 import { administrationRoutes } from "@/features/utilisateurs/routes";
@@ -57,6 +58,11 @@ export const appRoutes: RouteObject[] = [
         children: [
           { path: "/", element: <DashboardPage /> },
           { path: "/missions", children: missionRoutes, element: guardedOutlet("/missions") },
+          {
+            path: "/programme-annuel",
+            element: guarded("/programme-annuel", <Outlet />),
+            children: programmationRoutes,
+          },
           {
             path: "/referentiel",
             element: guarded("/referentiel", <ReferentielLayout />),
