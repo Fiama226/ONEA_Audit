@@ -39,9 +39,9 @@ export function StepIZone({ mission }: { mission: Mission; step: Etape }) {
     <section aria-labelledby="step-one-recap" className="grid gap-6">
       <div className="grid gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="step-one-recap" className="text-lg font-semibold">
+          <h3 id="step-one-recap" className="text-lg font-semibold">
             {m.stepIRecap}
-          </h2>
+          </h3>
           {mission.mes_droits.modifier && (
             <Button asChild variant="outline" size="sm" className="print:hidden">
               <Link to={`/missions/${mission.id}/modifier`}>{m.stepIEdit}</Link>

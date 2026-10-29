@@ -214,8 +214,10 @@ function MissionForm({ mission, frozen }: { mission?: Mission; frozen: boolean }
                 isError={processes.isError}
                 value={field.value}
                 onChange={field.onChange}
-                disabled={lock("processus")}
+                readOnly={lock("processus")}
                 help={helpFor("processus")}
+                error={errors.processus?.message}
+                groupRef={field.ref}
               />
             )}
           />
@@ -234,8 +236,10 @@ function MissionForm({ mission, frozen }: { mission?: Mission; frozen: boolean }
                 isError={entities.isError}
                 value={field.value}
                 onChange={field.onChange}
-                disabled={lock("entites")}
+                readOnly={lock("entites")}
                 help={helpFor("entites")}
+                error={errors.entites?.message}
+                groupRef={field.ref}
               />
             )}
           />

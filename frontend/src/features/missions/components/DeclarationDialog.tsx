@@ -37,7 +37,8 @@ export function DeclarationDialog({ missionId, onClose }: Props) {
   const descId = useId();
   const declarations = useDeclarations({ mission: missionId, mine: true });
   const confirm = useConfirmDeclaration();
-  const [conflict, setConflict] = useState(false);
+  const [choice, setChoice] = useState<"confirm" | "conflict" | null>(null);
+  const conflict = choice === "conflict";
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Declaration | null>(null);
@@ -45,7 +46,7 @@ export function DeclarationDialog({ missionId, onClose }: Props) {
   const declaration = declarations.data?.results.find((d) => d.statut === "EN_ATTENTE");
 
   async function submit() {
-    if (!declaration) return;
+    if (!declaration || choice === null) return;
     if (conflict && description.trim() === "") {
       setError(m.declarationDescriptionRequired);
       return;
@@ -110,8 +111,8 @@ export function DeclarationDialog({ missionId, onClose }: Props) {
                     type="radio"
                     name={choiceId}
                     className="mt-0.5 size-4 accent-primary"
-                    checked={!conflict}
-                    onChange={() => setConflict(false)}
+                    checked={choice === "confirm"}
+                    onChange={() => setChoice("confirm")}
                   />
                   {m.declarationConfirm}
                 </label>
@@ -121,7 +122,7 @@ export function DeclarationDialog({ missionId, onClose }: Props) {
                     name={choiceId}
                     className="mt-0.5 size-4 accent-primary"
                     checked={conflict}
-                    onChange={() => setConflict(true)}
+                    onChange={() => setChoice("conflict")}
                   />
                   {m.declarationConflict}
                 </label>
@@ -156,7 +157,11 @@ export function DeclarationDialog({ missionId, onClose }: Props) {
             <>
               <AlertDialogCancel disabled={confirm.isPending}>{fr.common.cancel}</AlertDialogCancel>
               {declaration && (
-                <Button type="button" disabled={confirm.isPending} onClick={() => void submit()}>
+                <Button
+                  type="button"
+                  disabled={confirm.isPending || choice === null}
+                  onClick={() => void submit()}
+                >
                   {m.declarationSubmit}
                 </Button>
               )}

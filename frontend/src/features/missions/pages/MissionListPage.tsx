@@ -96,10 +96,13 @@ export function MissionListPage() {
   const { is } = useRole();
   const isRai = is("RAI");
   const [params, setParams] = useSearchParams();
-  const q = params.get("q") ?? "";
-  const statut = params.get("statut") ?? "";
-  const type = params.get("type") ?? "";
-  const annee = params.get("annee") ?? "";
+  const q = (params.get("q") ?? "").slice(0, 100);
+  const rawStatut = params.get("statut") ?? "";
+  const statut = (STATUSES as string[]).includes(rawStatut) ? rawStatut : "";
+  const rawType = params.get("type") ?? "";
+  const type = (TYPES as string[]).includes(rawType) ? rawType : "";
+  const rawAnnee = params.get("annee") ?? "";
+  const annee = /^[0-9]{4}$/.test(rawAnnee) ? rawAnnee : "";
   const ordering = params.get("ordering") ?? "";
   const page = Math.max(1, Number(params.get("page")) || 1);
 
@@ -108,7 +111,8 @@ export function MissionListPage() {
   const [seenQ, setSeenQ] = useState(q);
   if (q !== seenQ) {
     setSeenQ(q);
-    setSearch(q);
+    // Ne pas écraser la saisie en cours (espace final) quand l'URL vient de l'anti-rebond.
+    if (q !== search.trim()) setSearch(q);
   }
 
   function update(changes: Record<string, string>) {
@@ -123,7 +127,7 @@ export function MissionListPage() {
 
   // Recherche anti-rebond : l'URL (donc la requête) n'est mise à jour que 300 ms après la frappe.
   useEffect(() => {
-    const trimmed = search.trim();
+    const trimmed = search.trim().slice(0, 100);
     if (trimmed === q) return;
     const timer = setTimeout(() => {
       const next = new URLSearchParams(params);
@@ -187,6 +191,7 @@ export function MissionListPage() {
             id="mission-q"
             type="search"
             value={search}
+            maxLength={100}
             placeholder={m.searchPlaceholder}
             onChange={(e) => setSearch(e.target.value)}
             className="w-64"

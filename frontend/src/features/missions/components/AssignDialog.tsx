@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { isApiError } from "@/api/errors";
 import { ALERT_CLASS } from "@/components/form/FormField";
 import { NativeSelect } from "@/components/form/NativeSelect";
@@ -39,6 +39,8 @@ export function AssignDialog({ mission, mode, onClose }: Props) {
   const [picked, setPicked] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Personnes déjà affectées lors d'une tentative partielle : jamais renvoyées au nouvel essai.
+  const done = useRef<Set<string>>(new Set());
 
   const assigned = mission.equipe.map((a) => String(a.utilisateur));
   const defaultIds = (defaults.data ?? [])
@@ -60,16 +62,20 @@ export function AssignDialog({ mission, mode, onClose }: Props) {
         await replace.mutateAsync({ id: mission.id, utilisateur: Number(selected[0]) });
       } else {
         for (const id of selected) {
+          if (done.current.has(id)) continue;
           await assign.mutateAsync({
             mission: mission.id,
             utilisateur: Number(id),
             role_mission: role,
           });
+          done.current.add(id);
         }
       }
       onClose();
     } catch (e) {
-      setError(isApiError(e) ? e.detail : fr.errors.generic);
+      setError(
+        isApiError(e) ? [e.detail, ...Object.values(e.errors).flat()].join(" ") : fr.errors.generic,
+      );
       setPending(false);
     }
   }
@@ -112,7 +118,8 @@ export function AssignDialog({ mission, mode, onClose }: Props) {
           role={pickerRole}
           label={pickerRole === "AUDITE" ? m.assignPickerAudite : m.assignPickerAuditeur}
           value={selected}
-          onChange={(next) => setPicked(single ? next.slice(-1) : next)}
+          single={single}
+          onChange={setPicked}
           exclude={assigned}
         />
         {error && (

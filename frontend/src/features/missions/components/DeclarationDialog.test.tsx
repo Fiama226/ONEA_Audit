@@ -56,7 +56,12 @@ describe("DeclarationDialog", () => {
     await open();
     const results = await axe(document.body, { rules: { "color-contrast": { enabled: false } } });
     expect(results.violations).toEqual([]);
-    await userEvent.click(screen.getByRole("button", { name: m.declarationSubmit }));
+    const submit = screen.getByRole("button", { name: m.declarationSubmit });
+    expect(screen.getByRole("radio", { name: m.declarationConfirm })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: m.declarationConflict })).not.toBeChecked();
+    expect(submit).toBeDisabled();
+    await userEvent.click(screen.getByRole("radio", { name: m.declarationConfirm }));
+    await userEvent.click(submit);
     expect(
       await screen.findByText("Déclaration confirmée le 05/03/2026 à 09:30. Empreinte : 3f2a…9c1b"),
     ).toBeInTheDocument();

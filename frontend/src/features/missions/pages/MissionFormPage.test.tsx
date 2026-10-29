@@ -182,12 +182,39 @@ describe("MissionFormPage", () => {
     expect(screen.getByLabelText(fr.missions.fieldStart)).toBeEnabled();
     expect(screen.getAllByText(m.frozenHelp).length).toBeGreaterThan(0);
     expect(title.className).not.toMatch(/(^|\s)opacity-50/);
+    // cases figées : cochées, lisibles (ni désactivées ni à 50 %), modification sans effet
+    const box = await screen.findByRole("checkbox", { name: "ACH - Passation des marchés" });
+    expect(box).toBeChecked();
+    expect(box).toBeEnabled();
+    expect(box).toHaveAttribute("aria-readonly", "true");
+    await userEvent.click(box);
+    expect(box).toBeChecked();
 
     await submit();
     await waitFor(() => expect(Object.keys(patch).length).toBeGreaterThan(0));
     expect(patch).not.toHaveProperty("titre");
     expect(patch).not.toHaveProperty("processus");
     expect(patch).toHaveProperty("date_debut_prevue");
+  });
+
+  it("shows server errors on the processus group and focuses it", async () => {
+    renderMission("/missions/nouvelle", "RAI", {
+      handlers: [
+        ...referentiel,
+        http.post(`${API_URL}/api/v1/missions/`, () =>
+          HttpResponse.json(
+            { detail: "Données invalides.", errors: { processus: ["Processus inconnu."] } },
+            { status: 400 },
+          ),
+        ),
+      ],
+    });
+    await fillRequired();
+    await submit();
+    const error = await screen.findByText("Processus inconnu.");
+    const group = screen.getByRole("group", { name: m.fieldProcesses });
+    expect(group).toHaveAttribute("aria-describedby", error.id);
+    await waitFor(() => expect(group).toHaveFocus());
   });
 
   it("keeps the fields editable while step I is open", async () => {

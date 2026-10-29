@@ -103,6 +103,13 @@ describe("TeamPage", () => {
     expect(screen.queryByRole("button", { name: m.replaceChief })).not.toBeInTheDocument();
   });
 
+  it("hides the declaration column when the server hides the work (audité)", async () => {
+    setup({ voir_travaux: false }, "AUDITE");
+    const table = await screen.findByRole("table");
+    expect(within(table).queryByText(m.colDeclaration)).not.toBeInTheDocument();
+    expect(within(table).queryByText(m.declNone)).not.toBeInTheDocument();
+  });
+
   it("offers every one of 201 users on two MSW pages in the picker", async () => {
     serveUsers(201);
     setup({ affecter: true });

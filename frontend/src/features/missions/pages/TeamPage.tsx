@@ -135,8 +135,10 @@ export function TeamPage() {
     },
   ];
   // Colonne d'actions inutile quand aucune action n'est possible (audité, auditeur non concerné).
-  const visibleColumns = columns.filter(
-    (c) => c.id !== "actions" || canAssign || data.mes_droits.confirmer_ma_declaration,
+  const visibleColumns = columns.filter((c) =>
+    c.id === "declaration"
+      ? data.mes_droits.voir_travaux
+      : c.id !== "actions" || canAssign || data.mes_droits.confirmer_ma_declaration,
   );
 
   return (

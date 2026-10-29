@@ -15,10 +15,12 @@ type Props = {
   onChange: (value: string[]) => void;
   exclude?: string[];
   label: string;
+  /** Choix unique : boutons radio au lieu de cases à cocher. */
+  single?: boolean;
 };
 
 /** Sélecteur d'utilisateurs d'un rôle : charge toute la liste, filtre localement. */
-export function UserPicker({ role, value, onChange, exclude = [], label }: Props) {
+export function UserPicker({ role, value, onChange, exclude = [], label, single = false }: Props) {
   const searchId = useId();
   const [query, setQuery] = useState("");
   const users = useAllUsers({ role });
@@ -33,6 +35,7 @@ export function UserPicker({ role, value, onChange, exclude = [], label }: Props
   );
 
   function toggle(id: string, checked: boolean) {
+    if (single) return onChange(checked ? [id] : []);
     onChange(checked ? [...value, id] : value.filter((v) => v !== id));
   }
 
@@ -71,11 +74,22 @@ export function UserPicker({ role, value, onChange, exclude = [], label }: Props
             const inputId = `${searchId}-${id}`;
             return (
               <li key={id} className="flex items-center gap-2 px-3 py-2 text-sm">
-                <Checkbox
-                  id={inputId}
-                  checked={value.includes(id)}
-                  onCheckedChange={(checked) => toggle(id, checked === true)}
-                />
+                {single ? (
+                  <input
+                    type="radio"
+                    id={inputId}
+                    name={`${searchId}-single`}
+                    className="size-4 accent-primary"
+                    checked={value.includes(id)}
+                    onChange={() => toggle(id, true)}
+                  />
+                ) : (
+                  <Checkbox
+                    id={inputId}
+                    checked={value.includes(id)}
+                    onCheckedChange={(checked) => toggle(id, checked === true)}
+                  />
+                )}
                 <Label htmlFor={inputId} className="font-normal">
                   {u.nom_complet}
                   {u.fonction && <span className="text-text-muted"> · {u.fonction}</span>}

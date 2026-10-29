@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, type Ref } from "react";
 import { ALERT_CLASS } from "@/components/form/FormField";
 import { ListIncompleteAlert } from "@/components/ListIncompleteAlert";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,8 +13,11 @@ type Props = {
   isError: boolean;
   value: string[];
   onChange: (value: string[]) => void;
-  disabled?: boolean;
+  /** Lecture seule lisible (champ figé) : cases cochées à plein contraste, sans modification possible. */
+  readOnly?: boolean;
   help?: string;
+  error?: string;
+  groupRef?: Ref<HTMLFieldSetElement>;
 };
 
 /** Liste de cases à cocher dont toutes les pages sont chargées (alerte si la liste est tronquée). */
@@ -26,13 +29,26 @@ export function CheckGroup({
   isError,
   value,
   onChange,
-  disabled,
+  readOnly,
   help,
+  error,
+  groupRef,
 }: Props) {
   const prefix = useId();
   return (
-    <fieldset className="grid gap-2" disabled={disabled}>
+    <fieldset
+      ref={groupRef}
+      tabIndex={-1}
+      className="grid gap-2"
+      aria-describedby={error ? `${prefix}-error` : undefined}
+      aria-invalid={error ? true : undefined}
+    >
       <legend className="text-sm font-medium">{legend}</legend>
+      {error && (
+        <p id={`${prefix}-error`} className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
       {help && <p className="text-xs text-text-muted">{help}</p>}
       {isError && (
         <p role="alert" className={ALERT_CLASS}>
@@ -52,9 +68,10 @@ export function CheckGroup({
             <li key={item.id} className="flex items-center gap-2 text-sm">
               <Checkbox
                 id={inputId}
-                disabled={disabled}
+                aria-readonly={readOnly || undefined}
                 checked={value.includes(item.id)}
                 onCheckedChange={(checked) =>
+                  !readOnly &&
                   onChange(
                     checked === true ? [...value, item.id] : value.filter((v) => v !== item.id),
                   )
