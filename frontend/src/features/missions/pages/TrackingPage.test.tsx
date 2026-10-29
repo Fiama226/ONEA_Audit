@@ -101,6 +101,15 @@ describe("TrackingPage", () => {
     expect(within(row("VI")).getAllByText("—").length).toBeGreaterThan(0);
   });
 
+  it("groups the steps by phase with a labelled group row", async () => {
+    setup();
+    const table = await screen.findByRole("table", { name: "Suivi des étapes par phase" });
+    expect(within(table).getAllByRole("rowgroup").length).toBeGreaterThanOrEqual(3);
+    expect(within(table).getByText(/Planification\s+Étapes I–X/)).toBeInTheDocument();
+    expect(within(table).getByText(/Accomplissement/)).toBeInTheDocument();
+    expect(within(table).getByText(/Communication/)).toBeInTheDocument();
+  });
+
   it("formats dates and charges", async () => {
     setup();
     const table = await screen.findByRole("table", { name: "Suivi des étapes par phase" });

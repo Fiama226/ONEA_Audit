@@ -10,7 +10,6 @@ import { StepStatusBadge } from "../components/StepStatusBadge";
 import { PHASE_LABELS } from "../labels";
 import type { Etape } from "../types";
 import { ZONES } from "../zones";
-import { ZONE_COMPLEMENTS } from "../zones/complements";
 import { GenericZone } from "../zones/GenericZone";
 
 const m = fr.missionEtapes;
@@ -83,7 +82,6 @@ export function StepPage() {
   }
   const step = steps.data.find((s) => s.numero === selected);
   const zone = ZONES[selected] ?? GenericZone;
-  const complements = ZONE_COMPLEMENTS[selected] ?? [];
 
   return (
     <div className="grid gap-6 xl:grid-cols-[18rem_minmax(0,1fr)]">
@@ -93,14 +91,11 @@ export function StepPage() {
       {step ? (
         <div className="grid min-w-0 content-start gap-6">
           <StepHeader step={step} />
-          <StepActions step={step} />
+          <StepActions key={step.id} step={step} />
           {step.actions_possibles.includes("PLANIFIER") && (
             <StepPlanningForm key={step.id} step={step} />
           )}
           {createElement(zone, { mission: mission.data, step })}
-          {complements.map((Complement, i) => (
-            <Complement key={i} mission={mission.data} step={step} />
-          ))}
           <StepJournal step={step} />
         </div>
       ) : (

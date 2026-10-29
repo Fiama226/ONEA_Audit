@@ -135,6 +135,38 @@ describe("StepPage", () => {
     expect(alert).toHaveTextContent("Aucun entretien n'est planifié.");
   });
 
+  it("does not carry a refused-completion alert over to the next step", async () => {
+    const user = userEvent.setup();
+    render(
+      2,
+      "AUDITEUR",
+      allSteps((n) =>
+        n === 2 || n === 3 ? { statut: "EN_COURS", actions_possibles: ["TERMINER"] } : {},
+      ),
+      {
+        handlers: [
+          http.post(`${API_URL}/api/v1/mission-steps/${stepId(2)}/complete/`, () =>
+            HttpResponse.json(
+              {
+                detail: "Étape incomplète.",
+                errors: { livrables: ["Aucun entretien n'est planifié."] },
+              },
+              { status: 422 },
+            ),
+          ),
+        ],
+      },
+    );
+    await user.click(await screen.findByRole("button", { name: "Terminer l'étape" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Aucun entretien");
+    const next = screen
+      .getAllByRole("link")
+      .find((a) => a.getAttribute("href") === `/missions/${MISSION_ID}/etapes/3`);
+    await user.click(next as HTMLElement);
+    await screen.findByRole("heading", { level: 2, name: /Étape III —/ });
+    expect(screen.queryByText(/Aucun entretien/)).not.toBeInTheDocument();
+  });
+
   it("requires a reason to reopen a step and sends it", async () => {
     const bodies: unknown[] = [];
     const user = userEvent.setup();

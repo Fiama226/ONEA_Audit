@@ -178,7 +178,6 @@ export const fr = {
     missing: "Manquant : {item}",
     actionsLabel: "Actions sur l'étape",
     livrablesError: "L'étape ne peut pas être terminée : des livrables sont manquants.",
-    actionError: "L'action n'a pas pu être effectuée.",
     validateTitle: "Valider le jalon",
     validateText:
       "Vous validez le jalon de l'étape {romain}. Cette validation est enregistrée et horodatée.",

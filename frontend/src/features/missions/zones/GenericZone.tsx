@@ -23,6 +23,8 @@ export const LOT_LIVRABLES: Record<number, number> = {
 export function GenericZone({ step }: { mission: Mission; step: Etape }) {
   const lot = LOT_LIVRABLES[step.numero];
   const id = `zone-${step.id}`;
+  // Étape sans zone ni lot annoncé (ex. XI, dont les contrôles existent déjà) : rien à afficher.
+  if (lot === undefined) return null;
   return (
     <section aria-labelledby={id} className="grid gap-2 rounded-md border border-border p-4">
       <h3 id={id} className="text-base font-semibold">

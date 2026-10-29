@@ -81,6 +81,12 @@ export function RiskSelectDialog({ mission, selectedSources, open, onOpenChange 
     try {
       for (const risque_source of chosen) {
         await save.mutateAsync({ data: { mission: mission.id, risque_source } });
+        // Déjà enregistré : une nouvelle tentative après un échec partiel ne le renvoie pas.
+        setChosen((prev) => {
+          const next = new Set(prev);
+          next.delete(risque_source);
+          return next;
+        });
       }
       setChosen(new Set());
       setPending(false);

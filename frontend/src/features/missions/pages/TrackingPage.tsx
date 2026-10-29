@@ -6,7 +6,7 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { useTracking } from "../api";
 import { StepStatusBadge } from "../components/StepStatusBadge";
 import { formatDays, formatGap } from "../format";
-import { TYPE_EVENEMENT_ETAPE_LABELS } from "../labels";
+import { PHASE_LABELS, PHASE_ORDER, PHASE_RANGES, TYPE_EVENEMENT_ETAPE_LABELS } from "../labels";
 
 const m = fr.missionEtapes;
 
@@ -85,25 +85,42 @@ export function TrackingPage() {
               ))}
             </tr>
           </thead>
-          <tbody>
-            {data.lignes.map((l) => (
-              <tr key={l.numero} className="break-inside-avoid border-b border-border/60 align-top">
-                <th scope="row" className="px-2 py-1 font-medium">
-                  {l.romain} · {l.titre}
+          {PHASE_ORDER.map((phase) => (
+            <tbody key={phase}>
+              <tr className="bg-surface-subtle">
+                <th
+                  scope="rowgroup"
+                  colSpan={HEADS.length}
+                  className="px-2 py-1 text-left font-semibold"
+                >
+                  {PHASE_LABELS[phase]}{" "}
+                  {fr.missions.stepRange.replace("{range}", PHASE_RANGES[phase])}
                 </th>
-                <td className="px-2 py-1">
-                  <StepStatusBadge statut={l.statut} />
-                </td>
-                <td className="px-2 py-1 tabular-nums">{date(l.debut_prevu)}</td>
-                <td className="px-2 py-1 tabular-nums">{date(l.fin_prevue)}</td>
-                <td className="px-2 py-1 tabular-nums">{date(l.debut_reel)}</td>
-                <td className="px-2 py-1 tabular-nums">{date(l.fin_reelle)}</td>
-                <td className="px-2 py-1">{formatGap(l.ecart_jours)}</td>
-                <td className="px-2 py-1 tabular-nums">{formatDays(l.charge_prevue)}</td>
-                <td className="px-2 py-1 tabular-nums">{formatDays(l.charge_reelle)}</td>
               </tr>
-            ))}
-          </tbody>
+              {data.lignes
+                .filter((l) => l.phase === phase)
+                .map((l) => (
+                  <tr
+                    key={l.numero}
+                    className="break-inside-avoid border-b border-border/60 align-top"
+                  >
+                    <th scope="row" className="px-2 py-1 font-medium">
+                      {l.romain} · {l.titre}
+                    </th>
+                    <td className="px-2 py-1">
+                      <StepStatusBadge statut={l.statut} />
+                    </td>
+                    <td className="px-2 py-1 tabular-nums">{date(l.debut_prevu)}</td>
+                    <td className="px-2 py-1 tabular-nums">{date(l.fin_prevue)}</td>
+                    <td className="px-2 py-1 tabular-nums">{date(l.debut_reel)}</td>
+                    <td className="px-2 py-1 tabular-nums">{date(l.fin_reelle)}</td>
+                    <td className="px-2 py-1">{formatGap(l.ecart_jours)}</td>
+                    <td className="px-2 py-1 tabular-nums">{formatDays(l.charge_prevue)}</td>
+                    <td className="px-2 py-1 tabular-nums">{formatDays(l.charge_reelle)}</td>
+                  </tr>
+                ))}
+            </tbody>
+          ))}
         </table>
       </div>
 
@@ -115,8 +132,8 @@ export function TrackingPage() {
           <p className="text-sm text-text-muted">{m.trackingJournalEmpty}</p>
         ) : (
           <ol className="grid gap-1 text-sm">
-            {data.evenements.map((e) => (
-              <li key={`${e.le}-${e.etape_romain}-${e.type}`} className="break-inside-avoid">
+            {data.evenements.map((e, i) => (
+              <li key={`${i}-${e.le}-${e.etape_romain}-${e.type}`} className="break-inside-avoid">
                 <span className="tabular-nums text-text-muted">{formatDateTime(e.le)}</span> ·{" "}
                 {e.par.nom_complet} · {fr.missions.stepPrefix} {e.etape_romain} ·{" "}
                 {TYPE_EVENEMENT_ETAPE_LABELS[e.type]}

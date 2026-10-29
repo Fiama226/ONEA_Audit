@@ -35,8 +35,8 @@ export function StepJournal({ step }: { step: Etape }) {
               </tr>
             </thead>
             <tbody>
-              {step.evenements.map((e) => (
-                <tr key={`${e.le}-${e.type}`} className="border-b border-border/60 align-top">
+              {step.evenements.map((e, i) => (
+                <tr key={`${i}-${e.le}-${e.type}`} className="border-b border-border/60 align-top">
                   <td className="py-1 pr-3 tabular-nums">{formatDateTime(e.le)}</td>
                   <td className="py-1 pr-3">{e.par.nom_complet}</td>
                   <td className="py-1 pr-3">{TYPE_EVENEMENT_ETAPE_LABELS[e.type]}</td>
