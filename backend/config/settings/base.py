@@ -287,16 +287,22 @@ CSRF_COOKIE_SAMESITE = "Lax"
 
 def _cache_url() -> str:
     explicit: str = env("CACHE_URL", default="")
+    url = explicit or REDIS_URL
+    parts = urlsplit(url)
+    if parts.scheme not in {"redis", "rediss", "unix"}:
+        raise ImproperlyConfigured(
+            "CACHE_URL / REDIS_URL must be a redis://, rediss:// or unix:// URL"
+        )
     if explicit:
         return explicit
-    parts = urlsplit(REDIS_URL)  # same Redis, database 1 (0 is Celery's)
-    return urlunsplit(parts._replace(path="/1"))
+    return urlunsplit(parts._replace(path="/1"))  # same Redis, database 1 (0 is Celery's)
 
 
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": _cache_url(),
+        "KEY_PREFIX": "onea",
     }
 }
 

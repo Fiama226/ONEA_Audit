@@ -39,7 +39,7 @@ class PasDeCacheApiMiddleware:
 
     def __call__(self, request: HttpRequest) -> HttpResponseBase:
         response = self.get_response(request)
-        if request.path.startswith("/api/") and "Cache-Control" not in response:
+        if request.path_info.startswith("/api/") and "Cache-Control" not in response:
             response["Cache-Control"] = "no-store, private"
         return response
 

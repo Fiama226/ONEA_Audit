@@ -9,7 +9,7 @@ from apps.users.authentication import OIDCBearerAuthentication, SessionAuthentic
 # The only API views that accept the Django session (an ADMIN logged in /admin/ reads the
 # docs); every real endpoint is bearer-only. Access: SERVE_PERMISSIONS (IsAdminUser in prod).
 _SCHEMA_ACCESS = {
-    "authentication_classes": [SessionAuthentication401, OIDCBearerAuthentication],
+    "authentication_classes": [OIDCBearerAuthentication, SessionAuthentication401],
     "permission_classes": [SchemaAccess],
 }
 
