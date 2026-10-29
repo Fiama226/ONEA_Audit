@@ -5,6 +5,7 @@ from django.db import IntegrityError, transaction
 
 from apps.analyse.banque_questions import QUESTIONS
 from apps.analyse.models import (
+    AvisAudite,
     EvaluationConception,
     LigneMARC,
     MotifNonTest,
@@ -18,17 +19,73 @@ from apps.analyse.models import (
 )
 from apps.core.exceptions import RegleMetierError
 from apps.missions.models import Mission, RisqueMission, StatutEtape
+from apps.users.models import User
 from tests.factories import (
     AvisAuditeFactory,
+    DescriptionProcessusFactory,
+    ForceFaiblesseFactory,
     LigneMARCFactory,
+    MissionFactory,
     ObjectifAuditFactory,
     ProcessusFactory,
     QuestionFactory,
     QuestionnaireFactory,
     RapportOrientationFactory,
 )
+from tests.missions.conftest import forcer_etapes
 
 pytestmark = pytest.mark.django_db
+
+
+def test_ffa_liee_retirer_puis_recreer(
+    mission_en_analyse: Mission, risque_eleve: RisqueMission, rai: User
+) -> None:
+    """Cycle D8 : évaluation effacée (FFA retirée) puis ressaisie, sans IntegrityError."""
+    ligne = LigneMARCFactory(mission=mission_en_analyse, risque=risque_eleve)
+    premiere = ForceFaiblesseFactory(mission=mission_en_analyse, ligne_marc=ligne)
+    _viole(lambda: ForceFaiblesseFactory(mission=mission_en_analyse, ligne_marc=ligne))
+    premiere.soft_delete(rai)
+    seconde = ForceFaiblesseFactory(mission=mission_en_analyse, ligne_marc=ligne)
+    assert list(ligne.forces_faiblesses.all()) == [seconde]
+    # Plusieurs lignes manuelles (sans ligne MARC) restent permises.
+    ForceFaiblesseFactory(mission=mission_en_analyse)
+    ForceFaiblesseFactory(mission=mission_en_analyse)
+
+
+def test_categories_objectifs_verifiees_en_base(mission_en_analyse: Mission) -> None:
+    DescriptionProcessusFactory(
+        mission=mission_en_analyse, categories_objectifs=["OPERATIONNELS", "CONFORMITE"]
+    )
+    _viole(
+        lambda: DescriptionProcessusFactory(
+            mission=mission_en_analyse, categories_objectifs=["INCONNU"]
+        )
+    )
+
+
+def test_question_de_la_mission_de_son_questionnaire(mission_en_analyse: Mission) -> None:
+    questionnaire = QuestionnaireFactory(mission=mission_en_analyse)
+    autre = MissionFactory()
+    with pytest.raises(RegleMetierError, match="mission de son questionnaire"):
+        QuestionFactory(questionnaire=questionnaire, mission=autre)
+
+
+def test_avis_update_et_bulk_update_refuses(mission_en_analyse: Mission) -> None:
+    forcer_etapes(mission_en_analyse, {6: "EN_COURS"})
+    avis = AvisAuditeFactory(mission=mission_en_analyse, avis=TypeAvis.REMARQUES, commentaire="a")
+    with pytest.raises(RegleMetierError, match="ne peut pas être modifié"):
+        AvisAudite.objects.filter(pk=avis.pk).update(commentaire="b")
+    avis.commentaire = "c"
+    with pytest.raises(RegleMetierError, match="ne peut pas être modifié"):
+        AvisAudite.objects.bulk_update([avis], ["commentaire"])
+    with pytest.raises(RegleMetierError, match="ne peut pas être modifié"):
+        AvisAudite.all_objects.filter(pk=avis.pk).update(avis="ACCORD")
+    avis.refresh_from_db()
+    assert avis.commentaire == "a"
+    # La création en masse reste permise (ajout seul).
+    AvisAudite.objects.bulk_create(
+        [AvisAudite(mission=avis.mission, auteur=avis.auteur, avis=TypeAvis.ACCORD)]
+    )
 
 
 def _viole(action: Callable[[], object]) -> None:

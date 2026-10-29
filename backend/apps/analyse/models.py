@@ -1,4 +1,5 @@
-from typing import Any
+from collections.abc import Iterable
+from typing import Any, ClassVar
 
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
@@ -7,6 +8,11 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.exceptions import RegleMetierError
+from apps.missions.managers import (
+    MissionEnfantAllManager,
+    MissionEnfantManager,
+    MissionEnfantQuerySet,
+)
 from apps.missions.models import Mission, MissionEnfantModel, RisqueMission, StatutEtape
 from apps.referentiel.models import ObjetAuditable, Processus
 
@@ -115,7 +121,10 @@ _STATUT_REFERENTIEL = {
 
 
 def statut_referentiel(statut_vi: str) -> StatutReferentiel:
-    """Statut du référentiel d'audit, dérivé du statut de l'étape VI (D2)."""
+    """Statut du référentiel d'audit, dérivé du statut de l'étape VI (D2).
+
+    Addition à D2 : VI `NON_APPLICABLE` (non prévu par D2) donne `BROUILLON`.
+    """
     return _STATUT_REFERENTIEL.get(StatutEtape(statut_vi), StatutReferentiel.BROUILLON)
 
 
@@ -197,13 +206,17 @@ class QuestionQuestionnaire(MissionEnfantModel):
     def exiger_travaux_ouverts(self) -> None:
         from . import gardes
 
-        type_ = (
+        ligne = (
             Questionnaire.all_objects.filter(pk=self.questionnaire_id)
-            .values_list("type", flat=True)
+            .values_list("type", "mission_id")
             .first()
         )
-        if type_ is not None:
-            gardes.exiger_gel_questionnaire(self.mission_id, type_)
+        if ligne is None:
+            return
+        type_, mission_id = ligne
+        if mission_id != self.mission_id:
+            raise RegleMetierError("La question doit appartenir à la mission de son questionnaire.")
+        gardes.exiger_gel_questionnaire(self.mission_id, type_)
 
 
 class DescriptionProcessus(MissionEnfantModel):
@@ -235,6 +248,10 @@ class DescriptionProcessus(MissionEnfantModel):
                 fields=["mission", "processus"],
                 condition=Q(deleted_at__isnull=True),
                 name="description_processus_unique_actif",
+            ),
+            models.CheckConstraint(
+                condition=Q(categories_objectifs__contained_by=CategorieObjectif.values),
+                name="description_categories_valides",
             ),
         ]
 
@@ -353,13 +370,16 @@ class LigneMARC(MissionEnfantModel):
 class ForceFaiblesse(MissionEnfantModel):
     mission = _mission_fk("forces_faiblesses")
     type = models.CharField("type", max_length=16, choices=TypeForceFaiblesse.choices)
-    ligne_marc = models.OneToOneField(
+    # FK (et non OneToOne) : l'unicité n'est exigée que parmi les lignes actives, pour que le
+    # cycle D8 (évaluation effacée puis ressaisie) recrée une ligne sans conflit. L'accesseur
+    # inverse `ligne.forces_faiblesses` passe par le gestionnaire par défaut (lignes actives).
+    ligne_marc = models.ForeignKey(
         LigneMARC,
         verbose_name="ligne de la matrice",
         null=True,
         blank=True,
         on_delete=models.PROTECT,
-        related_name="force_faiblesse",
+        related_name="forces_faiblesses",
     )
     processus = models.ForeignKey(
         Processus,
@@ -378,6 +398,13 @@ class ForceFaiblesse(MissionEnfantModel):
         verbose_name = "force ou faiblesse apparente"
         verbose_name_plural = "forces et faiblesses apparentes"
         ordering = ("ordre", "created_at")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["ligne_marc"],
+                condition=Q(deleted_at__isnull=True, ligne_marc__isnull=False),
+                name="force_faiblesse_ligne_unique_actif",
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.libelle
@@ -388,7 +415,44 @@ class ForceFaiblesse(MissionEnfantModel):
         gardes.exiger_fenetre_marc(self.mission_id)
 
 
+MSG_AVIS_AJOUT_SEUL = "Un avis déposé ne peut pas être modifié."
+
+
+class AvisQuerySet(MissionEnfantQuerySet["AvisAudite"]):
+    """Ajout seul : gel de mission / d'étape d'abord, puis refus de toute modification en masse."""
+
+    def update(self, **kwargs: Any) -> int:
+        from apps.missions import gardes
+
+        for ligne in list(self.order_by()):
+            gardes.controler_ecriture(ligne)
+        raise RegleMetierError(MSG_AVIS_AJOUT_SEUL)
+
+    def bulk_update(
+        self, objs: Iterable["AvisAudite"], fields: Iterable[str], batch_size: int | None = None
+    ) -> int:
+        from apps.missions import gardes
+
+        objs = list(objs)
+        for en_base in AvisAudite.all_objects.filter(pk__in=[o.pk for o in objs]):
+            gardes.controler_ecriture(en_base)
+        raise RegleMetierError(MSG_AVIS_AJOUT_SEUL)
+
+
+class AvisManager(MissionEnfantManager["AvisAudite"]):
+    def get_queryset(self) -> AvisQuerySet:
+        return AvisQuerySet(self.model, using=self._db).filter(deleted_at__isnull=True)
+
+
+class AvisAllManager(MissionEnfantAllManager["AvisAudite"]):
+    def get_queryset(self) -> AvisQuerySet:
+        return AvisQuerySet(self.model, using=self._db)
+
+
 class AvisAudite(MissionEnfantModel):
+    objects: ClassVar[AvisManager] = AvisManager()
+    all_objects: ClassVar[AvisAllManager] = AvisAllManager()  # noqa: DJ012
+
     mission = _mission_fk("avis_audites")
     auteur = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -424,7 +488,7 @@ class AvisAudite(MissionEnfantModel):
             from apps.missions import gardes
 
             gardes.controler_sauvegarde(self)  # gel de mission / d'étape prioritaire
-            raise RegleMetierError("Un avis déposé ne peut pas être modifié.")
+            raise RegleMetierError(MSG_AVIS_AJOUT_SEUL)
         super().save(*args, **kwargs)
 
 

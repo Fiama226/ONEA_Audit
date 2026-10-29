@@ -1,19 +1,16 @@
 """Droits sur les travaux d'analyse : seule source, consommée par les vues et le frontend.
 
-Au plus trois requêtes : rôle / déclaration (1), statuts des étapes III, V, VI, VII (1).
+Construits sur `missions.acces` (rôle, déclaration d'indépendance levée, `peut_contribuer`).
+Au plus trois requêtes : rôle (1), déclaration levée d'un intervenant (1), statuts des étapes
+III, V, VI, VII (1). Le gel de mission est lu sur l'instance `mission` fournie par l'appelant
+(la vue vient de la charger), alors que les gardes d'écriture le relisent en base.
 """
 
 from dataclasses import dataclass
 
+from apps.missions.acces import declaration_levee, peut_contribuer, role_dans_mission
 from apps.missions.gardes import STATUTS_FIGES
-from apps.missions.models import (
-    ROLES_INTERVENANTS,
-    AffectationMission,
-    DeclarationIndependance,
-    Mission,
-    RoleMission,
-    StatutEtape,
-)
+from apps.missions.models import ROLES_INTERVENANTS, Mission, RoleMission, StatutEtape
 from apps.users.models import Role, User
 
 from .gardes import ACTIFS, statuts_etapes
@@ -32,32 +29,21 @@ class DroitsAnalyse:
 _AVIS_OUVERT = frozenset({StatutEtape.EN_COURS, StatutEtape.TERMINEE, StatutEtape.RENVOYEE})
 
 
-def _contribution(user: User, mission: Mission) -> tuple[bool, bool, bool]:
-    """(voir_travaux, peut_contribuer, audite_affecte) ; équivalent à `acces.peut_contribuer`."""
+def _profil(user: User, mission: Mission) -> tuple[bool, bool, bool]:
+    """(voir_travaux, peut_contribuer, audite_affecte)."""
     if user.role == Role.RAI:
-        return True, True, False
-    if user.role == Role.AUDITEUR:
-        declaration = (
-            DeclarationIndependance.objects.filter(
-                affectation__mission=mission,
-                affectation__utilisateur=user,
-                affectation__role_mission__in=ROLES_INTERVENANTS,
-                affectation__deleted_at__isnull=True,
-            )
-            .select_related("affectation")
-            .first()
-        )
-        return declaration is not None, declaration is not None and declaration.levee, False
-    if user.role == Role.AUDITE:
-        audite = AffectationMission.objects.filter(
-            mission=mission, utilisateur=user, role_mission=RoleMission.AUDITE
-        ).exists()
-        return False, False, audite
-    return False, False, False
+        return True, peut_contribuer(user, mission), False
+    if user.role not in (Role.AUDITEUR, Role.AUDITE):
+        return False, False, False
+    role = role_dans_mission(user, mission)
+    if user.role == Role.AUDITEUR and role in ROLES_INTERVENANTS:
+        # Même règle que `peut_contribuer`, sans relire le rôle.
+        return True, declaration_levee(user, mission), False
+    return False, False, user.role == Role.AUDITE and role == RoleMission.AUDITE
 
 
 def droits_analyse(user: User, mission: Mission) -> DroitsAnalyse:
-    voir_travaux, contribue, audite = _contribution(user, mission)
+    voir_travaux, contribue, audite = _profil(user, mission)
     if not (voir_travaux or audite):
         return DroitsAnalyse()
     statuts = statuts_etapes(mission.pk, (3, 5, 6, 7))

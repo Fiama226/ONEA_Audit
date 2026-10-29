@@ -6,12 +6,18 @@ import pytest
 from apps.analyse.droits import DroitsAnalyse, droits_analyse
 from apps.missions.models import Mission
 from apps.users.models import Role, User
-from tests.factories import make_user
+from tests.factories import AffectationFactory, make_user
 from tests.missions.conftest import affecter, forcer_etapes
 
 pytestmark = pytest.mark.django_db
 
 TOUS = [f.name for f in dataclasses.fields(DroitsAnalyse)]
+
+
+def test_intervenant_sans_declaration_voit_les_travaux(mission_en_analyse: Mission) -> None:
+    user = make_user(Role.AUDITEUR)
+    AffectationFactory(mission=mission_en_analyse, utilisateur=user, role_mission="AUDITEUR")
+    assert vrais(droits_analyse(user, mission_en_analyse)) == {"voir_travaux", "voir_referentiel"}
 
 
 def vrais(d: DroitsAnalyse) -> set[str]:
