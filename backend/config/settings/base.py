@@ -290,6 +290,10 @@ SPECTACULAR_SETTINGS = {
         "StatutActionEnum": "apps.recommandations.models.StatutAction.choices",
         "StatutRecommandationDeriveEnum": "apps.recommandations.serializers.STATUT_DERIVE_CHOICES",
         "EtatEngagementEnum": "apps.recommandations.serializers.ETAT_ENGAGEMENT_CHOICES",
+        "StatutRapportEnum": "apps.communication.models.StatutRapport.choices",
+        "AppreciationGlobaleEnum": "apps.communication.models.AppreciationGlobale.choices",
+        "CategorieDestinataireEnum": "apps.communication.models.CategorieDestinataire.choices",
+        "TypeEvenementRapportEnum": "apps.communication.models.TypeEvenementRapport.choices",
     },
 }
 

@@ -1,0 +1,387 @@
+{
+  "rapport_soumis": {
+    "rapport": {
+      "actions_possibles": [
+        "str"
+      ],
+      "annexes_texte": "str",
+      "appreciation_globale": "str",
+      "commentaire_appreciation": "str",
+      "conclusion": "str",
+      "confirmation_validation": "null",
+      "contexte": "str",
+      "corrige_de": "null",
+      "cycle": "int",
+      "diffusion": "null",
+      "empreinte_soumise": "str",
+      "evenements": [
+        {
+          "id": "str",
+          "le": "str",
+          "motif": "str",
+          "par": {
+            "direction_code": "str",
+            "fonction": "str",
+            "id": "int",
+            "nom_complet": "str",
+            "role": "str",
+            "username": "str"
+          },
+          "statut_apres": "str",
+          "statut_avant": "str",
+          "type": "str"
+        }
+      ],
+      "id": "str",
+      "methodologie": "str",
+      "mission": "str",
+      "mode_signature": "str",
+      "motif_correction": "str",
+      "motif_renvoi": "str",
+      "note_synthetique": "str",
+      "numero_version": "int",
+      "objectifs_texte": "str",
+      "perimetre_texte": "str",
+      "provisoire_courant": "null",
+      "signature_electronique_requise": "bool",
+      "soumis_le": "str",
+      "soumis_par": "int",
+      "statut": "str",
+      "synthese": "str",
+      "valide_le": "null",
+      "valide_par": "null",
+      "version_finale": "null"
+    },
+    "liste": {
+      "count": "int",
+      "next": "null",
+      "previous": "null",
+      "results": [
+        {
+          "actions_possibles": [
+            "str"
+          ],
+          "annexes_texte": "str",
+          "appreciation_globale": "str",
+          "commentaire_appreciation": "str",
+          "conclusion": "str",
+          "confirmation_validation": "null",
+          "contexte": "str",
+          "corrige_de": "null",
+          "cycle": "int",
+          "diffusion": "null",
+          "empreinte_soumise": "str",
+          "evenements": [
+            {
+              "id": "str",
+              "le": "str",
+              "motif": "str",
+              "par": {
+                "direction_code": "str",
+                "fonction": "str",
+                "id": "int",
+                "nom_complet": "str",
+                "role": "str",
+                "username": "str"
+              },
+              "statut_apres": "str",
+              "statut_avant": "str",
+              "type": "str"
+            }
+          ],
+          "id": "str",
+          "methodologie": "str",
+          "mission": "str",
+          "mode_signature": "str",
+          "motif_correction": "str",
+          "motif_renvoi": "str",
+          "note_synthetique": "str",
+          "numero_version": "int",
+          "objectifs_texte": "str",
+          "perimetre_texte": "str",
+          "provisoire_courant": "null",
+          "signature_electronique_requise": "bool",
+          "soumis_le": "str",
+          "soumis_par": "int",
+          "statut": "str",
+          "synthese": "str",
+          "valide_le": "null",
+          "valide_par": "null",
+          "version_finale": "null"
+        }
+      ]
+    },
+    "texte_validation": {
+      "confirmation_requise": "bool",
+      "mode": "str",
+      "signature_electronique_requise": "bool",
+      "texte": "str"
+    }
+  },
+  "provisoire": {
+    "provisoire": {
+      "constats": [
+        {
+          "a_repondre": "bool",
+          "entite": "str",
+          "id": "str",
+          "niveau": "str",
+          "reference": "str",
+          "titre": "str"
+        }
+      ],
+      "date_limite_reponses": "str",
+      "empreinte": "str",
+      "id": "str",
+      "mission": "str",
+      "numero": "int",
+      "rapport": "str",
+      "transmis_le": "str",
+      "transmis_par": "int",
+      "version_document": "null"
+    },
+    "provisoire_audite": {
+      "constats": [
+        {
+          "a_repondre": "bool",
+          "entite": "str",
+          "id": "str",
+          "niveau": "str",
+          "reference": "str",
+          "titre": "str"
+        }
+      ],
+      "date_limite_reponses": "str",
+      "empreinte": "str",
+      "id": "str",
+      "mission": "str",
+      "numero": "int",
+      "rapport": "str",
+      "transmis_le": "str",
+      "transmis_par": "int",
+      "version_document": "null"
+    },
+    "reponse": {
+      "auteur": {
+        "direction_code": "str",
+        "fonction": "str",
+        "id": "int",
+        "nom_complet": "str",
+        "role": "str",
+        "username": "str"
+      },
+      "commentaire": "str",
+      "confirmation": {
+        "confirme_le": "str",
+        "empreinte": "str",
+        "id": "str",
+        "signataire": {
+          "id": "int",
+          "nom_complet": "str"
+        },
+        "type_document": "str"
+      },
+      "constat": "str",
+      "hors_delai": "bool",
+      "id": "str",
+      "provisoire": "str",
+      "texte": "str"
+    },
+    "reponses": {
+      "count": "int",
+      "next": "null",
+      "previous": "null",
+      "results": [
+        {
+          "auteur": {
+            "direction_code": "str",
+            "fonction": "str",
+            "id": "int",
+            "nom_complet": "str",
+            "role": "str",
+            "username": "str"
+          },
+          "commentaire": "str",
+          "confirmation": {
+            "confirme_le": "str",
+            "empreinte": "str",
+            "id": "str",
+            "signataire": {
+              "id": "int",
+              "nom_complet": "str"
+            },
+            "type_document": "str"
+          },
+          "constat": "str",
+          "hors_delai": "bool",
+          "id": "str",
+          "provisoire": "str",
+          "texte": "str"
+        }
+      ]
+    },
+    "texte_reponse": {
+      "date_limite_reponses": "str",
+      "hors_delai": "bool",
+      "texte": "str"
+    }
+  },
+  "rapport_diffuse_dg": {
+    "rapport": {
+      "actions_possibles": [
+        "str"
+      ],
+      "appreciation_globale": "str",
+      "diffuse_le": "str",
+      "id": "str",
+      "mention_correction": "str",
+      "mission_reference": "str",
+      "mission_titre": "str",
+      "mon_accuse_reception": "null",
+      "numero_document": "str",
+      "numero_version": "int",
+      "synthese": "str",
+      "valide_le": "str"
+    },
+    "liste": {
+      "count": "int",
+      "next": "null",
+      "previous": "null",
+      "results": [
+        {
+          "actions_possibles": [
+            "str"
+          ],
+          "appreciation_globale": "str",
+          "diffuse_le": "str",
+          "id": "str",
+          "mention_correction": "str",
+          "mission_reference": "str",
+          "mission_titre": "str",
+          "mon_accuse_reception": "null",
+          "numero_document": "str",
+          "numero_version": "int",
+          "synthese": "str",
+          "valide_le": "str"
+        }
+      ]
+    },
+    "rapport_interne_diffuse": {
+      "actions_possibles": [
+        "str"
+      ],
+      "annexes_texte": "str",
+      "appreciation_globale": "str",
+      "commentaire_appreciation": "str",
+      "conclusion": "str",
+      "confirmation_validation": {
+        "confirme_le": "str",
+        "empreinte": "str",
+        "id": "str",
+        "signataire": {
+          "id": "int",
+          "nom_complet": "str"
+        },
+        "type_document": "str"
+      },
+      "contexte": "str",
+      "corrige_de": "null",
+      "cycle": "int",
+      "diffusion": {
+        "diffusee_le": "str",
+        "diffusee_par": {
+          "direction_code": "str",
+          "fonction": "str",
+          "id": "int",
+          "nom_complet": "str",
+          "role": "str",
+          "username": "str"
+        },
+        "id": "str",
+        "message": "str",
+        "version_note": {
+          "id": "str",
+          "numero": "int",
+          "statut": "str",
+          "statut_pdf": "str"
+        },
+        "version_rapport": {
+          "id": "str",
+          "numero": "int",
+          "statut": "str",
+          "statut_pdf": "str"
+        }
+      },
+      "empreinte_soumise": "str",
+      "evenements": [
+        {
+          "id": "str",
+          "le": "str",
+          "motif": "str",
+          "par": {
+            "direction_code": "str",
+            "fonction": "str",
+            "id": "int",
+            "nom_complet": "str",
+            "role": "str",
+            "username": "str"
+          },
+          "statut_apres": "str",
+          "statut_avant": "str",
+          "type": "str"
+        }
+      ],
+      "id": "str",
+      "methodologie": "str",
+      "mission": "str",
+      "mode_signature": "str",
+      "motif_correction": "str",
+      "motif_renvoi": "str",
+      "note_synthetique": "str",
+      "numero_version": "int",
+      "objectifs_texte": "str",
+      "perimetre_texte": "str",
+      "provisoire_courant": "null",
+      "signature_electronique_requise": "bool",
+      "soumis_le": "str",
+      "soumis_par": "int",
+      "statut": "str",
+      "synthese": "str",
+      "valide_le": "str",
+      "valide_par": "int",
+      "version_finale": {
+        "id": "str",
+        "numero": "int",
+        "statut": "str",
+        "statut_pdf": "str"
+      }
+    },
+    "destinataires": {
+      "count": "int",
+      "next": "null",
+      "previous": "null",
+      "results": [
+        {
+          "accuse_reception_le": "null",
+          "categorie": "str",
+          "id": "str",
+          "nom_externe": "str",
+          "notifie_le": "str",
+          "premiere_consultation_le": "null",
+          "qualite": "str",
+          "rapport": "str",
+          "remis_hors_plateforme_le": "null",
+          "utilisateur": "int",
+          "utilisateur_detail": {
+            "direction_code": "str",
+            "fonction": "str",
+            "id": "int",
+            "nom_complet": "str",
+            "role": "str",
+            "username": "str"
+          }
+        }
+      ]
+    }
+  }
+}

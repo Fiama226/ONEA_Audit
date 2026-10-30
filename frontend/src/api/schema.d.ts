@@ -804,6 +804,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/draft-report-responses/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : réponses au rapport provisoire (l'audité : les siennes)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_draft_report_responses_list"];
+        put?: never;
+        /**
+         * Répondre à un constat du rapport provisoire (confirmé)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_draft_report_responses_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/draft-report-responses/texte/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Texte exact à confirmer pour répondre à un constat
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_draft_report_responses_texte_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/draft-reports/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : rapports provisoires d'un rapport ou d'une mission
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_draft_reports_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/draft-reports/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : rapport provisoire
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_draft_reports_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/evidence/": {
         parameters: {
             query?: never;
@@ -2231,6 +2315,326 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/report-recipients/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : destinataires de la diffusion (RAI, chef ; sinon sa propre ligne)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_report_recipients_list"];
+        put?: never;
+        /**
+         * Ajouter un destinataire (RAI)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_report_recipients_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/report-recipients/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : destinataire de la diffusion
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_report_recipients_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Retirer un destinataire (RAI)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        delete: operations["v1_report_recipients_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier un destinataire (RAI)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        patch: operations["v1_report_recipients_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/report-recipients/{id}/delivered/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dater la remise hors plateforme à un destinataire externe (RAI)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_report_recipients_delivered_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : rapports d'une mission, ou rapports diffusés visibles
+         * @description Avec `mission` : tous les rapports pour l'équipe et le RAI, les seuls rapports diffusés pour les autres lecteurs. Sans `mission` : rapports diffusés visibles.
+         */
+        get: operations["v1_reports_list"];
+        put?: never;
+        /**
+         * Créer le rapport de la mission (prérempli)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_reports_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : rapport (journalisé avant diffusion)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_reports_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Modifier les sections du rapport
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        patch: operations["v1_reports_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/acknowledge/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accuser réception du rapport diffusé (destinataire)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_reports_acknowledge_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/correct/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Émettre un rapport corrigé (motif, RAI)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_reports_correct_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/distribute/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Diffuser le rapport validé (RAI)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_reports_distribute_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/download/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Télécharger : version diffusée du rapport ou de la note (journalisé)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_reports_download_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Aperçu : assemblage courant du rapport (non figé)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_reports_preview_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/return/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Renvoyer le rapport soumis à l'équipe (motif, RAI)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_reports_return_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Soumettre le rapport au RAI (chef de mission)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_reports_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/transmit-draft/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transmettre le rapport provisoire aux audités (chef de mission ou RAI)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_reports_transmit_draft_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/validate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Valider le rapport soumis (confirmé, RAI)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_reports_validate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/validation-text/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Texte exact à confirmer pour valider le rapport, et mode de signature
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_reports_validation_text_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/risk-acceptances/": {
         parameters: {
             query?: never;
@@ -3265,6 +3669,13 @@ export interface components {
          * @enum {string}
          */
         AppreciationEnum: "OUI" | "NON" | "SANS_OBJET";
+        /**
+         * @description * `MAITRISE` - Maîtrise satisfaisante des risques
+         *     * `PERFECTIBLE` - Maîtrise perfectible
+         *     * `INSUFFISANTE` - Maîtrise insuffisante
+         * @enum {string}
+         */
+        AppreciationGlobaleEnum: "MAITRISE" | "PERFECTIBLE" | "INSUFFISANTE";
         ArbitrageRequest: {
             justification: string;
         };
@@ -3367,6 +3778,14 @@ export interface components {
          * @enum {string}
          */
         CategorieCauseEnum: "MAIN_OEUVRE" | "METHODES" | "MATERIEL" | "MILIEU" | "MATIERE" | "MANAGEMENT" | "MOYENS_FINANCIERS";
+        /**
+         * @description * `DG` - Direction générale
+         *     * `AUDITE` - Audité
+         *     * `EQUIPE` - Équipe d'audit
+         *     * `AUTRE` - Autre destinataire
+         * @enum {string}
+         */
+        CategorieDestinataireEnum: "DG" | "AUDITE" | "EQUIPE" | "AUTRE";
         /**
          * @description * `OPERATIONNELS` - Opérationnels
          *     * `FIABILITE_INFORMATION` - Fiabilité des informations
@@ -3592,6 +4011,15 @@ export interface components {
             readonly texte_reponse: components["schemas"]["TexteReponse"] | null;
             readonly actions_possibles: string[];
         };
+        ConstatProvisoire: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            titre: string;
+            entite: string;
+            niveau: string;
+            a_repondre: boolean;
+        };
         ConstatRequest: {
             /** Format: uuid */
             mission: string;
@@ -3721,6 +4149,64 @@ export interface components {
             sources?: string;
             /** Références des diagrammes */
             references_diagrammes?: string;
+        };
+        Destinataire: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly rapport: string;
+            readonly utilisateur: number | null;
+            readonly utilisateur_detail: components["schemas"]["UtilisateurResume"] | null;
+            /** Nom (destinataire externe) */
+            readonly nom_externe: string;
+            /** Qualité */
+            readonly qualite: string;
+            readonly categorie: components["schemas"]["CategorieDestinataireEnum"];
+            /**
+             * Notifié le
+             * Format: date-time
+             */
+            readonly notifie_le: string | null;
+            /**
+             * Première consultation le
+             * Format: date-time
+             */
+            readonly premiere_consultation_le: string | null;
+            /**
+             * Accusé de réception le
+             * Format: date-time
+             */
+            readonly accuse_reception_le: string | null;
+            /** Format: date-time */
+            readonly remis_hors_plateforme_le: string | null;
+        };
+        DestinataireCreationRequestRequest: {
+            /** Format: uuid */
+            rapport: string;
+            utilisateur?: number | null;
+            /** @default  */
+            nom_externe: string;
+            /** @default  */
+            qualite: string;
+            /** @default AUTRE */
+            categorie: components["schemas"]["CategorieDestinataireEnum"];
+        };
+        DiffusionRequestRequest: {
+            /** @default  */
+            message: string;
+        };
+        DiffusionResume: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Diffusée le
+             * Format: date-time
+             */
+            readonly diffusee_le: string;
+            readonly diffusee_par: components["schemas"]["UtilisateurResume"];
+            readonly message: string;
+            readonly version_rapport: components["schemas"]["VersionRapportResume"];
+            readonly version_note: components["schemas"]["VersionRapportResume"] | null;
         };
         Direction: {
             /** Format: uuid */
@@ -4063,6 +4549,17 @@ export interface components {
             type: components["schemas"]["TypeEvenementFicheEnum"];
             statut_avant: components["schemas"]["StatutFicheEnum"];
             statut_apres: components["schemas"]["StatutFicheEnum"];
+        };
+        EvenementRapport: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly type: components["schemas"]["TypeEvenementRapportEnum"];
+            readonly par: components["schemas"]["UtilisateurResume"];
+            /** Format: date-time */
+            readonly le: string;
+            readonly motif: string;
+            readonly statut_avant: components["schemas"]["StatutRapportEnum"] | components["schemas"]["BlankEnum"];
+            readonly statut_apres: components["schemas"]["StatutRapportEnum"];
         };
         EvenementSuivi: {
             readonly type: components["schemas"]["TypeEvenementEtapeEnum"];
@@ -4813,6 +5310,9 @@ export interface components {
         MotifRequest: {
             motif: string;
         };
+        MotifRequestRequest: {
+            motif: string;
+        };
         /**
          * @description * `PREVENTIF` - Préventif
          *     * `DETECTIF` - Détectif
@@ -5069,6 +5569,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["DescriptionProcessus"][];
+        };
+        PaginatedDestinataireList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Destinataire"][];
         };
         PaginatedDirectionList: {
             /** @example 123 */
@@ -5340,6 +5855,36 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Questionnaire"][];
         };
+        PaginatedRapportLectureList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["RapportLecture"][];
+        };
+        PaginatedRapportProvisoireList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["RapportProvisoire"][];
+        };
         PaginatedRecommandationListeList: {
             /** @example 123 */
             count: number;
@@ -5369,6 +5914,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["ReponseAudite"][];
+        };
+        PaginatedReponseRapportList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["ReponseRapport"][];
         };
         PaginatedReunionList: {
             /** @example 123 */
@@ -5537,6 +6097,11 @@ export interface components {
             sources?: string;
             /** Références des diagrammes */
             references_diagrammes?: string;
+        };
+        PatchedDestinataireModificationRequestRequest: {
+            nom_externe?: string;
+            qualite?: string;
+            categorie?: components["schemas"]["CategorieDestinataireEnum"];
         };
         PatchedDirectionRequest: {
             code?: string;
@@ -5825,6 +6390,19 @@ export interface components {
             /** Format: uuid */
             processus?: string | null;
             titre?: string;
+        };
+        /** @description Sections saisies (D5) ; tous les champs sont facultatifs. */
+        PatchedRapportModificationRequestRequest: {
+            synthese?: string;
+            appreciation_globale?: components["schemas"]["AppreciationGlobaleEnum"] | components["schemas"]["BlankEnum"];
+            commentaire_appreciation?: string;
+            contexte?: string;
+            objectifs_texte?: string;
+            perimetre_texte?: string;
+            methodologie?: string;
+            conclusion?: string;
+            note_synthetique?: string;
+            annexes_texte?: string;
         };
         /** @description Base des sérialiseurs qui exposent `etape_close` : statuts lus une fois par mission. */
         PatchedRapportOrientationRequest: {
@@ -6129,12 +6707,102 @@ export interface components {
             clients: string;
             livrables_attendus: string;
         };
+        /** @description Rapport vu de l'équipe d'audit et du RAI. */
+        Rapport: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly mission: string;
+            /**
+             * Numéro de version
+             * @default 1
+             */
+            readonly numero_version: number;
+            /**
+             * Corrige le rapport
+             * Format: uuid
+             */
+            readonly corrige_de: string | null;
+            /** Motif de la correction */
+            readonly motif_correction: string;
+            readonly statut: components["schemas"]["StatutRapportEnum"];
+            /** Synthèse pour l'encadrement supérieur */
+            readonly synthese: string;
+            readonly appreciation_globale: components["schemas"]["AppreciationGlobaleEnum"] | components["schemas"]["BlankEnum"];
+            /** Commentaire de l'appréciation */
+            readonly commentaire_appreciation: string;
+            readonly contexte: string;
+            /** Objectifs */
+            readonly objectifs_texte: string;
+            /** Périmètre */
+            readonly perimetre_texte: string;
+            /** Méthodologie */
+            readonly methodologie: string;
+            readonly conclusion: string;
+            /** Note synthétique */
+            readonly note_synthetique: string;
+            /** Annexes */
+            readonly annexes_texte: string;
+            /** Cycle de soumission */
+            readonly cycle: number;
+            readonly soumis_par: number | null;
+            /** Format: date-time */
+            readonly soumis_le: string | null;
+            /** Empreinte SHA-256 soumise */
+            readonly empreinte_soumise: string;
+            /** Validé par */
+            readonly valide_par: number | null;
+            /**
+             * Validé le
+             * Format: date-time
+             */
+            readonly valide_le: string | null;
+            readonly confirmation_validation: components["schemas"]["ConfirmationResume"] | null;
+            readonly mode_signature: components["schemas"]["ModeSignatureParametreEnum"] | components["schemas"]["BlankEnum"];
+            readonly signature_electronique_requise: boolean;
+            /** Motif du renvoi */
+            readonly motif_renvoi: string;
+            readonly provisoire_courant: components["schemas"]["RapportProvisoireResume"] | null;
+            readonly version_finale: components["schemas"]["VersionRapportResume"] | null;
+            readonly diffusion: components["schemas"]["DiffusionResume"] | null;
+            readonly evenements: components["schemas"]["EvenementRapport"][];
+            readonly actions_possibles: string[];
+        };
+        RapportCreationRequestRequest: {
+            /** Format: uuid */
+            mission: string;
+        };
+        /** @description Rapport diffusé vu du DG et de l'audité : synthèse et appréciation, rien d'interne. */
+        RapportDiffuse: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly mission_reference: string;
+            readonly mission_titre: string;
+            /** Numéro de version */
+            readonly numero_version: number;
+            readonly numero_document: string;
+            /**
+             * Validé le
+             * Format: date-time
+             */
+            readonly valide_le: string | null;
+            /** Format: date-time */
+            readonly diffuse_le: string | null;
+            /** Synthèse pour l'encadrement supérieur */
+            readonly synthese: string;
+            readonly appreciation_globale: components["schemas"]["AppreciationGlobaleEnum"] | components["schemas"]["BlankEnum"];
+            readonly mention_correction: string;
+            /** Format: date-time */
+            readonly mon_accuse_reception: string | null;
+            readonly actions_possibles: string[];
+        };
         RapportImport: {
             dry_run: boolean;
             crees: string[];
             mis_a_jour: string[];
             ignores: components["schemas"]["LigneImportIgnoree"][];
         };
+        RapportLecture: components["schemas"]["Rapport"] | components["schemas"]["RapportDiffuse"];
         /** @description Base des sérialiseurs qui exposent `etape_close` : statuts lus une fois par mission. */
         RapportOrientation: {
             /** Format: uuid */
@@ -6148,6 +6816,41 @@ export interface components {
             justification_couverture?: string;
             readonly rappel_ordre: components["schemas"]["RappelOrdre"];
             readonly etape_close: boolean;
+        };
+        RapportProvisoire: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly rapport: string;
+            /** Format: uuid */
+            readonly mission: string;
+            /** Numéro */
+            readonly numero: number;
+            /** Format: date-time */
+            readonly transmis_le: string;
+            readonly transmis_par: number;
+            /**
+             * Date limite des réponses
+             * Format: date
+             */
+            readonly date_limite_reponses: string;
+            readonly constats: components["schemas"]["ConstatProvisoire"][];
+            readonly version_document: components["schemas"]["VersionProvisoire"] | null;
+            /** Empreinte SHA-256 */
+            readonly empreinte: string;
+        };
+        RapportProvisoireResume: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Numéro */
+            readonly numero: number;
+            /** Format: date-time */
+            readonly transmis_le: string;
+            /**
+             * Date limite des réponses
+             * Format: date
+             */
+            readonly date_limite_reponses: string;
         };
         Recommandation: {
             /** Format: uuid */
@@ -6192,6 +6895,10 @@ export interface components {
             avis: components["schemas"]["AvisAudite"][];
             mes_droits: components["schemas"]["DroitsAnalyse"];
         };
+        RemiseRequestRequest: {
+            /** Format: date */
+            le: string;
+        };
         RemplacerChefRequest: {
             utilisateur: number;
         };
@@ -6207,6 +6914,32 @@ export interface components {
             readonly confirmation: components["schemas"]["ConfirmationResume"];
             readonly version_anterieure: boolean;
             readonly texte: string;
+        };
+        ReponseRapport: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Rapport provisoire
+             * Format: uuid
+             */
+            readonly provisoire: string;
+            /** Format: uuid */
+            readonly constat: string;
+            readonly auteur: components["schemas"]["UtilisateurResume"];
+            readonly commentaire: string;
+            readonly confirmation: components["schemas"]["ConfirmationResume"];
+            /** Hors délai */
+            readonly hors_delai: boolean;
+            readonly texte: string;
+        };
+        ReponseRapportRequestRequest: {
+            /** @description Doit être vrai : la confirmation explicite de l'utilisateur. */
+            confirme: boolean;
+            /** Format: uuid */
+            provisoire: string;
+            /** Format: uuid */
+            constat: string;
+            commentaire: string;
         };
         ReponseRequestRequest: {
             /** Format: uuid */
@@ -6526,6 +7259,16 @@ export interface components {
          */
         StatutProgrammeEnum: "BROUILLON" | "VALIDE";
         /**
+         * @description * `BROUILLON` - En rédaction
+         *     * `SOUMIS` - Soumis au RAI
+         *     * `VALIDE` - Validé
+         *     * `RENVOYE` - Renvoyé
+         *     * `DIFFUSE` - Diffusé
+         *     * `REMPLACE` - Remplacé par un rapport corrigé
+         * @enum {string}
+         */
+        StatutRapportEnum: "BROUILLON" | "SOUMIS" | "VALIDE" | "RENVOYE" | "DIFFUSE" | "REMPLACE";
+        /**
          * @description * `RISQUE_ACCEPTE` - Risque accepté
          *     * `SANS_ACTION` - Sans action
          *     * `A_LANCER` - À lancer
@@ -6673,6 +7416,24 @@ export interface components {
             accord: string;
             desaccord: string;
         };
+        TexteReponseRapport: {
+            /** @description Texte exact que l'audité confirme. */
+            texte: string;
+            /** Format: date */
+            date_limite_reponses: string;
+            hors_delai: boolean;
+        };
+        TexteValidation: {
+            /** @description Texte exact que le RAI confirme. */
+            texte: string;
+            mode: components["schemas"]["ModeSignatureParametreEnum"];
+            confirmation_requise: boolean;
+            signature_electronique_requise: boolean;
+        };
+        TransmissionRequestRequest: {
+            /** @default 15 */
+            delai_jours: number;
+        };
         /**
          * @description * `ACCORD` - Accord
          *     * `REMARQUES` - Remarques
@@ -6737,6 +7498,18 @@ export interface components {
          */
         TypeEvenementFicheEnum: "SOUMISE" | "VALIDEE" | "RENVOYEE" | "ROUVERTE";
         /**
+         * @description * `CREE` - Créé
+         *     * `PROVISOIRE_TRANSMIS` - Rapport provisoire transmis
+         *     * `SOUMIS` - Soumis
+         *     * `VALIDE` - Validé
+         *     * `RENVOYE` - Renvoyé
+         *     * `REINITIALISE` - Réinitialisé
+         *     * `DIFFUSE` - Diffusé
+         *     * `CORRIGE` - Rapport corrigé émis
+         * @enum {string}
+         */
+        TypeEvenementRapportEnum: "CREE" | "PROVISOIRE_TRANSMIS" | "SOUMIS" | "VALIDE" | "RENVOYE" | "REINITIALISE" | "DIFFUSE" | "CORRIGE";
+        /**
          * @description * `FORCE` - Force
          *     * `FAIBLESSE` - Faiblesse
          * @enum {string}
@@ -6791,6 +7564,11 @@ export interface components {
             readonly direction_code: string;
             readonly fonction: string;
         };
+        /** @description Validation du rapport : `confirme` doit être vrai (jamais pré-coché). */
+        ValidationRequestRequest: {
+            /** @description Doit être vrai : la confirmation explicite de l'utilisateur. */
+            confirme: boolean;
+        };
         Valideur: {
             readonly id: number;
             /**
@@ -6819,6 +7597,18 @@ export interface components {
              * Format: date-time
              */
             readonly genere_le: string | null;
+        };
+        VersionProvisoire: {
+            /** Format: uuid */
+            id: string;
+            statut: components["schemas"]["StatutGenerationEnum"];
+        };
+        VersionRapportResume: {
+            /** Format: uuid */
+            id: string;
+            numero: number;
+            statut: components["schemas"]["StatutGenerationEnum"];
+            statut_pdf: components["schemas"]["StatutPdfEnum"];
         };
         VersionResume: {
             /** Format: uuid */
@@ -10443,6 +11233,295 @@ export interface operations {
                 };
             };
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_draft_report_responses_list: {
+        parameters: {
+            query: {
+                constat?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /** @description Rapport provisoire (obligatoire). */
+                provisoire: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedReponseRapportList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_draft_report_responses_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReponseRapportRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReponseRapportRequestRequest"];
+                "multipart/form-data": components["schemas"]["ReponseRapportRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReponseRapport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_draft_report_responses_texte_retrieve: {
+        parameters: {
+            query: {
+                /** @description Constat (obligatoire). */
+                constat: string;
+                /** @description Rapport provisoire (obligatoire). */
+                provisoire: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TexteReponseRapport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_draft_reports_list: {
+        parameters: {
+            query?: {
+                /** @description Mission ou rapport. */
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /** @description Rapport ou mission. */
+                rapport?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedRapportProvisoireList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_draft_reports_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RapportProvisoire"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16336,6 +17415,1212 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_report_recipients_list: {
+        parameters: {
+            query: {
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /** @description Rapport (obligatoire). */
+                rapport: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedDestinataireList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_report_recipients_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DestinataireCreationRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DestinataireCreationRequestRequest"];
+                "multipart/form-data": components["schemas"]["DestinataireCreationRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Destinataire"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_report_recipients_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Destinataire"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_report_recipients_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_report_recipients_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedDestinataireModificationRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedDestinataireModificationRequestRequest"];
+                "multipart/form-data": components["schemas"]["PatchedDestinataireModificationRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Destinataire"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_report_recipients_delivered_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemiseRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RemiseRequestRequest"];
+                "multipart/form-data": components["schemas"]["RemiseRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Destinataire"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_list: {
+        parameters: {
+            query?: {
+                /** @description Mission. Sans elle, la liste se limite aux rapports diffusés visibles. */
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedRapportLectureList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RapportCreationRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RapportCreationRequestRequest"];
+                "multipart/form-data": components["schemas"]["RapportCreationRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rapport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RapportLecture"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRapportModificationRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedRapportModificationRequestRequest"];
+                "multipart/form-data": components["schemas"]["PatchedRapportModificationRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rapport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_acknowledge_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RapportDiffuse"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_correct_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifRequestRequest"];
+                "multipart/form-data": components["schemas"]["MotifRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rapport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_distribute_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DiffusionRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DiffusionRequestRequest"];
+                "multipart/form-data": components["schemas"]["DiffusionRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rapport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_download_retrieve: {
+        parameters: {
+            query?: {
+                /**
+                 * @description * `rapport` - rapport
+                 *     * `note` - note
+                 */
+                document?: "rapport" | "note";
+                /**
+                 * @description * `pdf` - pdf
+                 *     * `docx` - docx
+                 */
+                format?: "pdf" | "docx";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_preview_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_return_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifRequestRequest"];
+                "multipart/form-data": components["schemas"]["MotifRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rapport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rapport"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_transmit_draft_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TransmissionRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TransmissionRequestRequest"];
+                "multipart/form-data": components["schemas"]["TransmissionRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RapportProvisoire"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_validate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidationRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ValidationRequestRequest"];
+                "multipart/form-data": components["schemas"]["ValidationRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Rapport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_validation_text_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TexteValidation"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
