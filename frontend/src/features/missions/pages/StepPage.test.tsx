@@ -74,9 +74,9 @@ describe("StepPage", () => {
   });
 
   it("announces the lot that brings the forms of a generic step", async () => {
-    render(8, "RAI", allSteps());
+    render(15, "RAI", allSteps());
     expect(
-      await screen.findByText("Les formulaires de cette étape seront disponibles au lot 6."),
+      await screen.findByText("Les formulaires de cette étape seront disponibles au lot 7."),
     ).toBeInTheDocument();
   });
 
