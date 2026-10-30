@@ -1,14 +1,23 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { downloadEvidence } from "@/api/download";
 import { isApiError } from "@/api/errors";
-import { ALERT_CLASS } from "@/components/form/FormField";
+import { ALERT_CLASS, FormField } from "@/components/form/FormField";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { formatDateTime } from "@/lib/dates";
 import { fr } from "@/i18n/fr";
 import { useEvidence, useRemoveEvidence, useUpdateEvidence } from "../api";
 import type { Piece } from "../types";
 
 const t = fr.accomplissement.evidence;
+const r = fr.fiches;
 
 function formatSize(octets: number): string {
   if (octets < 1024) return `${octets} o`;
@@ -25,6 +34,7 @@ export function EvidenceList({ ficheId, missionId }: Props) {
   const remove = useRemoveEvidence();
   const [message, setMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<Piece | null>(null);
 
   if (evidence.isPending) return <p role="status">{fr.accomplissement.loading}</p>;
   if (evidence.isError) {
@@ -53,6 +63,15 @@ export function EvidenceList({ ficheId, missionId }: Props) {
 
   return (
     <div className="grid gap-2">
+      {renaming && (
+        <RenameDialog
+          piece={renaming}
+          onClose={() => setRenaming(null)}
+          onSave={(libelle) =>
+            update.mutateAsync({ id: renaming.id, ficheId, missionId, data: { libelle } })
+          }
+        />
+      )}
       {message && (
         <p role="alert" className={ALERT_CLASS}>
           {message}
@@ -134,19 +153,7 @@ export function EvidenceList({ ficheId, missionId }: Props) {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            const libelle = window.prompt(t.label, piece.libelle)?.trim();
-                            if (libelle && libelle !== piece.libelle) {
-                              void run(() =>
-                                update.mutateAsync({
-                                  id: piece.id,
-                                  ficheId,
-                                  missionId,
-                                  data: { libelle },
-                                }),
-                              );
-                            }
-                          }}
+                          onClick={() => setRenaming(piece)}
                         >
                           {t.rename}
                         </Button>
@@ -172,5 +179,69 @@ export function EvidenceList({ ficheId, missionId }: Props) {
         </table>
       </div>
     </div>
+  );
+}
+
+type RenameProps = {
+  piece: Piece;
+  onClose: () => void;
+  onSave: (libelle: string) => Promise<unknown>;
+};
+
+/** Renommage du libellé d'une pièce (le fichier et son empreinte ne changent pas). */
+function RenameDialog({ piece, onClose, onSave }: RenameProps) {
+  const [value, setValue] = useState(piece.libelle);
+  const [error, setError] = useState<string | undefined>();
+  const [pending, setPending] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const libelle = value.trim();
+    if (!libelle) {
+      setError(r.renameRequired);
+      return;
+    }
+    if (libelle === piece.libelle) {
+      onClose();
+      return;
+    }
+    setPending(true);
+    try {
+      await onSave(libelle);
+      onClose();
+    } catch (e) {
+      setError(isApiError(e) ? (e.errors.libelle?.join(" ") ?? e.detail) : fr.errors.generic);
+      setPending(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && !pending && onClose()}>
+      <DialogContent>
+        <form onSubmit={(e) => void submit(e)} noValidate className="grid gap-4">
+          <DialogHeader>
+            <DialogTitle>{r.renameTitle}</DialogTitle>
+          </DialogHeader>
+          <FormField label={r.renameLabel} error={error}>
+            {(p) => (
+              <Input
+                {...p}
+                value={value}
+                maxLength={200}
+                onChange={(e) => setValue(e.target.value)}
+              />
+            )}
+          </FormField>
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
+              {fr.common.cancel}
+            </Button>
+            <Button type="submit" disabled={pending}>
+              {r.renameSave}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
