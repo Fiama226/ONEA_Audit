@@ -9,6 +9,7 @@ class SignaturesConfig(AppConfig):
     def ready(self) -> None:
         from apps.core.audit import register
 
-        from .models import Confirmation
+        from .models import Confirmation, ParametreSignature
 
         register(Confirmation)
+        register(ParametreSignature)

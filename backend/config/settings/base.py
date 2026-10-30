@@ -228,6 +228,7 @@ SPECTACULAR_SETTINGS = {
         "StatutEntretienEnum": "apps.missions.models.StatutEntretien.choices",
         "ActionEtapeEnum": "apps.missions.services.etapes.ActionEtape.choices",
         "TypeDocumentSignableEnum": "apps.signatures.models.TypeDocumentSignable.choices",
+        "ModeSignatureParametreEnum": "apps.signatures.models.ModeSignatureParametre.choices",
         "KeycloakSyncStatutEnum": "apps.users.models.KeycloakSyncStatut.choices",
         "OrigineCompteEnum": "apps.users.models.OrigineCompte.choices",
         "StatutProgrammeEnum": "apps.programmation.models.StatutProgramme.choices",
