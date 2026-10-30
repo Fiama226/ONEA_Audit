@@ -760,6 +760,182 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finding-responses/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : réponses de l'audité
+         * @description Base : liste bornée à une mission (ou un constat) visible, périmètre de l'audité.
+         */
+        get: operations["v1_finding_responses_list"];
+        put?: never;
+        /**
+         * Répondre à un constat (accord ou désaccord, confirmé)
+         * @description Base : liste bornée à une mission (ou un constat) visible, périmètre de l'audité.
+         */
+        post: operations["v1_finding_responses_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finding-responses/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : réponse de l'audité
+         * @description Base : liste bornée à une mission (ou un constat) visible, périmètre de l'audité.
+         */
+        get: operations["v1_finding_responses_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/findings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : constats
+         * @description Base : liste bornée à une mission (ou un constat) visible, périmètre de l'audité.
+         */
+        get: operations["v1_findings_list"];
+        put?: never;
+        /**
+         * Créer : constats
+         * @description Base : liste bornée à une mission (ou un constat) visible, périmètre de l'audité.
+         */
+        post: operations["v1_findings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/findings/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : constats
+         * @description Base : liste bornée à une mission (ou un constat) visible, périmètre de l'audité.
+         */
+        get: operations["v1_findings_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : constats
+         * @description Base : liste bornée à une mission (ou un constat) visible, périmètre de l'audité.
+         */
+        delete: operations["v1_findings_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : constats
+         * @description Base : liste bornée à une mission (ou un constat) visible, périmètre de l'audité.
+         */
+        patch: operations["v1_findings_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/findings/{id}/reopen/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rouvrir un constat validé (motif obligatoire)
+         * @description Base : liste bornée à une mission (ou un constat) visible, périmètre de l'audité.
+         */
+        post: operations["v1_findings_reopen_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/findings/{id}/return/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Renvoyer le constat (motif obligatoire)
+         * @description Base : liste bornée à une mission (ou un constat) visible, périmètre de l'audité.
+         */
+        post: operations["v1_findings_return_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/findings/{id}/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Soumettre le constat
+         * @description Base : liste bornée à une mission (ou un constat) visible, périmètre de l'audité.
+         */
+        post: operations["v1_findings_submit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/findings/{id}/validate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Valider le constat
+         * @description Base : liste bornée à une mission (ou un constat) visible, périmètre de l'audité.
+         */
+        post: operations["v1_findings_validate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/": {
         parameters: {
             query?: never;
@@ -1899,6 +2075,46 @@ export interface paths {
         patch: operations["v1_processes_partial_update"];
         trace?: never;
     };
+    "/api/v1/recommendations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : recommandations
+         * @description Lecture seule : l'écriture passe par les constats (listes imbriquées).
+         */
+        get: operations["v1_recommendations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recommendations/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : recommandation
+         * @description Lecture seule : l'écriture passe par les constats (listes imbriquées).
+         */
+        get: operations["v1_recommendations_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/risk-maps/": {
         parameters: {
             query?: never;
@@ -2862,6 +3078,17 @@ export interface components {
             source?: string | null;
         };
         /**
+         * @description * `MAIN_OEUVRE` - Main-d'œuvre
+         *     * `METHODES` - Méthodes
+         *     * `MATERIEL` - Matériel
+         *     * `MILIEU` - Milieu
+         *     * `MATIERE` - Matière
+         *     * `MANAGEMENT` - Management
+         *     * `MOYENS_FINANCIERS` - Moyens financiers
+         * @enum {string}
+         */
+        CategorieCauseEnum: "MAIN_OEUVRE" | "METHODES" | "MATERIEL" | "MILIEU" | "MATIERE" | "MANAGEMENT" | "MOYENS_FINANCIERS";
+        /**
          * @description * `OPERATIONNELS` - Opérationnels
          *     * `FIABILITE_INFORMATION` - Fiabilité des informations
          *     * `STRATEGIQUES` - Stratégiques
@@ -2869,6 +3096,20 @@ export interface components {
          * @enum {string}
          */
         CategorieObjectifEnum: "OPERATIONNELS" | "FIABILITE_INFORMATION" | "STRATEGIQUES" | "CONFORMITE";
+        CauseConstat: {
+            /** Format: uuid */
+            id?: string;
+            categorie: components["schemas"]["CategorieCauseEnum"];
+            description: string;
+            ordre?: number;
+        };
+        CauseConstatRequest: {
+            /** Format: uuid */
+            id?: string;
+            categorie: components["schemas"]["CategorieCauseEnum"];
+            description: string;
+            ordre?: number;
+        };
         CelluleGrille: {
             tache: number;
             acteur: number;
@@ -3019,6 +3260,82 @@ export interface components {
             readonly confirme_le: string;
             /** Empreinte SHA-256 */
             readonly empreinte: string;
+        };
+        Constat: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            mission: string;
+            readonly reference: string;
+            titre?: string;
+            readonly statut: components["schemas"]["StatutConstatEnum"];
+            fiches?: string[];
+            readonly fiches_detail: components["schemas"]["FicheConstatResume"][] | null;
+            /** Format: uuid */
+            entite: string;
+            readonly entite_detail: components["schemas"]["DirectionResume"];
+            /** Format: uuid */
+            processus: string;
+            readonly processus_detail: components["schemas"]["ProcessusResume"];
+            /** Format: uuid */
+            risque_mission?: string | null;
+            /** Fait constaté */
+            fait_constate?: string;
+            /** Référentiel (critère) */
+            referentiel?: string;
+            /** Conséquence */
+            consequence?: string;
+            conclusion?: string;
+            /** Probabilité */
+            probabilite?: number | null;
+            impact?: number | null;
+            readonly score: number | null;
+            readonly niveau: (components["schemas"]["NiveauRisqueEnum"] | components["schemas"]["NullEnum"]) | null;
+            causes?: components["schemas"]["CauseConstat"][];
+            recommandations?: components["schemas"]["Recommandation"][];
+            /** Cycle de soumission */
+            readonly cycle: number;
+            readonly soumis_par: number | null;
+            /** Format: date-time */
+            readonly soumis_le: string | null;
+            /** Validé par */
+            readonly validee_par: number | null;
+            /**
+             * Validé le
+             * Format: date-time
+             */
+            readonly validee_le: string | null;
+            readonly motif_renvoi: string | null;
+            /** Empreinte SHA-256 soumise */
+            readonly empreinte_soumise: string;
+            readonly derniere_reponse: components["schemas"]["ReponseAudite"] | null;
+            readonly reponse_cycle_courant: boolean;
+            readonly texte_reponse: components["schemas"]["TexteReponse"] | null;
+            readonly actions_possibles: string[];
+        };
+        ConstatRequest: {
+            /** Format: uuid */
+            mission: string;
+            titre?: string;
+            fiches?: string[];
+            /** Format: uuid */
+            entite: string;
+            /** Format: uuid */
+            processus: string;
+            /** Format: uuid */
+            risque_mission?: string | null;
+            /** Fait constaté */
+            fait_constate?: string;
+            /** Référentiel (critère) */
+            referentiel?: string;
+            /** Conséquence */
+            consequence?: string;
+            conclusion?: string;
+            /** Probabilité */
+            probabilite?: number | null;
+            impact?: number | null;
+            causes?: components["schemas"]["CauseConstatRequest"][];
+            recommandations?: components["schemas"]["RecommandationRequest"][];
         };
         ConstatResume: {
             /** Format: uuid */
@@ -3461,6 +3778,12 @@ export interface components {
          * @enum {string}
          */
         FamilleProcessusEnum: "PILOTAGE" | "REALISATION" | "SUPPORT";
+        FicheConstatResume: {
+            /** Format: uuid */
+            id: string;
+            test_code: string;
+            conclusion: string;
+        };
         FicheDeTest: {
             /** Format: uuid */
             readonly id: string;
@@ -4327,6 +4650,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["CompteUtilisateurListe"][];
         };
+        PaginatedConstatList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Constat"][];
+        };
         PaginatedConsultationList: {
             /** @example 123 */
             count: number;
@@ -4627,6 +4965,36 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Questionnaire"][];
         };
+        PaginatedRecommandationListeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["RecommandationListe"][];
+        };
+        PaginatedReponseAuditeList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["ReponseAudite"][];
+        };
         PaginatedReunionList: {
             /** @example 123 */
             count: number;
@@ -4728,6 +5096,30 @@ export interface components {
              * @description Cartographie validée dont les risques sont copiés (création uniquement).
              */
             source?: string | null;
+        };
+        PatchedConstatRequest: {
+            /** Format: uuid */
+            mission?: string;
+            titre?: string;
+            fiches?: string[];
+            /** Format: uuid */
+            entite?: string;
+            /** Format: uuid */
+            processus?: string;
+            /** Format: uuid */
+            risque_mission?: string | null;
+            /** Fait constaté */
+            fait_constate?: string;
+            /** Référentiel (critère) */
+            referentiel?: string;
+            /** Conséquence */
+            consequence?: string;
+            conclusion?: string;
+            /** Probabilité */
+            probabilite?: number | null;
+            impact?: number | null;
+            causes?: components["schemas"]["CauseConstatRequest"][];
+            recommandations?: components["schemas"]["RecommandationRequest"][];
         };
         /** @description Base des sérialiseurs qui exposent `etape_close` : statuts lus une fois par mission. */
         PatchedDescriptionProcessusRequest: {
@@ -5174,6 +5566,19 @@ export interface components {
          */
         PorteeNumerotationEnum: "MISSION" | "ANNEE";
         /**
+         * @description * `ACCORD` - Accord
+         *     * `DESACCORD` - Désaccord
+         * @enum {string}
+         */
+        PositionAuditeEnum: "ACCORD" | "DESACCORD";
+        /**
+         * @description * `HAUTE` - Haute
+         *     * `MOYENNE` - Moyenne
+         *     * `FAIBLE` - Faible
+         * @enum {string}
+         */
+        PrioriteRecommandationEnum: "HAUTE" | "MOYENNE" | "FAIBLE";
+        /**
          * @description * `1` - Prioritaire
          *     * `2` - Amélioration
          *     * `3` - Observation
@@ -5198,6 +5603,13 @@ export interface components {
             ordre?: number;
             /** @description Identifiants des directions (type DIRECTION uniquement) rattachées (écriture). */
             directions?: string[];
+        };
+        ProcessusResume: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly code: string;
+            /** Libellé */
+            readonly libelle: string;
         };
         ProgrammeAnnuel: {
             /** Format: uuid */
@@ -5332,6 +5744,33 @@ export interface components {
             readonly rappel_ordre: components["schemas"]["RappelOrdre"];
             readonly etape_close: boolean;
         };
+        Recommandation: {
+            /** Format: uuid */
+            id?: string;
+            libelle: string;
+            priorite: components["schemas"]["PrioriteRecommandationEnum"];
+            ordre?: number;
+        };
+        RecommandationListe: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly mission: string;
+            /** Format: uuid */
+            readonly constat: string;
+            readonly constat_reference: string;
+            /** Libellé */
+            readonly libelle: string;
+            readonly priorite: components["schemas"]["PrioriteRecommandationEnum"];
+            readonly ordre: number;
+        };
+        RecommandationRequest: {
+            /** Format: uuid */
+            id?: string;
+            libelle: string;
+            priorite: components["schemas"]["PrioriteRecommandationEnum"];
+            ordre?: number;
+        };
         /** @description Synthèse du référentiel ; `data` est un dict déjà assemblé par la vue. */
         ReferentielAudit: {
             /** Format: uuid */
@@ -5350,6 +5789,30 @@ export interface components {
         };
         RemplacerChefRequest: {
             utilisateur: number;
+        };
+        ReponseAudite: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly constat: string;
+            readonly cycle: number;
+            readonly auteur: components["schemas"]["UtilisateurResume"];
+            readonly position: components["schemas"]["PositionAuditeEnum"];
+            readonly commentaire: string;
+            readonly confirmation: components["schemas"]["ConfirmationResume"];
+            readonly version_anterieure: boolean;
+            readonly texte: string;
+        };
+        ReponseRequestRequest: {
+            /** Format: uuid */
+            constat: string;
+            position: components["schemas"]["PositionAuditeEnum"];
+            /** @default  */
+            commentaire: string;
+            /** @description Doit être vrai : la confirmation explicite de l'audité. */
+            confirme: boolean;
+            /** @description Empreinte de la version lue (champ `empreinte_soumise` du constat). */
+            empreinte_soumise: string;
         };
         /**
          * @description * `TRAITER` - Traiter
@@ -5566,6 +6029,14 @@ export interface components {
          */
         StatutCartographieEnum: "BROUILLON" | "VALIDEE";
         /**
+         * @description * `BROUILLON` - Brouillon
+         *     * `SOUMIS` - Soumis
+         *     * `VALIDE` - Validé
+         *     * `RENVOYE` - Renvoyé
+         * @enum {string}
+         */
+        StatutConstatEnum: "BROUILLON" | "SOUMIS" | "VALIDE" | "RENVOYE";
+        /**
          * @description * `EN_ATTENTE` - En attente
          *     * `CONFIRMEE` - Confirmée
          *     * `CONFLIT_DECLARE` - Situation déclarée
@@ -5762,6 +6233,10 @@ export interface components {
             date_fin_prevue?: string | null;
             /** Format: uuid */
             risque_mission?: string | null;
+        };
+        TexteReponse: {
+            accord: string;
+            desaccord: string;
         };
         /**
          * @description * `ACCORD` - Accord
@@ -9364,6 +9839,715 @@ export interface operations {
                 };
             };
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_finding_responses_list: {
+        parameters: {
+            query?: {
+                /** @description Constat ou mission requis. */
+                constat?: string;
+                /** @description Mission ou constat requis. */
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedReponseAuditeList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_finding_responses_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReponseRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReponseRequestRequest"];
+                "multipart/form-data": components["schemas"]["ReponseRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReponseAudite"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_finding_responses_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReponseAudite"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_findings_list: {
+        parameters: {
+            query?: {
+                /** @description Vrai : constats soumis ou validés sans réponse de l'audité au cycle courant. */
+                a_repondre?: boolean;
+                entite?: string;
+                /** @description Obligatoire pour la liste. */
+                mission?: string;
+                /**
+                 * @description * `FAIBLE` - Faible
+                 *     * `MOYEN` - Moyen
+                 *     * `ELEVE` - Élevé
+                 */
+                niveau?: "ELEVE" | "FAIBLE" | "MOYEN";
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `BROUILLON` - Brouillon
+                 *     * `SOUMIS` - Soumis
+                 *     * `VALIDE` - Validé
+                 *     * `RENVOYE` - Renvoyé
+                 */
+                statut?: "BROUILLON" | "RENVOYE" | "SOUMIS" | "VALIDE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedConstatList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_findings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConstatRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ConstatRequest"];
+                "multipart/form-data": components["schemas"]["ConstatRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Constat"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_findings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Constat"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_findings_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_findings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedConstatRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedConstatRequest"];
+                "multipart/form-data": components["schemas"]["PatchedConstatRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Constat"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_findings_reopen_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifRequest"];
+                "multipart/form-data": components["schemas"]["MotifRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Constat"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_findings_return_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifRequest"];
+                "multipart/form-data": components["schemas"]["MotifRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Constat"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_findings_submit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Constat"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_findings_validate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Constat"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14091,6 +15275,119 @@ export interface operations {
             };
         };
     };
+    v1_recommendations_list: {
+        parameters: {
+            query?: {
+                /** @description Constat ou mission requis. */
+                constat?: string;
+                /** @description Mission ou constat requis. */
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `HAUTE` - Haute
+                 *     * `MOYENNE` - Moyenne
+                 *     * `FAIBLE` - Faible
+                 */
+                priorite?: "FAIBLE" | "HAUTE" | "MOYENNE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedRecommandationListeList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_recommendations_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommandationListe"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_risk_maps_list: {
         parameters: {
             query?: {
@@ -16857,6 +18154,14 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
             502: {
                 headers: {
                     [name: string]: unknown;
@@ -16920,6 +18225,14 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     v1_user_accounts_import_directory_create: {
@@ -16962,6 +18275,14 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
