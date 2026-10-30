@@ -19,7 +19,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.negotiation import BaseContentNegotiation
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -272,7 +272,38 @@ class TestPrevuViewSet(AccomplissementViewSet, ModelViewSet[TestPrevu]):
         )
         return not programmation and statuts.get(droits.ETAPE_COMPLEMENTAIRES) in ACTIFS
 
+    def _ressources_sans_droit(self, mission: Mission, request: Request) -> bool:
+        """Le corps touche des champs de ressources (IX) sans que l'acteur y ait droit."""
+        corps = request.data
+        if not hasattr(corps, "keys") or not (set(corps.keys()) & svc_tests.CHAMPS_RESSOURCES):
+            return False
+        _, ressources, _ = droits.profil(self.acteur, contexte_actions(mission, self.acteur))
+        return not ressources
+
+    def partial_update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        try:
+            return super().partial_update(request, *args, **kwargs)
+        except ValidationError:
+            # 403 avant 400 : champs de ressources invalides envoyés sans le droit (IX).
+            if self._ressources_sans_droit(self.get_object().mission, request):
+                raise PermissionDenied from None
+            raise
+
     def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        try:
+            return self._creer(request, *args, **kwargs)
+        except ValidationError:
+            identifiant = _uuid_du_corps(request, "programme")
+            programme = (
+                ProgrammeDeTravail.objects.filter(pk=identifiant, mission__in=self.visibles())
+                .select_related("mission")
+                .first()
+            )
+            if programme is not None and self._ressources_sans_droit(programme.mission, request):
+                raise PermissionDenied from None
+            raise
+
+    def _creer(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         identifiant = _uuid_du_corps(request, "programme")
         if identifiant is not None:
             programme = (
@@ -490,7 +521,7 @@ def _poser_en_tetes(reponse: HttpResponseBase, piece: PieceJustificative) -> Non
     """En-têtes de sécurité de D8 : rien ne s'exécute, rien n'est mis en cache."""
     reponse["Cache-Control"] = "private, no-store"
     reponse["X-Content-Type-Options"] = "nosniff"
-    reponse["Content-Security-Policy"] = "sandbox"
+    reponse["Content-Security-Policy"] = "default-src 'none'; sandbox"
     reponse["Content-Length"] = str(piece.taille_octets)
 
 
@@ -499,6 +530,14 @@ def _poser_en_tetes(reponse: HttpResponseBase, piece: PieceJustificative) -> Non
         tags=[TAG_PIECES],
         summary="Déposer : une pièce justificative (multipart)",
         request={"multipart/form-data": serializers.DepotPieceSerializer},
+        parameters=[
+            OpenApiParameter(
+                "fiche",
+                OpenApiTypes.UUID,
+                required=False,
+                description="Fiche cible : droits contrôlés avant l'analyse du corps (recommandé).",
+            )
+        ],
         responses={
             201: serializers.PieceJustificativeSerializer,
             200: serializers.PieceJustificativeSerializer,
@@ -562,26 +601,46 @@ class PieceViewSet(AccomplissementViewSet, ModelViewSet[PieceJustificative]):
         if declare.isdigit() and int(declare) > taille_maximale() + _MARGE_MULTIPART:
             raise RegleMetierError(MSG_TAILLE, {"fichier": [MSG_TAILLE]})
 
+    def _fiche_redigeable(self, identifiant: UUID) -> FicheDeTest:
+        """Fiche visible (404) dont l'acteur est rédacteur (403)."""
+        fiche: FicheDeTest | None = (
+            FicheDeTest.objects.filter(pk=identifiant, mission__in=self.visibles())
+            .select_related("mission", "test")
+            .first()
+        )
+        if fiche is None:
+            raise Http404("Non trouvé.")
+        droits_fiches.exiger_redacteur(self.acteur, fiche.mission, fiche.test)
+        return fiche
+
     def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         self._refuser_trop_gros(request)
-        identifiant = _uuid_du_corps(request, "fiche")
-        if identifiant is not None:
-            fiche = (
-                FicheDeTest.objects.filter(pk=identifiant, mission__in=self.visibles())
-                .select_related("mission", "test")
-                .first()
-            )
-            if fiche is None:
-                raise Http404("Non trouvé.")
-            droits_fiches.exiger_redacteur(self.acteur, fiche.mission, fiche.test)
+        # `?fiche=` : droits contrôlés AVANT toute lecture du corps (aucun multipart analysé
+        # pour un non-rédacteur). Le champ `fiche` du corps reste accepté (analysé d'abord).
+        brut = request.query_params.get("fiche")
+        fiche_url: FicheDeTest | None = None
+        if brut:
+            identifiant = _uuid(brut)
+            if identifiant is None:
+                raise ValidationError({"fiche": ["Identifiant invalide."]})
+            fiche_url = self._fiche_redigeable(identifiant)
+        else:
+            identifiant = _uuid_du_corps(request, "fiche")
+            if identifiant is not None:
+                self._fiche_redigeable(identifiant)
         corps = serializers.DepotPieceSerializer(data=request.data)
         corps.is_valid(raise_exception=True)
         donnees = corps.validated_data
+        fiche = donnees.get("fiche") or fiche_url
+        if fiche is None:
+            raise ValidationError({"fiche": ["Ce champ est obligatoire."]})
+        if fiche_url is not None and fiche.pk != fiche_url.pk:
+            raise ValidationError({"fiche": ["La fiche du corps diffère de celle de l'URL."]})
         fichier = donnees["fichier"]
         if fichier.size is not None and fichier.size > taille_maximale():  # sans rien lire
             raise RegleMetierError(MSG_TAILLE, {"fichier": [MSG_TAILLE]})
         piece = svc_pieces.deposer_piece(
-            donnees["fiche"],
+            fiche,
             fichier=fichier,
             libelle=donnees["libelle"],
             description=donnees["description"],

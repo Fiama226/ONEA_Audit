@@ -300,7 +300,11 @@ class PieceJustificativeSerializer(serializers.ModelSerializer[PieceJustificativ
 class DepotPieceSerializer(serializers.Serializer[Any]):
     """Dépôt d'une pièce (multipart/form-data) ; le fichier n'est lu que par le service."""
 
-    fiche = CleRelation(queryset=FicheDeTest.objects.all())
+    fiche = CleRelation(
+        queryset=FicheDeTest.objects.all(),
+        required=False,
+        help_text="Facultatif si `?fiche=` est fourni dans l'URL (recommandé).",
+    )
     fichier = serializers.FileField()
     libelle = serializers.CharField(max_length=200)
     description = serializers.CharField(required=False, allow_blank=True, default="")

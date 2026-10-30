@@ -133,6 +133,7 @@ def soumettre_fiche(fiche: FicheDeTest, *, by: User) -> FicheDeTest:
 @transaction.atomic
 def supprimer_fiche(fiche: FicheDeTest, *, by: User) -> None:
     """Suppression logique d'un brouillon vide (ni pièce, ni événement) par un rédacteur."""
+    droits.exiger_redacteur(by, fiche.mission, fiche.test)  # le droit avant la fenêtre
     mission = ouvrir_fenetre(fiche.mission, ETAPE_FICHES, MSG_XII)
     fiche = relire(fiche)
     droits.exiger_redacteur(by, mission, fiche.test)

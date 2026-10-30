@@ -3080,8 +3080,11 @@ export interface components {
         };
         /** @description Dépôt d'une pièce (multipart/form-data) ; le fichier n'est lu que par le service. */
         DepotPieceRequest: {
-            /** Format: uuid */
-            fiche: string;
+            /**
+             * Format: uuid
+             * @description Facultatif si `?fiche=` est fourni dans l'URL (recommandé).
+             */
+            fiche?: string;
             /** Format: binary */
             fichier: string;
             libelle: string;
@@ -9064,7 +9067,10 @@ export interface operations {
     };
     v1_evidence_create: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Fiche cible : droits contrôlés avant l'analyse du corps (recommandé). */
+                fiche?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;

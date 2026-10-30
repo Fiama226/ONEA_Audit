@@ -179,3 +179,25 @@ def test_api_gel_422_routes_lot6(equipe_api: Equipe, figee: str) -> None:
         r = c.patch(f"/api/v1/test-sheets/{e.fiche1.pk}/", {"resultat": "x"}, format="json")
     assert r.status_code == 422, r.json()
     assert set(r.json()) == {"detail", "errors"}
+
+
+def test_ressources_invalides_sans_droit_403_avant_400(equipe_api: Equipe) -> None:
+    e = equipe_api
+    # Contributeur simple (auditeur levé) : pas de droit sur les ressources (IX).
+    c = client_de(e.users["auditeur"])
+    r = c.patch(
+        f"/api/v1/planned-tests/{e.test1.pk}/", {"charge_prevue_jours": "abc"}, format="json"
+    )
+    assert r.status_code == 403
+    r = c.post(
+        "/api/v1/planned-tests/",
+        {"programme": str(e.test1.programme_id), "libelle": "X", "charge_prevue_jours": "abc"},
+        format="json",
+    )
+    assert r.status_code == 403
+    # Le chef a le droit : même corps invalide, 400.
+    chef = client_de(e.users["chef"])
+    r = chef.patch(
+        f"/api/v1/planned-tests/{e.test1.pk}/", {"charge_prevue_jours": "abc"}, format="json"
+    )
+    assert r.status_code == 400
