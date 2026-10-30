@@ -593,6 +593,91 @@ export interface paths {
         patch: operations["v1_corrective_actions_partial_update"];
         trace?: never;
     };
+    "/api/v1/dashboards/auditee/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tableau de bord de l'audité */
+        get: operations["v1_dashboards_auditee_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboards/auditor/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tableau de bord de l'auditeur */
+        get: operations["v1_dashboards_auditor_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboards/dg/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tableau de bord de la direction générale */
+        get: operations["v1_dashboards_dg_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboards/implementation-rates/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Exporter les taux de mise en oeuvre (CSV ou XLSX) */
+        get: operations["v1_dashboards_implementation_rates_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboards/rai/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tableau de bord du RAI */
+        get: operations["v1_dashboards_rai_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/directions/": {
         parameters: {
             query?: never;
@@ -2020,6 +2105,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister mes notifications */
+        get: operations["v1_notifications_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/{id}/read/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Marquer une notification comme lue */
+        post: operations["v1_notifications_read_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/read-all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Marquer toutes mes notifications comme lues */
+        post: operations["v1_notifications_read_all_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/unread-count/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Nombre de notifications non lues */
+        get: operations["v1_notifications_unread_count_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/numbering-formats/": {
         parameters: {
             query?: never;
@@ -2307,6 +2460,23 @@ export interface paths {
          * @description Lecture seule : l'écriture passe par les constats (listes imbriquées).
          */
         get: operations["v1_recommendations_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reminders/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Journal des relances */
+        get: operations["v1_reminders_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2881,6 +3051,26 @@ export interface paths {
          * @description Base : droits par rôle, pas de PUT, création / modification / suppression par service.
          */
         patch: operations["v1_risks_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/search/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recherche globale filtrée par droits
+         * @description Renvoie au plus 20 résultats visibles de l'utilisateur, sans total (`plus` indique qu'il en reste). Le surlignage est porté par deux caractères de contrôle réservés (U+0002 début, U+0003 fin). Rôle ADMIN : 403 ; au-delà de 60 requêtes par minute : 429 ; moteur indisponible : 503.
+         */
+        get: operations["v1_search_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/segregation-grids/": {
@@ -3599,6 +3789,16 @@ export interface components {
             readonly proposee_par: number;
             readonly actions_possibles: string[];
         };
+        ActionAVerifier: {
+            /** Format: uuid */
+            suivi_id: string;
+            /** Format: uuid */
+            mission_id: string;
+            reference: string;
+            libelle: string;
+            /** Format: date-time */
+            declaree_le: string | null;
+        };
         /**
          * @description * `create` - create
          *     * `update` - update
@@ -3746,6 +3946,12 @@ export interface components {
         };
         /** @enum {unknown} */
         BlankEnum: "";
+        Cartographie: {
+            /** Format: uuid */
+            version_id: string | null;
+            annee: number | null;
+            cellules: components["schemas"]["CelluleCartographie"][];
+        };
         CartographieResume: {
             /** Format: uuid */
             readonly id: string;
@@ -3829,6 +4035,11 @@ export interface components {
             description: string;
             ordre?: number;
         };
+        CelluleCartographie: {
+            probabilite: number;
+            impact: number;
+            nombre: number;
+        };
         CelluleGrille: {
             tache: number;
             acteur: number;
@@ -3866,6 +4077,9 @@ export interface components {
          * @enum {string}
          */
         ComposanteEnum: "ENVIRONNEMENT" | "ACTIVITE";
+        Compte: {
+            count: number;
+        };
         CompteUtilisateur: {
             readonly id: number;
             /**
@@ -4031,6 +4245,18 @@ export interface components {
             readonly reponse_cycle_courant: boolean;
             readonly texte_reponse: components["schemas"]["TexteReponse"] | null;
             readonly actions_possibles: string[];
+        };
+        ConstatARepondre: {
+            /** Format: uuid */
+            constat_id: string;
+            /** Format: uuid */
+            mission_id: string;
+            mission_reference: string;
+            reference: string;
+            titre: string;
+            cycle: number;
+            /** Format: date-time */
+            soumis_le: string | null;
         };
         ConstatProvisoire: {
             /** Format: uuid */
@@ -4523,6 +4749,17 @@ export interface components {
             numero: number;
             romain: string;
         };
+        EtapeEnCours: {
+            /** Format: uuid */
+            mission_id: string;
+            reference: string;
+            numero: number;
+            romain: string;
+            libelle: string;
+            /** Format: date */
+            date_fin_prevue: string | null;
+            en_retard: boolean;
+        };
         /**
          * @description * `CONFIRME` - Confirmé
          *     * `A_RENOUVELER` - À renouveler
@@ -4757,6 +4994,14 @@ export interface components {
             lignes: components["schemas"]["LigneSuivi"][];
             evenements: components["schemas"]["EvenementSuivi"][];
         };
+        FileDecisions: {
+            a_cloturer: number;
+            abandons_proposes: number;
+            reports_en_attente: number;
+            missions_a_cloturer: number;
+            relances_en_echec: number;
+            relances_sans_adresse: number;
+        };
         ForceFaiblesse: {
             /** Format: uuid */
             readonly id: string;
@@ -4941,6 +5186,16 @@ export interface components {
             /** Empreinte SHA-256 */
             readonly empreinte: string;
         };
+        JalonAValider: {
+            /** Format: uuid */
+            mission_id: string;
+            reference: string;
+            numero: number;
+            romain: string;
+            libelle: string;
+            /** Format: date-time */
+            terminee_le: string | null;
+        };
         /**
          * @description * `A_JOUR` - À jour
          *     * `EN_ATTENTE` - En attente
@@ -4953,6 +5208,16 @@ export interface components {
             nb_tests: number;
             /** Format: decimal */
             charge: string;
+        };
+        LigneDirection: {
+            /** Format: uuid */
+            direction_id: string;
+            code: string;
+            libelle: string;
+            cloturees: number;
+            ouvertes_dans_les_delais: number;
+            en_retard: number;
+            abandonnees: number;
         };
         LigneImportIgnoree: {
             ligne: number | null;
@@ -5131,6 +5396,18 @@ export interface components {
             /** Format: decimal */
             charge_reelle: string | null;
         };
+        MaDemandeReport: {
+            /** Format: uuid */
+            demande_id: string;
+            /** Format: uuid */
+            suivi_id: string;
+            reference: string;
+            /** Format: date */
+            echeance_actuelle: string;
+            /** Format: date */
+            nouvelle_echeance: string;
+            statut: string;
+        };
         Matrice: {
             version: components["schemas"]["VersionResume"];
             total: number;
@@ -5233,6 +5510,16 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        MissionEnRetard: {
+            /** Format: uuid */
+            mission_id: string;
+            reference: string;
+            titre: string;
+            statut: string;
+            /** Format: date */
+            date_fin_prevue: string;
+            jours_retard: number;
+        };
         MissionListe: {
             /** Format: uuid */
             readonly id: string;
@@ -5305,6 +5592,21 @@ export interface components {
             readonly reference: string;
             readonly titre: string;
         };
+        MissionSuiviResume: {
+            /** Format: uuid */
+            mission_id: string;
+            reference: string;
+            titre: string;
+            statut: string;
+            /** Format: date */
+            date_fin_prevue: string | null;
+        };
+        MissionsParStatut: {
+            statut: string;
+            libelle: string;
+            phase: string | null;
+            nombre: number;
+        };
         ModeDisponible: {
             mode: components["schemas"]["ModeSignatureParametreEnum"];
             libelle: string;
@@ -5316,6 +5618,19 @@ export interface components {
          * @enum {string}
          */
         ModeSignatureParametreEnum: "CONFIRMATION" | "SIGNATURE_ELECTRONIQUE" | "CONFIRMATION_ET_SIGNATURE";
+        MonAction: {
+            /** Format: uuid */
+            suivi_id: string;
+            /** Format: uuid */
+            mission_id: string;
+            reference: string;
+            libelle: string;
+            statut: string;
+            /** Format: date */
+            echeance: string;
+            en_retard: boolean;
+            jours_retard: number | null;
+        };
         MotifDesactivationRequest: {
             motif: string;
         };
@@ -5369,6 +5684,19 @@ export interface components {
          * @enum {string}
          */
         NiveauRisqueEnum: "FAIBLE" | "MOYEN" | "ELEVE";
+        Notification: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly type: components["schemas"]["TypeNotificationEnum"];
+            readonly titre: string;
+            readonly message: string;
+            readonly lien: string;
+            readonly lue: boolean;
+            /** Format: date-time */
+            readonly lue_le: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
         /** @enum {unknown} */
         NullEnum: null;
         ObjectifAudit: {
@@ -5771,6 +6099,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["MissionListe"][];
         };
+        PaginatedNotificationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Notification"][];
+        };
         PaginatedObjectifAuditList: {
             /** @example 123 */
             count: number;
@@ -5921,6 +6264,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["RecommandationListe"][];
         };
+        PaginatedRelanceList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Relance"][];
+        };
         PaginatedReponseAuditeList: {
             /** @example 123 */
             count: number;
@@ -6026,6 +6384,13 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["UtilisateurResume"][];
         };
+        /**
+         * @description * `J_MOINS_15` - J-15
+         *     * `J` - Jour de l'échéance
+         *     * `J_PLUS_15` - J+15
+         * @enum {string}
+         */
+        PalierRelanceEnum: "J_MOINS_15" | "J" | "J_PLUS_15";
         ParNiveau: {
             FAIBLE: number;
             MOYEN: number;
@@ -6817,6 +7182,15 @@ export interface components {
             readonly mon_accuse_reception: string | null;
             readonly actions_possibles: string[];
         };
+        RapportDiffuseResume: {
+            /** Format: uuid */
+            mission_id: string;
+            reference: string;
+            titre: string;
+            statut: string;
+            nombre_actions: number;
+            actions_cloturees: number;
+        };
         RapportImport: {
             dry_run: boolean;
             crees: string[];
@@ -6916,6 +7290,34 @@ export interface components {
             avis: components["schemas"]["AvisAudite"][];
             mes_droits: components["schemas"]["DroitsAnalyse"];
         };
+        Relance: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly suivi: string;
+            /** Format: uuid */
+            readonly mission_id: string;
+            readonly mission_reference: string;
+            readonly action_libelle: string;
+            readonly palier: components["schemas"]["PalierRelanceEnum"];
+            /**
+             * Échéance de référence
+             * Format: date
+             */
+            readonly echeance_reference: string;
+            readonly destinataire: components["schemas"]["UtilisateurResume"];
+            readonly copie: components["schemas"]["UtilisateurResume"] | null;
+            readonly statut: components["schemas"]["StatutRelanceEnum"];
+            readonly tentatives: number;
+            /**
+             * Envoyée le
+             * Format: date-time
+             */
+            readonly envoyee_le: string | null;
+            readonly erreur: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
         RemiseRequestRequest: {
             /** Format: date */
             le: string;
@@ -6962,6 +7364,10 @@ export interface components {
             constat: string;
             commentaire: string;
         };
+        ReponseRecherche: {
+            resultats: components["schemas"]["ResultatRecherche"][];
+            plus: boolean;
+        };
         ReponseRequestRequest: {
             /** Format: uuid */
             constat: string;
@@ -6981,6 +7387,18 @@ export interface components {
          * @enum {string}
          */
         ReponseRisqueEnum: "TRAITER" | "TRANSFERER" | "TERMINER" | "TOLERER";
+        ResultatRecherche: {
+            type: components["schemas"]["TypeResultatRechercheEnum"];
+            /** Format: uuid */
+            objet_id: string;
+            /** Format: uuid */
+            mission_id: string | null;
+            mission_reference: string;
+            titre: string;
+            sous_titre: string;
+            extrait: string;
+            etape: number | null;
+        };
         /** @description {id, code, libelle} d'un processus ou d'une entité. */
         Resume: {
             /** Format: uuid */
@@ -7069,6 +7487,15 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        RisqueEleve: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            libelle: string;
+            processus_code: string;
+            couvert: boolean;
+            missions: string[];
+        };
         RisqueMission: {
             /** Format: uuid */
             readonly id: string;
@@ -7151,6 +7578,11 @@ export interface components {
             readonly libelle: string;
             readonly score: number;
             readonly niveau: components["schemas"]["NiveauRisqueEnum"];
+        };
+        RisquesEleves: {
+            couverts: number;
+            non_couverts: number;
+            risques: components["schemas"]["RisqueEleve"][];
         };
         /**
          * @description * `ADMIN` - Administrateur
@@ -7308,6 +7740,14 @@ export interface components {
          */
         StatutReferentielEnum: "BROUILLON" | "SOUMIS" | "RENVOYE" | "VALIDE" | "A_REVALIDER";
         /**
+         * @description * `A_ENVOYER` - À envoyer
+         *     * `ENVOYEE` - Envoyée
+         *     * `ECHEC` - Échec d'envoi
+         *     * `SANS_ADRESSE` - Sans adresse
+         * @enum {string}
+         */
+        StatutRelanceEnum: "A_ENVOYER" | "ENVOYEE" | "ECHEC" | "SANS_ADRESSE";
+        /**
          * @description * `PREVU` - Prévu
          *     * `ABANDONNE` - Abandonné
          * @enum {string}
@@ -7346,6 +7786,71 @@ export interface components {
             budget_jours: string;
             depassement_budget: boolean;
             tests_sans_auditeur: string[];
+        };
+        TableauAudite: {
+            constats_a_repondre: components["schemas"]["ConstatARepondre"][];
+            mes_actions: components["schemas"]["MonAction"][];
+            mes_demandes_report: components["schemas"]["MaDemandeReport"][];
+        };
+        TableauAuditeur: {
+            mes_missions: components["schemas"]["MissionSuiviResume"][];
+            mes_etapes_en_cours: components["schemas"]["EtapeEnCours"][];
+            mes_tests_a_documenter: components["schemas"]["TestATraiter"][];
+            actions_a_verifier: components["schemas"]["ActionAVerifier"][];
+        };
+        TableauDg: {
+            annee: number;
+            rapports_diffuses: components["schemas"]["RapportDiffuseResume"][];
+            taux: components["schemas"]["Taux"];
+            taux_par_direction: components["schemas"]["TauxParDirection"][];
+            risques_eleves: components["schemas"]["RisquesEleves"];
+        };
+        TableauRai: {
+            annee: number;
+            missions_par_statut: components["schemas"]["MissionsParStatut"][];
+            missions_en_retard: components["schemas"]["MissionEnRetard"][];
+            etapes_en_retard: number;
+            jalons_a_valider: components["schemas"]["JalonAValider"][];
+            actions_par_direction: components["schemas"]["LigneDirection"][];
+            file_decisions: components["schemas"]["FileDecisions"];
+            cartographie: components["schemas"]["Cartographie"];
+            taux: components["schemas"]["Taux"];
+        };
+        Taux: {
+            cloturees: number;
+            abandonnees: number;
+            total: number;
+            /** Format: double */
+            taux: number | null;
+            echues: number;
+            cloturees_echues: number;
+            /** Format: double */
+            taux_echues: number | null;
+        };
+        TauxParDirection: {
+            cloturees: number;
+            abandonnees: number;
+            total: number;
+            /** Format: double */
+            taux: number | null;
+            echues: number;
+            cloturees_echues: number;
+            /** Format: double */
+            taux_echues: number | null;
+            /** Format: uuid */
+            direction_id: string;
+            code: string;
+            libelle: string;
+        };
+        TestATraiter: {
+            /** Format: uuid */
+            test_id: string;
+            /** Format: uuid */
+            mission_id: string;
+            reference: string;
+            code: string;
+            libelle: string;
+            sans_fiche: boolean;
         };
         TestPrevu: {
             /** Format: uuid */
@@ -7543,11 +8048,38 @@ export interface components {
          */
         TypeMissionEnum: "ASSURANCE" | "CONSEIL";
         /**
+         * @description * `SUIVI_OUVERT` - Suivi ouvert
+         *     * `ACTION_DECLAREE` - Action déclarée
+         *     * `ACTION_VERIFIEE` - Action vérifiée
+         *     * `ACTION_REJETEE` - Action rejetée
+         *     * `ACTION_CLOTUREE` - Action clôturée
+         *     * `ABANDON_PROPOSE` - Abandon proposé
+         *     * `ABANDON_DECIDE` - Abandon décidé
+         *     * `REPORT_DEMANDE` - Report demandé
+         *     * `REPORT_DECIDE` - Report décidé
+         *     * `RESPONSABLE_CHANGE` - Responsable changé
+         *     * `RELANCE` - Relance
+         *     * `MISSION_A_CLOTURER` - Mission à clôturer
+         *     * `MISSION_CLOTUREE` - Mission clôturée
+         *     * `ACTION_IGNOREE` - Action ignorée
+         * @enum {string}
+         */
+        TypeNotificationEnum: "SUIVI_OUVERT" | "ACTION_DECLAREE" | "ACTION_VERIFIEE" | "ACTION_REJETEE" | "ACTION_CLOTUREE" | "ABANDON_PROPOSE" | "ABANDON_DECIDE" | "REPORT_DEMANDE" | "REPORT_DECIDE" | "RESPONSABLE_CHANGE" | "RELANCE" | "MISSION_A_CLOTURER" | "MISSION_CLOTUREE" | "ACTION_IGNOREE";
+        /**
          * @description * `PRISE_CONNAISSANCE` - Questionnaire de prise de connaissance
          *     * `QCI` - Questionnaire de contrôle interne
          * @enum {string}
          */
         TypeQuestionnaireEnum: "PRISE_CONNAISSANCE" | "QCI";
+        /**
+         * @description * `ACTION` - ACTION
+         *     * `CONSTAT` - CONSTAT
+         *     * `DOCUMENT` - DOCUMENT
+         *     * `MISSION` - MISSION
+         *     * `RECOMMANDATION` - RECOMMANDATION
+         * @enum {string}
+         */
+        TypeResultatRechercheEnum: "ACTION" | "CONSTAT" | "DOCUMENT" | "MISSION" | "RECOMMANDATION";
         /**
          * @description * `OUVERTURE` - Réunion d'ouverture
          *     * `LANCEMENT` - Réunion de lancement
@@ -10425,6 +10957,229 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_dashboards_auditee_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableauAudite"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_dashboards_auditor_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableauAuditeur"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_dashboards_dg_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Année (2000 à 2100) ; défaut : l'année courante. */
+                annee?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableauDg"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_dashboards_implementation_rates_export_retrieve: {
+        parameters: {
+            query: {
+                /** @description Année (2000 à 2100) ; défaut : l'année courante. */
+                annee?: number;
+                /** @description Format du fichier : csv (UTF-8, séparateur « ; ») ou xlsx. */
+                format: "csv" | "xlsx";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv; charset=utf-8": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiError"];
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_dashboards_rai_retrieve: {
+        parameters: {
+            query?: {
+                /** @description Année (2000 à 2100) ; défaut : l'année courante. */
+                annee?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TableauRai"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -16019,6 +16774,172 @@ export interface operations {
             };
         };
     };
+    v1_notifications_list: {
+        parameters: {
+            query?: {
+                /** @description Vrai : seulement les notifications non lues. */
+                non_lues?: boolean;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedNotificationList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_notifications_read_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) notification. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_notifications_read_all_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Compte"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_notifications_unread_count_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Compte"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_numbering_formats_list: {
         parameters: {
             query?: never;
@@ -17429,6 +18350,71 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reminders_list: {
+        parameters: {
+            query?: {
+                date_apres?: string;
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `J_MOINS_15` - J-15
+                 *     * `J` - Jour de l'échéance
+                 *     * `J_PLUS_15` - J+15
+                 */
+                palier?: "J" | "J_MOINS_15" | "J_PLUS_15";
+                /**
+                 * @description * `A_ENVOYER` - À envoyer
+                 *     * `ENVOYEE` - Envoyée
+                 *     * `ECHEC` - Échec d'envoi
+                 *     * `SANS_ADRESSE` - Sans adresse
+                 */
+                statut?: "A_ENVOYER" | "ECHEC" | "ENVOYEE" | "SANS_ADRESSE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedRelanceList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -19668,6 +20654,70 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_search_retrieve: {
+        parameters: {
+            query: {
+                /** @description Texte recherché (2 à 200 caractères après nettoyage). */
+                q: string;
+                /** @description Types séparés par des virgules : ACTION, CONSTAT, DOCUMENT, MISSION, RECOMMANDATION. */
+                types?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReponseRecherche"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
