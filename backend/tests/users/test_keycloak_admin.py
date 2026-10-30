@@ -519,4 +519,5 @@ def test_compose_dev_transmet_le_secret() -> None:
 
 def test_compose_prod_transmet_le_secret() -> None:
     text = (ROOT / "docker/compose.prod.yml").read_text(encoding="utf-8")
-    assert "KEYCLOAK_ADMIN_API_CLIENT_SECRET: ${KEYCLOAK_ADMIN_API_CLIENT_SECRET:?" in text
+    # Depuis le lot 9 (T17), le secret est transmis par fichier Docker, jamais par variable.
+    assert "KEYCLOAK_ADMIN_API_CLIENT_SECRET_FILE: /run/secrets/keycloak_sync_secret" in text

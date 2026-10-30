@@ -90,7 +90,7 @@ fichiers `0600`), l'absence de fichier vide et de valeur `CHANGE_ME`.
 | `postgres_app_password` | db (création du rôle), web, worker, beat | mot de passe du rôle applicatif `POSTGRES_APP_USER` |
 | `redis_password` | redis, web, worker, beat, migrate | mot de passe Valkey |
 | `oidc_client_secret` | web, worker, beat, migrate | secret du client `onea-backend` (voir §5, étape 6) |
-| `keycloak_sync_secret` | web, worker, beat, migrate | secret du compte de service `onea-admin-sync` (§5, étape 7bis) |
+| `keycloak_sync_secret` | web, worker, beat, migrate | secret du compte de service `onea-admin-sync` (§5, étape 7bis) ; lu par Django via `KEYCLOAK_ADMIN_API_CLIENT_SECRET_FILE` (variable `KEYCLOAK_ADMIN_API_CLIENT_SECRET` en développement) |
 | `meili_master_key` | meilisearch, web, worker, beat, migrate | clé maître Meilisearch |
 | `metrics_token` | web | jeton `Authorization: Bearer` de `/api/v1/metrics/` |
 | `email_password` | worker | mot de passe SMTP ; **vide** si le relais n'en exige pas (le mot de passe de `EMAIL_URL` s'applique alors, s'il y en a un) |
