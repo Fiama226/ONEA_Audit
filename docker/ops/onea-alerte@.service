@@ -1,0 +1,13 @@
+# Alerte par courriel quand l'unité %i échoue (OnFailure= des services de sauvegarde). scripts/alerte-mail.sh.
+[Unit]
+Description=Alerte courriel : echec de %i
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/onea
+EnvironmentFile=-/etc/onea/sauvegarde.env
+# Les dernieres lignes du journal de l'unite en echec forment le corps du message (aucun secret n'y est ecrit).
+ExecStart=/bin/sh -c 'journalctl -u "$$1" -n 40 --no-pager 2>&1 | /bin/sh /opt/onea/scripts/alerte-mail.sh "ONEA : echec de $$1"' sh %i
+NoNewPrivileges=true
+PrivateTmp=true

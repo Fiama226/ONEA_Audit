@@ -36,6 +36,8 @@ def test_orphelins_et_manifeste(version_prete: DocumentVersion) -> None:
     assert "versions/orphelin/v001.docx" in texte
     assert f"{version_prete.fichier_docx.name};{version_prete.empreinte_docx}" in texte
     assert f"{version_prete.fichier_docx.name}\n" not in texte.split("Orphelins")[1]
+    assert "1 orphelin(s) : informatif" in texte
+    assert chemin_fichier("versions/orphelin/v001.docx").exists()  # jamais supprimé
 
 
 def test_gabarit_altere_ou_manquant_est_une_anomalie(version_prete: DocumentVersion) -> None:

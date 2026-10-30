@@ -1,0 +1,13 @@
+[Unit]
+Description=Sauvegarde nocturne ONEA, 02:00 (heure de Ouagadougou = UTC)
+
+[Timer]
+# Ouagadougou est à UTC+0 toute l'année (pas d'heure d'été) : 02:00 UTC = 02:00 à Ouagadougou.
+OnCalendar=*-*-* 02:00:00 UTC
+# Rattrape une exécution manquée (serveur éteint à 02:00).
+Persistent=true
+AccuracySec=1min
+Unit=onea-sauvegarde.service
+
+[Install]
+WantedBy=timers.target

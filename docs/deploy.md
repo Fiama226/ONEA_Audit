@@ -434,30 +434,125 @@ images portent l'étiquette `APP_VERSION`.
 
 ## 7. Sauvegardes et restauration
 
-`scripts/backup.sh` produit deux dumps PostgreSQL au format custom (application et
-Keycloak) dans `./backups` (14 derniers conservés) :
+Objectifs (D8) : perte maximale **24 h** (RPO), remise en service **4 h** (RTO). L'exercice
+automatisé de la recette (`scripts/recette/tests/restauration.sh`) vise moins de 30 minutes ; il se
+refait **chaque trimestre** en production (runbook).
+
+### 7.1 Ce qui est sauvegardé
+
+`scripts/backup.sh` (en root : le dossier des documents appartient à 10001, mode 0750) écrit, pour un
+horodatage `AAAAMMJJ-HHMMSS`, dans le dossier de sauvegarde (défaut `./backups`) :
+
+| Fichier | Contenu |
+|---|---|
+| `onea-<h>.dump`, `keycloak-<h>.dump` | `pg_dump --format=custom` de la base applicative et de celle de Keycloak |
+| `fichiers-<h>.tar.gz` | volume Docker `onea-fichiers` (pièces justificatives du lot 6, `FICHIERS_RACINE`) |
+| `documents-<h>.tar.gz` | dossier `DOCUMENTS_HOST_DIR` (documents Word/PDF générés) |
+| `manifeste-<h>.sha256` | SHA-256 des quatre fichiers ci-dessus, écrit en dernier |
+
+Les bases sont sauvegardées **avant** les fichiers : tout fichier référencé par un dump est dans
+l'archive ; un fichier écrit entre les deux est un *orphelin* inoffensif (écriture unique), signalé
+par `verifier_documents --orphelins`, jamais supprimé automatiquement. Le volume `meili-data`
+(index) est reconstructible : `restore.sh` relance `manage.py reindexer`.
+
+Chaque artefact est **vérifié** : `pg_restore --list` pour les dumps, `tar -tzf` pour les archives,
+`sha256sum -c` pour le manifeste. Un jeu sans manifeste est incomplet ; en cas d'échec, les fichiers
+du jeu en cours sont retirés. Quatorze jeux sont conservés localement.
 
 ```
-sh scripts/backup.sh /srv/onea-backups
+sudo sh scripts/backup.sh /srv/onea-backups
 ```
 
-À planifier chaque nuit (cron) et à copier hors du serveur. Le script archive aussi le
-dossier des documents (`documents-AAAAMMJJ-HHMMSS.tar.gz`, après les bases). Le volume
-`meili-data` (index) est reconstructible et n'est pas sauvegardé. Procédure de
-restauration complète : [`docs/stockage-fichiers.md`](stockage-fichiers.md).
+### 7.2 Copie hors serveur chiffrée (restic) — décision U1
 
-Restauration de la base applicative :
+Une sauvegarde qui reste sur le serveur ne protège pas de sa perte. La copie hors serveur utilise
+[restic](https://restic.net) (chiffrement et déduplication ; `apt install restic`). Rétention :
+7 quotidiennes, 4 hebdomadaires, 12 mensuelles (`restic forget --prune`).
+
+`backup.sh --hors-serveur` **refuse de s'exécuter** (avant toute sauvegarde) sans `RESTIC_REPOSITORY`
+et `RESTIC_PASSWORD_FILE` (fichier lisible par root seul, 0600, jamais passé en argument).
+Destinations acceptées par restic, à choisir à la décision **U1** :
+
+| Destination | `RESTIC_REPOSITORY` |
+|---|---|
+| second serveur de l'ONEA en SFTP | `sftp:sauvegarde@serveur2:/srv/restic-onea` (clé SSH de root, sans phrase de passe) |
+| NAS ou disque externe monté | `/mnt/nas-onea/restic` (chemin local) |
+| stockage S3 interne | `s3:https://s3.onea.bf/onea-sauvegardes` (+ `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` dans l'environnement du service) |
+| serveur REST restic | `rest:https://utilisateur@hote:8000/onea` |
+
+Le **mot de passe restic** protège toutes les copies : sans lui, elles sont illisibles. Le confier à
+**deux personnes** (coffre ou enveloppe scellée) ; le perdre revient à perdre la copie hors serveur.
 
 ```
-docker compose --env-file .env.prod -f docker/compose.prod.yml stop web worker beat
-docker compose --env-file .env.prod -f docker/compose.prod.yml exec -T db \
-  sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists --no-owner' \
-  < /srv/onea-backups/onea-AAAAMMJJ-HHMMSS.dump
-docker compose --env-file .env.prod -f docker/compose.prod.yml start web worker beat
+sudo install -m 0600 /dev/null /etc/onea/restic.pass && sudo sh -c 'openssl rand -hex 32 > /etc/onea/restic.pass'
+export RESTIC_REPOSITORY=sftp:sauvegarde@serveur2:/srv/restic-onea RESTIC_PASSWORD_FILE=/etc/onea/restic.pass
+sudo -E sh scripts/backup.sh /srv/onea-backups --hors-serveur --initialiser-depot   # première fois seulement
+sudo -E sh scripts/backup.sh --verifier-hors-serveur                                # restic snapshots + restic check
 ```
 
-Même procédure pour Keycloak avec le service `keycloak-db` (arrêter `keycloak` pendant la
-restauration). Tester la restauration régulièrement sur un serveur de recette.
+Sans `--initialiser-depot`, un dépôt absent est une erreur (une faute de frappe ne crée pas un nouveau
+dépôt en silence). Tant que U1 n'est pas levée : sauvegardes locales seules.
+
+### 7.3 Minuteries systemd
+
+`docker/ops/` contient la sauvegarde nocturne (`onea-sauvegarde.timer`, **02:00** ; Ouagadougou est à
+UTC+0), la vérification hebdomadaire de la copie hors serveur (`onea-verification-sauvegarde.timer`,
+**dimanche 05:00**) et `onea-alerte@.service`, déclenché par `OnFailure=` : il envoie par courriel
+(`scripts/alerte-mail.sh`, curl SMTP, aucun outil supplémentaire) les dernières lignes du journal.
+
+```
+sudo cp docker/ops/onea-sauvegarde.* docker/ops/onea-verification-sauvegarde.* docker/ops/onea-alerte@.service /etc/systemd/system/
+sudo systemd-analyze verify /etc/systemd/system/onea-sauvegarde.* /etc/systemd/system/onea-verification-sauvegarde.* /etc/systemd/system/onea-alerte@.service
+sudo systemctl daemon-reload && sudo systemctl enable --now onea-sauvegarde.timer onea-verification-sauvegarde.timer
+```
+
+Les unités supposent le dépôt dans `/opt/onea` (sinon corriger `WorkingDirectory` et `ExecStart`). La
+configuration est dans `/etc/onea/sauvegarde.env` (root, 0600, jamais dans Git) :
+
+```
+ONEA_SAUVEGARDE_DIR=/srv/onea-backups
+ONEA_SAUVEGARDE_OPTIONS=--hors-serveur          # vide : sauvegardes locales seules
+RESTIC_REPOSITORY=sftp:sauvegarde@serveur2:/srv/restic-onea
+RESTIC_PASSWORD_FILE=/etc/onea/restic.pass
+ALERTE_SMTP_URL=smtp://relais.onea.bf:587       # STARTTLS exigé ; smtps://…:465 ; ALERTE_SMTP_CLAIR=1 pour un relais interne en clair
+ALERTE_MAIL_DE=sauvegarde@onea.bf
+ALERTE_MAIL_A=dsi@onea.bf,rai@onea.bf
+ALERTE_SMTP_UTILISATEUR=sauvegarde               # facultatif
+ALERTE_SMTP_MOT_DE_PASSE_FILE=/etc/onea/alerte.pass   # facultatif, 0600
+```
+
+Essai de l'alerte : `sudo sh -c 'set -a; . /etc/onea/sauvegarde.env; sh scripts/alerte-mail.sh "Essai ONEA" "Texte de l essai"'`.
+Un jeu local reste valable même si la copie restic échoue (l'alerte part, le jeu est conservé).
+
+### 7.4 Restauration
+
+```
+sudo sh scripts/restore.sh 20261030-020001 --verifier --dossier /srv/onea-backups   # contrôle seul
+sudo sh scripts/restore.sh 20261030-020001 --oui --dossier /srv/onea-backups        # DESTRUCTIF
+```
+
+Sans `--oui`, rien n'est modifié. Depuis la copie hors serveur : `restic restore latest --target
+/srv/onea-restauration`, puis `--dossier /srv/onea-restauration/srv/onea-backups`. `restore.sh` :
+
+1. contrôle le manifeste et les empreintes (**refus au moindre écart**), la lisibilité des dumps et archives ;
+2. arrête `web`, `worker`, `beat`, `keycloak` ;
+3. restaure la base applicative puis celle de Keycloak (`pg_restore --clean --if-exists --single-transaction`) ;
+4. **relance `installer_gardes_sql`** : les déclencheurs de gel et les droits de `onea_app` (§7bis) sont
+   rétablis par le code, pas par confiance dans le dump ;
+5. déplace le dossier des documents en `<dossier>-avant-restauration-<horodatage>`, extrait l'archive,
+   rétablit 10001:10001 et 0750 ;
+6. sauvegarde le volume `onea-fichiers` dans `<dossier de sauvegarde>/avant-restauration-fichiers-<horodatage>.tar.gz`,
+   puis le remplace par l'archive ;
+7. redémarre la pile, réindexe la recherche ;
+8. vérifie : `installer_gardes_sql --verifier --exiger-role`, `verifier_documents` (**code 1** si un fichier
+   référencé manque ou est altéré), `verifier_documents --orphelins` (informatif), `verifier_pieces`
+   (un orphelin seul est informatif ; une pièce absente ou altérée est une erreur).
+
+Sur un serveur neuf : installer la pile (§4 : secrets, `.env.prod`, images), créer le dossier des
+documents (§ `docs/stockage-fichiers.md`), puis lancer `restore.sh` (il démarre `db` et `keycloak-db`).
+L'ancien dossier des documents et les copies « avant-restauration » sont à supprimer à la main après
+contrôle. Restauration d'un seul document : extraire son fichier de `documents-<h>.tar.gz`
+(`tar -xzf … -C <dossier> chemin/du/fichier`), puis `verifier_documents`.
 
 ## 7bis. Base de données : rôles, gel et maintenance
 

@@ -1,0 +1,19 @@
+# Vérification hebdomadaire de la copie hors serveur (restic snapshots + restic check). Voir onea-sauvegarde.service.
+[Unit]
+Description=Verification de la copie hors serveur des sauvegardes ONEA (restic check)
+Documentation=file:///opt/onea/docs/deploy.md
+After=network-online.target
+Wants=network-online.target
+OnFailure=onea-alerte@%n.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/onea
+EnvironmentFile=-/etc/onea/sauvegarde.env
+ExecStart=/bin/sh /opt/onea/scripts/backup.sh --verifier-hors-serveur
+TimeoutStartSec=4h
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=true
+PrivateTmp=true
