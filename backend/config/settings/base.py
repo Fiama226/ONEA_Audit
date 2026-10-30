@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     "apps.analyse",
     "apps.accomplissement",
     "apps.constats",
+    "apps.recommandations",
+    "apps.communication",
     "apps.documents",
 ]
 

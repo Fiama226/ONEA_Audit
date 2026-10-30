@@ -1,7 +1,10 @@
 """Droits fondés sur les rôles uniquement (D4) ; l'état de la mission est géré ailleurs."""
 
+from uuid import UUID
+
 from django.db.models import Q, QuerySet
 
+from apps.referentiel.models import Direction
 from apps.users.models import Role, User
 
 from .etapes import JALONS, JALONS_DELEGABLES
@@ -62,6 +65,15 @@ def peut_valider_jalon(user: User, mission: Mission, numero: int) -> bool:
 def peut_valider_travaux(user: User, mission: Mission) -> bool:
     """Validation des travaux (jalon XIII) : RAI, ou superviseur à déclaration levée."""
     return peut_valider_jalon(user, mission, 13)
+
+
+def est_responsable_entite(user: User, mission: Mission, entite_id: UUID | str) -> bool:
+    """AUDITE affecté (affectation active) dont la direction est celle de l'entité."""
+    if user.role != Role.AUDITE or not user.direction_code:
+        return False
+    if role_dans_mission(user, mission) != RoleMission.AUDITE:
+        return False
+    return Direction.objects.filter(pk=entite_id, code=user.direction_code).exists()
 
 
 def missions_visibles(user: User) -> QuerySet[Mission]:

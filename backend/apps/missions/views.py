@@ -605,6 +605,7 @@ class EtapeViewSet(
     ) -> Response:
         etape = self.get_object()
         svc_etapes.exiger_droit(etape, action_etape, self.acteur)
+        svc_etapes.exiger_action_generique(etape, action_etape)
         if motif:
             corps = serializers.MotifSerializer(data=request.data)
             corps.is_valid(raise_exception=True)

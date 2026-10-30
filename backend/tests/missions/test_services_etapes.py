@@ -134,12 +134,12 @@ def test_terminer_II_complete(mission_lancee: Mission, chef: User) -> None:
     assert statut_mission(mission_lancee) == StatutMission.EN_PLANIFICATION
 
 
-def test_terminer_VIII_renvoie_au_lot_6(mission_lancee: Mission, chef: User) -> None:
-    forcer_etapes(mission_lancee, {8: StatutEtape.EN_COURS})
+def test_terminer_XV_renvoie_au_lot_7(mission_lancee: Mission, chef: User) -> None:
+    forcer_etapes(mission_lancee, {15: StatutEtape.EN_COURS})
     with pytest.raises(RegleMetierError) as exc:
-        terminer_etape(etape_n(mission_lancee, 8), by=chef)
+        terminer_etape(etape_n(mission_lancee, 15), by=chef)
     assert exc.value.errors["livrables"] == [
-        "Les livrables de l'étape VIII sont gérés à partir du lot 6."
+        "Les livrables de l'étape XV sont gérés à partir du lot 7."
     ]
 
 

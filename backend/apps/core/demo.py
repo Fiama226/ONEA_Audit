@@ -36,6 +36,8 @@ ORDRE: tuple[str, ...] = (
     "core",
     "accomplissement",
     "constats",
+    "recommandations",
+    "communication",
     "documents",
 )
 # Les documents écrivent des fichiers et lancent leurs propres transactions : hors bloc atomique.

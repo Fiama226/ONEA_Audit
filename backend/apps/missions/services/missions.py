@@ -32,6 +32,10 @@ from ..models import (
 from . import LOCK_REFERENCE_MISSION, aujourd_hui
 from .declarations import nom_complet
 
+MSG_DIFFUSION = (
+    "Le rapport ne peut être diffusé que lorsque les étapes XV à XVIII sont closes "
+    "et le rapport validé."
+)
 CHAMPS_MODIFIABLES = {
     "titre",
     "type",
@@ -357,4 +361,27 @@ def annuler_mission(mission: Mission, *, motif: str, by: User) -> Mission:
     mission.motif_annulation = _motif(motif)
     mission.statut = StatutMission.ANNULEE
     _sauver_champs(mission, ["statut", "motif_annulation"], by)
+    return mission
+
+
+@transaction.atomic
+def marquer_rapport_diffuse(mission: Mission, *, by: User) -> Mission:
+    """Passe EN_COMMUNICATION à RAPPORT_DIFFUSE quand XV à XVIII sont closes et XVIII validée."""
+    mission = verrouiller_mission(mission)
+    if mission.statut != StatutMission.EN_COMMUNICATION:
+        raise _pas_possible(mission, "diffuser le rapport")
+    statuts = dict(
+        EtapeMission.objects.select_for_update()
+        .filter(mission=mission, numero__gte=15)
+        .values_list("numero", "statut")
+    )
+    closes = {StatutEtape.TERMINEE, StatutEtape.VALIDEE, StatutEtape.NON_APPLICABLE}
+    pret = (
+        all(statuts.get(n) in closes for n in range(15, 19))
+        and statuts.get(18) == StatutEtape.VALIDEE
+    )
+    if not pret:
+        raise RegleMetierError(MSG_DIFFUSION)
+    mission.statut = StatutMission.RAPPORT_DIFFUSE
+    enregistrer(mission, by=by)
     return mission

@@ -64,6 +64,22 @@ class ActionEtape(models.TextChoices):
 
 A = ActionEtape
 
+# Actions d'étape qui ne se font pas par les routes génériques (point d'extension du lot 7) :
+# elles sont portées par un écran dédié qui appelle directement les services.
+ACTIONS_RESERVEES: dict[int, set[str]] = {}
+MSG_ACTION_RESERVEE = "Cette action se fait depuis l'écran du rapport."
+
+
+def reserver_actions(numero: int, *actions: str) -> None:
+    """Réserve des actions d'une étape à un écran dédié (idempotent)."""
+    ACTIONS_RESERVEES.setdefault(numero, set()).update(str(a) for a in actions)
+
+
+def exiger_action_generique(etape: EtapeMission, action: str) -> None:
+    """Refuse (422) une action réservée sur une route générique ; les services restent libres."""
+    if str(action) in ACTIONS_RESERVEES.get(etape.numero, ()):
+        raise RegleMetierError(MSG_ACTION_RESERVEE)
+
 
 # --------------------------------------------------------------------------- règles d'état
 
@@ -177,7 +193,10 @@ def actions_possibles(
     if contexte is None:
         contexte = contexte_actions(Mission.objects.get(pk=etape.mission_id), user)
     possibles: list[str] = []
+    reservees = ACTIONS_RESERVEES.get(etape.numero, ())
     for action in ActionEtape:
+        if action.value in reservees:
+            continue
         try:
             _verifier_etat(action, etape, contexte.mission, user)
         except RegleMetierError:
