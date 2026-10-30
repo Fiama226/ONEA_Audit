@@ -62,6 +62,20 @@ Sidebar 260 px fixe (repliable à 64 px), header 56 px.
   numéro de version et statut dans un bandeau.
 - **Vide / erreur** : illustration sobre monochrome, une phrase, une action.
 
+## Graphiques
+Primitives dans `frontend/src/components/charts` (aucune bibliothèque de graphique).
+- **Palette** : `--chart-1` (série unique, bleu primaire), `--chart-done` (clôturé), `--chart-open` (ouvert, gris neutre),
+  `--chart-late` (en retard), en clair et en sombre. Clair : #0B4F8A, #1E8E5A, #8A99A7, #B42318.
+  Sombre : #5BA4E6, #2FA36B, #55606B, #E5544B. `--chart-texture` : hachures du statut « en retard ».
+- **Jamais la couleur seule** : chaque série a un libellé et une icône (CheckCircle2, Circle, AlertTriangle) dans la légende,
+  « en retard » est hachuré, les valeurs et totaux sont écrits en `text-foreground`, et chaque graphique offre
+  un bouton « Afficher le tableau » (vrai `<table>` avec `caption`).
+- **Contraste** : texte ≥ 4,5:1 ; `--chart-1`, `--chart-done`, `--chart-late` ≥ 3:1 sur `--surface` (testé).
+  Le gris `--chart-open` est volontairement neutre (≈ 2,8:1) : valeurs en texte et tableau sont donc obligatoires.
+- **Tracé** : marques fines (12 px), extrémité arrondie 4 px, ligne de base nette, 2 px de surface entre segments.
+  Mode contraste forcé : segments bordés, « en retard » hachuré.
+- **Interaction** : lignes focalisables (lien si destination), info-bulle au survol et au focus.
+
 ## Iconographie
 Lucide (ISC), trait 1.5 px, taille 16 ou 20. Jamais d'emoji dans l'interface.
 
