@@ -3,8 +3,10 @@ import { useParams } from "react-router-dom";
 import { useRole } from "@/auth/useRole";
 import { ALERT_CLASS } from "@/components/form/FormField";
 import { EmptyState } from "@/components/EmptyState";
+import { PrintLayout } from "@/components/print/PrintLayout";
 import { Button } from "@/components/ui/button";
 import { fr } from "@/i18n/fr";
+import { useMission } from "@/features/missions/api";
 import { useAuditFramework, useFrameworkSnapshot } from "../api";
 import { FrameworkStatusPanel } from "../components/FrameworkStatusPanel";
 import { MarcTable } from "../components/MarcTable";
@@ -20,6 +22,7 @@ export function AuditFrameworkPage() {
   const framework = useAuditFramework(id);
   const validated = framework.data?.statut === "VALIDE";
   const snapshot = useFrameworkSnapshot(id, validated);
+  const mission = useMission(id);
   const { is } = useRole();
   const [opinionOpen, setOpinionOpen] = useState(false);
 
@@ -61,49 +64,51 @@ export function AuditFrameworkPage() {
   }
 
   return (
-    <section aria-labelledby="framework-title" className="grid gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="framework-title" className="text-lg font-semibold">
-          {t.printTitle}
-        </h2>
-        <div className="flex flex-wrap gap-2 print:hidden">
-          {data.mes_droits.donner_avis && (
-            <Button type="button" onClick={() => setOpinionOpen(true)}>
-              {t.giveOpinion}
+    <PrintLayout title={t.printTitle} reference={mission.data?.reference}>
+      <section aria-labelledby="framework-title" className="grid gap-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="framework-title" className="text-lg font-semibold print:hidden">
+            {t.printTitle}
+          </h2>
+          <div className="flex flex-wrap gap-2 print:hidden">
+            {data.mes_droits.donner_avis && (
+              <Button type="button" onClick={() => setOpinionOpen(true)}>
+                {t.giveOpinion}
+              </Button>
+            )}
+            <Button type="button" variant="outline" onClick={() => window.print()}>
+              {t.printFramework}
             </Button>
-          )}
-          <Button type="button" variant="outline" onClick={() => window.print()}>
-            {t.printFramework}
-          </Button>
+          </div>
         </div>
-      </div>
-      <FrameworkStatusPanel framework={data} />
-      {validated ? (
-        <section aria-labelledby="snapshot-title" className="grid gap-3">
-          <h3 id="snapshot-title" className="text-base font-semibold">
-            {t.snapshotTitle}
-          </h3>
-          {snapshot.isError && (
-            <p role="alert" className={ALERT_CLASS}>
-              {t.snapshotError}
-            </p>
-          )}
-          {snapshot.isPending && (
-            <p role="status" className="text-sm text-text-muted">
-              {t.snapshotLoading}
-            </p>
-          )}
-          {snapshot.data && <FrameworkSnapshot snapshot={snapshot.data} />}
-        </section>
-      ) : (
-        <>
-          <MarcTable missionId={id} editable={false} />
-          <StrengthsWeaknessesTable missionId={id} editable={false} />
-        </>
-      )}
-      {data.mes_droits.donner_avis && opinionOpen && (
-        <OpinionDialog open onOpenChange={setOpinionOpen} missionId={id} />
-      )}
-    </section>
+        <FrameworkStatusPanel framework={data} />
+        {validated ? (
+          <section aria-labelledby="snapshot-title" className="grid gap-3">
+            <h3 id="snapshot-title" className="text-base font-semibold">
+              {t.snapshotTitle}
+            </h3>
+            {snapshot.isError && (
+              <p role="alert" className={ALERT_CLASS}>
+                {t.snapshotError}
+              </p>
+            )}
+            {snapshot.isPending && (
+              <p role="status" className="text-sm text-text-muted">
+                {t.snapshotLoading}
+              </p>
+            )}
+            {snapshot.data && <FrameworkSnapshot snapshot={snapshot.data} />}
+          </section>
+        ) : (
+          <>
+            <MarcTable missionId={id} editable={false} />
+            <StrengthsWeaknessesTable missionId={id} editable={false} />
+          </>
+        )}
+        {data.mes_droits.donner_avis && opinionOpen && (
+          <OpinionDialog open onOpenChange={setOpinionOpen} missionId={id} />
+        )}
+      </section>
+    </PrintLayout>
   );
 }

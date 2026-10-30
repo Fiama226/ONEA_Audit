@@ -60,6 +60,12 @@ export const fr = {
     by: "par",
     reference: "Référence",
   },
+  impression: {
+    footer: "Document interne DAI — page",
+    pageSep: "/",
+    printedOn: "Imprimé le",
+    reference: "Référence",
+  },
   dashboard: {
     emptyTitle: "Aucune mission pour le moment",
     preview: "Ce que vous suivrez ici",

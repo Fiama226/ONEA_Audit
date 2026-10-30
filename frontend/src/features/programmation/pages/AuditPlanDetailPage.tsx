@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from "reac
 import { isApiError } from "@/api/errors";
 import { useRole } from "@/auth/useRole";
 import { Button } from "@/components/ui/button";
+import { PrintLayout } from "@/components/print/PrintLayout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fr } from "@/i18n/fr";
@@ -172,122 +173,128 @@ export function AuditPlanDetailPage() {
   }
 
   return (
-    <div className="grid gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="grid gap-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 ref={titleRef} tabIndex={-1} className="text-2xl font-semibold outline-none">
-              {`${p.title} ${data.annee}`}
-            </h1>
-            <PlanStatusBadge statut={data.statut} />
+    <PrintLayout title={`${p.title} ${data.annee}`} orientation="paysage">
+      <div className="grid gap-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="grid gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1
+                ref={titleRef}
+                tabIndex={-1}
+                className="text-2xl font-semibold outline-none print:hidden"
+              >
+                {`${p.title} ${data.annee}`}
+              </h1>
+              <PlanStatusBadge statut={data.statut} />
+            </div>
+            <p className="text-sm text-text-muted">{data.libelle}</p>
+            {data.commentaire && <p className="max-w-[70ch] text-sm">{data.commentaire}</p>}
           </div>
-          <p className="text-sm text-text-muted">{data.libelle}</p>
-          {data.commentaire && <p className="max-w-[70ch] text-sm">{data.commentaire}</p>}
-        </div>
-        <div className="flex flex-wrap items-start gap-3 print:hidden">
-          {canEdit && (
-            <>
-              {!noProcess && addLine}
-              <Button type="button" variant="outline" onClick={() => setEditing(true)}>
-                <Pencil aria-hidden />
-                {c.editAction}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setValidating(true)}>
-                {c.validateAction}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setDeleting(true)}>
-                <Trash2 aria-hidden />
-                {c.deleteAction}
-              </Button>
-            </>
-          )}
-          <PlanExportButtons id={id} />
-          <Button type="button" variant="outline" onClick={() => window.print()}>
-            <Printer aria-hidden />
-            {p.print}
-          </Button>
-        </div>
-      </div>
-
-      {flash && (
-        <p
-          role="status"
-          className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-subtle px-4 py-2 text-sm print:hidden"
-        >
-          <span>{flash}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={c.dismissFlash}
-            onClick={() => setFlash(null)}
-          >
-            <X aria-hidden />
-          </Button>
-        </p>
-      )}
-
-      {frozen && <PlanFrozenBanner plan={data} />}
-
-      <PlanSummary planId={id} />
-
-      <section aria-labelledby="plan-lines-title" className="grid gap-3">
-        <h2 id="plan-lines-title" className="text-base font-semibold">
-          {c.linesTitle}
-        </h2>
-        <Tabs value={view} onValueChange={(v) => update({ vue: v === "liste" ? null : v })}>
-          <TabsList aria-label={c.viewsLabel} className="print:hidden">
-            <TabsTrigger value="liste">{c.viewList}</TabsTrigger>
-            <TabsTrigger value="calendrier">{c.viewCalendar}</TabsTrigger>
-          </TabsList>
-          {/* Les deux vues restent montées : à l'impression, elles sortent l'une après l'autre. */}
-          <TabsContent
-            value="liste"
-            forceMount
-            className="grid gap-3 data-[state=inactive]:hidden print:data-[state=inactive]:grid"
-          >
-            <PlanFilters
-              values={filters}
-              processes={processes.data?.results ?? []}
-              onChange={(next) => update(next)}
-            />
-            {lines.data && <ListIncompleteAlert loaded={all.length} count={lines.data.count} />}
-            {/* Les filtres sont masqués à l'impression : le papier porte donc toujours le tableau
-                complet, à côté du calendrier complet. */}
-            <div className={filteredOut ? "print:hidden" : undefined}>{linesBody}</div>
-            {filteredOut && (
-              <div data-print-full aria-hidden="true" className="hidden print:block">
-                <PlanLinesTable lines={all} />
-              </div>
+          <div className="flex flex-wrap items-start gap-3 print:hidden">
+            {canEdit && (
+              <>
+                {!noProcess && addLine}
+                <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+                  <Pencil aria-hidden />
+                  {c.editAction}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setValidating(true)}>
+                  {c.validateAction}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setDeleting(true)}>
+                  <Trash2 aria-hidden />
+                  {c.deleteAction}
+                </Button>
+              </>
             )}
-          </TabsContent>
-          <TabsContent
-            value="calendrier"
-            forceMount
-            className="data-[state=inactive]:hidden print:data-[state=inactive]:block"
-          >
-            <AuditPlanCalendar year={data.annee} lines={all} />
-          </TabsContent>
-        </Tabs>
-      </section>
+            <PlanExportButtons id={id} />
+            <Button type="button" variant="outline" onClick={() => window.print()}>
+              <Printer aria-hidden />
+              {p.print}
+            </Button>
+          </div>
+        </div>
 
-      {canEditAuditPlan(role) && (
-        <ValidatePlanDialog
-          id={id}
-          open={validating}
-          onOpenChange={setValidating}
-          onValidated={() => titleRef.current?.focus()}
-        />
-      )}
-      {canEdit && <EditPlanDialog plan={data} open={editing} onOpenChange={setEditing} />}
-      {canEdit && (
-        <DeletePlanDialog
-          id={id}
-          open={deleting}
-          onOpenChange={setDeleting}
-          onDeleted={() => setDeleted(true)}
-        />
-      )}
-    </div>
+        {flash && (
+          <p
+            role="status"
+            className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-subtle px-4 py-2 text-sm print:hidden"
+          >
+            <span>{flash}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={c.dismissFlash}
+              onClick={() => setFlash(null)}
+            >
+              <X aria-hidden />
+            </Button>
+          </p>
+        )}
+
+        {frozen && <PlanFrozenBanner plan={data} />}
+
+        <PlanSummary planId={id} />
+
+        <section aria-labelledby="plan-lines-title" className="grid gap-3">
+          <h2 id="plan-lines-title" className="text-base font-semibold">
+            {c.linesTitle}
+          </h2>
+          <Tabs value={view} onValueChange={(v) => update({ vue: v === "liste" ? null : v })}>
+            <TabsList aria-label={c.viewsLabel} className="print:hidden">
+              <TabsTrigger value="liste">{c.viewList}</TabsTrigger>
+              <TabsTrigger value="calendrier">{c.viewCalendar}</TabsTrigger>
+            </TabsList>
+            {/* Les deux vues restent montées : à l'impression, elles sortent l'une après l'autre. */}
+            <TabsContent
+              value="liste"
+              forceMount
+              className="grid gap-3 data-[state=inactive]:hidden print:data-[state=inactive]:grid"
+            >
+              <PlanFilters
+                values={filters}
+                processes={processes.data?.results ?? []}
+                onChange={(next) => update(next)}
+              />
+              {lines.data && <ListIncompleteAlert loaded={all.length} count={lines.data.count} />}
+              {/* Les filtres sont masqués à l'impression : le papier porte donc toujours le tableau
+                complet, à côté du calendrier complet. */}
+              <div className={filteredOut ? "print:hidden" : undefined}>{linesBody}</div>
+              {filteredOut && (
+                <div data-print-full aria-hidden="true" className="hidden print:block">
+                  <PlanLinesTable lines={all} />
+                </div>
+              )}
+            </TabsContent>
+            <TabsContent
+              value="calendrier"
+              forceMount
+              className="data-[state=inactive]:hidden print:data-[state=inactive]:block"
+            >
+              <AuditPlanCalendar year={data.annee} lines={all} />
+            </TabsContent>
+          </Tabs>
+        </section>
+
+        {canEditAuditPlan(role) && (
+          <ValidatePlanDialog
+            id={id}
+            open={validating}
+            onOpenChange={setValidating}
+            onValidated={() => titleRef.current?.focus()}
+          />
+        )}
+        {canEdit && <EditPlanDialog plan={data} open={editing} onOpenChange={setEditing} />}
+        {canEdit && (
+          <DeletePlanDialog
+            id={id}
+            open={deleting}
+            onOpenChange={setDeleting}
+            onDeleted={() => setDeleted(true)}
+          />
+        )}
+      </div>
+    </PrintLayout>
   );
 }
