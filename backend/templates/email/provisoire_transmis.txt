@@ -1,0 +1,5 @@
+{% extends "email/base.txt" %}{% block content %}Bonjour {{ name }},
+
+Le rapport provisoire de la mission {{ mission }} « {{ titre }} » vous est transmis ({{ nb_constats }} constat(s)).
+
+Vous pouvez répondre, pour la direction concernée, jusqu'au {{ date_limite }} depuis la plateforme.{% endblock %}
