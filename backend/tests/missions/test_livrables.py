@@ -45,16 +45,12 @@ def test_etape_IV_exige_un_risque(mission_lancee: Mission) -> None:
     assert livrables_manquants(etape) == []
 
 
-@pytest.mark.parametrize(
-    ("numero", "romain", "lot"),
-    [(17, "XVII", 7)],
-)
-def test_etapes_gerees_dans_un_lot_ulterieur(
-    mission_lancee: Mission, numero: int, romain: str, lot: int
-) -> None:
-    etape = mission_lancee.etapes.get(numero=numero)
+def test_etape_XVII_est_controlee_par_le_lot_7(mission_lancee: Mission) -> None:
+    """XVII n'est plus « gérée dans un lot ultérieur » : ses contrôles D15 sont enregistrés."""
+    etape = mission_lancee.etapes.get(numero=17)
     assert livrables_manquants(etape) == [
-        f"Les livrables de l'étape {romain} sont gérés à partir du lot {lot}."
+        "Terminez l'étape XVI avant de terminer la rédaction du rapport.",
+        "Rédigez la synthèse, l'appréciation globale et la conclusion du rapport.",
     ]
 
 

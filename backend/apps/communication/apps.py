@@ -27,3 +27,10 @@ class CommunicationConfig(AppConfig):
             Diffusion,
         ):
             register(modele)
+
+        from apps.missions.services.livrables import enregistrer_controles
+
+        from .controles.redaction import CONTROLES_ETAPE
+
+        for numero, controles in CONTROLES_ETAPE.items():
+            enregistrer_controles(numero, controles)
