@@ -320,6 +320,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "documents.balayer_generations_bloquees",
         "schedule": crontab(minute="*/10"),
     },
+    "suivi-reconciliation": {
+        "task": "suivi.reconcilier_suivis",
+        "schedule": crontab(minute=5),
+    },
 }
 
 # --- Email: EMAIL_URL = smtp://mailpit:1025 in compose, smtp://localhost:1025 on host ---

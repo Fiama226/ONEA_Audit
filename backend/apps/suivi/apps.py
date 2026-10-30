@@ -13,3 +13,9 @@ class SuiviConfig(AppConfig):
 
         for modele in (SuiviAction, EvenementSuivi, DemandeReport, PreuveMiseEnOeuvre, Relance):
             register(modele)
+
+        from . import recepteurs, sources
+
+        signal = sources.signal_rapport_diffuse()
+        if signal is not None:
+            signal.connect(recepteurs.sur_rapport_diffuse, dispatch_uid="suivi.rapport_diffuse")
