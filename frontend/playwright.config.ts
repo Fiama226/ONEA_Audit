@@ -1,15 +1,20 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// e2e runs against the dev stack: Keycloak (dev realm "onea"), the Django API and the
-// Vite dev server. `make up` starts the infrastructure; the web server below starts Vite.
-// WEB_PORT (default 5173) lets a second stack run beside the dev one; the Keycloak client must
-// allow the matching redirect URI (the dev realm only lists 5173, see docs/ e2e notes).
-const WEB_PORT = process.env.WEB_PORT ?? "5173";
+// e2e runs against a throw-away database: `scripts/e2e.sh` (or e2e.ps1) creates it, starts the
+// API (127.0.0.1:8010) and Vite (5174), runs Playwright, then drops everything. Needs the dev
+// stack's Keycloak (realm "onea", client onea-frontend allowing http://localhost:5174/*).
+// Variables: WEB_PORT (5174), E2E_API_URL (http://localhost:8000 when run by hand; the script
+// sets http://localhost:8010), E2E_WEB_EXTERNAL=1 (the web server is already started by the
+// script; otherwise Playwright starts Vite itself), E2E_RUN_ID (unique prefix of test data).
+process.env.E2E_RUN_ID ??= String(Date.now());
+const WEB_PORT = process.env.WEB_PORT ?? "5174";
 const WEB_URL = `http://localhost:${WEB_PORT}`;
+const API_URL = process.env.E2E_API_URL ?? "http://localhost:8000";
 
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
+  workers: 1,
   timeout: 60_000,
   expect: { timeout: 15_000 },
   retries: process.env.CI ? 1 : 0,
@@ -20,10 +25,13 @@ export default defineConfig({
     locale: "fr-FR",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
-    command: `npm run dev -- --port ${WEB_PORT}`,
-    url: WEB_URL,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: process.env.E2E_WEB_EXTERNAL
+    ? undefined
+    : {
+        command: `npm run dev -- --port ${WEB_PORT}`,
+        url: WEB_URL,
+        env: { VITE_API_URL: API_URL },
+        reuseExistingServer: false,
+        timeout: 120_000,
+      },
 });

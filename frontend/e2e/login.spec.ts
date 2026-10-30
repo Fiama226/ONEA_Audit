@@ -1,10 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Dev stack only: the Keycloak dev realm "onea" (docker/keycloak/realm-onea.json) seeds
+// Keycloak dev realm "onea" (docker/keycloak/realm-onea.json) seeds
 // the users rai / audite1 (password onea2026) and the public client onea-frontend
-// (redirect http://localhost:5173/*).
+// (redirect http://localhost:5174/* for the e2e).
 const PASSWORD = "onea2026";
-const BASE = "http://localhost:5173";
+const BASE = `http://localhost:${process.env.WEB_PORT ?? "5174"}`;
 // Optional: full-page screenshots for visual review (frontend/e2e/screens/, git-ignored).
 const SCREENS = process.env.E2E_SCREENSHOTS ? "e2e/screens" : null;
 

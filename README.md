@@ -41,22 +41,34 @@ Le stockage des documents est sur disque (plus de service d'objets). Si l'ancien
 
 ## Tests de bout en bout (Playwright)
 
-Les parcours e2e (`frontend/e2e/`) tournent sur la pile de développement : Keycloak (realm
-`onea`), l'API Django et Vite (lancé par Playwright). Ils créent leurs données et les
-retirent ensuite (la plateforme reste vide) ; le parcours RAI du référentiel utilise le
-processus `ZZE` et les cartographies 2098 et 2099.
+Les parcours e2e (`frontend/e2e/`) tournent sur une **base PostgreSQL jetable** : la base
+`onea` de développement n'est jamais écrite (aucun SQL de nettoyage dans les specs).
 
 ```
-make up                # postgres, redis, keycloak, ...
-make backend           # dans un second terminal (migrations appliquées au préalable)
-make e2e               # = cd frontend && npx playwright test
+make up                        # pile de dev : au minimum db et keycloak
+make e2e                       # = sh scripts/e2e.sh   (Windows : pwsh scripts/e2e.ps1)
+sh scripts/e2e.sh e2e/login.spec.ts   # arguments transmis à Playwright
 ```
 
-Le nettoyage du parcours « référentiel » met à jour la base via `docker compose exec db psql`
-(une cartographie validée ne peut pas être supprimée par l'API) : lancez-le depuis la machine
-qui héberge la pile de développement. Chargement initial des listes de référence :
-`backend/README.md`, section « Référentiel : chargement initial ».
+`scripts/e2e.sh` crée `onea_e2e_<horodatage>`, la migre, lance l'API sur `127.0.0.1:8010`
+(documents dans un dossier temporaire) et Vite sur `5174`, exécute Playwright, puis arrête les
+serveurs et supprime la base et le dossier temporaire. La pile de dev (8000/5173, base `onea`)
+continue de tourner ; le script affiche les comptes de `missions_mission` et
+`referentiel_cartographieversion` de `onea` avant et après et échoue (code 4) s'ils diffèrent.
+Garde : un nom de base (`E2E_DB_NAME`) hors `^onea_e2e_[0-9]+$` est refusé avec le code 2, avant
+toute écriture. Les données de test portent l'identifiant d'exécution (`E2E_RUN_ID`).
+La recherche (Meilisearch) et la file Celery de la pile de dev ne sont pas utilisées (URL
+inerte, base Redis 14).
 
+Prérequis Keycloak : le client `onea-frontend` doit autoriser `http://localhost:5174/*`
+(redirection, origine et déconnexion), ce que fait `docker/keycloak/realm-onea.json`. Le realm
+n'est importé qu'à la création du volume : sur une pile existante, ajouter ces URI dans la
+console Keycloak (client `onea-frontend`) ou recréer le volume Keycloak.
+
+Nettoyage unique du lot 3 : la base orpheline `onea_e2e3` est supprimée par le script si elle
+existe (à la main sinon : `docker compose exec db dropdb -U onea onea_e2e3`). Chargement
+initial des listes de référence : `backend/README.md`, section « Référentiel : chargement
+initial ».
 ## Démarrer avec Claude Code
 
 ```
