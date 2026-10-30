@@ -1,0 +1,11 @@
+[Unit]
+Description=Verification hebdomadaire de la copie hors serveur ONEA, dimanche 05:00 (Ouagadougou = UTC)
+
+[Timer]
+OnCalendar=Sun *-*-* 05:00:00 UTC
+Persistent=true
+AccuracySec=1min
+Unit=onea-verification-sauvegarde.service
+
+[Install]
+WantedBy=timers.target

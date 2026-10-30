@@ -1,0 +1,26 @@
+# Sauvegarde nocturne de la plateforme ONEA (lot 9, T18). Installation : docs/deploy.md, §7.
+#   sudo cp docker/ops/onea-sauvegarde.* docker/ops/onea-verification-sauvegarde.* docker/ops/onea-alerte@.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now onea-sauvegarde.timer onea-verification-sauvegarde.timer
+# Le dépôt est supposé installé dans /opt/onea (sinon, corriger WorkingDirectory et ExecStart).
+# /etc/onea/sauvegarde.env (root, 0600) : RESTIC_REPOSITORY, RESTIC_PASSWORD_FILE, ALERTE_*, et
+#   ONEA_SAUVEGARDE_OPTIONS=--hors-serveur   (vide = sauvegardes locales seules, tant que U1 n'est pas levée)
+#   ONEA_SAUVEGARDE_DIR=/srv/onea-backups    (dossier local des sauvegardes)
+[Unit]
+Description=Sauvegarde ONEA (bases, pieces justificatives, documents, manifeste SHA-256)
+Documentation=file:///opt/onea/docs/deploy.md
+Wants=docker.service
+After=docker.service
+OnFailure=onea-alerte@%n.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/onea
+Environment=ONEA_SAUVEGARDE_DIR=/srv/onea-backups
+EnvironmentFile=-/etc/onea/sauvegarde.env
+ExecStart=/bin/sh /opt/onea/scripts/backup.sh ${ONEA_SAUVEGARDE_OPTIONS} ${ONEA_SAUVEGARDE_DIR}
+TimeoutStartSec=4h
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=true
+PrivateTmp=true

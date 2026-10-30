@@ -68,7 +68,12 @@ class Command(BaseCommand):
                 self.stdout.write(f"{cle};{references[cle]}")
         if options["orphelins"]:
             self.stdout.write("Orphelins :")
-            for cle in sorted(set(_fichiers_stockes()) - set(references)):
+            orphelins = sorted(set(_fichiers_stockes()) - set(references))
+            for cle in orphelins:
                 self.stdout.write(cle)
+            self.stdout.write(
+                f"{len(orphelins)} orphelin(s) : informatif, rien n'est supprimé "
+                "(fichier écrit entre le dump et l'archive, ou reliquat)."
+            )
         if anomalies:
             raise CommandError(f"{anomalies} anomalie(s) d'intégrité détectée(s).")

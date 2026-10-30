@@ -87,25 +87,40 @@ indisponible : réessayez plus tard. » (le fichier n'est jamais accepté sans a
 
 ## Sauvegarde
 
-`scripts/backup.sh` (à lancer en root, `sudo` : le dossier appartient à l'utilisateur 10001 en mode `0750`) sauvegarde, dans cet ordre, la base applicative, la base Keycloak, puis
-archive le dossier des documents (`documents-AAAAMMJJ-HHMMSS.tar.gz`, écrite en `.tmp` puis
-renommée ; 14 archives conservées). Les bases passent en premier : l'archive contient donc
-tout fichier référencé par le dump.
+Deux emplacements de fichiers sont à protéger : le **dossier des documents** (`DOCUMENTS_HOST_DIR`,
+cette page) et le **volume Docker `onea-fichiers`** (pièces justificatives du lot 6, `FICHIERS_RACINE`,
+jamais exposé par nginx). `scripts/backup.sh` (en root, `sudo` : le dossier appartient à 10001, mode
+`0750`) sauvegarde, dans cet ordre : la base applicative, la base Keycloak, le volume `onea-fichiers`
+(`fichiers-<horodatage>.tar.gz`), puis le dossier des documents (`documents-<horodatage>.tar.gz`). Chaque
+archive est écrite en `.tmp`, vérifiée (`tar -tzf`) puis renommée ; un manifeste `manifeste-<horodatage>.sha256`
+(SHA-256 des dumps et archives) est écrit en dernier. 14 jeux sont conservés.
 
-**Copie hors serveur recommandée** : copier chaque nuit le dossier de sauvegarde vers un
-autre site ou un autre support (`rsync`, partage réseau de l'ONEA, bande). Une sauvegarde
-qui reste sur le serveur ne protège pas d'une perte du serveur.
+Les bases passent en premier : l'archive contient tout fichier référencé par le dump. Un fichier
+écrit entre le dump et l'archive est un **orphelin** (aucune ligne en base) : inoffensif grâce à
+l'écriture unique, il est listé par `verifier_documents --orphelins` (et par `verifier_pieces` pour les
+pièces) et **jamais supprimé automatiquement**.
+
+**Copie hors serveur** : `backup.sh --hors-serveur` envoie le dossier de sauvegarde dans un dépôt
+restic chiffré (destinations acceptées, mot de passe, minuteries et alerte par courriel :
+`docs/deploy.md`, §7). Une sauvegarde qui reste sur le serveur ne protège pas de sa perte.
 
 ## Restauration
 
-1. Arrêter `web` et `worker`.
-2. Restaurer la base : `pg_restore` du dump choisi (voir `docs/deploy.md`).
-3. Vider puis restaurer le dossier des documents depuis l'archive du même horodatage :
-   `tar -xzf documents-AAAAMMJJ-HHMMSS.tar.gz -C /srv/onea/documents`, puis
-   `chown -R 10001:10001` et `chmod 0750` sur le dossier.
-4. Redémarrer `web` et `worker`.
-5. Vérifier la cohérence base/fichiers avec la commande `verifier_documents` (tâche T6 du
-   lot 4) : elle signale tout fichier référencé mais absent ou altéré.
+`sudo sh scripts/restore.sh <horodatage> --oui --dossier <dossier de sauvegarde>` automatise la
+procédure ; le détail et les garde-fous sont dans `docs/deploy.md`, §7.4. En résumé :
+
+1. contrôle du manifeste (refus d'un jeu altéré), arrêt de `web`, `worker`, `beat`, `keycloak` ;
+2. `pg_restore --clean --if-exists --single-transaction` des deux bases, puis `installer_gardes_sql`
+   (déclencheurs de gel et droits de `onea_app`, que le dump ne suffit pas à garantir) ;
+3. le dossier des documents est **déplacé** en `<DOCUMENTS_HOST_DIR>-avant-restauration-<horodatage>`,
+   l'archive est extraite, puis `chown -R 10001:10001` et `chmod 0750` ;
+4. le volume `onea-fichiers` est copié dans `avant-restauration-fichiers-<horodatage>.tar.gz` puis remplacé ;
+5. redémarrage ; `verifier_documents` (code 1 si un fichier référencé manque ou est altéré),
+   `verifier_documents --orphelins` (informatif) et `verifier_pieces`.
+
+Restauration d'un seul document : extraire son fichier de l'archive
+(`tar -xzf documents-<h>.tar.gz -C <dossier> versions/<uuid>/v001.docx`), rétablir
+`10001:10001`, puis lancer `verifier_documents`.
 
 ## Bascule future vers S3
 
