@@ -174,6 +174,7 @@ REST_FRAMEWORK = {
             "import": "10/hour",
             "export": "30/min",
             "anonyme": "30/min",
+            "annuaire": "60/min",
         }.items()
     },
 }
@@ -333,6 +334,7 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": _cache_url(),
         "KEY_PREFIX": "onea",
+        "OPTIONS": {"socket_connect_timeout": 1, "socket_timeout": 1},
     }
 }
 

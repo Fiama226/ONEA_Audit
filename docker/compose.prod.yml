@@ -50,6 +50,13 @@ x-backend-env: &backend-env
   KEYCLOAK_ADMIN_API_CLIENT_ID: onea-admin-sync
   KEYCLOAK_ADMIN_API_CLIENT_SECRET: ${KEYCLOAK_ADMIN_API_CLIENT_SECRET:?KEYCLOAK_ADMIN_API_CLIENT_SECRET is required}
   DJANGO_ADMIN_ENABLED: ${DJANGO_ADMIN_ENABLED:-false}
+  THROTTLE_RATE_GENERATION: ${THROTTLE_RATE_GENERATION:-20/min}
+  THROTTLE_RATE_APERCU: ${THROTTLE_RATE_APERCU:-30/min}
+  THROTTLE_RATE_TELEVERSEMENT: ${THROTTLE_RATE_TELEVERSEMENT:-30/hour}
+  THROTTLE_RATE_IMPORT: ${THROTTLE_RATE_IMPORT:-10/hour}
+  THROTTLE_RATE_EXPORT: ${THROTTLE_RATE_EXPORT:-30/min}
+  THROTTLE_RATE_ANONYME: ${THROTTLE_RATE_ANONYME:-30/min}
+  THROTTLE_RATE_ANNUAIRE: ${THROTTLE_RATE_ANNUAIRE:-60/min}
   MEILI_URL: http://meilisearch:7700
   MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY is required}
   GOTENBERG_URL: http://gotenberg:3000
@@ -172,6 +179,8 @@ services:
       # Upstream load balancers/proxies (CIDR) allowed to set the client address through
       # X-Forwarded-For (empty = nginx sees the TCP peer, the default).
       TRUSTED_UPSTREAM_CIDRS: ${TRUSTED_UPSTREAM_CIDRS:-}
+      # Subnet allowed to reach the Keycloak admin REST API of realm onea (account sync).
+      ONEA_SUBNET_WEB: ${ONEA_SUBNET_WEB:-172.30.10.0/28}
     volumes:
       - ./nginx/prod.conf:/etc/nginx/templates/default.conf.template:ro
       - ./nginx/10-admin-allow.sh:/docker-entrypoint.d/10-admin-allow.sh:ro
@@ -324,6 +333,9 @@ networks:
     ipam:
       config:
         - subnet: ${ONEA_SUBNET_WEB:-172.30.10.0/28}
+          # Dynamic range apart from ONEA_NGINX_IP (.2): otherwise web/worker grab .2 first and nginx
+          # fails to start (Address already in use). ONEA_NGINX_IP must stay OUTSIDE this range.
+          ip_range: ${ONEA_IP_RANGE_WEB:-172.30.10.8/29}
   front:
     internal: true
   sso:

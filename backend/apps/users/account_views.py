@@ -1,6 +1,6 @@
 """API d'administration des comptes : aucune logique métier, tout passe par les services."""
 
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 from django.db.models import OuterRef, QuerySet, Subquery
 from django_filters.rest_framework import DjangoFilterBackend
@@ -18,10 +18,12 @@ from apps.core.schema import (
     ERROR_400,
     ERROR_404,
     ERROR_422,
+    ERROR_429,
     ERROR_503,
     ERROR_RESPONSES,
     ApiErrorSerializer,
 )
+from apps.core.throttling import ThrottleParActionMixin
 from apps.referentiel.models import Direction
 
 from . import provisioning, services
@@ -80,7 +82,17 @@ class _RechercheSerializer(serializers.Serializer[dict[str, str]]):
         responses={200: CompteUtilisateurSerializer, **ERROR_RESPONSES, **ERROR_404},
     ),
 )
-class UserAccountViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericViewSet[User]):
+class UserAccountViewSet(
+    ThrottleParActionMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    GenericViewSet[User],
+):
+    throttle_scopes: ClassVar[dict[str, str]] = {
+        "import_csv": "import",
+        "import_directory": "import",
+        "directory_search": "annuaire",
+    }
     permission_classes = [AccountAdminPermission]
     filter_backends = [DjangoFilterBackend, StableOrderingFilter]
     filterset_class = UserAccountFilter
@@ -197,6 +209,7 @@ class UserAccountViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Gener
             **ERROR_RESPONSES,
             **ERROR_503,
             **ERROR_502,
+            **ERROR_429,
         },
     )
     @action(
@@ -225,6 +238,7 @@ class UserAccountViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Gener
             **ERROR_RESPONSES,
             **ERROR_503,
             **ERROR_502,
+            **ERROR_429,
         },
     )
     @action(detail=False, methods=["post"], url_path="import-directory")
@@ -243,7 +257,7 @@ class UserAccountViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Gener
         tags=[TAG],
         summary="Importer des comptes depuis un fichier CSV",
         request={"multipart/form-data": ImportCsvSerializer},
-        responses={200: RapportImportSerializer, **ERROR_400, **ERROR_RESPONSES},
+        responses={200: RapportImportSerializer, **ERROR_400, **ERROR_RESPONSES, **ERROR_429},
     )
     @action(detail=False, methods=["post"], url_path="import-csv", parser_classes=[MultiPartParser])
     def import_csv(self, request: Request) -> Response:

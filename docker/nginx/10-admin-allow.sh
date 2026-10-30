@@ -14,4 +14,13 @@ out=/etc/nginx/conf.d/admin-allow.conf
     echo "    $cidr 1;"
   done
   echo '}'
+  # Keycloak admin REST sync: the original TCP peer must be in the web subnet.
+  echo 'geo $realip_remote_addr $onea_kc_sync_ok {'
+  echo '    default 0;'
+  case "${ONEA_SUBNET_WEB:-}" in
+    *[!0-9a-fA-F:./]*) echo "ONEA_SUBNET_WEB: invalid value" >&2; exit 1 ;;
+    '') ;;
+    *) echo "    ${ONEA_SUBNET_WEB} 1;" ;;
+  esac
+  echo '}'
 } > "$out"

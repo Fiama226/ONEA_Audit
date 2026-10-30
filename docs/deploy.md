@@ -24,6 +24,7 @@ Redis (Valkey) exige un mot de passe (`REDIS_PASSWORD`).
 
 Variables de la périphérie :
 
+- `ONEA_IP_RANGE_WEB` (défaut `172.30.10.8/29`) : plage dynamique du réseau `web`, à l'intérieur du sous-réseau et **sans** `ONEA_NGINX_IP` (sinon `web`/`worker` prennent `.2` avant nginx et il ne démarre pas). Vérifier l'absence de chevauchement du sous-réseau avec `docker network inspect`.
 - `ONEA_SUBNET_WEB` / `ONEA_NGINX_IP` : sous-réseau du réseau `web` et adresse fixe de `nginx`
   (doit appartenir au sous-réseau). À changer si le sous-réseau entre en conflit avec le réseau
   de l'établissement. `TRUSTED_PROXY_CIDRS` (Django) et `FORWARDED_ALLOW_IPS` (gunicorn)
@@ -287,6 +288,7 @@ restauration). Tester la restauration régulièrement sur un serveur de recette.
 | `THROTTLE_RATE_TELEVERSEMENT` | dépôt de fichier (défaut `30/hour`) |
 | `THROTTLE_RATE_IMPORT` | import (défaut `10/hour`) |
 | `THROTTLE_RATE_EXPORT` | export CSV / Excel (défaut `30/min`) |
+| `THROTTLE_RATE_ANNUAIRE` | recherche dans l'annuaire Keycloak/LDAP (défaut `60/min`) |
 | `THROTTLE_RATE_ANONYME` | appelant non authentifié, par adresse client (défaut `30/min`) |
 | `COMPOSE_PROJECT_NAME`, `WEB_CONCURRENCY` | optionnels |
 

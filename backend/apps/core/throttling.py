@@ -9,6 +9,7 @@ passe et un avertissement est journalisé : la limitation ne doit pas bloquer le
 import logging
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from redis.exceptions import RedisError
 from rest_framework.request import Request
 from rest_framework.settings import api_settings
 from rest_framework.throttling import ScopedRateThrottle, SimpleRateThrottle
@@ -53,7 +54,7 @@ class UtilisateurScopedRateThrottle(ScopedRateThrottle):
         self.num_requests, self.duration = self.parse_rate(self.rate)
         try:
             return SimpleRateThrottle.allow_request(self, request, view)
-        except Exception as exc:
+        except (RedisError, OSError) as exc:  # ConnectionError est un OSError
             logger.warning(
                 "Limitation de débit désactivée pour la portée « %s » : cache indisponible (%s).",
                 self.scope,

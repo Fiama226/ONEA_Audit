@@ -72,6 +72,7 @@ def test_taux_par_defaut_conformes_a_d3() -> None:
         "import": "10/hour",
         "export": "30/min",
         "anonyme": "30/min",
+        "annuaire": "60/min",
     }
 
 
@@ -181,6 +182,12 @@ def test_portees_des_actions_couteuses() -> None:
     assert portee(ProgrammeAnnuelViewSet, "export") == "export"
     assert portee(CartographieVersionViewSet, "export") == "export"
 
+    from apps.users.account_views import UserAccountViewSet
+
+    assert portee(UserAccountViewSet, "import_csv") == "import"
+    assert portee(UserAccountViewSet, "import_directory") == "import"
+    assert portee(UserAccountViewSet, "directory_search") == "annuaire"
+
 
 def test_openapi_documente_429() -> None:
     from drf_spectacular.generators import SchemaGenerator
@@ -194,5 +201,44 @@ def test_openapi_documente_429() -> None:
         ("/api/v1/templates/", "post"),
         ("/api/v1/audit-plans/{id}/export/", "get"),
         ("/api/v1/risk-maps/{id}/export/", "get"),
+        ("/api/v1/user-accounts/import-csv/", "post"),
+        ("/api/v1/user-accounts/import-directory/", "post"),
+        ("/api/v1/user-accounts/directory-search/", "get"),
     ]:
         assert "429" in chemins[chemin][methode]["responses"], chemin
+
+
+def test_toute_portee_declaree_a_un_taux() -> None:
+    from django.conf import settings
+
+    from apps.core.throttling import ThrottleParActionMixin
+
+    taux = settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]
+    import importlib
+
+    for module in ("documents", "programmation", "referentiel", "users.account_views"):
+        nom = module if "." in module else f"{module}.views"
+        mod = importlib.import_module(f"apps.{nom}")
+        for obj in vars(mod).values():
+            if isinstance(obj, type) and issubclass(obj, ThrottleParActionMixin):
+                for portee in obj.throttle_scopes.values():
+                    assert portee in taux, (obj.__name__, portee)
+
+
+def test_compose_prod_transmet_les_taux_et_isole_nginx() -> None:
+    import ipaddress
+    from pathlib import Path
+
+    import yaml
+    from django.conf import settings
+
+    racine = Path(settings.BASE_DIR).parent
+    compose = yaml.safe_load((racine / "docker" / "compose.prod.yml").read_text(encoding="utf-8"))
+    env = compose["x-backend-env"]
+    for portee in settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]:
+        assert f"THROTTLE_RATE_{portee.upper()}" in env, portee
+    ipam = compose["networks"]["web"]["ipam"]["config"][0]
+    assert "ip_range" in ipam
+    plage = ipaddress.ip_network("172.30.10.8/29")
+    assert ipaddress.ip_address("172.30.10.2") not in plage
+    assert plage.subnet_of(ipaddress.ip_network("172.30.10.0/28"))
