@@ -304,6 +304,12 @@ SPECTACULAR_SETTINGS = {
         "AppreciationGlobaleEnum": "apps.communication.models.AppreciationGlobale.choices",
         "CategorieDestinataireEnum": "apps.communication.models.CategorieDestinataire.choices",
         "TypeEvenementRapportEnum": "apps.communication.models.TypeEvenementRapport.choices",
+        "StatutSuiviEnum": "apps.suivi.models.StatutSuivi.choices",
+        "StatutRecommandationSuiviEnum": "apps.suivi.models.StatutRecommandationSuivi.choices",
+        "TypeEvenementSuiviEnum": "apps.suivi.models.TypeEvenementSuivi.choices",
+        "StatutDemandeReportEnum": "apps.suivi.models.StatutDemandeReport.choices",
+        "PalierRelanceEnum": "apps.suivi.models.PalierRelance.choices",
+        "StatutRelanceEnum": "apps.suivi.models.StatutRelance.choices",
     },
 }
 

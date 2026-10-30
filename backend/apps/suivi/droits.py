@@ -7,6 +7,7 @@
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
+from typing import Any
 from uuid import UUID
 
 from django.core.exceptions import PermissionDenied
@@ -24,7 +25,13 @@ from apps.missions.models import (
 )
 from apps.users.models import Role, User
 
-from .models import STATUTS_CLOS, PreuveMiseEnOeuvre, StatutSuivi, SuiviAction
+from .models import (
+    STATUTS_CLOS,
+    PreuveMiseEnOeuvre,
+    StatutDemandeReport,
+    StatutSuivi,
+    SuiviAction,
+)
 
 STATUTS_MISSION_SUIVI: frozenset[str] = frozenset(
     {StatutMission.RAPPORT_DIFFUSE, StatutMission.EN_SUIVI, StatutMission.CLOTUREE}
@@ -179,6 +186,13 @@ def actions_possibles(suivi: SuiviAction, user: User, *, contexte: ContexteSuivi
     return [c for c in CODES if _evaluer(suivi, user, c, contexte) == "OK"]
 
 
+def exiger_droit_action(user: User, suivi: SuiviAction, code: str) -> None:
+    """403 seulement : l'API le contrôle AVANT le sérialiseur (400) ; l'état reste un 422 aval."""
+    contexte = contexte_suivi(user, [suivi.mission_id])
+    if _evaluer(suivi, user, code, contexte) == "ROLE":
+        raise PermissionDenied("Vous n'avez pas le droit d'effectuer cette opération.")
+
+
 def exiger_action(user: User, suivi: SuiviAction, code: str) -> None:
     """403 si l'utilisateur n'a pas ce droit ; 422 si l'état de l'action ne le permet pas."""
     contexte = contexte_suivi(user, [suivi.mission_id])
@@ -230,3 +244,41 @@ def peut_telecharger_preuve(user: User, preuve: PreuveMiseEnOeuvre) -> bool:
 def exiger_telechargement_preuve(user: User, preuve: PreuveMiseEnOeuvre) -> None:
     if not peut_telecharger_preuve(user, preuve):
         raise PermissionDenied(MSG_DROIT_PREUVE)
+
+
+# --- droits affichés par l'API pour les preuves et les demandes de report (T10) --------------
+# Mêmes règles que les services de T6, sans requête par ligne : le contexte est celui de la page.
+STATUTS_PREUVES_MODIFIABLES: frozenset[str] = frozenset(
+    {StatutSuivi.A_LANCER, StatutSuivi.EN_COURS}
+)
+
+
+def actions_preuve(preuve: PreuveMiseEnOeuvre, user: User, *, contexte: ContexteSuivi) -> list[str]:
+    """`MODIFIER` et `RETIRER` (exécutant, action ouverte, mission non figée), `TELECHARGER`."""
+    codes: list[str] = []
+    mission_statut = contexte.statuts_mission.get(preuve.mission_id)
+    if (
+        peut_operer_pour_responsable(user, preuve.suivi)
+        and mission_statut in STATUTS_MISSION_ACTIFS
+        and preuve.suivi.statut in STATUTS_PREUVES_MODIFIABLES
+    ):
+        codes += ["MODIFIER", "RETIRER"]
+    lisible = mission_statut in STATUTS_MISSION_SUIVI and (
+        user.role == Role.RAI
+        or (user.role in (Role.AUDITEUR, Role.AUDITE) and preuve.mission_id in contexte.roles)
+    )
+    if lisible:
+        codes.append("TELECHARGER")
+    return codes
+
+
+def actions_demande(demande: Any, user: User, *, contexte: ContexteSuivi) -> list[str]:
+    """`ACCEPTER` (action encore reportable) et `REFUSER` : RAI, demande en attente."""
+    if user.role != Role.RAI or demande.statut != StatutDemandeReport.EN_ATTENTE:
+        return []
+    if contexte.statuts_mission.get(demande.mission_id) not in STATUTS_MISSION_ACTIFS:
+        return []
+    codes = ["REFUSER"]
+    if demande.suivi.statut in STATUTS_PREUVES_MODIFIABLES:
+        codes.insert(0, "ACCEPTER")
+    return codes

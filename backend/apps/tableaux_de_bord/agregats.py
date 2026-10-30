@@ -35,6 +35,7 @@ from apps.suivi.models import (
     StatutSuivi,
     SuiviAction,
 )
+from apps.suivi.services.commun import EXPR_EN_RETARD
 from apps.users.models import User
 
 from .perimetres import missions_de_l_annee
@@ -61,14 +62,6 @@ STATUTS_MISSION_AVANT_DIFFUSION: frozenset[str] = frozenset(
     }
 )
 STATUTS_ETAPE_NON_ATTENDUS: frozenset[str] = STATUTS_ETAPE_CLOSE | {StatutEtape.NON_APPLICABLE}
-
-
-def EXPR_EN_RETARD(aujourd_hui: date) -> Q:  # noqa: N802
-    """Retard d'un suivi (R2) : relançable et échéance dépassée ; le jour J n'est pas un retard.
-
-    Copie de `suivi.services.commun.EXPR_EN_RETARD` (T5), à unifier en T10.
-    """
-    return Q(statut__in=STATUTS_RELANCABLES, echeance__lt=aujourd_hui)
 
 
 def _taux(numerateur: int, denominateur: int) -> Decimal | None:

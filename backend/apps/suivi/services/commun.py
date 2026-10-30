@@ -34,9 +34,10 @@ def jours_retard(suivi: SuiviAction, aujourd_hui: date) -> int | None:
     return (aujourd_hui - suivi.echeance).days if en_retard(suivi, aujourd_hui) else None
 
 
-def EXPR_EN_RETARD(aujourd_hui: date) -> Q:  # noqa: N802
-    """Même règle que `en_retard`, pour les QuerySets."""
-    return Q(statut__in=STATUTS_RELANCABLES, echeance__lt=aujourd_hui)
+def EXPR_EN_RETARD(aujourd_hui: date, prefixe: str = "") -> Q:  # noqa: N802
+    """Même règle que `en_retard`, pour les QuerySets ; `prefixe` : chemin depuis un autre modèle
+    (ex. `suivis__`). Source unique du retard : l'API et les agrégats la partagent."""
+    return Q(**{f"{prefixe}statut__in": STATUTS_RELANCABLES, f"{prefixe}echeance__lt": aujourd_hui})
 
 
 def verrouiller_suivi(suivi: SuiviAction) -> SuiviAction:
