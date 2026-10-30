@@ -8,6 +8,9 @@ import { useMission } from "../api";
 import type { Mission } from "../types";
 import { MissionHeader } from "./MissionHeader";
 
+// Lot 8 : le suivi des recommandations s'ouvre une fois le rapport diffusé.
+const STATUTS_SUIVI: readonly Mission["statut"][] = ["RAPPORT_DIFFUSE", "EN_SUIVI", "CLOTUREE"];
+
 /** `equipe` : onglet de l'équipe d'audit ; `audite` : onglet de l'audité ; sans valeur : tous. */
 type Tab = { to: string; label: string; section: string; work: boolean; for?: "equipe" | "audite" };
 
@@ -60,6 +63,13 @@ function tabsFor(currentStep: number): Tab[] {
       work: true,
       for: "equipe",
     },
+    // Lot 8 : suivi de la mise en œuvre (visible pour tous les profils de la mission).
+    {
+      to: "suivi-recommandations",
+      label: fr.suivi.tabFollowUp,
+      section: "suivi-recommandations",
+      work: false,
+    },
   ];
 }
 
@@ -98,6 +108,7 @@ export function MissionLayout() {
   const tabs = tabsFor(data.etape_courante?.numero ?? 1)
     .filter((t) => seeWork || !t.work)
     .filter((t) => !lot7.includes(t.section) || communication)
+    .filter((t) => t.section !== "suivi-recommandations" || STATUTS_SUIVI.includes(data.statut))
     .filter((t) => t.for === undefined || (t.for === "audite") === audite);
   const section = pathname.split(`/missions/${data.id}/`)[1]?.split("/")[0];
 

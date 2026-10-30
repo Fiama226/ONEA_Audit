@@ -25,6 +25,8 @@ const ROUTE_ROLES: Readonly<Record<string, readonly Role[]>> = {
   // Rapports diffusés : le DG les consulte ; l'ADMIN n'y a pas accès.
   "/rapports": ["RAI", "AUDITEUR", "AUDITE", "DG"],
   "/documents": ["RAI", "AUDITEUR", "AUDITE"],
+  // Suivi des recommandations (lot 8) : ADMIN exclu (403 serveur) ; le DG lit sans agir.
+  "/recommandations": ["RAI", "AUDITEUR", "AUDITE", "DG"],
   // Gabarits et numérotation : lecture ADMIN et RAI ; les écritures restent ADMIN (le serveur répond 403).
   "/administration/documents": ["ADMIN", "RAI"],
   "/administration/signatures": ["ADMIN", "RAI"],
@@ -102,6 +104,10 @@ export const SEGMENT_LABELS: Record<string, string> = {
   lignes: "Missions prévues",
   referentiel: fr.nav.referentiel,
   recommandations: fr.nav.recommandations,
+  actions: fr.suivi.crumbActions,
+  notifications: fr.suivi.crumbNotifications,
+  recherche: fr.suivi.crumbSearch,
+  "suivi-recommandations": fr.suivi.tabFollowUp,
   documents: fr.nav.documents,
   gabarits: fr.documents.tabTemplates,
   numerotation: fr.documents.tabNumbering,

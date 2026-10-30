@@ -20,4 +20,21 @@ describe("MissionLayout tabs", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: fr.missions.tabTeam })).not.toBeInTheDocument();
   });
+
+  it.each(["RAPPORT_DIFFUSE", "EN_SUIVI", "CLOTUREE"] as const)(
+    "shows the recommendation follow-up tab once the mission is %s",
+    async (statut) => {
+      renderMission(PATH, "RAI", { handlers: missionHandlers(aMission({ statut })) });
+      const link = await screen.findByRole("link", { name: fr.suivi.tabFollowUp });
+      expect(link).toHaveAttribute("href", `/missions/${MISSION_ID}/suivi-recommandations`);
+    },
+  );
+
+  it("hides the recommendation follow-up tab before the report is distributed", async () => {
+    renderMission(PATH, "RAI", {
+      handlers: missionHandlers(aMission({ statut: "EN_COMMUNICATION" })),
+    });
+    await screen.findByRole("link", { name: fr.missions.tabAuditFramework });
+    expect(screen.queryByRole("link", { name: fr.suivi.tabFollowUp })).not.toBeInTheDocument();
+  });
 });

@@ -17,10 +17,17 @@ import { rolesFor } from "@/layouts/navigation";
 import { CallbackPage } from "@/pages/CallbackPage";
 import { ErrorPage } from "@/pages/ErrorPage";
 import { LoginPage } from "@/pages/LoginPage";
-import { PlaceholderPage } from "@/pages/PlaceholderPage";
 
 const rapportsList = () => import("@/features/communication/pages/RapportsDiffusesPage");
 const rapportDetail = () => import("@/features/communication/pages/RapportDiffusePage");
+
+/** Pages du lot 8 : suivi des recommandations, notifications, recherche. */
+const suiviPages = {
+  register: () => import("@/features/suivi/pages/RegisterPage"),
+  action: () => import("@/features/suivi/pages/ActionPage"),
+  notifications: () => import("@/features/notifications/pages/NotificationsPage"),
+  search: () => import("@/features/recherche/pages/SearchPage"),
+};
 
 /** Applique la garde de rôle déclarée dans layouts/navigation.ts (source unique). */
 function guarded(path: string, element: ReactNode): ReactNode {
@@ -81,8 +88,17 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: "/recommandations",
-            element: <PlaceholderPage title={fr.nav.recommandations} />,
+            element: guardedOutlet("/recommandations"),
+            children: [
+              { index: true, element: lazyRoute(suiviPages.register, "RegisterPage") },
+              { path: "actions/:id", element: lazyRoute(suiviPages.action, "ActionPage") },
+            ],
           },
+          {
+            path: "/notifications",
+            element: lazyRoute(suiviPages.notifications, "NotificationsPage"),
+          },
+          { path: "/recherche", element: lazyRoute(suiviPages.search, "SearchPage") },
           {
             path: "/rapports",
             element: guardedOutlet("/rapports"),

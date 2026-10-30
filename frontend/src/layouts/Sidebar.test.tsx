@@ -6,7 +6,8 @@ import { renderWithAuth } from "@/test/shell";
 import { Sidebar } from "./Sidebar";
 
 const HIDDEN: Record<Role, string[]> = {
-  ADMIN: [fr.nav.missions, fr.nav.documents],
+  // Lot 8 : le suivi des recommandations est interdit à l'ADMIN (403 serveur).
+  ADMIN: [fr.nav.missions, fr.nav.documents, fr.nav.recommandations],
   RAI: [fr.nav.administration],
   AUDITEUR: [fr.nav.administration, fr.nav.documentTemplates],
   AUDITE: [
@@ -48,9 +49,9 @@ describe("Sidebar", () => {
     expect(nav.queryByText(fr.nav.administration)).not.toBeInTheDocument();
   });
 
-  it("gives ADMIN the five entries plus the templates", () => {
+  it("gives ADMIN the four entries plus the templates", () => {
     const nav = renderSidebar("ADMIN");
-    expect(nav.getAllByRole("link")).toHaveLength(6);
+    expect(nav.getAllByRole("link")).toHaveLength(5);
   });
 
   it("marks only the templates entry current under /administration/documents", () => {
