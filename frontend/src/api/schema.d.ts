@@ -1221,6 +1221,526 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/follow-up/actions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : actions suivies
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        get: operations["v1_follow_up_actions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/actions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : action suivie
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        get: operations["v1_follow_up_actions_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Changer le responsable d'une action (RAI)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        patch: operations["v1_follow_up_actions_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/follow-up/actions/{id}/accept-abandon/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accepter l'abandon d'une action (RAI)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_actions_accept_abandon_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/actions/{id}/close/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Clôturer une action vérifiée (RAI)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_actions_close_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/actions/{id}/comment/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Commenter une action
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_actions_comment_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/actions/{id}/declare-done/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Déclarer une action réalisée (preuve et commentaire obligatoires)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_actions_declare_done_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/actions/{id}/events/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Journal d'une action
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        get: operations["v1_follow_up_actions_events_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/actions/{id}/propose-abandon/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Proposer l'abandon d'une action
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_actions_propose_abandon_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/actions/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rejeter une action (motif obligatoire)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_actions_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/actions/{id}/reopen/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rouvrir une action close (RAI)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_actions_reopen_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/actions/{id}/start/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Démarrer une action
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_actions_start_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/actions/{id}/verify/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Vérifier une action réalisée
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_actions_verify_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/actions/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exporter les actions du registre (CSV ou XLSX, 5 000 lignes au plus)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        get: operations["v1_follow_up_actions_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/evidence/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : preuves d'une action (paramètre `action` obligatoire)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        get: operations["v1_follow_up_evidence_list"];
+        put?: never;
+        /**
+         * Déposer : une preuve de mise en œuvre (multipart)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_evidence_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/evidence/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : preuve de mise en œuvre
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        get: operations["v1_follow_up_evidence_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Retirer (logiquement) : une preuve ; `commentaire` obligatoire pour le RAI
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        delete: operations["v1_follow_up_evidence_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : libellé et description d'une preuve (le fichier est immuable)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        patch: operations["v1_follow_up_evidence_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/follow-up/evidence/{id}/download/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Télécharger : fichier d'une preuve (empreinte vérifiée, journalisé ; DG refusé)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        get: operations["v1_follow_up_evidence_download_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/extension-requests/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : demandes de report d'échéance
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        get: operations["v1_follow_up_extension_requests_list"];
+        put?: never;
+        /**
+         * Demander : un report d'échéance
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_extension_requests_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/extension-requests/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : demande de report d'échéance
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        get: operations["v1_follow_up_extension_requests_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/extension-requests/{id}/accept/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accepter un report d'échéance (RAI)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_extension_requests_accept_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/extension-requests/{id}/refuse/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refuser un report d'échéance (RAI, commentaire obligatoire)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_extension_requests_refuse_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/missions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : missions à clôturer (toutes les actions sont closes ; RAI)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        get: operations["v1_follow_up_missions_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/missions/{id}/close/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Clôturer une mission suivie (RAI) : toutes les actions du plan sont closes
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        post: operations["v1_follow_up_missions_close_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/recommendations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : recommandations suivies
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        get: operations["v1_follow_up_recommendations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/recommendations/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : recommandation suivie
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        get: operations["v1_follow_up_recommendations_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/follow-up/recommendations/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exporter le registre des recommandations (CSV ou XLSX, 5 000 lignes au plus)
+         * @description Base : rôle global (R11), contexte des droits calculé une fois par page.
+         */
+        get: operations["v1_follow_up_recommendations_export_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/": {
         parameters: {
             query?: never;
@@ -4064,6 +4584,14 @@ export interface components {
             description: string;
             readonly enfants: components["schemas"]["ChampContrat"][];
         };
+        CommentaireObligatoireRequestRequest: {
+            commentaire: string;
+        };
+        /** @description Commentaire facultatif (obligatoire pour le RAI qui agit pour le compte du responsable). */
+        CommentaireRequestRequest: {
+            /** @default  */
+            commentaire: string;
+        };
         Comparaison: {
             reference: components["schemas"]["VersionResume"];
             cible: components["schemas"]["VersionResume"];
@@ -4296,6 +4824,13 @@ export interface components {
             id: string;
             reference: string;
         };
+        ConstatSuivi: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Référence */
+            readonly reference: string;
+            readonly titre: string;
+        };
         Consultation: {
             readonly utilisateur: components["schemas"]["UtilisateurResume"];
             /** Format: date-time */
@@ -4314,6 +4849,10 @@ export interface components {
             tache: string;
             acteur: string;
             roles: components["schemas"]["RoleTacheEnum"][];
+        };
+        DecisionReportRequest: {
+            /** @default  */
+            commentaire: string;
         };
         Declaration: {
             /** Format: uuid */
@@ -4349,6 +4888,41 @@ export interface components {
             /** Format: date-time */
             confirmee_le: string | null;
         };
+        DemandeReport: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly action: string;
+            /**
+             * Échéance actuelle
+             * Format: date
+             */
+            readonly echeance_actuelle: string;
+            /**
+             * Nouvelle échéance
+             * Format: date
+             */
+            readonly nouvelle_echeance: string;
+            readonly motif: string;
+            readonly statut: components["schemas"]["StatutDemandeReportEnum"];
+            readonly demandee_par: components["schemas"]["UtilisateurResume"];
+            readonly decidee_par: components["schemas"]["UtilisateurResume"] | null;
+            /**
+             * Décidée le
+             * Format: date-time
+             */
+            readonly decidee_le: string | null;
+            /** Commentaire de la décision */
+            readonly commentaire_decision: string;
+            readonly actions_possibles: string[];
+        };
+        DemandeReportRequestRequest: {
+            /** Format: uuid */
+            action: string;
+            /** Format: date */
+            nouvelle_echeance: string;
+            motif: string;
+        };
         /** @description Dépôt d'une pièce (multipart/form-data) ; le fichier n'est lu que par le service. */
         DepotPieceRequest: {
             /**
@@ -4361,6 +4935,21 @@ export interface components {
             libelle: string;
             /** @default  */
             description: string;
+        };
+        /** @description Dépôt d'une preuve (multipart/form-data) ; le fichier n'est lu que par le service. */
+        DepotPreuveRequest: {
+            /**
+             * Format: uuid
+             * @description Facultatif si `?action=` est fourni dans l'URL (recommandé).
+             */
+            action?: string;
+            libelle: string;
+            /** @default  */
+            description: string;
+            /** Format: binary */
+            fichier: string;
+            /** @default  */
+            commentaire: string;
         };
         /** @description Base des sérialiseurs qui exposent `etape_close` : statuts lus une fois par mission. */
         DescriptionProcessus: {
@@ -4617,6 +5206,13 @@ export interface components {
             readonly libelle: string;
             readonly supprime: boolean;
         };
+        EntiteSuivi: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly code: string;
+            /** Libellé */
+            readonly libelle: string;
+        };
         EntreeAnnuaire: {
             /** Format: uuid */
             keycloak_id: string;
@@ -4782,6 +5378,18 @@ export interface components {
             readonly motif: string;
             readonly statut_avant: components["schemas"]["StatutEtapeEnum"];
             readonly statut_apres: components["schemas"]["StatutEtapeEnum"];
+        };
+        EvenementActionSuivi: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly type: components["schemas"]["TypeEvenementSuiviEnum"];
+            readonly par: components["schemas"]["UtilisateurResume"] | null;
+            readonly pour_compte_de: components["schemas"]["UtilisateurResume"] | null;
+            /** Format: date-time */
+            readonly le: string;
+            readonly statut_avant: string;
+            readonly statut_apres: string;
+            readonly texte: string;
         };
         /**
          * @description * `PROGRAMME_ANNUEL` - Mission inscrite au programme annuel
@@ -5196,6 +5804,9 @@ export interface components {
             /** Format: date-time */
             terminee_le: string | null;
         };
+        JustificationRequestRequest: {
+            justification: string;
+        };
         /**
          * @description * `A_JOUR` - À jour
          *     * `EN_ATTENTE` - En attente
@@ -5510,6 +6121,18 @@ export interface components {
             /** Format: date-time */
             readonly created_at: string;
         };
+        MissionACloturer: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Référence */
+            readonly reference: string;
+            readonly titre: string;
+            readonly statut: components["schemas"]["StatutMissionEnum"];
+            /** Année */
+            readonly annee: number | null;
+            readonly actions_total: number;
+            readonly actions_closes: number;
+        };
         MissionEnRetard: {
             /** Format: uuid */
             mission_id: string;
@@ -5592,6 +6215,14 @@ export interface components {
             readonly reference: string;
             readonly titre: string;
         };
+        MissionSuivi: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Référence */
+            readonly reference: string;
+            readonly titre: string;
+            readonly statut: components["schemas"]["StatutMissionEnum"];
+        };
         MissionSuiviResume: {
             /** Format: uuid */
             mission_id: string;
@@ -5647,6 +6278,9 @@ export interface components {
             motif: string;
         };
         MotifRequestRequest: {
+            motif: string;
+        };
+        MotifSuiviRequestRequest: {
             motif: string;
         };
         /**
@@ -5904,6 +6538,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Declaration"][];
         };
+        PaginatedDemandeReportList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["DemandeReport"][];
+        };
         PaginatedDescriptionProcessusList: {
             /** @example 123 */
             count: number;
@@ -6084,6 +6733,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["LigneProgramme"][];
         };
+        PaginatedMissionACloturerList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["MissionACloturer"][];
+        };
         PaginatedMissionListeList: {
             /** @example 123 */
             count: number;
@@ -6158,6 +6822,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["PieceJustificative"][];
+        };
+        PaginatedPreuveList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Preuve"][];
         };
         PaginatedProcessusList: {
             /** @example 123 */
@@ -6264,6 +6943,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["RecommandationListe"][];
         };
+        PaginatedRecommandationSuiviList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["RecommandationSuivi"][];
+        };
         PaginatedRelanceList: {
             /** @example 123 */
             count: number;
@@ -6353,6 +7047,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["RisqueMission"][];
+        };
+        PaginatedSuiviActionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["SuiviAction"][];
         };
         PaginatedTestPrevuList: {
             /** @example 123 */
@@ -6692,6 +7401,10 @@ export interface components {
             clients?: string;
             livrables_attendus?: string;
         };
+        PatchedModifierPreuveRequest: {
+            libelle?: string;
+            description?: string;
+        };
         PatchedObjectifAuditRequest: {
             /** Format: uuid */
             mission?: string;
@@ -6799,6 +7512,9 @@ export interface components {
             couverture_ordre?: components["schemas"]["CouvertureOrdreEnum"] | components["schemas"]["BlankEnum"];
             /** Justification */
             justification_couverture?: string;
+        };
+        PatchedResponsableRequestRequest: {
+            responsable?: number;
         };
         PatchedReunionRequest: {
             /** Format: uuid */
@@ -6940,6 +7656,29 @@ export interface components {
          * @enum {string}
          */
         PositionAuditeEnum: "ACCORD" | "DESACCORD";
+        Preuve: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Numéro */
+            readonly numero: number;
+            /** Libellé */
+            readonly libelle: string;
+            readonly description: string;
+            /** Nom du fichier d'origine */
+            readonly nom_fichier_original: string;
+            /** Taille (octets) */
+            readonly taille_octets: number;
+            readonly type_mime: string;
+            /** Empreinte SHA-256 */
+            readonly empreinte_sha256: string;
+            readonly deposee_par: components["schemas"]["UtilisateurResume"];
+            /**
+             * Déposée le
+             * Format: date-time
+             */
+            readonly deposee_le: string;
+            readonly actions_possibles: string[];
+        };
         /**
          * @description * `HAUTE` - Haute
          *     * `MOYENNE` - Moyenne
@@ -7273,6 +8012,30 @@ export interface components {
             libelle: string;
             priorite: components["schemas"]["PrioriteRecommandationEnum"];
             ordre?: number;
+        };
+        RecommandationResume: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Libellé */
+            readonly libelle: string;
+            readonly priorite: components["schemas"]["PrioriteRecommandationEnum"];
+        };
+        RecommandationSuivi: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly mission: components["schemas"]["MissionSuivi"];
+            readonly constat: components["schemas"]["ConstatSuivi"];
+            readonly entite: components["schemas"]["EntiteSuivi"];
+            /** Libellé */
+            readonly libelle: string;
+            readonly priorite: components["schemas"]["PrioriteRecommandationEnum"];
+            readonly statut_suivi: components["schemas"]["StatutRecommandationSuiviEnum"];
+            readonly risque_accepte: boolean;
+            readonly actions_total: number;
+            readonly actions_closes: number;
+            readonly actions_en_retard: number;
+            /** Format: date */
+            readonly prochaine_echeance: string | null;
         };
         /** @description Synthèse du référentiel ; `data` est un dict déjà assemblé par la vue. */
         ReferentielAudit: {
@@ -7643,6 +8406,13 @@ export interface components {
          */
         StatutDeclarationEnum: "EN_ATTENTE" | "CONFIRMEE" | "CONFLIT_DECLARE";
         /**
+         * @description * `EN_ATTENTE` - En attente
+         *     * `ACCEPTEE` - Acceptée
+         *     * `REFUSEE` - Refusée
+         * @enum {string}
+         */
+        StatutDemandeReportEnum: "EN_ATTENTE" | "ACCEPTEE" | "REFUSEE";
+        /**
          * @description * `PLANIFIE` - Planifié
          *     * `REALISE` - Réalisé
          *     * `ANNULE` - Annulé
@@ -7731,6 +8501,16 @@ export interface components {
          */
         StatutRecommandationDeriveEnum: "RISQUE_ACCEPTE" | "SANS_ACTION" | "A_LANCER" | "EN_COURS" | "REALISEE";
         /**
+         * @description * `A_LANCER` - À lancer
+         *     * `EN_COURS` - En cours
+         *     * `REALISEE` - Réalisée
+         *     * `ABANDONNEE` - Abandonnée
+         *     * `RISQUE_ACCEPTE` - Risque accepté
+         *     * `SANS_ACTION` - Sans action
+         * @enum {string}
+         */
+        StatutRecommandationSuiviEnum: "A_LANCER" | "EN_COURS" | "REALISEE" | "ABANDONNEE" | "RISQUE_ACCEPTE" | "SANS_ACTION";
+        /**
          * @description * `BROUILLON` - En préparation
          *     * `SOUMIS` - Soumis au RAI
          *     * `RENVOYE` - Renvoyé
@@ -7748,11 +8528,78 @@ export interface components {
          */
         StatutRelanceEnum: "A_ENVOYER" | "ENVOYEE" | "ECHEC" | "SANS_ADRESSE";
         /**
+         * @description * `A_LANCER` - À lancer
+         *     * `EN_COURS` - En cours
+         *     * `REALISEE` - Réalisée, à vérifier
+         *     * `VERIFIEE` - Vérifiée
+         *     * `CLOTUREE` - Clôturée
+         *     * `ABANDON_PROPOSE` - Abandon proposé
+         *     * `ABANDONNEE` - Abandonnée (justifiée)
+         * @enum {string}
+         */
+        StatutSuiviEnum: "A_LANCER" | "EN_COURS" | "REALISEE" | "VERIFIEE" | "CLOTUREE" | "ABANDON_PROPOSE" | "ABANDONNEE";
+        /**
          * @description * `PREVU` - Prévu
          *     * `ABANDONNE` - Abandonné
          * @enum {string}
          */
         StatutTestEnum: "PREVU" | "ABANDONNE";
+        SuiviAction: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly mission: components["schemas"]["MissionSuivi"];
+            readonly constat: components["schemas"]["ConstatSuivi"];
+            readonly recommandation: components["schemas"]["RecommandationResume"];
+            readonly entite: components["schemas"]["EntiteSuivi"];
+            readonly action_libelle: string;
+            readonly indicateur: string;
+            readonly responsable: components["schemas"]["UtilisateurResume"];
+            /**
+             * Échéance initiale
+             * Format: date
+             */
+            readonly echeance_initiale: string;
+            /**
+             * Échéance courante
+             * Format: date
+             */
+            readonly echeance: string;
+            /** Nombre de reports */
+            readonly nombre_reports: number;
+            readonly statut: components["schemas"]["StatutSuiviEnum"];
+            readonly en_retard: boolean;
+            readonly jours_retard: number | null;
+            readonly declaree_par: components["schemas"]["UtilisateurResume"] | null;
+            /**
+             * Déclarée réalisée le
+             * Format: date-time
+             */
+            readonly declaree_le: string | null;
+            readonly verifiee_par: components["schemas"]["UtilisateurResume"] | null;
+            /**
+             * Vérifiée le
+             * Format: date-time
+             */
+            readonly verifiee_le: string | null;
+            readonly cloturee_par: components["schemas"]["UtilisateurResume"] | null;
+            /**
+             * Clôturée le
+             * Format: date-time
+             */
+            readonly cloturee_le: string | null;
+            /** Justification de l'abandon */
+            readonly justification_abandon: string;
+            /** Motif du dernier rejet */
+            readonly motif_dernier_rejet: string;
+            readonly nombre_preuves: number;
+            readonly demande_report_en_attente: components["schemas"]["DemandeReport"] | null;
+            /**
+             * Dernière activité le
+             * Format: date-time
+             */
+            readonly derniere_activite_le: string;
+            readonly actions_possibles: string[];
+        };
         /** @description État de la propagation du compte vers Keycloak. */
         SyncKeycloak: {
             readonly statut: components["schemas"]["KeycloakSyncStatutEnum"];
@@ -7949,6 +8796,9 @@ export interface components {
             date_limite_reponses: string;
             hors_delai: boolean;
         };
+        TexteRequestRequest: {
+            texte: string;
+        };
         TexteValidation: {
             /** @description Texte exact que le RAI confirme. */
             texte: string;
@@ -8035,6 +8885,26 @@ export interface components {
          * @enum {string}
          */
         TypeEvenementRapportEnum: "CREE" | "PROVISOIRE_TRANSMIS" | "SOUMIS" | "VALIDE" | "RENVOYE" | "REINITIALISE" | "DIFFUSE" | "CORRIGE";
+        /**
+         * @description * `OUVERT` - Suivi ouvert
+         *     * `DEMARRE` - Action démarrée
+         *     * `COMMENTAIRE` - Commentaire
+         *     * `DECLAREE_REALISEE` - Déclarée réalisée
+         *     * `VERIFIEE` - Vérifiée
+         *     * `REJETEE` - Rejetée
+         *     * `CLOTUREE` - Clôturée
+         *     * `ABANDON_PROPOSE` - Abandon proposé
+         *     * `ABANDON_ACCEPTE` - Abandon accepté
+         *     * `ROUVERTE` - Rouverte
+         *     * `RESPONSABLE_CHANGE` - Responsable changé
+         *     * `REPORT_DEMANDE` - Report demandé
+         *     * `REPORT_ACCEPTE` - Report accepté
+         *     * `REPORT_REFUSE` - Report refusé
+         *     * `PREUVE_DEPOSEE` - Preuve déposée
+         *     * `PREUVE_RETIREE` - Preuve retirée
+         * @enum {string}
+         */
+        TypeEvenementSuiviEnum: "OUVERT" | "DEMARRE" | "COMMENTAIRE" | "DECLAREE_REALISEE" | "VERIFIEE" | "REJETEE" | "CLOTUREE" | "ABANDON_PROPOSE" | "ABANDON_ACCEPTE" | "ROUVERTE" | "RESPONSABLE_CHANGE" | "REPORT_DEMANDE" | "REPORT_ACCEPTE" | "REPORT_REFUSE" | "PREUVE_DEPOSEE" | "PREUVE_RETIREE";
         /**
          * @description * `FORCE` - Force
          *     * `FAIBLESSE` - Faiblesse
@@ -13353,6 +14223,1856 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_list: {
+        parameters: {
+            query?: {
+                /** @description Année de la mission. */
+                annee?: number;
+                /** @description AAAA-MM-JJ */
+                echeance_apres?: string;
+                /** @description AAAA-MM-JJ */
+                echeance_avant?: string;
+                /** @description Vrai : relançable et échéance dépassée. */
+                en_retard?: boolean;
+                entite?: string;
+                /** @description Vrai : seulement les actions dont je suis responsable. */
+                mine?: boolean;
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                recommandation?: string;
+                responsable?: number;
+                /**
+                 * @description Un ou plusieurs statuts de suivi.
+                 *
+                 *     * `A_LANCER` - À lancer
+                 *     * `EN_COURS` - En cours
+                 *     * `REALISEE` - Réalisée, à vérifier
+                 *     * `VERIFIEE` - Vérifiée
+                 *     * `CLOTUREE` - Clôturée
+                 *     * `ABANDON_PROPOSE` - Abandon proposé
+                 *     * `ABANDONNEE` - Abandonnée (justifiée)
+                 */
+                statut?: ("ABANDONNEE" | "ABANDON_PROPOSE" | "A_LANCER" | "CLOTUREE" | "EN_COURS" | "REALISEE" | "VERIFIEE")[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedSuiviActionList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuiviAction"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedResponsableRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedResponsableRequestRequest"];
+                "multipart/form-data": components["schemas"]["PatchedResponsableRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuiviAction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_accept_abandon_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentaireObligatoireRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CommentaireObligatoireRequestRequest"];
+                "multipart/form-data": components["schemas"]["CommentaireObligatoireRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuiviAction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_close_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CommentaireRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CommentaireRequestRequest"];
+                "multipart/form-data": components["schemas"]["CommentaireRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuiviAction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_comment_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TexteRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TexteRequestRequest"];
+                "multipart/form-data": components["schemas"]["TexteRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuiviAction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_declare_done_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentaireObligatoireRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CommentaireObligatoireRequestRequest"];
+                "multipart/form-data": components["schemas"]["CommentaireObligatoireRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuiviAction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_events_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvenementActionSuivi"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_propose_abandon_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JustificationRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["JustificationRequestRequest"];
+                "multipart/form-data": components["schemas"]["JustificationRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuiviAction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifSuiviRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifSuiviRequestRequest"];
+                "multipart/form-data": components["schemas"]["MotifSuiviRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuiviAction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_reopen_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotifSuiviRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotifSuiviRequestRequest"];
+                "multipart/form-data": components["schemas"]["MotifSuiviRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuiviAction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_start_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CommentaireRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CommentaireRequestRequest"];
+                "multipart/form-data": components["schemas"]["CommentaireRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuiviAction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_verify_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CommentaireRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CommentaireRequestRequest"];
+                "multipart/form-data": components["schemas"]["CommentaireRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuiviAction"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_actions_export_retrieve: {
+        parameters: {
+            query: {
+                /** @description Format du fichier : csv (UTF-8, séparateur « ; ») ou xlsx. */
+                format: "csv" | "xlsx";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv; charset=utf-8": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_evidence_list: {
+        parameters: {
+            query: {
+                /** @description Action suivie. */
+                action: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPreuveList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_evidence_create: {
+        parameters: {
+            query?: {
+                /** @description Action cible : droits contrôlés avant le corps (recommandé). */
+                action?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["DepotPreuveRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preuve"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_evidence_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preuve"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_evidence_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_evidence_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedModifierPreuveRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedModifierPreuveRequest"];
+                "multipart/form-data": components["schemas"]["PatchedModifierPreuveRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Preuve"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_evidence_download_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_extension_requests_list: {
+        parameters: {
+            query?: {
+                action?: string;
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `EN_ATTENTE` - En attente
+                 *     * `ACCEPTEE` - Acceptée
+                 *     * `REFUSEE` - Refusée
+                 */
+                statut?: "ACCEPTEE" | "EN_ATTENTE" | "REFUSEE";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedDemandeReportList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_extension_requests_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemandeReportRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DemandeReportRequestRequest"];
+                "multipart/form-data": components["schemas"]["DemandeReportRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemandeReport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_extension_requests_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemandeReport"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_extension_requests_accept_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DecisionReportRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DecisionReportRequest"];
+                "multipart/form-data": components["schemas"]["DecisionReportRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemandeReport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_extension_requests_refuse_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentaireObligatoireRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CommentaireObligatoireRequestRequest"];
+                "multipart/form-data": components["schemas"]["CommentaireObligatoireRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemandeReport"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_missions_list: {
+        parameters: {
+            query?: {
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedMissionACloturerList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_missions_close_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CommentaireRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CommentaireRequestRequest"];
+                "multipart/form-data": components["schemas"]["CommentaireRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionSuivi"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_recommendations_list: {
+        parameters: {
+            query?: {
+                /** @description Année de la mission. */
+                annee?: number;
+                /** @description Vrai : au moins une action en retard. */
+                en_retard?: boolean;
+                entite?: string;
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /**
+                 * @description * `HAUTE` - Haute
+                 *     * `MOYENNE` - Moyenne
+                 *     * `FAIBLE` - Faible
+                 */
+                priorite?: "FAIBLE" | "HAUTE" | "MOYENNE";
+                /**
+                 * @description Statut dérivé (un ou plusieurs).
+                 *
+                 *     * `A_LANCER` - À lancer
+                 *     * `EN_COURS` - En cours
+                 *     * `REALISEE` - Réalisée
+                 *     * `ABANDONNEE` - Abandonnée
+                 *     * `RISQUE_ACCEPTE` - Risque accepté
+                 *     * `SANS_ACTION` - Sans action
+                 */
+                statut_suivi?: ("ABANDONNEE" | "A_LANCER" | "EN_COURS" | "REALISEE" | "RISQUE_ACCEPTE" | "SANS_ACTION")[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedRecommandationSuiviList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_recommendations_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecommandationSuivi"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_follow_up_recommendations_export_retrieve: {
+        parameters: {
+            query: {
+                /** @description Format du fichier : csv (UTF-8, séparateur « ; ») ou xlsx. */
+                format: "csv" | "xlsx";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv; charset=utf-8": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
