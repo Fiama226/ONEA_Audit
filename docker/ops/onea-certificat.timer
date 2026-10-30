@@ -1,0 +1,11 @@
+[Unit]
+Description=ONEA : verification quotidienne du renouvellement du certificat TLS
+
+[Timer]
+# Let's Encrypt recommande deux tentatives par jour ; une suffit (30 jours de marge).
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

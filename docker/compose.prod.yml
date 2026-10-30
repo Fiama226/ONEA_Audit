@@ -216,6 +216,8 @@ services:
       - ./nginx/20-realip.sh:/docker-entrypoint.d/20-realip.sh:ro
       - ${TLS_CERT_DIR:?TLS_CERT_DIR is required (directory with fullchain.pem and privkey.pem)}:/etc/nginx/certs:ro
       - static:/var/www/static:ro
+      # Webroot du defi ACME http-01 (voie Let's Encrypt, docs/deploy.md section 2).
+      - ${ACME_WEBROOT:-/var/www/onea-acme}:/var/www/acme:ro
     healthcheck:
       test: ["CMD-SHELL", "nginx -t >/dev/null 2>&1 && wget -q --spider --no-check-certificate https://127.0.0.1/ || exit 1"]
       interval: 30s

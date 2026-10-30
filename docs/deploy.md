@@ -47,16 +47,93 @@ Variables de la périphérie :
 
 ## 2. Certificats
 
-Créer un répertoire protégé contenant exactement deux fichiers :
+Deux voies, au choix de l'ONEA (décision U2). Dans les deux cas, `nginx` lit
+`fullchain.pem` (certificat + chaîne) et `privkey.pem` (clé privée) dans le répertoire
+`TLS_CERT_DIR`, monté en lecture seule. Le certificat doit couvrir `PUBLIC_HOST` **et**
+`SSO_HOST` (deux noms alternatifs ou un joker).
 
 ```
-/etc/onea/certs/fullchain.pem   # certificat + chaîne intermédiaire
+/etc/onea/certs/fullchain.pem   # certificat + chaîne intermédiaire (0644)
 /etc/onea/certs/privkey.pem     # clé privée (chmod 600, propriétaire root)
 ```
 
-Le répertoire est monté en lecture seule dans `nginx` (variable `TLS_CERT_DIR`). Au
-renouvellement, remplacer les fichiers puis recharger :
-`docker compose --env-file .env.prod -f docker/compose.prod.yml exec nginx nginx -s reload`.
+### 2.1 Voie A : autorité de certification interne de l'ONEA
+
+Aucun accès à Internet n'est requis (convient à un serveur sur site).
+
+1. Générer une clé et une demande de signature (CSR) avec les deux noms :
+   ```
+   openssl req -new -newkey rsa:3072 -nodes -keyout privkey.pem -out onea.csr \
+     -subj "/CN=audit.onea.bf" \
+     -addext "subjectAltName=DNS:audit.onea.bf,DNS:sso.onea.bf"
+   ```
+2. Transmettre `onea.csr` à la DSI (l'AC signe ; la clé ne quitte jamais le serveur).
+3. Assembler la chaîne reçue : `cat certificat.pem intermediaire.pem > fullchain.pem`.
+4. Déposer les deux fichiers dans `TLS_CERT_DIR` (clé en 0600, propriétaire root).
+5. Faire confiance à l'AC côté backend (§ « Autorité de certification interne » plus bas :
+   `certs/ca-bundle.pem`, `SSO_CA_BUNDLE_PATH`), et distribuer l'AC aux postes de travail.
+6. Démarrer ou recharger : `docker compose --env-file .env.prod -f docker/compose.prod.yml exec nginx nginx -s reload`.
+7. Renouvellement : refaire les étapes 2 à 4 (ou réutiliser le CSR) **avant l'échéance**, puis
+   recharger comme à l'étape 6. Noter l'échéance dans le calendrier de la DSI.
+
+### 2.2 Voie B : Let's Encrypt (défi ACME http-01)
+
+Prérequis, **tous obligatoires** :
+- les deux noms (`PUBLIC_HOST`, `SSO_HOST`) existent dans le DNS **public** et pointent vers ce serveur ;
+- le port **80** est joignable depuis Internet (pare-feu, NAT) : le défi passe par
+  `http://<nom>/.well-known/acme-challenge/` ; `nginx` le sert avant la redirection vers HTTPS ;
+- l'hôte dispose de Docker (l'outil `certbot` s'exécute dans une image épinglée) ;
+- dans `.env.prod` : `ACME_WEBROOT` (défaut `/var/www/onea-acme`, monté en lecture seule dans
+  `nginx`) et `LETSENCRYPT_EMAIL` (adresse recevant les alertes d'expiration). `ACME_WEBROOT`
+  doit exister **avant** le démarrage de la pile.
+
+Étapes :
+1. Premier démarrage avec un certificat provisoire (auto-signé) dans `TLS_CERT_DIR`, pour que
+   `nginx` démarre et serve le défi sur le port 80.
+2. Essai à blanc (serveur de test de Let's Encrypt, **rien n'est écrit**) :
+   `sh scripts/tls/certbot.sh --dry-run`
+3. Facultatif : certificat de test réel (non reconnu des navigateurs, quotas larges) :
+   `sh scripts/tls/certbot.sh --staging`
+4. Émission réelle : `sh scripts/tls/certbot.sh --production`. Le script copie le certificat
+   dans `TLS_CERT_DIR` (remplacement atomique) et recharge `nginx`. Les quotas de Let's
+   Encrypt limitent les émissions répétées : ne lancer le mode réel qu'après un essai réussi.
+5. Renouvellement automatique (certbot ne renouvelle qu'à moins de 30 jours de l'échéance) :
+   ```
+   sudo cp docker/ops/onea-certificat.service docker/ops/onea-certificat.timer /etc/systemd/system/
+   sudo systemctl daemon-reload && sudo systemctl enable --now onea-certificat.timer
+   systemctl list-timers onea-certificat.timer
+   ```
+   Les unités supposent le dépôt dans `/opt/onea` ; adapter `WorkingDirectory` et `ExecStart`
+   sinon. Contrôle : `journalctl -u onea-certificat.service`.
+6. Vérification : `openssl s_client -connect <PUBLIC_HOST>:443 -servername <PUBLIC_HOST> </dev/null | openssl x509 -noout -dates -issuer`.
+
+Dépannage : « Timeout during connect » = port 80 fermé ou DNS erroné ; « 404 » sur le défi =
+`ACME_WEBROOT` différent entre le script et `.env.prod`. Dans tous les cas, ne pas relancer
+`--production` en boucle (limite de 5 échecs par heure et par nom).
+
+### 2.3 Courrier sortant (SMTP)
+
+L'application refuse de démarrer sans `EMAIL_URL`. Renseigner dans `.env.prod` :
+
+| Mode du relais | `EMAIL_URL` |
+|---|---|
+| STARTTLS (port 587) | `smtp+tls://compte@smtp.onea.bf:587` |
+| TLS implicite (port 465) | `smtps://compte@smtp.onea.bf:465` |
+| relais interne en clair (réseau de confiance seulement) | `smtp://smtp.onea.bf:25` |
+
+- Le mot de passe n'est **jamais** dans l'URL : il est dans le fichier de secret `email_password`
+  (§3.1). Les caractères spéciaux du compte s'encodent en pourcentage.
+- L'expéditeur est `audit-interne@onea.bf`. La DSI publie les enregistrements **SPF** (autoriser
+  l'adresse du relais pour le domaine `onea.bf`) et **DKIM** (clé du relais) ; sans eux, les
+  messages risquent d'être classés indésirables.
+- Test, depuis la pile démarrée (n'envoie qu'un message, au destinataire indiqué) :
+  ```
+  docker compose --env-file .env.prod -f docker/compose.prod.yml exec web \
+    python manage.py envoyer_courriel_test destinataire@onea.bf
+  ```
+  La commande affiche le relais, le port et le mode de chiffrement (jamais le mot de passe) ; en
+  cas d'échec, elle donne le type d'erreur sans détail sensible. Contrôler ensuite la réception
+  (et l'en-tête `Authentication-Results` pour SPF/DKIM).
 
 ## 3. Secrets et fichier d'environnement
 

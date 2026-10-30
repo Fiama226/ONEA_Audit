@@ -4,7 +4,8 @@
 set -eu
 . "$(dirname "$0")/lib.sh"
 
-mkdir -p "$RECETTE_DIR"
+mkdir -p "$RECETTE_DIR" "$RECETTE_DIR/acme"
+chmod 0755 "$RECETTE_DIR/acme"
 sh "$RECETTE_LIB_DIR/certs.sh"
 
 rand() { openssl rand -hex 24; }
@@ -29,6 +30,7 @@ if [ ! -f "$RECETTE_ENV" ]; then
         -e "s|@KC_DB_PASSWORD@|$(rand)|" \
         -e "s|@DOCUMENTS_HOST_DIR@|$docs|" \
         -e "s|@TLS_CERT_DIR@|$RECETTE_DIR/certs|" \
+        -e "s|@ACME_WEBROOT@|$RECETTE_DIR/acme|" \
         "$REPO_ROOT/.env.recette.example" > "$RECETTE_ENV"
     chmod 0600 "$RECETTE_ENV"
 fi

@@ -20,6 +20,27 @@ affirmer "HTTP SSO -> HTTPS SSO (chemin et requete conserves)" \
 affirmer "hote client inconnu -> hote de l'application" \
     '[ "$(curl_recette -s -o /dev/null -w "%{redirect_url}" -H "Host: evil.example" "http://$PUBLIC_HOST/p?q=1")" = "'"$A"'/p?q=1" ]'
 
+# Defi ACME http-01 : un fichier du webroot est servi en clair (200, sans redirection) ; le reste
+# du port 80 redirige toujours ; un fichier absent -> 404 (pas de redirection non plus).
+ACME_DIR=$(sed -n 's/^ACME_WEBROOT=//p' "$RECETTE_ENV" | tail -n 1)
+if [ -n "$ACME_DIR" ] && [ -d "$ACME_DIR" ]; then
+    mkdir -p "$ACME_DIR/.well-known/acme-challenge"
+    chmod 0755 "$ACME_DIR/.well-known" "$ACME_DIR/.well-known/acme-challenge"
+    printf 'jeton-de-recette' > "$ACME_DIR/.well-known/acme-challenge/essai-t19"
+    chmod 0644 "$ACME_DIR/.well-known/acme-challenge/essai-t19"
+    affirmer "ACME : fichier du webroot servi en HTTP (200, sans redirection)" \
+        '[ "$(curl_recette -s -w " %{http_code}" "http://$PUBLIC_HOST/.well-known/acme-challenge/essai-t19")" = "jeton-de-recette 200" ]'
+    affirmer "ACME : meme chemin sur l'hote SSO" \
+        'curl_recette -s "http://$SSO_HOST/.well-known/acme-challenge/essai-t19" | grep -q jeton-de-recette'
+    affirmer "ACME : fichier absent -> 404" \
+        code "http://$PUBLIC_HOST/.well-known/acme-challenge/absent" 404
+    rm -f "$ACME_DIR/.well-known/acme-challenge/essai-t19"
+else
+    affirmer "ACME : webroot defini dans .env.recette (relancer scripts/recette/up.sh apres mise a jour)" false
+fi
+affirmer "ACME : le webroot n'expose rien hors de .well-known/acme-challenge" \
+    code "http://$PUBLIC_HOST/.well-known/autre" 301
+
 affirmer "app : HSTS" entete "$A/" strict-transport-security max-age
 affirmer "app : CSP" entete "$A/" content-security-policy "default-src 'self'"
 affirmer "app : X-Frame-Options DENY" entete "$A/" x-frame-options DENY

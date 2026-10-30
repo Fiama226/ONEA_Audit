@@ -1,0 +1,15 @@
+[Unit]
+Description=ONEA : renouvellement du certificat TLS (Let's Encrypt, voie B de docs/deploy.md)
+Documentation=file:///opt/onea/docs/deploy.md
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+# N'a de sens que pour la voie Let's Encrypt : ne pas activer avec une AC interne.
+ConditionPathExists=/opt/onea/.env.prod
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/onea
+ExecStart=/bin/sh /opt/onea/scripts/tls/certbot.sh --production
+# Certbot ne renouvelle que sous 30 jours d'echeance : l'appel quotidien est sans effet sinon.
+TimeoutStartSec=15min
