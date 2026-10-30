@@ -9,6 +9,7 @@ import { documentRoutes, documentsAdminRoutes } from "@/features/documents/route
 import { missionRoutes } from "@/features/missions/routes";
 import { programmationRoutes } from "@/features/programmation/routes";
 import { referentielRoutes } from "@/features/referentiel/routes";
+import { signatureAdminRoutes } from "@/features/signatures/routes";
 import { administrationRoutes } from "@/features/utilisateurs/routes";
 import { fr } from "@/i18n/fr";
 import { AppShell } from "@/layouts/AppShell";
@@ -90,6 +91,12 @@ export const appRoutes: RouteObject[] = [
             path: "/administration/documents",
             children: documentsAdminRoutes,
             element: guardedOutlet("/administration/documents"),
+          },
+          // Mode de signature : lecture ADMIN et RAI ; l'écriture reste ADMIN (le serveur répond 403).
+          {
+            path: "/administration/signatures",
+            children: signatureAdminRoutes,
+            element: guardedOutlet("/administration/signatures"),
           },
           { path: "*", element: <NotFound /> },
         ],
