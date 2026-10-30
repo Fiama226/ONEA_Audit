@@ -34,3 +34,7 @@ class CommunicationConfig(AppConfig):
 
         for numero, controles in CONTROLES_ETAPE.items():
             enregistrer_controles(numero, controles)
+
+        from .documents import enregistrer_types
+
+        enregistrer_types()
