@@ -264,6 +264,12 @@ restauration). Tester la restauration régulièrement sur un serveur de recette.
 | `KEYCLOAK_ADMIN_API_CLIENT_ID`, `KEYCLOAK_ADMIN_API_CLIENT_SECRET` | client de service `onea-admin-sync` (voir §5, étape 7bis) ; secret obligatoire |
 | `MEILI_MASTER_KEY` | clé maître Meilisearch |
 | `DOCUMENTS_HOST_DIR` | dossier de l'hôte (absolu, hors dépôt) où sont stockés les documents ; monté en `/var/lib/onea/documents` dans `web` et `worker` |
+| `THROTTLE_RATE_GENERATION` | limite par utilisateur : génération de document (défaut `20/min`) |
+| `THROTTLE_RATE_APERCU` | aperçu de gabarit ou de numérotation (défaut `30/min`) |
+| `THROTTLE_RATE_TELEVERSEMENT` | dépôt de fichier (défaut `30/hour`) |
+| `THROTTLE_RATE_IMPORT` | import (défaut `10/hour`) |
+| `THROTTLE_RATE_EXPORT` | export CSV / Excel (défaut `30/min`) |
+| `THROTTLE_RATE_ANONYME` | appelant non authentifié, par adresse client (défaut `30/min`) |
 | `COMPOSE_PROJECT_NAME`, `WEB_CONCURRENCY` | optionnels |
 
 Le backend en production refuse de démarrer si `SECRET_KEY`, `DATABASE_URL`, `EMAIL_URL`,
@@ -274,6 +280,11 @@ Le backend en production refuse de démarrer si `SECRET_KEY`, `DATABASE_URL`, `E
 et l'API partagent la même origine derrière `nginx`. Ne le renseigner que pour une SPA hébergée
 ailleurs. `CACHE_URL` (facultatif) désigne le cache partagé entre processus (défaut : `REDIS_URL`,
 base 1 ; la base 0 sert à Celery).
+
+Les `THROTTLE_RATE_*` s'écrivent `N/sec`, `N/min`, `N/hour` ou `N/day` ; une valeur invalide
+empêche le démarrage. Les compteurs sont par utilisateur (indépendants du NAT) ; dépassement :
+réponse 429 « Trop de requêtes : réessayez dans {n} secondes. » avec `Retry-After`. Si le cache
+est indisponible, la limitation est suspendue et un avertissement est journalisé.
 
 ## 9. Notes de sécurité
 

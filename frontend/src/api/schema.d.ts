@@ -6798,6 +6798,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiError"];
                 };
             };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     v1_audit_plans_summary_retrieve: {
@@ -8048,6 +8057,14 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11703,6 +11720,14 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     v1_orientation_reports_retrieve: {
@@ -12785,6 +12810,15 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                    "*/*": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13895,6 +13929,14 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     v1_templates_retrieve: {
@@ -14130,6 +14172,14 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -1,9 +1,10 @@
+import math
 import re
 from typing import Any
 
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import NotFound, Throttled, ValidationError
 from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import exception_handler, set_rollback
@@ -64,6 +65,14 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
     response = exception_handler(exc, context)
     if response is None:
         return None
+    if isinstance(exc, Throttled):
+        secondes = max(1, math.ceil(getattr(exc, "wait", None) or 1))
+        response["Retry-After"] = str(secondes)
+        response.data = {
+            "detail": f"Trop de requêtes : réessayez dans {secondes} secondes.",
+            "errors": {},
+        }
+        return response
     if isinstance(exc, ValidationError):
         response.data = {"detail": INVALID_DATA, "errors": _flatten(exc.detail)}
     else:

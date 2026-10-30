@@ -18,7 +18,15 @@ from rest_framework.serializers import BaseSerializer
 from rest_framework.viewsets import ModelViewSet
 
 from apps.core.filters import StableOrderingFilter
-from apps.core.schema import ERROR_400, ERROR_404, ERROR_422, ERROR_RESPONSES, crud_schema
+from apps.core.schema import (
+    ERROR_400,
+    ERROR_404,
+    ERROR_422,
+    ERROR_429,
+    ERROR_RESPONSES,
+    crud_schema,
+)
+from apps.core.throttling import ThrottleParActionMixin
 from apps.referentiel.models import Direction
 from apps.referentiel.permissions import RolePermission
 from apps.referentiel.renderers import PassthroughRenderer
@@ -37,12 +45,15 @@ from .serializers import (
 TAG = "Programme annuel"
 
 
-class _ProgrammeViewSet[M: ProgrammeAnnuel | LigneProgramme](ModelViewSet[M]):
+class _ProgrammeViewSet[M: ProgrammeAnnuel | LigneProgramme](
+    ThrottleParActionMixin, ModelViewSet[M]
+):
     permission_classes = [RolePermission]
     filter_backends = [DjangoFilterBackend, StableOrderingFilter]
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     read_roles: ClassVar[tuple[str, ...]] = LECTURE_PROGRAMME
     write_roles: ClassVar[tuple[str, ...]] = ECRITURE_PROGRAMME
+    throttle_scopes: ClassVar[dict[str, str]] = {"export": "export"}
 
     @property
     def acteur(self) -> User:
@@ -129,6 +140,7 @@ class ProgrammeAnnuelViewSet(_ProgrammeViewSet[ProgrammeAnnuel]):
             **ERROR_400,
             **ERROR_RESPONSES,
             **ERROR_404,
+            **ERROR_429,
         },
     )
     @action(

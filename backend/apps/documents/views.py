@@ -35,7 +35,15 @@ from apps.core.exceptions import RegleMetierError
 from apps.core.filters import StableOrderingFilter
 from apps.core.handlers import FORBIDDEN
 from apps.core.reseau import adresse_client
-from apps.core.schema import ERROR_400, ERROR_404, ERROR_409, ERROR_422, ERROR_RESPONSES
+from apps.core.schema import (
+    ERROR_400,
+    ERROR_404,
+    ERROR_409,
+    ERROR_422,
+    ERROR_429,
+    ERROR_RESPONSES,
+)
+from apps.core.throttling import ThrottleParActionMixin
 from apps.missions.acces import missions_visibles
 from apps.missions.etapes import romain
 from apps.missions.gardes import STATUTS_FIGES
@@ -136,7 +144,7 @@ def _schema(
     )
 
 
-class DocumentsApiViewSet(GenericViewSet[Any]):
+class DocumentsApiViewSet(ThrottleParActionMixin, GenericViewSet[Any]):
     http_method_names = ["get", "post", "patch", "head", "options"]  # no PUT, no DELETE
     content_negotiation_class = NegociationSansFormat
     # Permission classes per action; the default applies to the others.
@@ -218,6 +226,7 @@ class GabaritViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Documents
         "create": EcrivainAdmin,
         "activate": EcrivainAdmin,
     }
+    throttle_scopes: ClassVar[dict[str, str]] = {"create": "televersement", "preview": "apercu"}
 
     def get_queryset(self) -> QuerySet[GabaritDocument]:
         return GabaritDocument.objects.select_related("created_by", "active_par").order_by(
@@ -241,6 +250,7 @@ class GabaritViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Documents
             **ERROR_400,
             **ERROR_RESPONSES,
             **ERROR_422,
+            **ERROR_429,
         },
     )
     def create(self, request: Request) -> Response:
@@ -288,7 +298,7 @@ class GabaritViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Documents
         "Aperçu : gabarit rempli avec les données d'exemple du contrat",
         OpenApiTypes.BINARY,
         parametres=[serializers.FormatQuerySerializer],
-        extra=ERROR_409,
+        extra={**ERROR_409, **ERROR_429},
     )
     @action(detail=True, methods=["get"], pagination_class=None, filter_backends=[])
     def preview(self, request: Request, pk: str | None = None) -> FileResponse:
@@ -320,6 +330,7 @@ class FormatNumerotationViewSet(DocumentsApiViewSet):
         "partial_update": EcrivainAdmin,
         "preview": EcrivainAdmin,
     }
+    throttle_scopes: ClassVar[dict[str, str]] = {"preview": "apercu"}
 
     def _format(self, code: str) -> FormatNumerotation:
         try:
@@ -358,6 +369,7 @@ class FormatNumerotationViewSet(DocumentsApiViewSet):
         serializers.ApercuNumeroSerializer,
         request=serializers.ApercuFormatSerializer,
         description="Le numéro d'exemple est `null` quand le format a des erreurs.",
+        extra=ERROR_429,
     )
     @action(detail=False, methods=["post"])
     def preview(self, request: Request) -> Response:
@@ -394,6 +406,7 @@ class DocumentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Document
     ordering_fields = ["numero", "created_at"]
     lookup_value_regex = "[0-9a-fA-F-]{36}"
     permission_defaut = DocumentAccessPermission
+    throttle_scopes: ClassVar[dict[str, str]] = {"generate": "generation"}
 
     def get_serializer_class(self) -> Any:
         if self.action == "list":
@@ -483,7 +496,7 @@ class DocumentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Document
         "Générer : une nouvelle version d'un document (traitement en arrière-plan)",
         serializers.DocumentVersionSerializer,
         request=serializers.GenerationSerializer,
-        extra={202: serializers.DocumentVersionSerializer},
+        extra={202: serializers.DocumentVersionSerializer, **ERROR_429},
         description="Répond 202 : suivre `statut` et `statut_pdf` sur la version.",
     )
     @action(detail=False, methods=["post"], pagination_class=None, filter_backends=[])
