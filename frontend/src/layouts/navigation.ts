@@ -24,6 +24,7 @@ const ROUTE_ROLES: Readonly<Record<string, readonly Role[]>> = {
   "/documents": ["RAI", "AUDITEUR", "AUDITE"],
   // Gabarits et numérotation : lecture ADMIN et RAI ; les écritures restent ADMIN (le serveur répond 403).
   "/administration/documents": ["ADMIN", "RAI"],
+  "/administration/signatures": ["ADMIN", "RAI"],
   "/administration": ["ADMIN"],
 };
 
@@ -100,6 +101,7 @@ export const SEGMENT_LABELS: Record<string, string> = {
   documents: fr.nav.documents,
   gabarits: fr.documents.tabTemplates,
   numerotation: fr.documents.tabNumbering,
+  signatures: fr.signatureAdmin.title,
   administration: fr.nav.administration,
   utilisateurs: fr.utilisateurs.title,
   cartographies: fr.referentiel.tabCartographies,
