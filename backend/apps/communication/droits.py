@@ -5,8 +5,17 @@ ensuite pur. Les sections suivantes du lot (validation, diffusion) s'ajoutent à
 """
 
 from dataclasses import dataclass
+from typing import Any
+from uuid import UUID
 
-from apps.missions.acces import declaration_levee, est_chef, peut_contribuer, role_dans_mission
+from apps.constats.models import Constat
+from apps.missions.acces import (
+    declaration_levee,
+    est_chef,
+    est_responsable_entite,
+    peut_contribuer,
+    role_dans_mission,
+)
 from apps.missions.gardes import STATUTS_ETAPE_CLOSE
 from apps.missions.models import ROLES_INTERVENANTS, EtapeMission, Mission, StatutMission
 from apps.users.models import Role, User
@@ -69,3 +78,67 @@ def peut_lire_rapport_interne(user: User, mission: Mission) -> bool:
     if user.role == Role.RAI:
         return True
     return user.role == Role.AUDITEUR and role_dans_mission(user, mission) in ROLES_INTERVENANTS
+
+
+# --- Rapport provisoire (étape XV) et réponses (étape XVI) ---------------------------------
+
+TRANSMETTRE = "TRANSMETTRE"
+ETAPE_CLOTURE = 15
+
+
+@dataclass(frozen=True)
+class ContexteProvisoire:
+    mission_statut: str = ""
+    rai: bool = False
+    chef: bool = False
+    xv_ouverte: bool = False
+
+
+def contexte_provisoire(mission: Mission, user: User) -> ContexteProvisoire:
+    """Rôle de `user` et état de l'étape XV, calculés une fois pour toutes les lignes."""
+    statut_xv = (
+        EtapeMission.objects.filter(mission=mission, numero=ETAPE_CLOTURE)
+        .values_list("statut", flat=True)
+        .first()
+    )
+    return ContexteProvisoire(
+        mission_statut=mission.statut,
+        rai=user.role == Role.RAI,
+        chef=est_chef(user, mission) and declaration_levee(user, mission),
+        xv_ouverte=statut_xv is not None and statut_xv not in STATUTS_ETAPE_CLOSE,
+    )
+
+
+def actions_provisoire(
+    rapport: Rapport,  # noqa: ARG001
+    user: User,  # noqa: ARG001
+    *,
+    contexte: ContexteProvisoire,
+) -> list[str]:
+    """`TRANSMETTRE` : chef ou RAI, mission en communication, XV non close."""
+    if contexte.mission_statut != StatutMission.EN_COMMUNICATION or not contexte.xv_ouverte:
+        return []
+    return [TRANSMETTRE] if contexte.rai or contexte.chef else []
+
+
+def constats_a_repondre(user: User, provisoire: Any) -> list[UUID]:
+    """Constats du provisoire dont `user` est le responsable d'entité (D7)."""
+    if user.role != Role.AUDITE:
+        return []
+    instantane = provisoire.instantane or {}
+    references = [c["reference"] for c in instantane.get("constats") or []]
+    cache: dict[Any, bool] = {}
+    ids: list[UUID] = []
+    constats = Constat.objects.filter(
+        mission_id=provisoire.mission_id, reference__in=references
+    ).order_by("reference")
+    for constat in constats:
+        if constat.entite_id is None:
+            continue
+        if constat.entite_id not in cache:
+            cache[constat.entite_id] = est_responsable_entite(
+                user, provisoire.mission, constat.entite_id
+            )
+        if cache[constat.entite_id]:
+            ids.append(constat.pk)
+    return ids

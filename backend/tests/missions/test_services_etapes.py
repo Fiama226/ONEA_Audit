@@ -134,7 +134,13 @@ def test_terminer_II_complete(mission_lancee: Mission, chef: User) -> None:
     assert statut_mission(mission_lancee) == StatutMission.EN_PLANIFICATION
 
 
-def test_terminer_XV_renvoie_au_lot_7(mission_lancee: Mission, chef: User) -> None:
+def test_etape_sans_controle_renvoie_au_lot_de_ses_livrables(
+    mission_lancee: Mission, chef: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Une étape de lot > 3 dont aucun lot n'a branché de contrôle reste bloquée (D7)."""
+    from apps.missions.services import livrables
+
+    monkeypatch.setattr(livrables, "ETAPES_GEREES", livrables.ETAPES_GEREES - {15})
     forcer_etapes(mission_lancee, {15: StatutEtape.EN_COURS})
     with pytest.raises(RegleMetierError) as exc:
         terminer_etape(etape_n(mission_lancee, 15), by=chef)
