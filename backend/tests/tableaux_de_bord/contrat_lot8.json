@@ -1,0 +1,342 @@
+{
+  "tableau_rai": {
+    "actions_par_direction": [
+      {
+        "abandonnees": "int",
+        "cloturees": "int",
+        "code": "str",
+        "direction_id": "str",
+        "en_retard": "int",
+        "libelle": "str",
+        "ouvertes_dans_les_delais": "int"
+      }
+    ],
+    "annee": "int",
+    "cartographie": {
+      "annee": "int",
+      "cellules": [
+        {
+          "impact": "int",
+          "nombre": "int",
+          "probabilite": "int"
+        }
+      ],
+      "version_id": "str"
+    },
+    "etapes_en_retard": "int",
+    "file_decisions": {
+      "a_cloturer": "int",
+      "abandons_proposes": "int",
+      "missions_a_cloturer": "int",
+      "relances_en_echec": "int",
+      "relances_sans_adresse": "int",
+      "reports_en_attente": "int"
+    },
+    "jalons_a_valider": [],
+    "missions_en_retard": [],
+    "missions_par_statut": [
+      {
+        "libelle": "str",
+        "nombre": "int",
+        "phase": "null",
+        "statut": "str"
+      }
+    ],
+    "taux": {
+      "abandonnees": "int",
+      "cloturees": "int",
+      "cloturees_echues": "int",
+      "echues": "int",
+      "taux": "float",
+      "taux_echues": "float",
+      "total": "int"
+    }
+  },
+  "tableau_auditeur": {
+    "actions_a_verifier": [
+      {
+        "declaree_le": "str",
+        "libelle": "str",
+        "mission_id": "str",
+        "reference": "str",
+        "suivi_id": "str"
+      }
+    ],
+    "mes_etapes_en_cours": [],
+    "mes_missions": [
+      {
+        "date_fin_prevue": "null",
+        "mission_id": "str",
+        "reference": "str",
+        "statut": "str",
+        "titre": "str"
+      }
+    ],
+    "mes_tests_a_documenter": []
+  },
+  "tableau_audite": {
+    "constats_a_repondre": [
+      {
+        "constat_id": "str",
+        "cycle": "int",
+        "mission_id": "str",
+        "mission_reference": "str",
+        "reference": "str",
+        "soumis_le": "str",
+        "titre": "str"
+      }
+    ],
+    "mes_actions": [
+      {
+        "echeance": "str",
+        "en_retard": "bool",
+        "jours_retard": "int",
+        "libelle": "str",
+        "mission_id": "str",
+        "reference": "str",
+        "statut": "str",
+        "suivi_id": "str"
+      }
+    ],
+    "mes_demandes_report": [
+      {
+        "demande_id": "str",
+        "echeance_actuelle": "str",
+        "nouvelle_echeance": "str",
+        "reference": "str",
+        "statut": "str",
+        "suivi_id": "str"
+      }
+    ]
+  },
+  "tableau_dg": {
+    "annee": "int",
+    "rapports_diffuses": [
+      {
+        "actions_cloturees": "int",
+        "mission_id": "str",
+        "nombre_actions": "int",
+        "reference": "str",
+        "statut": "str",
+        "titre": "str"
+      }
+    ],
+    "risques_eleves": {
+      "couverts": "int",
+      "non_couverts": "int",
+      "risques": [
+        {
+          "code": "str",
+          "couvert": "bool",
+          "id": "str",
+          "libelle": "str",
+          "missions": [],
+          "processus_code": "str"
+        }
+      ]
+    },
+    "taux": {
+      "abandonnees": "int",
+      "cloturees": "int",
+      "cloturees_echues": "int",
+      "echues": "int",
+      "taux": "float",
+      "taux_echues": "float",
+      "total": "int"
+    },
+    "taux_par_direction": [
+      {
+        "abandonnees": "int",
+        "cloturees": "int",
+        "cloturees_echues": "int",
+        "code": "str",
+        "direction_id": "str",
+        "echues": "int",
+        "libelle": "str",
+        "taux": "float",
+        "taux_echues": "float",
+        "total": "int"
+      }
+    ]
+  },
+  "blocs": {
+    "ActionAVerifierSerializer": [
+      "declaree_le",
+      "libelle",
+      "mission_id",
+      "reference",
+      "suivi_id"
+    ],
+    "CartographieSerializer": [
+      "annee",
+      "cellules",
+      "version_id"
+    ],
+    "CelluleCartographieSerializer": [
+      "impact",
+      "nombre",
+      "probabilite"
+    ],
+    "ConstatARepondreSerializer": [
+      "constat_id",
+      "cycle",
+      "mission_id",
+      "mission_reference",
+      "reference",
+      "soumis_le",
+      "titre"
+    ],
+    "EtapeEnCoursSerializer": [
+      "date_fin_prevue",
+      "en_retard",
+      "libelle",
+      "mission_id",
+      "numero",
+      "reference",
+      "romain"
+    ],
+    "FileDecisionsSerializer": [
+      "a_cloturer",
+      "abandons_proposes",
+      "missions_a_cloturer",
+      "relances_en_echec",
+      "relances_sans_adresse",
+      "reports_en_attente"
+    ],
+    "JalonAValiderSerializer": [
+      "libelle",
+      "mission_id",
+      "numero",
+      "reference",
+      "romain",
+      "terminee_le"
+    ],
+    "LigneDirectionSerializer": [
+      "abandonnees",
+      "cloturees",
+      "code",
+      "direction_id",
+      "en_retard",
+      "libelle",
+      "ouvertes_dans_les_delais"
+    ],
+    "MaDemandeReportSerializer": [
+      "demande_id",
+      "echeance_actuelle",
+      "nouvelle_echeance",
+      "reference",
+      "statut",
+      "suivi_id"
+    ],
+    "MissionEnRetardSerializer": [
+      "date_fin_prevue",
+      "jours_retard",
+      "mission_id",
+      "reference",
+      "statut",
+      "titre"
+    ],
+    "MissionSuiviResumeSerializer": [
+      "date_fin_prevue",
+      "mission_id",
+      "reference",
+      "statut",
+      "titre"
+    ],
+    "MissionsParStatutSerializer": [
+      "libelle",
+      "nombre",
+      "phase",
+      "statut"
+    ],
+    "MonActionSerializer": [
+      "echeance",
+      "en_retard",
+      "jours_retard",
+      "libelle",
+      "mission_id",
+      "reference",
+      "statut",
+      "suivi_id"
+    ],
+    "RapportDiffuseResumeSerializer": [
+      "actions_cloturees",
+      "mission_id",
+      "nombre_actions",
+      "reference",
+      "statut",
+      "titre"
+    ],
+    "RisqueEleveSerializer": [
+      "code",
+      "couvert",
+      "id",
+      "libelle",
+      "missions",
+      "processus_code"
+    ],
+    "RisquesElevesSerializer": [
+      "couverts",
+      "non_couverts",
+      "risques"
+    ],
+    "TableauAuditeSerializer": [
+      "constats_a_repondre",
+      "mes_actions",
+      "mes_demandes_report"
+    ],
+    "TableauAuditeurSerializer": [
+      "actions_a_verifier",
+      "mes_etapes_en_cours",
+      "mes_missions",
+      "mes_tests_a_documenter"
+    ],
+    "TableauDgSerializer": [
+      "annee",
+      "rapports_diffuses",
+      "risques_eleves",
+      "taux",
+      "taux_par_direction"
+    ],
+    "TableauRaiSerializer": [
+      "actions_par_direction",
+      "annee",
+      "cartographie",
+      "etapes_en_retard",
+      "file_decisions",
+      "jalons_a_valider",
+      "missions_en_retard",
+      "missions_par_statut",
+      "taux"
+    ],
+    "TauxParDirectionSerializer": [
+      "abandonnees",
+      "cloturees",
+      "cloturees_echues",
+      "code",
+      "direction_id",
+      "echues",
+      "libelle",
+      "taux",
+      "taux_echues",
+      "total"
+    ],
+    "TauxSerializer": [
+      "abandonnees",
+      "cloturees",
+      "cloturees_echues",
+      "echues",
+      "taux",
+      "taux_echues",
+      "total"
+    ],
+    "TestATraiterSerializer": [
+      "code",
+      "libelle",
+      "mission_id",
+      "reference",
+      "sans_fiche",
+      "test_id"
+    ]
+  }
+}
