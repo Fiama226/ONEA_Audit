@@ -14,7 +14,7 @@ services:
     # Interface de consultation du courrier, sur la boucle locale uniquement.
     ports:
       - "127.0.0.1:18025:8025"
-    networks: [edge]
+    networks: [mail-out]
   keycloak:
     # Port de gestion (sante, metriques) pour diagnostic, boucle locale uniquement.
     ports:

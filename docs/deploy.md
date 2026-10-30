@@ -7,14 +7,32 @@ Réseaux Docker :
 
 | Réseau | Type | Services |
 |---|---|---|
-| `edge` | standard (accès sortant : SMTP, LDAP) | nginx, web, worker, frontend, keycloak |
-| `backend` | `internal` (aucune route vers l'extérieur) | web, worker, beat, migrate, db, redis, meilisearch, gotenberg |
+| `edge` | standard | nginx (ports 80/443) |
+| `web` | `internal`, sous-réseau fixe `ONEA_SUBNET_WEB` (défaut `172.30.10.0/28`) | nginx (adresse fixe `ONEA_NGINX_IP`, alias `${SSO_HOST}`), web, worker |
+| `front` | `internal` | nginx, frontend |
+| `sso` | `internal` | nginx, keycloak |
+| `kc-out` | standard | keycloak seul (sortie LDAP) |
+| `mail-out` | standard | worker seul (sortie SMTP) |
+| `backend` | `internal` | web, worker, beat, migrate, db, redis, meilisearch, gotenberg |
 | `kc` | `internal` | keycloak, keycloak-db |
 
-`nginx` porte l'alias réseau `${SSO_HOST}` sur `edge` : `web` résout le nom du SSO vers
-`nginx` directement, sans passer par l'adresse publique. `worker` est aussi sur `edge`
-pour envoyer les courriels ; `gotenberg` n'a aucune route sortante. Redis (Valkey) exige un
-mot de passe (`REDIS_PASSWORD`).
+`nginx` porte l'alias réseau `${SSO_HOST}` sur `web` : `web` et `worker` joignent le SSO à
+travers `nginx`, sans passer par l'adresse publique. Les ports 8080 et 9000 de Keycloak ne
+sont joignables que depuis `nginx` (réseau `sso`). `web` n'a aucune sortie : tout courriel
+part du `worker` (tâche Celery) via `mail-out`. `gotenberg` n'a aucune route sortante.
+Redis (Valkey) exige un mot de passe (`REDIS_PASSWORD`).
+
+Variables de la périphérie :
+
+- `ONEA_SUBNET_WEB` / `ONEA_NGINX_IP` : sous-réseau du réseau `web` et adresse fixe de `nginx`
+  (doit appartenir au sous-réseau). À changer si le sous-réseau entre en conflit avec le réseau
+  de l'établissement. `TRUSTED_PROXY_CIDRS` (Django) et `FORWARDED_ALLOW_IPS` (gunicorn)
+  valent `ONEA_NGINX_IP` : `nginx` est le seul pair cru.
+- `TRUSTED_UPSTREAM_CIDRS` : répartiteurs ou proxys placés devant `nginx` (CIDR, séparés par
+  des virgules). Vide (défaut) : `nginx` prend le pair TCP comme adresse du client. Renseigné :
+  `X-Forwarded-For` n'est cru que si le pair appartient à ces plages (`realip`), et l'adresse
+  du client — utilisée pour les limites de débit, le journal d'accès et la piste d'audit —
+  est celle derrière ce proxy.
 
 ## 1. Prérequis
 
@@ -304,23 +322,10 @@ base 1 ; la base 0 sert à Celery).
 - Adresse IP enregistrée (confirmations, journal de consultation, piste d'audit) :
   `nginx` transmet l'adresse du pair TCP dans `X-Real-IP`, et Django ne la croit que si le
   pair appartient à `TRUSTED_PROXY_CIDRS` (aussi utilisé pour `--forwarded-allow-ips` de
-  gunicorn via `FORWARDED_ALLOW_IPS`). La valeur par défaut `172.16.0.0/12` du compose de
-  production couvre tout l'espace Docker : **la restreindre au sous-réseau réel du proxy**.
-  Si `nginx` est lui-même derrière un autre proxy, un répartiteur ou un NAT, l'adresse
-  enregistrée est celle de ce dernier (adresse amont), pas celle du poste de l'utilisateur.
-
-## 10. Supervision
-
-- **Journaux** : `web`, `worker` et `beat` écrivent des lignes JSON (champs `ts`, `niveau`,
-  `logger`, `message`, `correlation_id`, `user_id`, `methode`, `chemin`, `statut`, `duree_ms`,
-  `tache`). Courriels, jetons, mots de passe et chaînes de requête sont masqués. Chaque
-  réponse porte l'en-tête `X-Correlation-ID`, repris dans les tâches Celery associées. Le journal
-  d'accès de gunicorn est désactivé : `nginx` tient ce rôle.
-- **Sondes** : `GET /api/v1/health/` (vivacité, contrat inchangé) et
-  `GET /api/v1/health/ready/` (aptitude : 503 si la base ou Redis est indisponible ; 200 avec
-  `status: degrade` si seul Gotenberg est indisponible ou si le pouls de `beat` est périmé).
-- **Métriques** : `GET /api/v1/metrics/` (format texte Prometheus), protégé par
-  `Authorization: Bearer <METRICS_TOKEN>`. Sans `METRICS_TOKEN` ou avec un jeton erroné, la
-  réponse est 404. Séries : `onea_build_info`, `onea_db_up`, `onea_redis_up`,
-  `onea_gotenberg_up`, `onea_celery_file_attente`, `onea_documents_espace_libre_octets`,
-  `onea_generations_bloquees` (-1 : valeur inconnue). Ne pas publier ce chemin à l'extérieur.
+  gunicorn via `FORWARDED_ALLOW_IPS`) ; ces deux valeurs sont réduites à `ONEA_NGINX_IP`.
+  `nginx` écrase `X-Real-IP` et `X-Forwarded-For` par sa propre détermination de l'adresse.
+  Si `nginx` est derrière un répartiteur, renseigner `TRUSTED_UPSTREAM_CIDRS` ; sinon
+  l'adresse enregistrée est celle de ce dernier, pas celle du poste de l'utilisateur.
+- Corps de requête : 1 Mo par défaut, 55 Mo sur `/api/` (pièces justificatives). Journal
+  d'accès `nginx` en JSON sur la sortie standard (URI sans chaîne de requête, statut, octets,
+  durées, identifiant de requête, adresse du client).
