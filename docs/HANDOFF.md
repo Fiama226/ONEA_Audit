@@ -21,6 +21,12 @@ Dernière mise à jour : 2026-10-30. Rien n'est poussé. Tout est local (Git).
 
 Plans : `2026-10-28-lot6-accomplissement.md` (14 tâches), `2026-10-29-lot7-communication.md` (17+T18), `2026-10-29-lot8-suivi.md` (17), `2026-10-29-lot9-durcissement.md` (36). Journaux d'avancement (git-ignorés) : `.superpowers/sdd/<plan>/progress.md`, rapports `task-N-report.md` / `task-N-review.md`.
 
+## 2bis. Mise à jour 2026-10-30 (session Kilo)
+- Fait dans `develop` (7a09a1b) : lot 9 T9/T12 corrigés (ip_range web, access_log par server, 50r/s, API admin Keycloak, portées import/annuaire, THROTTLE_RATE_* dans le compose) ; lot 6 T8 terminé (API constats, 90 tests ciblés verts) ; `feat/lot6-accomplissement` fusionnée ; `schema.d.ts` régénéré, `check-api-fresh` OK ; peuplements démo enregistrés (core, accomplissement, constats).
+- Non fait : `test_api_contrat_lot6` (JSON exact figé, consommé par T13) ; bancs réseau lot 9 non lancés (revue statique seulement) ; suites complètes non relancées ; `main` non avancée.
+- Prochaine étape : lot 6 T10 (fondations frontend), puis T11–T14, lots 7, 8, reste du lot 9.
+- Les sous-agents Kilo (Sonnet 5.5) ont échoué : crédits Kilo insuffisants (solde négatif).
+
 ## 3. Reste à faire (ordre conseillé)
 1. **Lot 9 T9 + T12 : appliquer les corrections de revue** (`.superpowers/sdd/2026-10-29-lot9-durcissement/task-9-review.md`, `task-12-review.md`) :
    - C1 `docker/compose.prod.yml` : ajouter `ip_range` au réseau `web` (nginx ne démarrerait pas).
