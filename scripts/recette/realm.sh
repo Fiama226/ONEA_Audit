@@ -53,15 +53,15 @@ kc create clients -r onea -s clientId=onea-frontend -s publicClient=true \
     -s "attributes.\"post.logout.redirect.uris\"=https://$PUBLIC_HOST/" >/dev/null
 add_mappers "$(client_id onea-frontend)"
 
-# onea-backend : confidentiel, secret = OIDC_RP_CLIENT_SECRET.
+# onea-backend : confidentiel, secret = fichier oidc_client_secret (relu dans le conteneur web).
 kc create clients -r onea -s clientId=onea-backend -s publicClient=false \
-    -s secret="$(envv OIDC_RP_CLIENT_SECRET)" -s standardFlowEnabled=true \
+    -s secret="$(secret_recette oidc_client_secret)" -s standardFlowEnabled=true \
     -s directAccessGrantsEnabled=false >/dev/null
 add_mappers "$(client_id onea-backend)"
 
 # onea-admin-sync : compte de service view-users + manage-users, portee restreinte.
 kc create clients -r onea -s clientId=onea-admin-sync -s publicClient=false \
-    -s secret="$(envv KEYCLOAK_ADMIN_API_CLIENT_SECRET)" -s serviceAccountsEnabled=true \
+    -s secret="$(secret_recette keycloak_sync_secret)" -s serviceAccountsEnabled=true \
     -s standardFlowEnabled=false -s directAccessGrantsEnabled=false \
     -s fullScopeAllowed=false >/dev/null
 kc add-roles -r onea --uusername service-account-onea-admin-sync \

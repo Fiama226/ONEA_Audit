@@ -17,14 +17,16 @@ if [ ! -f "$RECETTE_ENV" ]; then
         docker run --rm -v "$docs:/d" alpine:3.20 chown 10001:10001 /d
     fi
     chmod 0750 "$docs" 2>/dev/null || docker run --rm -v "$docs:/d" alpine:3.20 chmod 0750 /d
-    sed -e "s|@SECRET_KEY@|$(rand)$(rand)|" \
-        -e "s|@POSTGRES_PASSWORD@|$(rand)|" \
-        -e "s|@REDIS_PASSWORD@|$(rand)|" \
+    # Secrets applicatifs : fichiers (T17), exactement comme en production. Compose monte les
+    # fichiers tels quels : ils doivent appartenir a 10001 (utilisateur des conteneurs applicatifs).
+    sh "$REPO_ROOT/scripts/generer-secrets.sh" --dossier "$RECETTE_SECRETS" --sans-proprietaire
+    if ! chown 10001:10001 "$RECETTE_SECRETS"/* 2>/dev/null; then
+        docker run --rm -v "$RECETTE_SECRETS:/s" alpine:3.20 sh -c "chown 10001:10001 /s/*"
+    fi
+    # Les deux secrets de Keycloak restent des variables (Keycloak ne lit pas de fichier).
+    sed -e "s|@SECRETS_DIR@|$RECETTE_SECRETS|" \
         -e "s|@KC_ADMIN_PASSWORD@|$(rand)|" \
         -e "s|@KC_DB_PASSWORD@|$(rand)|" \
-        -e "s|@OIDC_BACKEND_SECRET@|$(rand)|" \
-        -e "s|@ADMIN_SYNC_SECRET@|$(rand)|" \
-        -e "s|@MEILI_KEY@|$(rand)|" \
         -e "s|@DOCUMENTS_HOST_DIR@|$docs|" \
         -e "s|@TLS_CERT_DIR@|$RECETTE_DIR/certs|" \
         "$REPO_ROOT/.env.recette.example" > "$RECETTE_ENV"

@@ -1,0 +1,35 @@
+# Détection de fuite de secrets (lot 9, T17, D16) : gitleaks, licence MIT.
+#   gitleaks git --redact -c .gitleaks.toml          (tout l'historique)
+#   gitleaks dir --redact -c .gitleaks.toml .         (arbre de travail)
+# Règles par défaut + les exceptions ci-dessous. N'ajouter ICI que des valeurs de développement ou de
+# modèle, publiques et inutilisables en production ; jamais un secret réel (le retirer de
+# l'historique et le changer à la place).
+
+title = "ONEA - détection de fuite de secrets"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Valeurs de développement et de CI listées (jamais acceptées en production)"
+regexes = [
+  '''onea-dev-password''',
+  '''onea-dev-sync-secret''',
+  '''insecure-dev-key-change-me''',
+  '''ci-throwaway-[a-z-]+''',
+  '''CHANGE_ME[A-Za-z0-9_]*''',
+]
+
+[[allowlists]]
+description = "Références (pas des valeurs) : variable interpolée par Compose, chemin de fichier"
+regexTarget = "line"
+regexes = [
+  # PASSWORD: ${VARIABLE:?message} ou ${VARIABLE}
+  '''(?i)(password|secret|key|token)\w*\s*[:=]\s*\$\{[A-Z_]+(:[-?][^}]*)?\}\s*$''',
+  # KEYCLOAK_..._SECRET_FILE: /run/secrets/nom
+  '''(?i)_file\s*[:=]\s*/run/secrets/[a-z_]+\s*$''',
+  # URL JDBC de Keycloak (nom d'hôte du service, sans identifiants)
+  '''KC_DB_URL\s*[:=]\s*jdbc:postgresql://keycloak-db:5432/keycloak\s*$''',
+  # Test de traversée de chemin : "/etc/passwd" n'est pas un mot de passe
+  '''"/etc/passwd"''',
+]

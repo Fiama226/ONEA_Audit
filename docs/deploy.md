@@ -20,7 +20,7 @@ Réseaux Docker :
 travers `nginx`, sans passer par l'adresse publique. Les ports 8080 et 9000 de Keycloak ne
 sont joignables que depuis `nginx` (réseau `sso`). `web` n'a aucune sortie : tout courriel
 part du `worker` (tâche Celery) via `mail-out`. `gotenberg` n'a aucune route sortante.
-Redis (Valkey) exige un mot de passe (`REDIS_PASSWORD`).
+Redis (Valkey) exige un mot de passe (fichier de secret `redis_password`, §3).
 
 Variables de la périphérie :
 
@@ -58,29 +58,154 @@ Le répertoire est monté en lecture seule dans `nginx` (variable `TLS_CERT_DIR`
 renouvellement, remplacer les fichiers puis recharger :
 `docker compose --env-file .env.prod -f docker/compose.prod.yml exec nginx nginx -s reload`.
 
-## 3. Fichier d'environnement
+## 3. Secrets et fichier d'environnement
+
+Les secrets ne sont **jamais** des variables d'environnement (sauf les deux de Keycloak, voir
+plus bas) : ce sont des **fichiers** générés une fois sur le serveur, montés dans les conteneurs
+par les `secrets:` de Compose sous `/run/secrets/`. `docker inspect` n'en montre que les
+chemins.
+
+### 3.1 Générer les fichiers de secrets
+
+```
+sudo install -d -m 0700 /etc/onea/secrets            # dossier de root, 0700, hors dépôt
+sudo sh scripts/generer-secrets.sh --dossier /etc/onea/secrets
+sudo sh scripts/generer-secrets.sh --verifier --dossier /etc/onea/secrets
+```
+
+Le script crée un fichier par secret, en `0600` dès la création, avec des valeurs aléatoires
+(`/dev/urandom`), sans jamais afficher une valeur et **sans jamais écraser un fichier
+existant** (relancé, il ne fait que créer ce qui manque). Lancé en root, il donne les fichiers
+à `10001:10001` (utilisateur des conteneurs applicatifs) : Compose monte les fichiers tels
+quels et ne sait ni changer leur propriétaire ni leur mode. `db`, `redis` et `meilisearch`
+tournent en root avec la capacité `DAC_OVERRIDE` pour les lire. Hors root : `--proprietaire
+UID:GID` (ou `chown 10001:10001` ensuite). `--verifier` contrôle les droits (dossier `0700`,
+fichiers `0600`), l'absence de fichier vide et de valeur `CHANGE_ME`.
+
+| Fichier | Lu par | Contenu |
+|---|---|---|
+| `secret_key` | web, worker, beat, migrate | clé secrète Django (96 caractères hexadécimaux) |
+| `secret_key_fallbacks` | web, worker, beat, migrate | anciennes clés acceptées pendant une rotation, une par ligne ; **vide** au départ |
+| `postgres_password` | db, migrate | mot de passe du propriétaire `POSTGRES_USER` |
+| `postgres_app_password` | db (création du rôle), web, worker, beat | mot de passe du rôle applicatif `POSTGRES_APP_USER` |
+| `redis_password` | redis, web, worker, beat, migrate | mot de passe Valkey |
+| `oidc_client_secret` | web, worker, beat, migrate | secret du client `onea-backend` (voir §5, étape 6) |
+| `keycloak_sync_secret` | web, worker, beat, migrate | secret du compte de service `onea-admin-sync` (§5, étape 7bis) |
+| `meili_master_key` | meilisearch, web, worker, beat, migrate | clé maître Meilisearch |
+| `metrics_token` | web | jeton `Authorization: Bearer` de `/api/v1/metrics/` |
+| `email_password` | worker | mot de passe SMTP ; **vide** si le relais n'en exige pas (le mot de passe de `EMAIL_URL` s'applique alors, s'il y en a un) |
+
+**Installation existante (secrets jusqu'ici dans `.env.prod`).** Ne pas laisser le script
+inventer des valeurs que la base, Keycloak ou Meilisearch ne connaissent pas : **avant** de le
+lancer, écrire les valeurs actuelles dans les fichiers (`printf '%s\n' "$VALEUR" | sudo tee
+/etc/onea/secrets/postgres_password >/dev/null`, puis `chmod 0600` et `chown 10001:10001`) pour
+`secret_key`, `postgres_password`, `redis_password`, `oidc_client_secret`,
+`keycloak_sync_secret` et `meili_master_key` ; le script ne crée alors que les fichiers
+manquants (`postgres_app_password`, `metrics_token`…). Retirer ensuite ces variables de
+`.env.prod`, puis `docker compose … up -d`.
+
+Côté Django, `<NOM>_FILE` (chemin du fichier) est **prioritaire** sur `<NOM>` ; seuls les sauts
+de ligne finaux sont retirés ; un fichier absent ou illisible arrête le démarrage en nommant la
+variable. `DATABASE_URL` et `REDIS_URL` sont donnés **sans mot de passe** ; il vient de
+`DATABASE_PASSWORD_FILE` et `REDIS_PASSWORD_FILE` (encodé par l'application : aucune contrainte
+sur les caractères). En production, toute valeur `CHANGE_ME*` ou de développement est refusée.
+
+### 3.2 Fichier d'environnement
 
 ```
 cp .env.prod.example .env.prod
 chmod 600 .env.prod
 ```
 
-Remplacer **toutes** les valeurs `CHANGE_ME` par des secrets aléatoires (URL-safe, sans
-`@ : / ? # %`), par exemple `openssl rand -hex 32`. Exceptions : `OIDC_RP_CLIENT_SECRET`
-reste un **espace réservé** (n'importe quelle valeur non vide) jusqu'à l'étape 5.6, où le
-vrai secret du client `onea-backend` est collé ; `APP_VERSION` est l'étiquette des images
-(ex. `1.0.0`). Le fichier n'est jamais commité (`.gitignore`). Vérification :
+Renseigner les noms DNS, `ONEA_SECRETS_DIR` (le dossier ci-dessus), `EMAIL_URL` **sans mot de
+passe** (`smtp+tls://compte@smtp.onea.bf:587` ; le mot de passe va dans `email_password`) et
+remplacer les deux `CHANGE_ME` restants (`KEYCLOAK_ADMIN_PASSWORD`, `KEYCLOAK_DB_PASSWORD` :
+valeurs aléatoires sans `@ : / ? # %`, par exemple `openssl rand -hex 32`) : **Keycloak ne lit
+pas de fichier de secret**, ces deux-là restent des variables, visibles de qui lit `.env.prod`
+ou fait `docker inspect keycloak keycloak-db`. `APP_VERSION` est l'étiquette des images (ex.
+`1.0.0`). Le fichier n'est jamais commité (`.gitignore`). Vérification :
 
 ```
 docker compose --env-file .env.prod -f docker/compose.prod.yml config -q
 ```
 
-Sans fichier d'environnement complet, la commande échoue en nommant la variable manquante.
-Le fichier contient des secrets : le sauvegarder dans un coffre, pas dans le dépôt.
+Sans `ONEA_SECRETS_DIR` ou sans une variable obligatoire, la commande échoue en la nommant.
+Sauvegarder le dossier des secrets (`/etc/onea/secrets`) et `.env.prod` dans un coffre, pas dans
+le dépôt ; une sauvegarde de base **sans** les secrets correspondants ne suffit pas à
+reconstruire le service.
 
-Note : les secrets sont transmis aux conteneurs par variables d'environnement. Toute
-personne pouvant exécuter `docker inspect` (groupe `docker`, donc équivalent root sur le
-serveur) les lit : limiter strictement l'accès au groupe `docker` et à `.env.prod`.
+Les secrets restent lisibles de toute personne pouvant exécuter `docker exec` (groupe `docker`,
+donc équivalent root sur le serveur) : limiter strictement l'accès à ce groupe et au dossier
+des secrets. La détection de fuite dans le dépôt est décrite en §3.4.
+
+### 3.3 Rotation des secrets
+
+Principes : un secret à la fois ; sauvegarder d'abord (`scripts/backup.sh`) ; **écrire le
+nouveau fichier sur place** (`... > fichier`, jamais un `mv` ni un éditeur qui renomme : le
+fichier monté dans `db` doit montrer la nouvelle valeur) ; conserver propriétaire et mode ;
+recréer ensuite les conteneurs concernés (`up -d --force-recreate <services>`) car chaque
+secret n'est lu qu'au démarrage. Abréviation : `dc` =
+`docker compose --env-file .env.prod -f docker/compose.prod.yml`. Une nouvelle valeur :
+`od -An -tx1 -N32 /dev/urandom | tr -d ' \n'` (48 octets pour `secret_key`).
+
+| Secret | Procédure | Interruption |
+|---|---|---|
+| `SECRET_KEY` | 1. `cat /etc/onea/secrets/secret_key >> /etc/onea/secrets/secret_key_fallbacks` (l'ancienne reste acceptée). 2. Écrire une nouvelle valeur dans `secret_key`. 3. `dc up -d --force-recreate web worker beat`. 4. Après la durée de vie des sessions (8 h) et des jetons signés, vider le fichier des anciennes clés (`: > .../secret_key_fallbacks`) puis recréer `web worker beat`. | aucune (les signatures de l'ancienne clé restent valides pendant la transition) |
+| Mot de passe du rôle applicatif | 1. `dc stop web worker beat`. 2. Écrire la nouvelle valeur dans `postgres_app_password`. 3. Appliquer avec l'encadré « ALTER ROLE » ci-dessous (la valeur est lue dans le conteneur, jamais passée en argument). 4. `dc up -d --force-recreate web worker beat`. | courte (web, worker, beat) |
+| Mot de passe du propriétaire | Idem avec `postgres_password` et `POSTGRES_USER` dans l'encadré, puis `dc up -d --force-recreate db migrate`. `POSTGRES_PASSWORD_FILE` n'agit qu'à l'initialisation du volume : l'`ALTER ROLE` est indispensable. Les sauvegardes passent par le socket du conteneur, sans mot de passe. | `migrate` seulement |
+| Redis (Valkey) | 1. Écrire la nouvelle valeur dans `redis_password`. 2. `dc up -d --force-recreate redis web worker beat migrate`. Les tâches en attente sont conservées (`appendonly`). | courte |
+| Secret client OIDC (`onea-backend`) | 1. Écrire la nouvelle valeur dans `oidc_client_secret`. 2. Dans Keycloak (console, realm `onea`, client `onea-backend`, *Credentials*) : *Regenerate*, puis copier la valeur affichée dans le fichier (voir « Secret d'un client Keycloak » plus bas). 3. `dc up -d --force-recreate web worker beat`. Ce secret ne sert pas à valider les jetons (userinfo + JWKS) : aucune connexion n'est coupée. | aucune |
+| Compte de service `onea-admin-sync` | Idem avec `keycloak_sync_secret` et le client `onea-admin-sync`. Tant que les deux valeurs diffèrent, la synchronisation des comptes échoue (reprise automatique, toutes les 15 min). | aucune pour les utilisateurs |
+| Meilisearch | 1. Écrire la nouvelle valeur dans `meili_master_key`. 2. `dc up -d --force-recreate meilisearch web worker beat migrate`. 3. `dc exec web python manage.py configurer_recherche` puis `dc exec web python manage.py reindexer`. | recherche indisponible quelques minutes |
+| Jeton de métriques | Écrire la nouvelle valeur dans `metrics_token`, `dc up -d --force-recreate web`, puis mettre à jour la supervision de l'ONEA (en-tête `Authorization: Bearer`). | aucune |
+| Mot de passe SMTP | Écrire la nouvelle valeur dans `email_password`, `dc up -d --force-recreate worker`. | aucune |
+
+**Encadré « ALTER ROLE »** (remplacer `postgres_app_password` et `POSTGRES_APP_USER` par
+`postgres_password` et `POSTGRES_USER` pour le propriétaire) : le mot de passe est lu dans le
+conteneur par `psql` lui-même ; il n'apparaît ni dans la ligne de commande ni dans l'historique
+du shell.
+
+```
+dc exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+\set role `echo "$POSTGRES_APP_USER"`
+\set pw `cat /run/secrets/postgres_app_password`
+SELECT format('ALTER ROLE %I PASSWORD %L', :'role', :'pw') \gexec
+SQL
+```
+
+**Secret d'un client Keycloak.** Voie recommandée : console d'administration, *Clients >
+`onea-backend` (ou `onea-admin-sync`) > Credentials > Regenerate*, puis copier la valeur affichée
+dans le fichier de secret (`printf '%s\n' '<valeur>' | sudo tee /etc/onea/secrets/oidc_client_secret
+>/dev/null`) sans la consigner ailleurs, et recréer `web worker beat`. Contrôle : le journal de
+`worker` ne montre plus d'échec « Keycloak admin » après la synchronisation suivante.
+
+**Secrets propres à Keycloak** (variables de `.env.prod`) :
+
+- `KEYCLOAK_ADMIN_PASSWORD` n'est lu qu'à la création du compte d'amorçage : le changer dans la
+  console (le compte nominatif remplace l'amorçage, §5) puis mettre `.env.prod` en cohérence.
+- `KEYCLOAK_DB_PASSWORD` : saisir le nouveau mot de passe dans une session `psql` interactive
+  (`dc exec keycloak-db psql -U keycloak -d keycloak` puis `\password keycloak`), écrire la même
+  valeur dans `.env.prod`, enfin `dc up -d --force-recreate keycloak`.
+
+**Fuite avérée** (secret publié, poste perdu) : rotation immédiate de **tous** les secrets
+concernés, déconnexion de toutes les sessions Keycloak (*Sessions*), relecture du journal d'audit
+de la période.
+
+### 3.4 Détection de fuite de secrets
+
+`gitleaks` (MIT) analyse les modifications indexées à chaque commit (hook `pre-commit`, voir
+`.pre-commit-config.yaml`) et **tout l'historique** en intégration continue (job `secrets-scan`).
+Les règles par défaut s'appliquent ; `.gitleaks.toml` ne liste que des valeurs de développement
+ou de modèle (publiques, refusées en production) et des faux positifs documentés (références
+`${VARIABLE}` de Compose, URL JDBC sans identifiants, chemin `/etc/passwd` d'un test). Installation
+locale : `pre-commit install`. Contrôle manuel de l'historique :
+
+```
+docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git --redact -c /repo/.gitleaks.toml /repo
+```
+
+Un constat réel n'est **pas** ajouté à `.gitleaks.toml` : le secret est changé (§3.3), puis
+retiré de l'historique si le dépôt a été publié.
 
 ### Autorité de certification interne (facultatif)
 
@@ -168,9 +293,7 @@ des mots de passe de test et un client à accès direct par mot de passe).
    `https://audit.onea.bf/callback`, URI de redirection après déconnexion
    `https://audit.onea.bf/`, *Web origins* `https://audit.onea.bf`.
 6. **Client `onea-backend`** : confidentiel (*Client authentication* activée), standard flow,
-   pas d'accès direct. Copier son secret (onglet *Credentials*) dans `OIDC_RP_CLIENT_SECRET`
-   de `.env.prod` (en remplacement de l'espace réservé) puis
-   `docker compose ... up -d web worker beat`. Le secret n'est pas utilisé pour valider les jetons (userinfo + JWKS) : il est exigé
+   pas d'accès direct. Le fichier de secret `oidc_client_secret` (§3.1) existe déjà avec une valeur aléatoire : copier dedans le secret affiché par Keycloak (onglet *Credentials*, §3.3) puis `docker compose ... up -d --force-recreate web worker beat`. Le secret n'est pas utilisé pour valider les jetons (userinfo + JWKS) : il est exigé
    uniquement car mozilla-django-oidc le lit à l'initialisation ; le client reste confidentiel
    par prudence. Le backend ne vérifie que des jetons
    porteurs émis pour `onea-frontend` (`OIDC_ALLOWED_AZP`).
@@ -199,10 +322,7 @@ des mots de passe de test et un client à accès direct par mot de passe).
      `manage-users` (sans ce mapping de portée, Keycloak répond 403 à tous les appels).
    - Ne **jamais** ajouter `onea-admin-sync` à `OIDC_ALLOWED_AZP` : ses jetons ne doivent pas
      ouvrir de session applicative.
-   - Onglet *Credentials* : copier le secret (long et aléatoire) dans
-     `KEYCLOAK_ADMIN_API_CLIENT_SECRET` de `.env.prod` (le backend refuse de démarrer si la
-     valeur est vide, l'espace réservé `CHANGE_ME_*` ou le secret de développement), puis
-     `docker compose ... up -d web worker beat`.
+   - Onglet *Credentials* : copier le secret (long et aléatoire) dans le fichier `keycloak_sync_secret` (§3.1, §3.3) ; le backend refuse de démarrer si la valeur est vide, l'espace réservé `CHANGE_ME_*` ou le secret de développement ; puis `docker compose ... up -d --force-recreate web worker beat`.
 
 8. **Protection contre la force brute** (*Realm settings > Security defenses > Brute force
    detection*) : activée, verrouillage temporaire après 5 échecs, durée croissante - **sur
@@ -332,14 +452,14 @@ désactiver un déclencheur (`ALTER TABLE … DISABLE TRIGGER`) : `--verifier` l
 `docker/postgres/initdb/10-role-applicatif.sh` ne s'exécute qu'au premier démarrage d'un volume vide.
 Pour une base déjà en service :
 
-1. `sh scripts/backup.sh`, puis ajouter `POSTGRES_APP_USER` et `POSTGRES_APP_PASSWORD` (sans caractères
-   spéciaux) à `.env.prod`.
-2. Créer le rôle :
+1. `sh scripts/backup.sh`, puis ajouter `POSTGRES_APP_USER` à `.env.prod` et créer le fichier de secret `postgres_app_password` (`sh scripts/generer-secrets.sh`, §3.1).
+2. Recréer `db` pour y monter les secrets (`docker compose … up -d db`), puis créer le rôle :
 
    ```
    docker compose --env-file .env.prod -f docker/compose.prod.yml exec -T db sh -c \
      'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
-        -v app_user="$POSTGRES_APP_USER" -v app_password="$POSTGRES_APP_PASSWORD" -v app_db="$POSTGRES_DB"' <<'SQL'
+        -v app_user="$POSTGRES_APP_USER" -v app_db="$POSTGRES_DB"' <<'SQL'
+   \set app_password `cat /run/secrets/postgres_app_password`
    SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT PASSWORD %L',
                  :'app_user', :'app_password') \gexec
    SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'app_db', :'app_user') \gexec
@@ -369,17 +489,15 @@ intercepté (ce droit n'est pas accordé au rôle applicatif).
 | `ADMIN_ALLOW_CIDR` | adresses autorisées pour la console Keycloak (vide = aucune) |
 | `SSO_CA_BUNDLE_PATH` | bundle d'AC interne dans le conteneur (`/etc/onea/ca/ca-bundle.pem`), facultatif |
 | `APP_VERSION` | étiquette des images `onea-backend` / `onea-frontend` (obligatoire) |
-| `REDIS_PASSWORD` | mot de passe Valkey (intégré dans `REDIS_URL` : sans caractères spéciaux) |
-| `SECRET_KEY` | clé secrète Django (≥ 50 caractères aléatoires) |
 | `DJANGO_ADMIN_ENABLED` | `false` par défaut ; `true` expose `/admin/` |
-| `EMAIL_URL` | relais SMTP, ex. `smtp+tls://user:mdp@smtp.onea.bf:587` |
-| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | base applicative |
-| `POSTGRES_APP_USER`, `POSTGRES_APP_PASSWORD` | rôle applicatif sans privilèges de web, worker, eat (voir §7bis) ; obligatoires |
+| `ONEA_SECRETS_DIR` | dossier des fichiers de secrets (root, 0700 ; voir §3.1) : obligatoire |
+| `EMAIL_URL` | relais SMTP **sans mot de passe**, ex. `smtp+tls://compte@smtp.onea.bf:587` (le mot de passe est le fichier `email_password`) |
+| `POSTGRES_DB`, `POSTGRES_USER` | base applicative (mot de passe : fichier `postgres_password`) |
+| `POSTGRES_APP_USER` | rôle applicatif sans privilèges de web, worker, beat (voir §7bis) ; mot de passe : fichier `postgres_app_password` |
 | `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | administrateur d'amorçage Keycloak |
 | `KEYCLOAK_DB_PASSWORD` | mot de passe de la base Keycloak (instance dédiée) |
-| `OIDC_RP_CLIENT_SECRET` | secret du client confidentiel `onea-backend` ; non utilisé par le chemin Bearer, requis seulement car mozilla-django-oidc le lit à l'initialisation |
-| `KEYCLOAK_ADMIN_API_CLIENT_ID`, `KEYCLOAK_ADMIN_API_CLIENT_SECRET` | client de service `onea-admin-sync` (voir §5, étape 7bis) ; secret obligatoire |
-| `MEILI_MASTER_KEY` | clé maître Meilisearch |
+| `KEYCLOAK_ADMIN_API_CLIENT_ID` | client de service `onea-admin-sync` (voir §5, étape 7bis) ; son secret est le fichier `keycloak_sync_secret` |
+| Fichiers de secrets | `secret_key`, `secret_key_fallbacks`, `redis_password`, `oidc_client_secret`, `keycloak_sync_secret`, `meili_master_key`, `metrics_token`, `email_password` : voir §3.1 (ils ne sont plus des variables) |
 | `DOCUMENTS_HOST_DIR` | dossier de l'hôte (absolu, hors dépôt) où sont stockés les documents ; monté en `/var/lib/onea/documents` dans `web` et `worker` |
 | `THROTTLE_RATE_GENERATION` | limite par utilisateur : génération de document (défaut `20/min`) |
 | `THROTTLE_RATE_APERCU` | aperçu de gabarit ou de numérotation (défaut `30/min`) |
@@ -390,7 +508,7 @@ intercepté (ce droit n'est pas accordé au rôle applicatif).
 | `THROTTLE_RATE_ANONYME` | appelant non authentifié, par adresse client (défaut `30/min`) |
 | `COMPOSE_PROJECT_NAME`, `WEB_CONCURRENCY` | optionnels |
 
-Le backend en production refuse de démarrer si `SECRET_KEY`, `DATABASE_URL`, `EMAIL_URL`,
+Le backend en production refuse de démarrer si `SECRET_KEY` (ou `SECRET_KEY_FILE`), `DATABASE_URL`, `EMAIL_URL`,
 `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` ou `OIDC_OP_BASE_URL`
 (en `https://`) manquent, ou si `OIDC_VERIFY_SSL=false` : aucune valeur par défaut de développement n'est utilisée.
 

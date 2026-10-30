@@ -2,7 +2,7 @@ import os
 import re
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 
 import environ
 from celery.schedules import crontab
@@ -19,7 +19,52 @@ ENV_FILE = BASE_DIR.parent / ".env"
 if ENV_FILE.exists() and not env.bool("ONEA_IGNORE_DOTENV", default=False):
     environ.Env.read_env(str(ENV_FILE))
 
-SECRET_KEY = env("SECRET_KEY", default="insecure-dev-key-change-me")  # noqa: S105
+
+# --- Bloc T17 : secrets lus dans des fichiers (D16). `<NOM>_FILE` est prioritaire sur `<NOM>`.
+def env_secret(nom: str, default: Any = environ.Env.NOTSET) -> str:
+    """Valeur du secret `nom` : contenu du fichier `<nom>_FILE` s'il est défini, sinon `<nom>`.
+
+    Seuls les sauts de ligne finaux sont retirés. Un fichier illisible lève ImproperlyConfigured
+    en nommant la variable ; la valeur du secret n'apparaît jamais dans un message d'erreur.
+    """
+    chemin = os.environ.get(f"{nom}_FILE", "")
+    if not chemin:
+        return str(env(nom, default=default))
+    try:
+        contenu = Path(chemin).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ImproperlyConfigured(
+            f"{nom}_FILE : le fichier « {chemin} » est absent ou illisible."
+        ) from exc
+    return contenu.rstrip("\r\n")
+
+
+def base_de_donnees(nom: str = "DATABASE_URL", default: Any = environ.Env.NOTSET) -> dict[str, Any]:
+    """Configuration de base : `DATABASE_PASSWORD_FILE` remplace le mot de passe de l'URL."""
+    config: dict[str, Any] = env.db(nom, default=default)
+    if os.environ.get("DATABASE_PASSWORD_FILE"):
+        config["PASSWORD"] = env_secret("DATABASE_PASSWORD")
+    return config
+
+
+def url_redis(nom: str = "REDIS_URL", default: Any = environ.Env.NOTSET) -> str:
+    """URL Redis : avec `REDIS_PASSWORD_FILE`, l'URL est reconstruite avec le mot de passe lu."""
+    url: str = env(nom, default=default)
+    if not os.environ.get("REDIS_PASSWORD_FILE"):
+        return url
+    parties = urlsplit(url)
+    machine = parties.netloc.rpartition("@")[2]
+    mot_de_passe = quote(env_secret("REDIS_PASSWORD"), safe="")
+    return urlunsplit(parties._replace(netloc=f":{mot_de_passe}@{machine}"))
+
+
+def _lignes(valeur: str) -> list[str]:
+    return [v.strip() for v in re.split(r"[\n,]", valeur) if v.strip()]
+
+
+SECRET_KEY = env_secret("SECRET_KEY", default="insecure-dev-key-change-me")  # noqa: S105
+# Anciennes clés encore acceptées pendant une rotation (une par ligne ou séparées par des virgules).
+SECRET_KEY_FALLBACKS: list[str] = _lignes(env_secret("SECRET_KEY_FALLBACKS", default=""))
 DEBUG = False
 ALLOWED_HOSTS: list[str] = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
@@ -95,11 +140,11 @@ TEMPLATES = [
 ]
 
 DATABASES = {
-    "default": env.db("DATABASE_URL", default="postgres://onea:onea@localhost:5432/onea"),
+    "default": base_de_donnees("DATABASE_URL", default="postgres://onea:onea@localhost:5432/onea"),
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-REDIS_URL: str = env("REDIS_URL", default="redis://localhost:6379/0")
+REDIS_URL: str = url_redis("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 
@@ -131,7 +176,7 @@ DOCUMENTS_PDFA: bool = env.bool("DOCUMENTS_PDFA", default=True)
 RECHERCHE = {
     "BACKEND": env("RECHERCHE_BACKEND", default="apps.recherche.client.MeilisearchHttp"),
     "URL": env("MEILI_URL", default="http://localhost:7700"),
-    "CLE": env("MEILI_MASTER_KEY", default=""),
+    "CLE": env_secret("MEILI_MASTER_KEY", default=""),
     "INDEX": env("MEILI_INDEX", default="onea"),
     "TIMEOUT": 3,
 }
@@ -369,7 +414,9 @@ EMAIL_BACKEND = _email["EMAIL_BACKEND"]
 EMAIL_HOST = _email.get("EMAIL_HOST", "")
 EMAIL_PORT = _email.get("EMAIL_PORT", 25)
 EMAIL_HOST_USER = _email.get("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = _email.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_HOST_PASSWORD = env_secret("EMAIL_PASSWORD", default="") or _email.get(
+    "EMAIL_HOST_PASSWORD", ""
+)
 EMAIL_USE_TLS = _email.get("EMAIL_USE_TLS", False)
 DEFAULT_FROM_EMAIL = "audit-interne@onea.bf"
 
@@ -384,7 +431,7 @@ OIDC_OP_JWKS_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/certs"
 OIDC_RP_CLIENT_ID: str = env("OIDC_RP_CLIENT_ID", default="onea-backend")
 # Unused by the Bearer path (userinfo + JWKS only); required in prod only because
 # mozilla-django-oidc reads it when the backend is instantiated.
-OIDC_RP_CLIENT_SECRET: str = env("OIDC_RP_CLIENT_SECRET", default="")
+OIDC_RP_CLIENT_SECRET: str = env_secret("OIDC_RP_CLIENT_SECRET", default="")
 OIDC_RP_SIGN_ALGO = "RS256"
 OIDC_RP_SCOPES = "openid email profile"
 OIDC_VERIFY_SSL: bool = env.bool("OIDC_VERIFY_SSL", default=True)
@@ -396,7 +443,7 @@ OIDC_ALLOWED_AZP: list[str] = env.list("OIDC_ALLOWED_AZP", default=["onea-fronte
 # Client-credentials grant of `onea-admin-sync` (view-users + manage-users only). Never an
 # accepted `azp` of bearer tokens. Empty secret = synchronisation not configured.
 KEYCLOAK_ADMIN_API_CLIENT_ID: str = env("KEYCLOAK_ADMIN_API_CLIENT_ID", default="onea-admin-sync")
-KEYCLOAK_ADMIN_API_CLIENT_SECRET: str = env("KEYCLOAK_ADMIN_API_CLIENT_SECRET", default="")
+KEYCLOAK_ADMIN_API_CLIENT_SECRET: str = env_secret("KEYCLOAK_ADMIN_API_CLIENT_SECRET", default="")
 # The OIDC backend is wired for the DRF bearer path only, NOT in AUTHENTICATION_BACKENDS,
 # so that django authenticate() (admin/session) can never trigger a code-flow exchange.
 # --- Bloc T11 : duree maximale du cache de userinfo (D5), bornee par l'expiration du jeton ---
@@ -455,4 +502,4 @@ LOGGING = {
 }
 
 # --- T13: protected metrics endpoint (empty token = endpoint disabled, always 404) ---
-METRICS_TOKEN: str = env("METRICS_TOKEN", default="")
+METRICS_TOKEN: str = env_secret("METRICS_TOKEN", default="")
