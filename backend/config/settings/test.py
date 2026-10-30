@@ -18,6 +18,8 @@ CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
+RECHERCHE = {**RECHERCHE, "BACKEND": "tests.recherche.fakes.MoteurMemoire"}  # noqa: F405
+
 STOCKAGE_PREUVES = {
     "BACKEND": "tests.accomplissement.fakes.StockageDisqueTemporaire",
     "OPTIONS": {"RACINE": str(Path(tempfile.gettempdir()) / "onea-tests-preuves")},

@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.accomplissement",
     "apps.constats",
     "apps.documents",
+    "apps.recherche",
 ]
 
 AUTH_USER_MODEL = "users.User"
@@ -122,6 +123,13 @@ DOCUMENTS_MAX_GABARIT_MO: int = env.int("DOCUMENTS_MAX_GABARIT_MO", default=10)
 DOCUMENTS_ESPACE_MIN_LIBRE_MO: int = env.int("DOCUMENTS_ESPACE_MIN_LIBRE_MO", default=1024)
 DOCUMENTS_QUOTA_MO: int = env.int("DOCUMENTS_QUOTA_MO", default=0)  # 0 = no quota
 DOCUMENTS_PDFA: bool = env.bool("DOCUMENTS_PDFA", default=True)
+RECHERCHE = {
+    "BACKEND": env("RECHERCHE_BACKEND", default="apps.recherche.client.MeilisearchHttp"),
+    "URL": env("MEILI_URL", default="http://localhost:7700"),
+    "CLE": env("MEILI_MASTER_KEY", default=""),
+    "INDEX": env("MEILI_INDEX", default="onea"),
+    "TIMEOUT": 3,
+}
 GOTENBERG_URL: str = env("GOTENBERG_URL", default="http://localhost:3000").rstrip("/")
 # --- Pièces justificatives (lot 6) : disque du serveur, jamais dans Git, jamais sous une URL.
 STOCKAGE_PREUVES: dict[str, Any] = {

@@ -20,6 +20,7 @@ PROD_ENV = {
     "OIDC_OP_BASE_URL": "https://sso.onea.bf/realms/onea",
     "KEYCLOAK_ADMIN_API_CLIENT_SECRET": "prod-sync-secret",
     "DOCUMENTS_ROOT": "/var/lib/onea/documents",
+    "MEILI_MASTER_KEY": "prod-meili-key",
 }
 
 PROBE = """
