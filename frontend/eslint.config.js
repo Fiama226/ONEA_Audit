@@ -19,6 +19,20 @@ export default tseslint.config(
     },
   },
   {
+    // Équivalent de `react/no-danger` (sans nouvelle dépendance) : un extrait de recherche contient
+    // des données utilisateur ; il ne doit jamais être injecté comme HTML.
+    files: ["src/features/recherche/**/*.{ts,tsx}", "src/lib/highlight.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+          message: "dangerouslySetInnerHTML est interdit : utiliser <Highlight> pour les extraits.",
+        },
+      ],
+    },
+  },
+  {
     files: ["*.config.{js,ts}"],
     languageOptions: { globals: { ...globals.node } },
   },

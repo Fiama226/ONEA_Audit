@@ -18,6 +18,7 @@ function labelFor(segment: string, previous: string | undefined): string {
   if (UUID.test(segment)) {
     if (previous === "cartographies") return fr.refCartographie.crumbMap;
     if (previous === "risques") return fr.refCartographie.crumbRisk;
+    if (previous === "actions") return fr.suivi.actionTitle;
     return fr.referentiel.detail;
   }
   if (previous === "etapes" && /^\d+$/.test(segment)) {
@@ -59,8 +60,8 @@ function crumbsFor(pathname: string): Crumb[] {
     crumbs.push({
       to: `/${segments.slice(0, i + 1).join("/")}`,
       label: labelFor(segment, segments[i - 1]),
-      // « etapes » n'a pas de page propre : simple libellé intermédiaire.
-      linkable: !(segment === "etapes" && i < segments.length - 1),
+      // « etapes » et « actions » n'ont pas de page propre : simple libellé intermédiaire.
+      linkable: !((segment === "etapes" || segment === "actions") && i < segments.length - 1),
     });
   });
   return crumbs;

@@ -20,6 +20,7 @@ const load = {
   rapport: () => import("@/features/communication/pages/RapportPage"),
   reponses: () => import("@/features/communication/pages/ReponsesProvisoirePage"),
   plan: () => import("@/features/recommandations/pages/PlanActionsPage"),
+  followUp: () => import("@/features/suivi/pages/MissionFollowUpPage"),
 };
 
 /** Page d'arrivée d'une mission : audités et lecteurs sans accès aux travaux vont aux réunions. */
@@ -62,6 +63,10 @@ export const missionRoutes: RouteObject[] = [
       { path: "rapport", element: lazyRoute(load.rapport, "RapportPage") },
       { path: "reponses-rapport", element: lazyRoute(load.reponses, "ReponsesProvisoirePage") },
       { path: "plan-actions", element: lazyRoute(load.plan, "PlanActionsPage") },
+      {
+        path: "suivi-recommandations",
+        element: lazyRoute(load.followUp, "MissionFollowUpPage"),
+      },
     ],
   },
 ];
