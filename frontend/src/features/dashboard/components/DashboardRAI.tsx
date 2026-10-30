@@ -1,94 +1,204 @@
-import { Plus } from "lucide-react";
-import { EmptyState } from "@/components/EmptyState";
-import { RiskMatrix } from "@/components/RiskMatrix";
+import { AlertTriangle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { BarList, StackedBar, StatTile } from "@/components/charts";
+import { PrintLayout } from "@/components/print/PrintLayout";
+import { RiskMatrix, type RiskMatrixCell } from "@/components/RiskMatrix";
 import { fr } from "@/i18n/fr";
-import { cn } from "@/lib/utils";
-import { programmeLabel } from "../year";
-import { MILESTONES, PHASES } from "../phases";
-import { PageHeader, PreviewCard, PreviewSection, SkeletonTable } from "./preview";
+import { useDashboardRai, type TableauRai } from "../api";
+import { useYearParam } from "../year";
+import { CELL, DashError, DashLoading, DashSection, DashTable, ROW } from "./DashParts";
+import { DecisionQueue } from "./DecisionQueue";
+import { LateMissionsTable } from "./LateMissionsTable";
+import { PageHeader, PreviewCard, SkeletonTable } from "./preview";
+import { YearFilter } from "./YearFilter";
 
 const d = fr.dashboard;
-const MILESTONE_ROWS: [string, string][] = [
-  ["VI", d.milestoneVI],
-  ["X", d.milestoneX],
-  ["XIII", d.milestoneXIII],
-  ["XVIII", d.milestoneXVIII],
-];
+const t = fr.tableauxDirection;
 
-export function DashboardRAI() {
+/** Missions « en cours » : même définition que le serveur (hors brouillon, planifiée, diffusée, figée). */
+const IN_PROGRESS = ["EN_PLANIFICATION", "EN_ACCOMPLISSEMENT", "EN_COMMUNICATION"];
+
+function LoadingRAI() {
   return (
-    <>
-      <PageHeader title={d.raiTitle} userRole="RAI" />
-      <EmptyState
-        title={d.emptyTitle}
-        description={d.raiText}
-        action={{ label: d.raiAction, icon: Plus, note: `${d.availableAtLot} ${d.raiLot}` }}
-      />
-      <PreviewSection>
-        <PreviewCard title={d.missionsByPhase} meta={programmeLabel()} span={8} bodyClassName="p-5">
-          <div className="grid gap-x-6 gap-y-6 sm:grid-cols-[10fr_4fr_4fr]">
-            {PHASES.map((phase) => (
-              <div key={phase.name}>
-                <p className="text-sm font-semibold">{phase.name}</p>
-                <p className="text-xs text-text-muted">{phase.range}</p>
-                <p className="mt-4 text-2xl font-semibold text-text-muted tabular-nums">
-                  {fr.dashboard.placeholderValue}
-                </p>
-                <div className="mt-3 flex gap-[3px]">
-                  {phase.steps.map((step) => (
-                    <i
-                      key={step}
-                      className={cn(
-                        "h-1.5 flex-1 rounded-[2px] not-italic",
-                        MILESTONES.includes(step) ? "bg-text-muted/60" : "bg-border/75",
-                      )}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </PreviewCard>
-
-        <PreviewCard title={d.milestones} meta={d.milestonesMeta} span={4}>
-          <ul>
-            {MILESTONE_ROWS.map(([code, label]) => (
-              <li
-                key={code}
-                className="flex h-11 items-center gap-3 border-b border-border px-5 text-sm last:border-b-0"
-              >
-                <span className="inline-flex h-6 min-w-12 items-center justify-center rounded-sm border border-border bg-surface px-1.5 text-xs font-medium tabular-nums">
-                  {code}
-                </span>
-                <span className="flex-1">{label}</span>
-                <span className="text-text-muted">{d.placeholderValue}</span>
-              </li>
-            ))}
-          </ul>
-        </PreviewCard>
-
-        <PreviewCard title={d.lateRecommendations} meta={d.overdue} span={8}>
+    <DashLoading>
+      <div aria-hidden="true" className="grid grid-cols-12 items-start gap-6">
+        <PreviewCard title={d.missionsByPhase} span={8}>
           <SkeletonTable
             columns={[
-              { label: d.colRecommendation, width: 150 },
-              { label: d.colMission, width: 80 },
-              { label: d.colEntity, width: 100 },
-              { label: d.colDueDate, width: 72 },
-              { label: d.colDelay, width: 28, numeric: true },
+              { label: t.colReference, width: 80 },
+              { label: t.colTitle, width: 150 },
+              { label: t.colStatus, width: 100 },
             ]}
           />
         </PreviewCard>
-
-        <PreviewCard
-          title={d.criticality}
-          meta={d.matrix}
-          span={4}
-          decorative={false}
-          bodyClassName="p-5"
-        >
-          <RiskMatrix />
+        <PreviewCard title={t.decisionQueue} span={4}>
+          <SkeletonTable columns={[{ label: t.decisionQueue, width: 120 }]} />
         </PreviewCard>
-      </PreviewSection>
-    </>
+      </div>
+    </DashLoading>
+  );
+}
+
+function asCells(data: TableauRai): RiskMatrixCell[] {
+  const ok = (n: number): n is 1 | 2 | 3 | 4 | 5 => Number.isInteger(n) && n >= 1 && n <= 5;
+  return data.cartographie.cellules.flatMap((c) =>
+    ok(c.probabilite) && ok(c.impact)
+      ? [{ probability: c.probabilite, impact: c.impact, count: c.nombre }]
+      : [],
+  );
+}
+
+function Content({ data }: { data: TableauRai }) {
+  const inProgress = data.missions_par_statut
+    .filter((m) => IN_PROGRESS.includes(m.statut))
+    .reduce((sum, m) => sum + m.nombre, 0);
+  const actionsLate = data.actions_par_direction.reduce((sum, r) => sum + r.en_retard, 0);
+  const directions = data.actions_par_direction;
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatTile label={t.tileMissionsInProgress} value={inProgress} />
+        <StatTile
+          label={t.tileMissionsLate}
+          value={data.missions_en_retard.length}
+          icon={AlertTriangle}
+          tone="danger"
+          hint={t.lateStepsNote.replace("{n}", String(data.etapes_en_retard))}
+        />
+        <StatTile label={t.tileMilestones} value={data.jalons_a_valider.length} />
+        <StatTile
+          label={t.tileActionsLate}
+          value={actionsLate}
+          icon={AlertTriangle}
+          tone="danger"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        <DashSection title={t.missionsByStatus} className="lg:col-span-6">
+          {data.missions_par_statut.length === 0 ? (
+            <p className="text-sm text-text-muted">{t.missionsByStatusEmpty}</p>
+          ) : (
+            <BarList
+              ariaLabel={t.missionsByStatus}
+              data={data.missions_par_statut.map((m) => ({
+                key: m.statut,
+                label: m.libelle,
+                value: m.nombre,
+                href: `/missions?statut=${m.statut}`,
+              }))}
+            />
+          )}
+        </DashSection>
+        <div className="lg:col-span-6">
+          <DecisionQueue queue={data.file_decisions} />
+        </div>
+      </div>
+
+      <DashSection title={t.actionsByDirection}>
+        {directions.length === 0 ? (
+          <p className="text-sm text-text-muted">{t.actionsByDirectionEmpty}</p>
+        ) : (
+          <>
+            <StackedBar
+              ariaLabel={t.actionsByDirection}
+              rows={directions.map((r) => ({
+                key: r.direction_id,
+                label: `${r.code} — ${r.libelle}`,
+                segments: {
+                  done: r.cloturees,
+                  open: r.ouvertes_dans_les_delais,
+                  late: r.en_retard,
+                },
+              }))}
+            />
+            <div className="mt-4">
+              <DashTable
+                caption={t.abandonedDetail}
+                isEmpty={false}
+                empty=""
+                columns={[
+                  { label: t.colDirection },
+                  { label: t.colClosed, numeric: true },
+                  { label: t.colOpen, numeric: true },
+                  { label: t.colLate, numeric: true },
+                  { label: t.colAbandoned, numeric: true },
+                ]}
+              >
+                {directions.map((r) => (
+                  <tr key={r.direction_id} className={ROW}>
+                    <td className={CELL}>{r.code}</td>
+                    <td className={`${CELL} text-right tabular-nums`}>{r.cloturees}</td>
+                    <td className={`${CELL} text-right tabular-nums`}>
+                      {r.ouvertes_dans_les_delais}
+                    </td>
+                    <td className={`${CELL} text-right tabular-nums`}>{r.en_retard}</td>
+                    <td className={`${CELL} text-right tabular-nums`}>{r.abandonnees}</td>
+                  </tr>
+                ))}
+              </DashTable>
+            </div>
+          </>
+        )}
+      </DashSection>
+
+      <LateMissionsTable missions={data.missions_en_retard} />
+
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        <DashSection title={t.milestonesList} className="lg:col-span-7">
+          {data.jalons_a_valider.length === 0 ? (
+            <p className="text-sm text-text-muted">{t.milestonesEmpty}</p>
+          ) : (
+            <ul className="m-0 list-none p-0">
+              {data.jalons_a_valider.map((j) => (
+                <li
+                  key={`${j.mission_id}-${j.numero}`}
+                  className="flex flex-wrap items-center gap-x-3 border-b border-border py-2 text-sm last:border-b-0"
+                >
+                  <Link
+                    to={`/missions/${j.mission_id}/etapes/${j.numero}`}
+                    className="font-medium underline"
+                  >
+                    {j.reference} · {j.romain}
+                  </Link>
+                  <span>{j.libelle}</span>
+                  {j.terminee_le && (
+                    <span className="text-xs text-text-muted">
+                      {t.milestoneDoneOn.replace(
+                        "{date}",
+                        new Date(j.terminee_le).toLocaleDateString("fr-FR", {
+                          timeZone: "Africa/Ouagadougou",
+                        }),
+                      )}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </DashSection>
+        <DashSection title={t.criticality} className="lg:col-span-5">
+          <RiskMatrix cells={asCells(data)} />
+        </DashSection>
+      </div>
+    </div>
+  );
+}
+
+export function DashboardRAI() {
+  const [annee, setAnnee] = useYearParam();
+  const query = useDashboardRai(annee);
+  return (
+    <PrintLayout title={t.printTitleRai} orientation="paysage">
+      <PageHeader title={d.raiTitle} userRole="RAI" />
+      <YearFilter value={annee} onChange={setAnnee} />
+      {query.isPending ? (
+        <LoadingRAI />
+      ) : query.isError ? (
+        <DashError onRetry={() => void query.refetch()} />
+      ) : (
+        <Content data={query.data} />
+      )}
+    </PrintLayout>
   );
 }

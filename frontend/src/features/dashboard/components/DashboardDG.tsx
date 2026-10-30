@@ -1,73 +1,170 @@
-import { FileText } from "lucide-react";
-import { EmptyState } from "@/components/EmptyState";
+import { useState } from "react";
+import { AlertTriangle, CheckCircle2, Download } from "lucide-react";
+import { RateMeter, StackedBar, StatTile } from "@/components/charts";
+import { PrintLayout } from "@/components/print/PrintLayout";
+import { Button } from "@/components/ui/button";
 import { fr } from "@/i18n/fr";
-import { programmeLabel } from "../year";
-import { PageHeader, PreviewCard, PreviewSection, SkeletonTable, StatStrip } from "./preview";
+import { downloadImplementationRates, useDashboardDg, type TableauDg } from "../api";
+import { useYearParam } from "../year";
+import { DashError, DashLoading, DashSection, toPercent } from "./DashParts";
+import { DiffusedReportsTable } from "./DiffusedReportsTable";
+import { HighRisksTable } from "./HighRisksTable";
+import { PageHeader, PreviewCard, SkeletonTable } from "./preview";
+import { YearFilter } from "./YearFilter";
 
 const d = fr.dashboard;
+const t = fr.tableauxDirection;
 
-const SEGMENTS: { label: string; className: string }[] = [
-  { label: d.statusDone, className: "bg-success/[0.32]" },
-  { label: d.statusInProgress, className: "bg-warning/[0.32]" },
-  { label: d.statusNotStarted, className: "bg-border" },
-  { label: d.statusLate, className: "bg-danger/[0.32]" },
-];
+type Rates = Pick<
+  TableauDg["taux"],
+  "cloturees" | "abandonnees" | "total" | "taux" | "echues" | "cloturees_echues" | "taux_echues"
+>;
 
-export function DashboardDG() {
+/** Actions encore à mener : ni clôturées ni abandonnées (même base que le taux du serveur). */
+const base = (r: Rates) => r.total - r.abandonnees;
+
+function LoadingDG() {
   return (
-    <>
-      <PageHeader title={d.dgTitle} userRole="DG" />
-      <EmptyState
-        title={d.emptyTitle}
-        description={d.dgText}
-        action={{ label: d.dgAction, icon: FileText, note: `${d.availableAtLot} ${d.dgLot}` }}
-      />
-      <PreviewSection>
-        <div className="col-span-12">
-          <StatStrip
-            items={[
-              { label: d.reportsPublished, foot: programmeLabel() },
-              { label: d.recommendationsIssued, foot: d.allEntities },
-              { label: d.recommendationsLate, foot: d.overdue },
-            ]}
-          />
-        </div>
-        <PreviewCard
-          title={d.implementationRate}
-          meta={d.recommendationsMeta}
-          span={5}
-          bodyClassName="p-5"
-        >
-          <p className="text-[32px] leading-none font-semibold text-text-muted tabular-nums">
-            {d.placeholderValue}
-            <span className="ml-1 text-base">%</span>
-          </p>
-          <p className="mt-2 text-xs text-text-muted">{d.rateNote}</p>
-          <div className="mt-4 flex h-2 gap-[3px]">
-            {SEGMENTS.map((s) => (
-              <span key={s.label} className={`flex-1 rounded-[2px] ${s.className}`} />
-            ))}
-          </div>
-          <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
-            {SEGMENTS.map((s) => (
-              <li key={s.label} className="flex items-center gap-1.5">
-                <span className={`size-2 rounded-full ${s.className}`} />
-                {s.label}
-              </li>
-            ))}
-          </ul>
+    <DashLoading>
+      <div aria-hidden="true" className="grid grid-cols-12 items-start gap-6">
+        <PreviewCard title={d.implementationRate} span={5} bodyClassName="p-5">
+          <SkeletonTable columns={[{ label: d.implementationRate, width: 120 }]} />
         </PreviewCard>
-        <PreviewCard title={d.latestReports} meta={d.validatedReports} span={7}>
+        <PreviewCard title={t.diffusedReports} span={7}>
           <SkeletonTable
             columns={[
-              { label: d.colReport, width: 150 },
-              { label: d.colAuditedEntity, width: 100 },
-              { label: d.colPublishedOn, width: 72 },
-              { label: d.colRecommendations, width: 28, numeric: true },
+              { label: t.colReference, width: 80 },
+              { label: t.colTitle, width: 150 },
+              { label: t.colActions, width: 28, numeric: true },
             ]}
           />
         </PreviewCard>
-      </PreviewSection>
-    </>
+      </div>
+    </DashLoading>
+  );
+}
+
+function Content({ data }: { data: TableauDg }) {
+  const { taux, taux_par_direction: dirs, risques_eleves: risks } = data;
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <StatTile label={t.tileCovered} value={risks.couverts} icon={CheckCircle2} tone="success" />
+        <StatTile
+          label={t.tileNotCovered}
+          value={risks.non_couverts}
+          icon={AlertTriangle}
+          tone="danger"
+        />
+      </div>
+
+      <DashSection title={d.implementationRate}>
+        <div className="flex flex-col gap-4">
+          <RateMeter
+            label={t.overallRate}
+            rate={toPercent(taux.taux)}
+            numerator={taux.cloturees}
+            denominator={base(taux)}
+          />
+          <RateMeter
+            label={t.dueRate}
+            rate={toPercent(taux.taux_echues)}
+            numerator={taux.cloturees_echues}
+            denominator={taux.echues}
+          />
+        </div>
+      </DashSection>
+
+      <DashSection title={t.actionsByDirection}>
+        {dirs.length === 0 ? (
+          <p className="text-sm text-text-muted">{t.actionsByDirectionEmpty}</p>
+        ) : (
+          <>
+            <StackedBar
+              ariaLabel={t.actionsByDirection}
+              rows={dirs.map((r) => {
+                const late = Math.max(0, r.echues - r.cloturees_echues);
+                return {
+                  key: r.direction_id,
+                  label: `${r.code} — ${r.libelle}`,
+                  segments: {
+                    done: r.cloturees,
+                    open: Math.max(0, base(r) - r.cloturees - late),
+                    late,
+                  },
+                };
+              })}
+            />
+            <h3 className="mt-5 mb-2 text-sm font-semibold">{t.rateByDirection}</h3>
+            <ul className="m-0 flex list-none flex-col gap-3 p-0">
+              {dirs.map((r) => (
+                <li key={r.direction_id}>
+                  <RateMeter
+                    label={`${r.code} — ${r.libelle}`}
+                    rate={toPercent(r.taux)}
+                    numerator={r.cloturees}
+                    denominator={base(r)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </DashSection>
+
+      <HighRisksTable risks={risks.risques} />
+      <DiffusedReportsTable reports={data.rapports_diffuses} />
+    </div>
+  );
+}
+
+export function DashboardDG() {
+  const [annee, setAnnee] = useYearParam();
+  const query = useDashboardDg(annee);
+  const [exporting, setExporting] = useState(false);
+  const [exportFailed, setExportFailed] = useState(false);
+
+  async function onExport() {
+    setExporting(true);
+    setExportFailed(false);
+    try {
+      await downloadImplementationRates(annee, "xlsx");
+    } catch {
+      setExportFailed(true);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  return (
+    <PrintLayout title={t.printTitleDg}>
+      <PageHeader title={d.dgTitle} userRole="DG" />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <YearFilter value={annee} onChange={setAnnee} />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="print:hidden"
+          disabled={exporting}
+          onClick={() => void onExport()}
+        >
+          <Download aria-hidden="true" />
+          {exporting ? t.exporting : t.exportRates}
+        </Button>
+      </div>
+      {exportFailed && (
+        <p role="alert" className="mb-4 text-sm font-medium text-destructive">
+          {t.exportError}
+        </p>
+      )}
+      {query.isPending ? (
+        <LoadingDG />
+      ) : query.isError ? (
+        <DashError onRetry={() => void query.refetch()} />
+      ) : (
+        <Content data={query.data} />
+      )}
+    </PrintLayout>
   );
 }
