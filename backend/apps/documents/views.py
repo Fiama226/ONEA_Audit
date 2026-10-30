@@ -481,8 +481,17 @@ class DocumentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Document
         lignes: _Lignes = []
         for t in types:
             f = t.fournisseur
-            for objet in f.objets_de_mission(mission):
-                if not f.peut_consulter(user, objet):
+            objets = f.objets_de_mission(mission)
+            for objet in objets:  # la mission est connue : pas de requête par objet
+                if getattr(objet, "mission_id", None) == mission.pk:
+                    cast(Any, objet).mission = mission
+            consultables = getattr(f, "ids_consultables", None)
+            visibles = consultables(user, mission, objets) if consultables else None
+            for objet in objets:
+                if visibles is not None:
+                    if objet.pk not in visibles:
+                        continue
+                elif not f.peut_consulter(user, objet):
                     continue
                 document = existants.get((t.code, objet.pk))
                 droit = f.peut_generer(user, objet)
