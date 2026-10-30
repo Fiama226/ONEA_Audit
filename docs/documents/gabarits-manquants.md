@@ -23,7 +23,7 @@ création du contrat.
 |---|---|---|---|---|---|
 | 1 | Ordre de mission | 1 | `ORDRE_MISSION` | 4 | provisoire livré (contrat v1, `gabarits_provisoires --installer`) |
 | 2 | Déclaration d'indépendance collaborateur | 1 | `DECLARATION_INDEPENDANCE` | 5 | provisoire |
-| 3 | Fiche de suivi de la mission | 1 | `FICHE_SUIVI` | 5 | provisoire |
+| 3 | Fiche de suivi de la mission | 1 | `FICHE_SUIVI_MISSION` | 7 | provisoire (lot 7) |
 | 4 | PV d'ouverture | 1 | `PV_OUVERTURE` | 4 | provisoire livré (contrat v1, `gabarits_provisoires --installer`) |
 | 5 | Questionnaire de prise de connaissance | 1 | `QUESTIONNAIRE_PRISE_CONNAISSANCE` | 5 | provisoire |
 | 6 | Planning des entretiens | 1 | `PLANNING_ENTRETIENS` | 5 | provisoire |
@@ -37,10 +37,10 @@ création du contrat.
 | 14 | Programme de vérification | 2 | `PROGRAMME_VERIFICATION` | 6 | provisoire |
 | 15 | Feuille de couverture de test | 1 | `FEUILLE_COUVERTURE` | 7 | provisoire livré (contrat v1, `gabarits_provisoires --installer`) |
 | 16 | Feuille de travail | 1 | `FEUILLE_TRAVAIL` | 7 | provisoire livré (contrat v1, `gabarits_provisoires --installer`) |
-| 17 | PV de clôture | 1 | `PV_CLOTURE` | 8 | provisoire |
-| 18 | Plan d'actions de mise en œuvre des recommandations | 1 | `PLAN_ACTIONS` | 8 | provisoire |
-| 19 | Rapport | 1 | `RAPPORT` | 8 | provisoire |
-| 20 | Note synthétique | 1 | `NOTE_SYNTHETIQUE` | 8 | provisoire |
+| 17 | PV de clôture | 1 | `PV_CLOTURE` | 7 | provisoire (lot 7) |
+| 18 | Plan d'actions de mise en œuvre des recommandations | 1 | `PLAN_ACTIONS` | 7 | provisoire (lot 7) |
+| 19 | Rapport | 1 | `RAPPORT_FINAL` | 7 | provisoire (lot 7) |
+| 20 | Note synthétique | 1 | `NOTE_SYNTHETIQUE` | 7 | provisoire (lot 7) |
 | — | Fiche de test (hors recueil, ajoutée au lot 6) | 1 | `FICHE_TEST` | 6 | provisoire livré (contrat v1, `gabarits_provisoires --installer`) |
 | — | Fiche d'observation (hors recueil, ajoutée au lot 6) | 1 | `FICHE_OBSERVATION` | 6 | provisoire livré (contrat v1, `gabarits_provisoires --installer`) |
 
