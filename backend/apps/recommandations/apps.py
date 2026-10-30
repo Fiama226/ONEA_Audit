@@ -13,3 +13,10 @@ class RecommandationsConfig(AppConfig):
 
         for modele in (Action, AcceptationRisque, EngagementPlanActions):
             register(modele)
+
+        from apps.missions.services.livrables import enregistrer_controles
+
+        from .controles import CONTROLES_ETAPE
+
+        for numero, controles in CONTROLES_ETAPE.items():
+            enregistrer_controles(numero, controles)
