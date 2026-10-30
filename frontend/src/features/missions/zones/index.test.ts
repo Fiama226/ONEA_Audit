@@ -17,7 +17,12 @@ describe("zone registry", () => {
     expect(ZONE_COMPLEMENTS[4]).toBeUndefined();
   });
 
-  it("leaves later steps to the generic zone", () => {
-    expect(ZONES[8] ?? GenericZone).toBe(GenericZone);
+  it("registers the accomplishment zones", () => {
+    for (const numero of [8, 9, 10, 12, 13, 14]) expect(ZONES[numero]).toBeDefined();
+  });
+
+  it("leaves other steps to the generic zone", () => {
+    expect(ZONES[11] ?? GenericZone).toBe(GenericZone);
+    expect(ZONES[15] ?? GenericZone).toBe(GenericZone);
   });
 });

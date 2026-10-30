@@ -4,6 +4,12 @@ import { StepIIIAnalyse } from "@/features/analyse/zones/StepIIIAnalyse";
 import { StepVIIZone } from "@/features/analyse/zones/StepVIIZone";
 import { StepVIZone } from "@/features/analyse/zones/StepVIZone";
 import { StepVZone } from "@/features/analyse/zones/StepVZone";
+import { StepIXZone } from "@/features/accomplissement/zones/StepIXZone";
+import { StepVIIIZone } from "@/features/accomplissement/zones/StepVIIIZone";
+import { StepXIIIZone } from "@/features/accomplissement/zones/StepXIIIZone";
+import { StepXIIZone } from "@/features/accomplissement/zones/StepXIIZone";
+import { StepXZone } from "@/features/accomplissement/zones/StepXZone";
+import { StepXIVZone } from "@/features/constats/zones/StepXIVZone";
 import type { Etape, Mission } from "../types";
 import { StepIIIZone } from "./StepIIIZone";
 import { StepIIZone } from "./StepIIZone";
@@ -24,6 +30,12 @@ export const ZONES: Record<number, ComponentType<ZoneProps>> = {
   5: StepVZone,
   6: StepVIZone,
   7: StepVIIZone,
+  8: StepVIIIZone,
+  9: StepIXZone,
+  10: StepXZone,
+  12: StepXIIZone,
+  13: StepXIIIZone,
+  14: StepXIVZone,
 };
 
 /** Compléments insérés dans la zone d'une étape par un autre lot (lots 5, 6 et 7). */

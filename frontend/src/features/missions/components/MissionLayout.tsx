@@ -22,6 +22,8 @@ function tabsFor(currentStep: number): Tab[] {
       section: "referentiel-audit",
       work: false,
     },
+    // Visible aussi pour l'audité (constats soumis) ; le serveur filtre le périmètre.
+    { to: "constats", label: fr.missions.tabConstats, section: "constats", work: false },
   ];
 }
 

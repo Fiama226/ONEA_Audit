@@ -10,7 +10,12 @@ export function setTokenProvider(fn: TokenProvider): void {
   getAccessToken = fn;
 }
 
-function baseUrl(): string {
+/** Jeton courant (pour les envois XHR qui ne passent pas par fetch). */
+export function currentToken(): string | null {
+  return getAccessToken() ?? null;
+}
+
+export function baseUrl(): string {
   const url = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8000";
   return url.replace(/\/+$/, "");
 }

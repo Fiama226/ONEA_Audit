@@ -14,6 +14,9 @@ const load = {
   interviews: () => import("./pages/InterviewsPage"),
   tracking: () => import("./pages/TrackingPage"),
   framework: () => import("@/features/analyse/pages/AuditFrameworkPage"),
+  fiche: () => import("@/features/accomplissement/pages/FichePage"),
+  constats: () => import("@/features/constats/pages/ConstatsAuditePage"),
+  constat: () => import("@/features/constats/pages/ConstatPage"),
 };
 
 /** Page d'arrivée d'une mission : audités et lecteurs sans accès aux travaux vont aux réunions. */
@@ -50,6 +53,9 @@ export const missionRoutes: RouteObject[] = [
       { path: "entretiens", element: lazyRoute(load.interviews, "InterviewsPage") },
       { path: "suivi", element: lazyRoute(load.tracking, "TrackingPage") },
       { path: "referentiel-audit", element: lazyRoute(load.framework, "AuditFrameworkPage") },
+      { path: "fiches/:ficheId", element: lazyRoute(load.fiche, "FichePage") },
+      { path: "constats", element: lazyRoute(load.constats, "ConstatsAuditePage") },
+      { path: "constats/:constatId", element: lazyRoute(load.constat, "ConstatPage") },
     ],
   },
 ];

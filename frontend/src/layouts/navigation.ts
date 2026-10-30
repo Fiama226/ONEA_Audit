@@ -117,4 +117,6 @@ export const SEGMENT_LABELS: Record<string, string> = {
   entretiens: fr.missions.tabInterviews,
   suivi: fr.missions.tabTracking,
   "referentiel-audit": fr.missions.tabAuditFramework,
+  fiches: fr.missions.tabFiches,
+  constats: fr.missions.tabConstats,
 };
