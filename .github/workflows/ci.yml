@@ -204,3 +204,28 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose --env-file .env -f docker/compose.yml -f docker/compose.dev.yml down -v
+
+  dependency-audit:
+    # Licences (allowed list: CLAUDE.md rule 2), CycloneDX SBOMs and known-vulnerability audit.
+    # Needs network access (PyPI/OSV and npm advisory databases).
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - run: bash scripts/audit-dependances.sh build/audit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dependency-audit
+          path: build/audit/
