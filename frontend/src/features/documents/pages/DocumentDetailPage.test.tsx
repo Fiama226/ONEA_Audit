@@ -1,6 +1,7 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { GENERATION_TIMEOUT_MESSAGE, POLL_TIMEOUT_MS } from "../api";
 import { axe } from "vitest-axe";
 import type { Role } from "@/auth/types";
 import { fr } from "@/i18n/fr";
@@ -114,11 +115,75 @@ describe("DocumentDetailPage", () => {
     expect(screen.getAllByText("Prête").length).toBeGreaterThan(0);
   }, 20000);
 
+  it("does not refetch the document when the version is already ready", async () => {
+    serve();
+    let docCalls = 0;
+    let versionCalls = 0;
+    server.use(
+      http.get(`${API_URL}/api/v1/documents/${DOC_ID}/`, () => {
+        docCalls += 1;
+        return HttpResponse.json(aDocument());
+      }),
+      http.get(`${API_URL}/api/v1/document-versions/${VERSION_ID}/`, () => {
+        versionCalls += 1;
+        return HttpResponse.json(aVersion());
+      }),
+    );
+    renderDetail("AUDITEUR");
+    await screen.findByRole("heading", { level: 1, name: "OM-2026-001" });
+    await waitFor(() => expect(versionCalls).toBe(1));
+    await new Promise((r) => setTimeout(r, 300));
+    expect(docCalls).toBe(1);
+  });
+
+  it("shows a visible alert with a retry once the polling budget is spent", async () => {
+    const running = aVersion({ statut: "EN_COURS", statut_pdf: "NON_DEMANDE", genere_le: null });
+    let versionCalls = 0;
+    serve({ versions: [running] });
+    server.use(
+      http.get(`${API_URL}/api/v1/document-versions/${VERSION_ID}/`, () => {
+        versionCalls += 1;
+        return HttpResponse.json(running);
+      }),
+    );
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderDetail("AUDITEUR");
+      expect((await screen.findAllByText(fr.documents.generating)).length).toBeGreaterThan(0);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(POLL_TIMEOUT_MS + 1000);
+      });
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent(GENERATION_TIMEOUT_MESSAGE);
+      expect(alert).not.toHaveClass("text-xs");
+      const stopped = versionCalls;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(10_000);
+      });
+      expect(versionCalls - stopped).toBeLessThanOrEqual(1);
+
+      await act(async () => {
+        screen.getByRole("button", { name: fr.common.retry }).click();
+        await vi.advanceTimersByTimeAsync(5_000);
+      });
+      expect(versionCalls).toBeGreaterThan(stopped);
+      await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 30000);
+
   it("hides actions when printing", async () => {
     serve();
     renderDetail("RAI");
     const button = await screen.findByRole("button", { name: fr.documents.downloadWord });
     expect(button.closest(".print\\:hidden")).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: fr.documents.downloadPdf }).closest(".print\\:hidden"),
+    ).not.toBeNull();
+    for (const nav of screen.getAllByRole("navigation")) {
+      expect(nav.closest(".print\\:hidden")).not.toBeNull();
+    }
     expect(
       screen.getByRole("link", { name: t.backToList }).closest(".print\\:hidden"),
     ).not.toBeNull();

@@ -49,10 +49,11 @@ function invalidate(client: QueryClient, ...keys: QueryKey[]): Promise<unknown> 
   return Promise.all(keys.map((queryKey) => client.invalidateQueries({ queryKey })));
 }
 
-export function useDocumentTypes() {
+export function useDocumentTypes(enabled = true) {
   return useQuery({
     queryKey: documentKeys.types(),
     queryFn: () => apiFetch<DocumentType[]>(`${BASE}/document-types/`),
+    enabled,
   });
 }
 
@@ -144,19 +145,22 @@ export function useDocument(id: string | undefined) {
  */
 function usePollBudget(signature: string, stoppedRef: RefObject<boolean>) {
   const [expired, setExpired] = useState<string | null>(null);
-  const timedOut = signature !== "" && expired === signature;
+  // `epoch` change à chaque relance manuelle : nouveau budget de 3 minutes pour la même signature.
+  const [epoch, setEpoch] = useState(0);
+  const key = signature === "" ? "" : `${signature}#${epoch}`;
+  const timedOut = key !== "" && expired === key;
   useEffect(() => {
     stoppedRef.current = timedOut;
   }, [timedOut, stoppedRef]);
   useEffect(() => {
-    if (signature === "") return;
-    const timer = setTimeout(() => setExpired(signature), POLL_TIMEOUT_MS);
+    if (key === "") return;
+    const timer = setTimeout(() => setExpired(key), POLL_TIMEOUT_MS);
     return () => {
       clearTimeout(timer);
       setExpired(null);
     };
-  }, [signature]);
-  return timedOut;
+  }, [key]);
+  return { timedOut, restart: () => setEpoch((n) => n + 1) };
 }
 
 function timeoutError(timedOut: boolean): ApiError | null {
@@ -187,8 +191,15 @@ export function useAvailableDocuments(missionId: string | undefined) {
     refetchInterval: (q) =>
       pendingSignature(q.state.data) !== "" && !stoppedRef.current ? POLL_INTERVAL_MS : false,
   });
-  const timedOut = usePollBudget(pendingSignature(query.data), stoppedRef);
-  return Object.assign(query, { timeoutError: timeoutError(timedOut) });
+  const { timedOut, restart } = usePollBudget(pendingSignature(query.data), stoppedRef);
+  return Object.assign(query, {
+    timeoutError: timeoutError(timedOut),
+    /** Relance l'interrogation pour un nouveau budget de 3 minutes. */
+    restartPolling: () => {
+      restart();
+      void query.refetch();
+    },
+  });
 }
 
 /** Toute mutation de génération rafraîchit les documents disponibles, les listes et le détail. */
@@ -229,8 +240,15 @@ export function useVersion(id: string | undefined) {
   const data = query.data;
   const signature =
     data && isInProgress(data) ? `${data.id}:${data.statut}:${data.statut_pdf}` : "";
-  const timedOut = usePollBudget(signature, stoppedRef);
-  return Object.assign(query, { timeoutError: timeoutError(timedOut) });
+  const { timedOut, restart } = usePollBudget(signature, stoppedRef);
+  return Object.assign(query, {
+    timeoutError: timeoutError(timedOut),
+    /** Relance l'interrogation pour un nouveau budget de 3 minutes. */
+    restartPolling: () => {
+      restart();
+      void query.refetch();
+    },
+  });
 }
 
 export function useRetryPdf() {

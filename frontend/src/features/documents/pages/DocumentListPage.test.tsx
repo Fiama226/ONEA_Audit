@@ -71,7 +71,6 @@ describe("DocumentListPage", () => {
     expect(await screen.findByRole("link", { name: "OM-2026-001" })).toBeInTheDocument();
     expect(screen.getAllByText(/201 résultats/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Page 1 sur 11/)).toBeInTheDocument();
-    expect((await screen.findAllByText("4")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Prête").length).toBeGreaterThan(0);
     expect(
       (await axe(container, { rules: { "color-contrast": { enabled: false } } })).violations,
@@ -108,7 +107,7 @@ describe("DocumentListPage", () => {
 
   it.each<[Role, string]>([
     ["RAI", t.emptyRai],
-    ["AUDITEUR", t.emptyAuditeur],
+    ["AUDITEUR", t.emptyRai],
     ["AUDITE", t.emptyAudite],
   ])("shows the empty state of %s", async (role, text) => {
     serve(0);
@@ -127,19 +126,65 @@ describe("DocumentListPage", () => {
     expect(screen.getByRole("button", { name: fr.common.retry })).toBeInTheDocument();
   });
 
-  it("does not request consultations for an audité", async () => {
-    serve(1);
-    let called = false;
+  it.each<Role>(["RAI", "AUDITE"])(
+    "makes no per-row consultations request for %s",
+    async (role) => {
+      serve(3);
+      let called = false;
+      server.use(
+        http.get(`${API_URL}/api/v1/document-versions/${VERSION_ID}/consultations/`, () => {
+          called = true;
+          return HttpResponse.json({}, { status: 403 });
+        }),
+      );
+      renderList(role);
+      const r = (await screen.findByRole("link", { name: "OM-2026-001" })).closest("tr")!;
+      expect(within(r).getByText("v2")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("columnheader", { name: "Téléchargements" }),
+      ).not.toBeInTheDocument();
+      expect(called).toBe(false);
+    },
+  );
+
+  it.each<Role>(["AUDITEUR", "AUDITE"])(
+    "offers French type labels to %s without calling the admin-only types endpoint",
+    async (role) => {
+      const seen: string[] = [];
+      serve(30, seen);
+      let typesCalled = false;
+      server.use(
+        http.get(`${API_URL}/api/v1/document-types/`, () => {
+          typesCalled = true;
+          return HttpResponse.json({}, { status: 403 });
+        }),
+      );
+      const user = userEvent.setup();
+      const { router } = renderList(role, "/documents?type=PIRATE");
+      await screen.findByRole("link", { name: "OM-2026-001" });
+      const select = screen.getByLabelText(t.typeLabel);
+      expect(within(select).getByRole("option", { name: "Ordre de mission" })).toBeInTheDocument();
+      expect(within(select).queryByRole("option", { name: /^[A-Z_]+$/ })).not.toBeInTheDocument();
+      expect(select).toHaveValue("");
+      await user.selectOptions(select, "ORDRE_MISSION");
+      await waitFor(() => expect(router.state.location.search).toBe("?type=ORDRE_MISSION"));
+      await waitFor(() => expect(seen.at(-1)).toContain("type_document=ORDRE_MISSION"));
+      expect(typesCalled).toBe(false);
+    },
+  );
+
+  it("falls back to page 1 and cleans the URL when the page is out of range", async () => {
+    serve(30);
     server.use(
-      http.get(`${API_URL}/api/v1/document-versions/${VERSION_ID}/consultations/`, () => {
-        called = true;
-        return HttpResponse.json({}, { status: 403 });
+      http.get(`${API_URL}/api/v1/documents/`, ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get("page") ?? 1);
+        if (page > 2) return HttpResponse.json({ detail: "Page invalide." }, { status: 404 });
+        return HttpResponse.json({ count: 30, next: null, previous: null, results: [row(1)] });
       }),
     );
-    renderList("AUDITE");
-    const r = (await screen.findByRole("link", { name: "OM-2026-001" })).closest("tr")!;
-    expect(within(r).getByText("v2")).toBeInTheDocument();
-    expect(called).toBe(false);
+    const { router } = renderList("RAI", "/documents?page=99");
+    expect(await screen.findByRole("link", { name: "OM-2026-001" })).toBeInTheDocument();
+    expect(router.state.location.search).toBe("");
   });
 
   it.each<Role>(["ADMIN", "DG"])("denies %s access to /documents", async (role) => {
