@@ -1,8 +1,7 @@
-import { Menu, Search, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Sheet,
   SheetClose,
@@ -11,6 +10,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useAuth } from "@/auth/useAuth";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
+import { GlobalSearchInput } from "@/features/recherche/components/GlobalSearchInput";
 import { fr } from "@/i18n/fr";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { SidebarNav } from "./Sidebar";
@@ -32,6 +34,7 @@ function useCloseOnDesktop(close: () => void) {
 }
 
 export function Header() {
+  const { me } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   useCloseOnDesktop(closeDrawer);
@@ -77,32 +80,8 @@ export function Header() {
       </div>
       <div className="flex-1 lg:hidden" />
 
-      {/* Le curseur « interdit » est porté par l'enveloppe : un champ ou bouton désactivé n'en reçoit pas. */}
-      <div className="relative hidden cursor-not-allowed lg:block lg:w-60 xl:w-80">
-        <Search
-          className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-muted"
-          aria-hidden
-        />
-        <Input
-          type="search"
-          disabled
-          aria-label={fr.shell.searchLabel}
-          placeholder={fr.shell.searchPlaceholder}
-          className="h-9 rounded-md border-transparent bg-surface-subtle pl-9 text-text-muted placeholder:text-text-muted disabled:opacity-100"
-        />
-      </div>
-      <span className="cursor-not-allowed lg:hidden">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          disabled
-          aria-label={fr.shell.searchPlaceholder}
-          className="bg-surface-subtle text-text-muted disabled:opacity-100"
-        >
-          <Search className="size-4" aria-hidden />
-        </Button>
-      </span>
+      {me?.role !== "ADMIN" && <GlobalSearchInput />}
+      <NotificationBell />
 
       <div className="h-6 w-px bg-border" aria-hidden />
       <UserMenu />

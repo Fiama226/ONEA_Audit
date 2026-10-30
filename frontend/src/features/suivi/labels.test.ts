@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { fr } from "@/i18n/fr";
 import {
   EVENEMENT_LABELS,
   PRIORITE_LABELS,

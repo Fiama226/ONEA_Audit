@@ -42,9 +42,18 @@ describe("AppShell", () => {
     expect(screen.getByRole("navigation", { name: fr.nav.primary })).toBeInTheDocument();
   });
 
-  it("shows a disabled global search", () => {
+  it("shows an enabled global search and the notification bell", () => {
     renderRoutes(routes, "RAI");
-    expect(screen.getByPlaceholderText(fr.shell.searchPlaceholder)).toBeDisabled();
+    expect(screen.getByPlaceholderText(fr.shell.searchPlaceholder)).toBeEnabled();
+    expect(screen.getByRole("search", { name: fr.shell.searchLabel })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Notifications, \d+ non lues$/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the global search for the administrator (no search permission)", () => {
+    renderRoutes(routes, "ADMIN");
+    expect(screen.queryByPlaceholderText(fr.shell.searchPlaceholder)).not.toBeInTheDocument();
   });
 
   it("names the user menu with its visible text first (WCAG 2.5.3)", () => {
