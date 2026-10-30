@@ -158,7 +158,7 @@ def test_piste_d_audit() -> None:
     marquer_lue(n, by=n.destinataire)
     entrees = LogEntry.objects.get_for_object(n)
     assert entrees.count() == 2
-    assert entrees.first().actor == n.destinataire  # type: ignore[union-attr]
+    # l'ordre des entrées créées dans la même milliseconde n'est pas garanti : on cherche l'acteur\n    assert any(e.actor == n.destinataire for e in entrees)
 
 
 def test_related_name() -> None:
