@@ -29,7 +29,7 @@ test-frontend:
 	cd frontend && npm test -- --run
 
 e2e:
-	cd frontend && npx playwright test
+	sh scripts/e2e.sh
 
 lint:
 	cd backend && ruff check . && ruff format --check . && mypy .

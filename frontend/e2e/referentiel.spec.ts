@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { cleanupReferentiel, devToken } from "./api";
+import { E2E_RUN_ID } from "./api";
 
-// Full-stack RAI flow of the Référentiel (lot 2) against the dev stack. Creates a process
-// "ZZE" and two risk maps (2098, then its copy 2099), then removes everything (see api.ts).
+// Full-stack RAI flow of the Référentiel (lot 2) on a throw-away database (scripts/e2e.sh). Creates a process
+// "ZZE" and two risk maps (2098, then its copy 2099); nothing is cleaned up.
 const PASSWORD = "onea2026";
-const BASE = "http://localhost:5173";
-const PROCESS_LABEL = "Processus de test e2e";
+const BASE = `http://localhost:${process.env.WEB_PORT ?? "5174"}`;
+const PROCESS_LABEL = `Processus de test e2e ${E2E_RUN_ID}`;
 
 async function logIn(page: Page, username: string) {
   await page.goto("/");
@@ -48,13 +48,6 @@ async function createRiskMap(page: Page, annee: string, source?: string) {
 }
 
 test.describe.configure({ mode: "serial" });
-
-test.beforeAll(async () => {
-  await cleanupReferentiel(await devToken("rai"));
-});
-test.afterAll(async () => {
-  await cleanupReferentiel(await devToken("rai"));
-});
 
 test("RAI runs the whole risk-map lifecycle: create, matrix filter, validate, copy, compare, export", async ({
   page,
@@ -176,7 +169,7 @@ test("RAI runs the whole risk-map lifecycle: create, matrix filter, validate, co
     }
   });
 
-  await test.step("the platform lists the maps and the process, which the cleanup then removes", async () => {
+  await test.step("the platform lists the maps and the process", async () => {
     await page.goto("/referentiel/cartographies");
     await expect(page.getByRole("link", { name: "2099", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "2098", exact: true })).toBeVisible();

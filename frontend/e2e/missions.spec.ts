@@ -4,19 +4,17 @@ import {
   E2E_MISSION_PREFIX,
   E2E_MISSION_PROCESS_LABEL,
   E2E_MISSION_PROCESS_CODE,
-  cleanupMissions,
   devToken,
   ensureValidatedRiskMap,
   provisionUsers,
 } from "./api";
 
-// Full-stack journey of the mission lifecycle (lot 3) against the dev stack: the RAI creates,
+// Full-stack journey of the mission lifecycle (lot 3) on a throw-away database (scripts/e2e.sh): the RAI creates,
 // staffs, plans, launches and issues the mission order; the lead auditor confirms the
 // independence declaration and works steps II and IV; the auditee sees only their scope.
-// Test data: missions titled "E2E — ..." (soft-deleted before and after, see api.ts). Requires
-// E2E_ALLOW_DB_CLEANUP=1 and the dev compose stack (service "db").
+// Test data: missions titled "E2E <run id> — ..." (no cleanup: the database is discarded).
 const PASSWORD = "onea2026";
-const WEB_PORT = process.env.WEB_PORT ?? "5173";
+const WEB_PORT = process.env.WEB_PORT ?? "5174";
 const BASE = `http://localhost:${WEB_PORT}`;
 const TITLE = `${E2E_MISSION_PREFIX}Audit de la gestion des achats`;
 const REFERENCE = /DAI\/\d{4}\/M\d{2,}/;
@@ -68,10 +66,6 @@ test.beforeAll(async () => {
   const rai = await devToken("rai");
   await provisionUsers();
   await ensureValidatedRiskMap(rai);
-  await cleanupMissions(rai);
-});
-test.afterAll(async () => {
-  await cleanupMissions(await devToken("rai"));
 });
 
 test("RAI creates the mission, staffs it, plans it, launches it and issues the order", async ({
