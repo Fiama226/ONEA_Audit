@@ -5,6 +5,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models import Q
 
+from apps.core.exceptions import RegleMetierError
 from apps.core.models import BaseModel
 from apps.users.models import User
 
@@ -18,10 +19,67 @@ class TypeDocumentSignable(models.TextChoices):
     VALIDATION_RAPPORT = "VALIDATION_RAPPORT", "Validation du rapport"
     VALIDATION_REFERENTIEL = "VALIDATION_REFERENTIEL", "Validation du référentiel d'audit"
     REPONSE_CONSTAT = "REPONSE_CONSTAT", "Réponse à un constat"
+    REPONSE_RAPPORT_PROVISOIRE = "REPONSE_RAPPORT_PROVISOIRE", "Réponse au rapport provisoire"
+    ACCEPTATION_RISQUE = "ACCEPTATION_RISQUE", "Acceptation du risque"
+    ENGAGEMENT_PLAN_ACTIONS = "ENGAGEMENT_PLAN_ACTIONS", "Engagement sur le plan d'actions"
 
 
 class ModeSignature(models.TextChoices):
     CONFIRMATION = "CONFIRMATION", "Confirmation horodatée"
+
+
+class ModeSignatureParametre(models.TextChoices):
+    """Mode de signature exigé pour un type de document (D9, §15.1)."""
+
+    CONFIRMATION = "CONFIRMATION", "Confirmation horodatée"
+    SIGNATURE_ELECTRONIQUE = "SIGNATURE_ELECTRONIQUE", "Signature électronique (PAdES)"
+    CONFIRMATION_ET_SIGNATURE = (
+        "CONFIRMATION_ET_SIGNATURE",
+        "Confirmation et signature électronique",
+    )
+
+
+TYPES_PARAMETRABLES: tuple[str, ...] = (
+    TypeDocumentSignable.ORDRE_MISSION,
+    TypeDocumentSignable.DECLARATION_INDEPENDANCE,
+    TypeDocumentSignable.VALIDATION_RAPPORT,
+)
+
+
+class ParametreSignature(BaseModel):
+    """Mode de signature d'un type de document, modifiable par l'administrateur.
+
+    Absence de ligne = confirmation horodatée. Jamais supprimé ; chaque changement est tracé
+    dans le journal d'audit.
+    """
+
+    type_document = models.CharField(
+        "type de document",
+        max_length=30,
+        choices=[(t, TypeDocumentSignable(t).label) for t in TYPES_PARAMETRABLES],
+    )
+    mode = models.CharField(
+        "mode",
+        max_length=30,
+        choices=ModeSignatureParametre,
+        default=ModeSignatureParametre.CONFIRMATION,
+    )
+
+    class Meta:
+        ordering = ["type_document"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["type_document"],
+                condition=Q(deleted_at__isnull=True),
+                name="parametre_signature_un_actif",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.type_document} : {self.mode}"
+
+    def soft_delete(self, by: User) -> None:
+        raise RegleMetierError("Un paramètre de signature ne peut pas être supprimé.")
 
 
 class Confirmation(BaseModel):
