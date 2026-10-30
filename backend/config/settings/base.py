@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -139,6 +140,17 @@ CORS_ALLOWED_ORIGINS: list[str] = env.list(
 # Lisible par la SPA en cross-origin : nom du fichier des exports (CSV / Excel).
 CORS_EXPOSE_HEADERS: list[str] = ["Content-Disposition"]
 
+
+def _taux_debit(portee: str, defaut: str) -> str:
+    """Taux « N/min|hour|day » d'une portée, surchargeable par THROTTLE_RATE_<PORTEE>."""
+    valeur: str = env(f"THROTTLE_RATE_{portee.upper()}", default=defaut).strip()
+    if not re.fullmatch(r"[1-9]\d*/(sec|min|hour|day)", valeur):
+        raise ImproperlyConfigured(
+            f"THROTTLE_RATE_{portee.upper()} doit avoir la forme « 20/min » (sec, min, hour, day)."
+        )
+    return valeur
+
+
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.core.handlers.api_exception_handler",
     # Bearer-only (D4): the Django session authenticates /admin/ and the schema views only.
@@ -151,6 +163,19 @@ REST_FRAMEWORK = {
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.OrderingFilter",
     ],
+    # T12 : limitation de débit par utilisateur (D3), sans effet hors vues à portée.
+    "DEFAULT_THROTTLE_CLASSES": ["apps.core.throttling.UtilisateurScopedRateThrottle"],
+    "DEFAULT_THROTTLE_RATES": {
+        portee: _taux_debit(portee, defaut)
+        for portee, defaut in {
+            "generation": "20/min",
+            "apercu": "30/min",
+            "televersement": "30/hour",
+            "import": "10/hour",
+            "export": "30/min",
+            "anonyme": "30/min",
+        }.items()
+    },
 }
 
 SPECTACULAR_SETTINGS = {

@@ -99,6 +99,23 @@ describe("apiDownload", () => {
     expect((await apiDownload("/api/v1/n/")).filename).toBe("export");
   });
 
+  it("shows the server 429 message, with a French fallback when the body is not JSON", async () => {
+    server.use(
+      http.get(`${API_URL}/api/v1/t1/`, () =>
+        HttpResponse.json(
+          { detail: "Trop de requêtes : réessayez dans 42 secondes.", errors: {} },
+          { status: 429, headers: { "Retry-After": "42" } },
+        ),
+      ),
+      http.get(`${API_URL}/api/v1/t2/`, () => new HttpResponse("<html>", { status: 429 })),
+    );
+    const e1 = await apiDownload("/api/v1/t1/").catch((e: unknown) => e);
+    expect((e1 as ApiError).status).toBe(429);
+    expect((e1 as ApiError).detail).toBe("Trop de requêtes : réessayez dans 42 secondes.");
+    const e2 = await apiDownload("/api/v1/t2/").catch((e: unknown) => e);
+    expect((e2 as ApiError).detail).toBe(fr.errors.tooManyRequests);
+  });
+
   it("throws ApiError on 403", async () => {
     server.use(http.get(`${API_URL}/api/v1/f/`, () => new HttpResponse(null, { status: 403 })));
     const error = await apiDownload("/api/v1/f/").catch((e: unknown) => e);

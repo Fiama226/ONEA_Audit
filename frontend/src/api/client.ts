@@ -35,6 +35,7 @@ const STATUS_DETAIL: Record<number, string> = {
   401: fr.errors.unauthorized,
   403: fr.errors.forbidden,
   404: fr.errors.notFound,
+  429: fr.errors.tooManyRequests,
 };
 
 async function toApiError(response: Response): Promise<ApiError> {

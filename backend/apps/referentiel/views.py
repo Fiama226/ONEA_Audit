@@ -18,7 +18,15 @@ from rest_framework.serializers import BaseSerializer
 from rest_framework.viewsets import ModelViewSet
 
 from apps.core.filters import StableOrderingFilter
-from apps.core.schema import ERROR_400, ERROR_404, ERROR_422, ERROR_RESPONSES, crud_schema
+from apps.core.schema import (
+    ERROR_400,
+    ERROR_404,
+    ERROR_422,
+    ERROR_429,
+    ERROR_RESPONSES,
+    crud_schema,
+)
+from apps.core.throttling import ThrottleParActionMixin
 from apps.users.models import User
 
 from . import exports, services
@@ -57,11 +65,12 @@ from .serializers import (
 )
 
 
-class ReferentielViewSet[M: Model](ModelViewSet[M]):
+class ReferentielViewSet[M: Model](ThrottleParActionMixin, ModelViewSet[M]):
     """Base : droits par rôle, pas de PUT, création / modification / suppression par service."""
 
     permission_classes = [RolePermission]
     filter_backends = [DjangoFilterBackend, StableOrderingFilter]
+    throttle_scopes: ClassVar[dict[str, str]] = {"export": "export"}
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     read_roles: ClassVar[tuple[str, ...]] = TOUS_ROLES
     write_roles: ClassVar[tuple[str, ...]] = ECRITURE_STRUCTURE
@@ -273,6 +282,7 @@ class CartographieVersionViewSet(ReferentielViewSet[CartographieVersion]):
             **ERROR_400,
             **ERROR_RESPONSES,
             **ERROR_404,
+            **ERROR_429,
         },
     )
     @action(

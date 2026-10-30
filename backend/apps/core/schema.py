@@ -26,6 +26,7 @@ ERROR_403 = {403: ApiErrorSerializer}
 ERROR_404 = {404: ApiErrorSerializer}
 ERROR_409 = {409: ApiErrorSerializer}
 ERROR_422 = {422: ApiErrorSerializer}
+ERROR_429 = {429: ApiErrorSerializer}  # en-tête Retry-After (secondes)
 ERROR_503 = {503: ApiErrorSerializer}
 
 # Default error responses for authenticated endpoints.

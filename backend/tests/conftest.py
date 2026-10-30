@@ -141,3 +141,12 @@ def fake_keycloak(monkeypatch: pytest.MonkeyPatch) -> FakeKeycloakAdmin:
     fake = FakeKeycloakAdmin()
     monkeypatch.setattr("apps.users.keycloak_admin.get_keycloak_admin", lambda: fake)
     return fake
+
+
+@pytest.fixture(autouse=True)
+def _cache_vide() -> Iterator[None]:
+    """Le cache local sert aux compteurs de limitation de débit : aucune fuite entre tests."""
+    from django.core.cache import cache
+
+    cache.clear()
+    yield

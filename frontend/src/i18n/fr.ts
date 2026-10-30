@@ -1131,6 +1131,7 @@ export const fr = {
     forbiddenText: "Votre rôle ne donne pas accès à cette page.",
     backToDashboard: "Retour au tableau de bord",
     notFound: "La ressource demandée est introuvable.",
+    tooManyRequests: "Trop de requêtes : réessayez dans quelques instants.",
     pageNotFoundTitle: "Page introuvable",
     pageNotFound: "La page que vous cherchez n'existe pas ou a été déplacée.",
     accountDisabledTitle: "Compte indisponible",
