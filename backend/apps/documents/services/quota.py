@@ -2,7 +2,7 @@
 
 Une seule fonction pour tous les dépôts. Sont comptés, lignes supprimées logiquement comprises
 (leurs fichiers restent sur le disque) : les gabarits, les versions Word et PDF des documents
-générés, et les pièces justificatives.
+générés, les pièces justificatives et les preuves de mise en œuvre du suivi.
 """
 
 from django.apps import apps
@@ -22,7 +22,9 @@ def utilise_octets() -> int:
     versions = DocumentVersion.all_objects.aggregate(d=Sum("taille_docx"), p=Sum("taille_pdf"))
     piece = apps.get_model("accomplissement", "PieceJustificative")
     pieces = piece.all_objects.aggregate(t=Sum("taille_octets"))["t"] or 0
-    return int(gabarits + (versions["d"] or 0) + (versions["p"] or 0) + pieces)
+    preuve = apps.get_model("suivi", "PreuveMiseEnOeuvre")
+    preuves = preuve.all_objects.aggregate(t=Sum("taille_octets"))["t"] or 0
+    return int(gabarits + (versions["d"] or 0) + (versions["p"] or 0) + pieces + preuves)
 
 
 def controler_quota(ajout_octets: int) -> None:
