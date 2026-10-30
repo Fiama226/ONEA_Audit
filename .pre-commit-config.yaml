@@ -8,6 +8,12 @@ repos:
         exclude: ^frontend/src/api/schema\.d\.ts$
       - id: detect-private-key
 
+  # Leak detection (lot 9, T17): staged changes, rules in .gitleaks.toml
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.17.3 # keep identical to the ruff pin in backend/pyproject.toml
     hooks:

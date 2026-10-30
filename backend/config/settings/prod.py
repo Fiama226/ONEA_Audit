@@ -12,11 +12,11 @@ from django.core.exceptions import ImproperlyConfigured
 from config.documents_settings import S3_VARIABLES, configuration_stockage, valider_documents_root
 
 from .base import *  # noqa: F403
-from .base import REST_FRAMEWORK, env
+from .base import REST_FRAMEWORK, base_de_donnees, env, env_secret
 
 DEBUG = False
-SECRET_KEY = env("SECRET_KEY")  # required in production, no default
-DATABASES = {"default": env.db("DATABASE_URL")}  # required
+SECRET_KEY = env_secret("SECRET_KEY")  # required in production, no default (SECRET_KEY_FILE first)
+DATABASES = {"default": base_de_donnees("DATABASE_URL")}  # required (DATABASE_PASSWORD_FILE first)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")  # required
 # The SPA and the API share one origin behind nginx: CORS is optional and closed by default.
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
@@ -27,7 +27,9 @@ EMAIL_BACKEND = _email["EMAIL_BACKEND"]
 EMAIL_HOST = _email.get("EMAIL_HOST", "")
 EMAIL_PORT = _email.get("EMAIL_PORT", 25)
 EMAIL_HOST_USER = _email.get("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = _email.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_HOST_PASSWORD = env_secret("EMAIL_PASSWORD", default="") or _email.get(
+    "EMAIL_HOST_PASSWORD", ""
+)
 # django-environ maps smtps:// to STARTTLS; on a smtps:// URL (implicit TLS, usually port
 # 465) Django needs EMAIL_USE_SSL instead. The two are mutually exclusive.
 EMAIL_USE_SSL = _email.get("EMAIL_USE_SSL", False) or env("EMAIL_URL").startswith("smtps://")
@@ -41,7 +43,7 @@ if _plateforme.scheme != "https" or not _plateforme.hostname or _plateforme.user
     raise ImproperlyConfigured("PLATEFORME_URL must be an https:// URL in production")
 if not env.bool("OIDC_VERIFY_SSL", default=True):
     raise ImproperlyConfigured("OIDC_VERIFY_SSL must not be disabled in production")
-_kc_sync_secret = env("KEYCLOAK_ADMIN_API_CLIENT_SECRET", default="")
+_kc_sync_secret = KEYCLOAK_ADMIN_API_CLIENT_SECRET  # noqa: F405 (KEYCLOAK_..._FILE first)
 if not _kc_sync_secret:  # required in production
     raise ImproperlyConfigured("KEYCLOAK_ADMIN_API_CLIENT_SECRET must be set in production")
 if _kc_sync_secret.startswith("CHANGE_ME") or _kc_sync_secret == "onea-dev-sync-secret":  # noqa: S105
@@ -65,6 +67,24 @@ STORAGES = {
 if not RECHERCHE["CLE"]:  # noqa: F405
     raise ImproperlyConfigured("MEILI_MASTER_KEY must be set in production")
 
+# --- Bloc T17 : aucun secret de modèle (CHANGE_ME*) ni valeur de développement en production. ---
+_SECRETS_A_CONTROLER = {
+    "SECRET_KEY": SECRET_KEY,
+    "mot de passe de la base (DATABASE_URL / DATABASE_PASSWORD_FILE)": DATABASES["default"].get(
+        "PASSWORD", ""
+    ),
+    "mot de passe Redis (REDIS_URL / REDIS_PASSWORD_FILE)": urlsplit(REDIS_URL).password or "",  # noqa: F405
+    "mot de passe SMTP (EMAIL_URL / EMAIL_PASSWORD_FILE)": EMAIL_HOST_PASSWORD or "",
+    "OIDC_RP_CLIENT_SECRET": OIDC_RP_CLIENT_SECRET,  # noqa: F405
+    "MEILI_MASTER_KEY": RECHERCHE["CLE"],  # noqa: F405
+    "METRICS_TOKEN": METRICS_TOKEN,  # noqa: F405
+    **{f"SECRET_KEY_FALLBACKS[{i}]": v for i, v in enumerate(SECRET_KEY_FALLBACKS)},  # noqa: F405
+}
+for _nom, _valeur in _SECRETS_A_CONTROLER.items():
+    if _valeur.upper().startswith("CHANGE_ME") or _valeur == "insecure-dev-key-change-me":
+        raise ImproperlyConfigured(f"{_nom} est encore une valeur de modèle ou de développement")
+if not SECRET_KEY:
+    raise ImproperlyConfigured("SECRET_KEY must not be empty in production")
 REST_FRAMEWORK = {
     **REST_FRAMEWORK,
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],

@@ -16,6 +16,9 @@ coverage/
 !.env.example
 !.env.prod.example
 !.env.recette.example
+# Fichiers de secrets (generer-secrets.sh) : jamais dans le depot
+secrets/
+*.secret
 # IDE / OS
 .idea/
 .vscode/

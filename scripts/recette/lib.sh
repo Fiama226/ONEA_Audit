@@ -5,6 +5,7 @@ RECETTE_LIB_DIR=$(cd "$(dirname "${BASH_SOURCE:-$0}")" && pwd)
 REPO_ROOT=$(cd "$RECETTE_LIB_DIR/../.." && pwd)
 RECETTE_DIR="$REPO_ROOT/.recette"
 RECETTE_ENV="$RECETTE_DIR/.env.recette"
+RECETTE_SECRETS="$RECETTE_DIR/secrets"
 PUBLIC_HOST=${PUBLIC_HOST:-audit.recette.test}
 SSO_HOST=${SSO_HOST:-sso.recette.test}
 RECETTE_PROJECT=${RECETTE_PROJECT:-onea-recette}
@@ -14,6 +15,13 @@ compose_recette() {
     docker compose -p "$RECETTE_PROJECT" --env-file "$RECETTE_ENV" \
         -f "$REPO_ROOT/docker/compose.prod.yml" \
         -f "$REPO_ROOT/scripts/recette/compose.override.yml" "$@"
+}
+
+# secret_recette <nom> : valeur d un fichier de secret, lue DANS le conteneur web (les fichiers
+# appartiennent a 10001 en 0600 : illisibles pour l utilisateur de l hote). Nom parmi ceux de
+# oidc_client_secret, keycloak_sync_secret, secret_key... montes dans web.
+secret_recette() {
+    compose_recette exec -T web cat "/run/secrets/$1" | tr -d "\r\n"
 }
 
 # curl_recette <args...> : curl vers la pile (ports 80/443 locaux), CA de recette.

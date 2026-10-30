@@ -241,3 +241,19 @@ jobs:
         with:
           name: dependency-audit
           path: build/audit/
+
+  secrets-scan:
+    # Leak detection (lot 9, T17): gitleaks (MIT) on the whole history, rules in .gitleaks.toml.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        env:
+          GITLEAKS_IMAGE: ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+        run: >-
+          docker run --rm -v "$PWD:/repo"
+          -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo
+          "$GITLEAKS_IMAGE" git --redact --no-banner -c /repo/.gitleaks.toml /repo
