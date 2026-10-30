@@ -24,20 +24,22 @@ export function tagFor(path: string, champ: Champ): string | null {
   return `{{ ${path} }}`;
 }
 
-type Row = { champ: Champ; path: string; depth: number };
+/** `path` : chemin de la balise (variable de boucle `l` sous une liste) ; `full` : chemin complet, unique. */
+type Row = { champ: Champ; path: string; full: string; depth: number };
 
-function flatten(champs: Champ[], prefix: string, depth: number): Row[] {
+function flatten(champs: Champ[], prefix: string, fullPrefix: string, depth: number): Row[] {
   return champs.flatMap((champ) => {
     const path = prefix ? `${prefix}.${champ.nom}` : champ.nom;
+    const full = fullPrefix ? `${fullPrefix}.${champ.nom}` : champ.nom;
     // Dans une boucle, les champs enfants s'écrivent avec la variable de boucle `l`.
     const childPrefix = champ.type === "liste" ? "l" : path;
-    return [{ champ, path, depth }, ...flatten(champ.enfants, childPrefix, depth + 1)];
+    return [{ champ, path, full, depth }, ...flatten(champ.enfants, childPrefix, full, depth + 1)];
   });
 }
 
 export function ContractFieldsPanel({ type }: { type: DocumentType }) {
   const [message, setMessage] = useState("");
-  const rows = flatten(type.champs, "", 0);
+  const rows = flatten(type.champs, "", "", 0);
 
   async function copy(tag: string) {
     try {
@@ -83,10 +85,10 @@ export function ContractFieldsPanel({ type }: { type: DocumentType }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map(({ champ, path, depth }) => {
+            {rows.map(({ champ, path, full, depth }) => {
               const tag = tagFor(path, champ);
               return (
-                <TableRow key={path}>
+                <TableRow key={full}>
                   <TableCell style={{ paddingLeft: `${0.5 + depth * 1.25}rem` }}>
                     <code className="font-mono text-xs">{champ.nom}</code>
                   </TableCell>
@@ -98,7 +100,7 @@ export function ContractFieldsPanel({ type }: { type: DocumentType }) {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        aria-label={t.copyTag(path)}
+                        aria-label={t.copyTag(full)}
                         onClick={() => void copy(tag)}
                       >
                         <Copy aria-hidden="true" className="size-3.5" />

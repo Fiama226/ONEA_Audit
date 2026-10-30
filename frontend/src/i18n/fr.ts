@@ -12,6 +12,7 @@ export const fr = {
     risques: "Cartographie des risques",
     recommandations: "Recommandations",
     documents: "Documents",
+    documentTemplates: "Gabarits de documents",
     administration: "Administration",
     groupMissions: "Conduite des missions",
     groupFollowUp: "Suivi",
@@ -1184,6 +1185,10 @@ export const fr = {
     tabNumbering: "Numérotation",
   },
   documentsAdmin: {
+    navLabel: "Administration des documents",
+    uploadInProgress: "Dépôt en cours : patientez ou annulez l'envoi.",
+    uploadCancel: "Annuler l'envoi",
+    versionsMore: "Afficher plus de versions",
     templatesTitle: "Gabarits de documents",
     templatesIntro:
       "Les gabarits Word servent à générer les documents de la plateforme. Un seul gabarit est actif par type de document.",

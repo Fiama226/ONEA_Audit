@@ -1,33 +1,35 @@
-import { NavLink } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { fr } from "@/i18n/fr";
 import { cn } from "@/lib/utils";
 
-const LINKS = [
-  { to: "/administration/documents", label: fr.documents.tabTemplates, end: false },
-  { to: "/administration/documents/numerotation", label: fr.documents.tabNumbering, end: true },
-];
+const TEMPLATES = "/administration/documents";
+const NUMBERING = "/administration/documents/numerotation";
 
-/** Navigation entre les écrans d'administration des documents. */
+/** Navigation entre les écrans d'administration des documents (onglet exact, un seul actif). */
 export function AdminTabs() {
+  const { pathname } = useLocation();
+  const numbering = pathname === NUMBERING || pathname === `${NUMBERING}/`;
+  const links = [
+    { to: TEMPLATES, label: fr.documents.tabTemplates, active: !numbering },
+    { to: NUMBERING, label: fr.documents.tabNumbering, active: numbering },
+  ];
   return (
-    <nav aria-label={fr.documents.tabTemplates + " / " + fr.documents.tabNumbering}>
+    <nav aria-label={fr.documentsAdmin.navLabel}>
       <ul className="flex gap-4 border-b border-border">
-        {LINKS.map((l) => (
+        {links.map((l) => (
           <li key={l.to}>
-            <NavLink
+            <Link
               to={l.to}
-              end={l.end}
-              className={({ isActive }) =>
-                cn(
-                  "inline-block border-b-2 px-1 pb-2 text-sm font-medium",
-                  isActive
-                    ? "border-primary text-primary"
-                    : "border-transparent text-text-muted hover:text-foreground",
-                )
-              }
+              aria-current={l.active ? "page" : undefined}
+              className={cn(
+                "inline-block border-b-2 px-1 pb-2 text-sm font-medium",
+                l.active
+                  ? "border-primary text-primary"
+                  : "border-transparent text-text-muted hover:text-foreground",
+              )}
             >
               {l.label}
-            </NavLink>
+            </Link>
           </li>
         ))}
       </ul>

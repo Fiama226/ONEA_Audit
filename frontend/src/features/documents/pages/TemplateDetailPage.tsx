@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { isApiError } from "@/api/errors";
 import { ALERT_CLASS } from "@/components/form/FormField";
@@ -17,7 +17,7 @@ import {
 import { useAuth } from "@/auth/useAuth";
 import { fr } from "@/i18n/fr";
 import { formatDateTime } from "@/lib/dates";
-import { downloadTemplate, previewTemplate, useDocumentTypes, useTemplates } from "../api";
+import { downloadTemplate, previewTemplate, useDocumentTypes, useTemplateVersions } from "../api";
 import { ActivateTemplateDialog } from "../components/ActivateTemplateDialog";
 import { ContractFieldsPanel } from "../components/ContractFieldsPanel";
 import { UploadTemplateDialog } from "../components/UploadTemplateDialog";
@@ -37,7 +37,7 @@ export function TemplateDetailPage() {
   const types = useDocumentTypes();
   const code = rawType ?? "";
   const type = types.data?.find((x) => x.code === code);
-  const templates = useTemplates({ type_document: code, ordering: "-version" });
+  const templates = useTemplateVersions(code);
   const { me } = useAuth();
   const isAdmin = me?.role === "ADMIN";
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -45,20 +45,39 @@ export function TemplateDetailPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const running = useRef(false);
+  const controller = useRef<AbortController | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
 
-  async function run(key: string, action: () => Promise<void>, fallback: string) {
+  // Aperçu ou téléchargement en cours : annulé quand on quitte la page.
+  useEffect(() => () => controller.current?.abort(), []);
+
+  async function run(
+    key: string,
+    action: (signal: AbortSignal) => Promise<void>,
+    fallback: string,
+  ) {
     if (running.current) return;
     running.current = true;
+    const current = new AbortController();
+    controller.current = current;
     setBusy(key);
     setActionError(null);
     try {
-      await action();
+      await action(current.signal);
     } catch (e) {
-      setActionError(isApiError(e) ? e.detail : fallback);
+      if (!current.signal.aborted) setActionError(isApiError(e) ? e.detail : fallback);
     } finally {
       running.current = false;
-      setBusy(null);
+      if (!current.signal.aborted) setBusy(null);
     }
+  }
+
+  /** Rend le focus au bouton d'origine, ou au titre si ce bouton a disparu (version devenue active). */
+  function restoreFocus(event: Event) {
+    event.preventDefault();
+    const target = opener.current?.isConnected ? opener.current : heading.current;
+    target?.focus();
   }
 
   const back = (
@@ -110,13 +129,19 @@ export function TemplateDetailPage() {
   }
 
   const versions = templates.data?.results ?? [];
+  const restoreAfterUpload = (event: Event) => {
+    event.preventDefault();
+    heading.current?.focus();
+  };
 
   return (
     <div className="grid gap-6">
       <div className="grid gap-2">
         {back}
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h1 className="text-2xl font-semibold">{`${t.detailTitle}${type.libelle}`}</h1>
+          <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold outline-none">
+            {`${t.detailTitle}${type.libelle}`}
+          </h1>
           {isAdmin && (
             <Button type="button" onClick={() => setUploadOpen(true)}>
               {t.uploadOpen}
@@ -187,7 +212,10 @@ export function TemplateDetailPage() {
                           size="sm"
                           variant="outline"
                           disabled={busy !== null}
-                          onClick={() => setToActivate(g)}
+                          onClick={(e) => {
+                            opener.current = e.currentTarget;
+                            setToActivate(g);
+                          }}
                         >
                           {t.activate}
                         </Button>
@@ -198,7 +226,11 @@ export function TemplateDetailPage() {
                         variant="ghost"
                         disabled={busy !== null}
                         onClick={() =>
-                          void run(`dl-${g.id}`, () => downloadTemplate(g.id), t.downloadError)
+                          void run(
+                            `dl-${g.id}`,
+                            (signal) => downloadTemplate(g.id, signal),
+                            t.downloadError,
+                          )
                         }
                       >
                         {t.download}
@@ -213,7 +245,7 @@ export function TemplateDetailPage() {
                           onClick={() =>
                             void run(
                               `preview-${g.id}-${format}`,
-                              () => previewTemplate(g.id, format),
+                              (signal) => previewTemplate(g.id, format, signal),
                               t.previewError,
                             )
                           }
@@ -237,11 +269,13 @@ export function TemplateDetailPage() {
           typeDocument={type.code}
           open={uploadOpen}
           onOpenChange={setUploadOpen}
+          onCloseAutoFocus={restoreAfterUpload}
         />
       )}
       {toActivate && (
         <ActivateTemplateDialog
           template={toActivate}
+          onCloseAutoFocus={restoreFocus}
           open
           onOpenChange={(open) => {
             if (!open) setToActivate(null);

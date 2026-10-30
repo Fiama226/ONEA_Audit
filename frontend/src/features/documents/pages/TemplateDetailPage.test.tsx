@@ -67,6 +67,66 @@ describe("TemplateDetailPage", () => {
     expect(writeText).toHaveBeenLastCalledWith("{%tr for l in ordre.equipe %}");
   });
 
+  it("gives unique keys and names to the children of two lists", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const list = (nom: string) => ({
+      nom,
+      type: "liste" as const,
+      description: nom,
+      enfants: [{ nom: "code", type: "texte" as const, description: "Code", enfants: [] }],
+    });
+    server.use(
+      http.get(TYPES, () =>
+        HttpResponse.json([
+          aType({
+            champs: [
+              {
+                nom: "mission",
+                type: "bloc",
+                description: "M",
+                enfants: [list("processus"), list("entites")],
+              },
+            ],
+          }),
+        ]),
+      ),
+      http.get(TEMPLATES, () =>
+        HttpResponse.json({ count: 0, next: null, previous: null, results: [] }),
+      ),
+    );
+    renderPage();
+    expect(
+      await screen.findByRole("button", { name: "Copier la balise mission.processus.code" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Copier la balise mission.entites.code" }),
+    ).toBeInTheDocument();
+    expect(error.mock.calls.flat().join(" ")).not.toMatch(/same key|unique "key"/);
+    error.mockRestore();
+  });
+
+  it("cancels an upload in progress: no error, request aborted", async () => {
+    let aborted = false;
+    page();
+    server.use(
+      http.post(TEMPLATES, async ({ request }) => {
+        request.signal.addEventListener("abort", () => (aborted = true));
+        await new Promise((r) => setTimeout(r, 1500));
+        return HttpResponse.json(aTemplate({ id: "g3", version: 3 }), { status: 201 });
+      }),
+    );
+    renderPage();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Déposer une nouvelle version" }),
+    );
+    await userEvent.upload(screen.getByLabelText("Fichier Word (.docx)"), docx());
+    await userEvent.click(screen.getByRole("button", { name: "Déposer" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Annuler l'envoi" }));
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await vi.waitFor(() => expect(aborted).toBe(true));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("confirms activation, posts activate and the row becomes Actif", async () => {
     let activated = false;
     server.use(

@@ -6,6 +6,7 @@ import {
   type QueryKey,
 } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { fetchAllPages } from "@/api/allPages";
 import { apiDownload, apiFetch, apiUpload } from "@/api/client";
 import { ApiError } from "@/api/errors";
 import { toQuery } from "@/api/query";
@@ -64,6 +65,15 @@ export function useTemplates(params: TemplateParams = {}) {
   });
 }
 
+/** Toutes les versions de gabarit d'un type (toutes les pages). */
+export function useTemplateVersions(typeDocument: string) {
+  return useQuery({
+    queryKey: documentKeys.templateList({ type_document: typeDocument, all: true }),
+    queryFn: () =>
+      fetchAllPages<Gabarit>("templates", { type_document: typeDocument, ordering: "-version" }),
+  });
+}
+
 export function useTemplate(id: string | undefined) {
   return useQuery({
     queryKey: documentKeys.template(id),
@@ -72,7 +82,13 @@ export function useTemplate(id: string | undefined) {
   });
 }
 
-export type UploadTemplateInput = { type_document: string; fichier: File; commentaire?: string };
+export type UploadTemplateInput = {
+  type_document: string;
+  fichier: File;
+  commentaire?: string;
+  /** Annule l'envoi en cours (fermeture de la boîte de dépôt). */
+  signal?: AbortSignal;
+};
 
 export function useUploadTemplate() {
   const client = useQueryClient();
@@ -82,9 +98,10 @@ export function useUploadTemplate() {
       body.append("type_document", input.type_document);
       body.append("fichier", input.fichier);
       body.append("commentaire", input.commentaire ?? "");
-      return apiUpload<Gabarit>(`${BASE}/templates/`, body);
+      return apiUpload<Gabarit>(`${BASE}/templates/`, body, input.signal);
     },
-    onSuccess: () => invalidate(client, documentKeys.templates(), documentKeys.types()),
+    // onSettled : un envoi annulé a pu aboutir côté serveur, les listes sont relues dans tous les cas.
+    onSettled: () => invalidate(client, documentKeys.templates(), documentKeys.types()),
   });
 }
 
@@ -118,8 +135,12 @@ export function useUpdateNumberingFormat() {
 
 export function useNumberingPreview() {
   return useMutation({
-    mutationFn: (data: ApercuFormat) =>
-      apiFetch<ApercuNumero>(`${BASE}/numbering-formats/preview/`, { method: "POST", json: data }),
+    mutationFn: ({ signal, ...data }: ApercuFormat & { signal?: AbortSignal }) =>
+      apiFetch<ApercuNumero>(`${BASE}/numbering-formats/preview/`, {
+        method: "POST",
+        json: data,
+        signal,
+      }),
   });
 }
 
@@ -271,8 +292,8 @@ export function useConsultations(versionId: string | undefined) {
   });
 }
 
-async function save(path: string): Promise<void> {
-  const { blob, filename } = await apiDownload(path);
+async function save(path: string, signal?: AbortSignal): Promise<void> {
+  const { blob, filename } = await apiDownload(path, signal);
   downloadBlob(blob, filename);
 }
 
@@ -280,10 +301,14 @@ export function downloadVersion(id: string, format: FormatFichier): Promise<void
   return save(`${BASE}/document-versions/${id}/download/${toQuery({ format })}`);
 }
 
-export function downloadTemplate(id: string): Promise<void> {
-  return save(`${BASE}/templates/${id}/file/`);
+export function downloadTemplate(id: string, signal?: AbortSignal): Promise<void> {
+  return save(`${BASE}/templates/${id}/file/`, signal);
 }
 
-export function previewTemplate(id: string, format: FormatFichier): Promise<void> {
-  return save(`${BASE}/templates/${id}/preview/${toQuery({ format })}`);
+export function previewTemplate(
+  id: string,
+  format: FormatFichier,
+  signal?: AbortSignal,
+): Promise<void> {
+  return save(`${BASE}/templates/${id}/preview/${toQuery({ format })}`, signal);
 }

@@ -73,6 +73,8 @@ async function send(path: string, init: ApiInit, accept: string): Promise<Respon
       body: json !== undefined ? JSON.stringify(json) : rest.body,
     });
   } catch {
+    // Annulation voulue par l'appelant (AbortSignal) : ce n'est pas une panne réseau.
+    if (rest.signal?.aborted) throw new DOMException("Aborted", "AbortError");
     throw new ApiError(0, fr.errors.network);
   }
 
@@ -113,8 +115,11 @@ function rawFilenameFrom(disposition: string | null): string {
 }
 
 /** Télécharge un fichier (export CSV / Excel) avec le même jeton et les mêmes erreurs que apiFetch. */
-export async function apiDownload(path: string): Promise<{ blob: Blob; filename: string }> {
-  const response = await send(path, {}, "*/*");
+export async function apiDownload(
+  path: string,
+  signal?: AbortSignal,
+): Promise<{ blob: Blob; filename: string }> {
+  const response = await send(path, { signal }, "*/*");
   return {
     blob: await response.blob(),
     filename: filenameFrom(response.headers.get("Content-Disposition")),
@@ -122,9 +127,13 @@ export async function apiDownload(path: string): Promise<{ blob: Blob; filename:
 }
 
 /** Envoi multipart (dépôt de fichier) : même jeton et mêmes erreurs, sans en-tête Content-Type. */
-export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  signal?: AbortSignal,
+): Promise<T> {
   // Pas de Content-Type : le navigateur y ajoute la frontière multipart.
-  const response = await send(path, { method: "POST", body: formData }, "application/json");
+  const response = await send(path, { method: "POST", body: formData, signal }, "application/json");
   try {
     return (await response.json()) as T;
   } catch {

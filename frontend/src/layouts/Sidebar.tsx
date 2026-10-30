@@ -1,5 +1,5 @@
 import { PanelLeftClose, PanelLeftOpen, type LucideIcon } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -53,38 +53,46 @@ function NavItemLink({
   icon: Icon,
   collapsed,
   onNavigate,
+  exclude,
 }: {
+  exclude?: string;
   to: string;
   label: string;
   icon: LucideIcon;
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
+  const { pathname } = useLocation();
+  const excluded = exclude !== undefined && pathname.startsWith(exclude);
   const link = (
     <NavLink
       to={to}
       end={to === "/"}
+      aria-current={excluded ? false : "page"}
       onClick={onNavigate}
-      className={({ isActive }) =>
+      className={({ isActive: active }) =>
         cn(
           "relative flex items-center rounded-md text-sm font-medium transition-colors hover:bg-surface-subtle hover:[&_svg]:text-foreground",
           collapsed ? "size-10 justify-center" : "h-9 gap-3 px-3",
-          isActive
+          active && !excluded
             ? "bg-primary/10 font-semibold text-primary hover:bg-primary/10"
             : "text-foreground",
         )
       }
     >
-      {({ isActive }) => (
+      {({ isActive: active }) => (
         <>
-          {isActive && (
+          {active && !excluded && (
             <span
               aria-hidden
               className="absolute top-2 bottom-2 -left-3 w-[3px] rounded-r-[2px] bg-brand-accent"
             />
           )}
           <Icon
-            className={cn("size-5 shrink-0", isActive ? "text-primary" : "text-text-muted")}
+            className={cn(
+              "size-5 shrink-0",
+              active && !excluded ? "text-primary" : "text-text-muted",
+            )}
             strokeWidth={1.5}
             aria-hidden
           />

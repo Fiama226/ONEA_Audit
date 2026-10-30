@@ -45,6 +45,23 @@ describe("apiUpload", () => {
     expect(file).not.toBeNull();
   });
 
+  it("rejects with an AbortError (not a network ApiError) when the signal aborts", async () => {
+    server.use(
+      http.post(`${API_URL}/api/v1/up/`, async () => {
+        await new Promise((r) => setTimeout(r, 500));
+        return HttpResponse.json({ id: "1" }, { status: 201 });
+      }),
+    );
+    const controller = new AbortController();
+    const pending = apiUpload("/api/v1/up/", new FormData(), controller.signal).catch(
+      (e: unknown) => e,
+    );
+    controller.abort();
+    const err = await pending;
+    expect(isApiError(err)).toBe(false);
+    expect((err as DOMException).name).toBe("AbortError");
+  });
+
   it("turns a 422 into an ApiError with errors.fichier", async () => {
     server.use(
       http.post(`${API_URL}/api/v1/up/`, () =>
