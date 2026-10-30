@@ -142,7 +142,6 @@ RECHERCHE_TYPES_DOCUMENTS_AUDITE: list[str] = [
     "PV_OUVERTURE",
     "PV_CLOTURE",
     "RAPPORT_FINAL",
-    "PLAN_ACTIONS",
 ]
 GOTENBERG_URL: str = env("GOTENBERG_URL", default="http://localhost:3000").rstrip("/")
 # --- Pièces justificatives (lot 6) : disque du serveur, jamais dans Git, jamais sous une URL.

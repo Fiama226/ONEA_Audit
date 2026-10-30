@@ -163,8 +163,8 @@ def test_types_documents_audite_et_dg(settings: Any) -> None:
         "PV_OUVERTURE",
         "PV_CLOTURE",
         "RAPPORT_FINAL",
-        "PLAN_ACTIONS",
     }
+    # PLAN_ACTIONS est réservé à l'équipe (fournisseur de documents du lot 7) : jamais indexé pour l'audité
     planification = settings.CELERY_BEAT_SCHEDULE["recherche-reconciliation"]
     assert planification["task"] == "recherche.reconcilier"
     assert (planification["schedule"].hour, planification["schedule"].minute) == ({2}, {0})
