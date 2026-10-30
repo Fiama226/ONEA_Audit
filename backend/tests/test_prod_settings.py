@@ -21,6 +21,7 @@ PROD_ENV = {
     "KEYCLOAK_ADMIN_API_CLIENT_SECRET": "prod-sync-secret",
     "DOCUMENTS_ROOT": "/var/lib/onea/documents",
     "MEILI_MASTER_KEY": "prod-meili-key",
+    "PLATEFORME_URL": "https://audit.onea.bf",
 }
 
 PROBE = """
@@ -168,6 +169,29 @@ def test_prod_refuses_http_oidc_base_url() -> None:
     assert "https" in result.stderr
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://audit.onea.bf",
+        "ftp://audit.onea.bf",
+        "https://",
+        "https://u:p@audit.onea.bf",
+        "audit.onea.bf",
+    ],
+)
+def test_prod_refuse_plateforme_url_non_https(url: str) -> None:
+    result = load_prod({**PROD_ENV, "PLATEFORME_URL": url})
+    assert result.returncode != 0
+    assert "PLATEFORME_URL" in result.stderr
+
+
+def test_prod_plateforme_url_sans_barre_finale() -> None:
+    code = PROBE + "\nfrom django.conf import settings as s; print(s.PLATEFORME_URL)"
+    result = load_prod({**PROD_ENV, "PLATEFORME_URL": "https://audit.onea.bf/"}, code=code)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip().splitlines()[-1] == "https://audit.onea.bf"
+
+
 def test_prod_refuses_disabled_oidc_ssl_verification() -> None:
     result = load_prod({**PROD_ENV, "OIDC_VERIFY_SSL": "false"})
     assert result.returncode != 0
@@ -187,6 +211,7 @@ def test_prod_admin_can_be_enabled_explicitly() -> None:
         "ALLOWED_HOSTS",
         "CSRF_TRUSTED_ORIGINS",
         "OIDC_OP_BASE_URL",
+        "PLATEFORME_URL",
     ],
 )
 def test_prod_settings_refuse_to_start_without_required_variable(missing: str) -> None:

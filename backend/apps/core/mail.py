@@ -16,7 +16,13 @@ def _render_text(name: str, context: dict[str, Any]) -> str:
     return django_template.template.render(Context(context, autoescape=False))
 
 
-def send_mail_template(to: list[str], subject: str, template: str, context: dict[str, Any]) -> None:
+def send_mail_template(
+    to: list[str],
+    subject: str,
+    template: str,
+    context: dict[str, Any],
+    cc: list[str] | None = None,
+) -> None:
     """Render email/<template>.txt and .html and send them as one multipart message."""
     text = _render_text(f"email/{template}.txt", context)
     html = render_to_string(f"email/{template}.html", context)
@@ -25,6 +31,7 @@ def send_mail_template(to: list[str], subject: str, template: str, context: dict
         body=text,
         from_email=settings.DEFAULT_FROM_EMAIL,
         to=to,
+        cc=cc,
     )
     message.attach_alternative(html, "text/html")
     message.send()
