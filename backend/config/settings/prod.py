@@ -83,3 +83,18 @@ CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_NAME = "__Host-onea-session"
 CSRF_COOKIE_NAME = "__Host-onea-csrf"
 CSRF_COOKIE_HTTPONLY = True  # the API is bearer-only; admin forms carry the token in the page
+
+# --- T13: JSON logs in production (no personal data), metrics token from the environment ---
+LOGGING = {  # noqa: F405
+    **LOGGING,  # noqa: F405
+    "formatters": {"json": {"()": "apps.core.journalisation.FormateurJson"}},
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+            "formatter": "json",
+            "filters": ["masquage"],
+        },
+    },
+}
+CELERY_WORKER_HIJACK_ROOT_LOGGER = False

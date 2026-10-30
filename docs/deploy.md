@@ -308,3 +308,19 @@ base 1 ; la base 0 sert à Celery).
   production couvre tout l'espace Docker : **la restreindre au sous-réseau réel du proxy**.
   Si `nginx` est lui-même derrière un autre proxy, un répartiteur ou un NAT, l'adresse
   enregistrée est celle de ce dernier (adresse amont), pas celle du poste de l'utilisateur.
+
+## 10. Supervision
+
+- **Journaux** : `web`, `worker` et `beat` écrivent des lignes JSON (champs `ts`, `niveau`,
+  `logger`, `message`, `correlation_id`, `user_id`, `methode`, `chemin`, `statut`, `duree_ms`,
+  `tache`). Courriels, jetons, mots de passe et chaînes de requête sont masqués. Chaque
+  réponse porte l'en-tête `X-Correlation-ID`, repris dans les tâches Celery associées. Le journal
+  d'accès de gunicorn est désactivé : `nginx` tient ce rôle.
+- **Sondes** : `GET /api/v1/health/` (vivacité, contrat inchangé) et
+  `GET /api/v1/health/ready/` (aptitude : 503 si la base ou Redis est indisponible ; 200 avec
+  `status: degrade` si seul Gotenberg est indisponible ou si le pouls de `beat` est périmé).
+- **Métriques** : `GET /api/v1/metrics/` (format texte Prometheus), protégé par
+  `Authorization: Bearer <METRICS_TOKEN>`. Sans `METRICS_TOKEN` ou avec un jeton erroné, la
+  réponse est 404. Séries : `onea_build_info`, `onea_db_up`, `onea_redis_up`,
+  `onea_gotenberg_up`, `onea_celery_file_attente`, `onea_documents_espace_libre_octets`,
+  `onea_generations_bloquees` (-1 : valeur inconnue). Ne pas publier ce chemin à l'extérieur.

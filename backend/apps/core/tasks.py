@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any
 
 from celery import shared_task
@@ -23,3 +24,13 @@ def send_mail_task(to: list[str], subject: str, template: str, context: dict[str
 @shared_task(name="core.tasks.heartbeat")
 def heartbeat() -> None:
     logger.info("celery beat heartbeat")
+
+
+@shared_task(name="core.tasks.pouls_beat")
+def pouls_beat() -> None:
+    """Beat pulse read by the readiness probe to detect a stalled scheduler."""
+    from django.core.cache import cache
+
+    from apps.core.metriques import CLE_POULS_BEAT
+
+    cache.set(CLE_POULS_BEAT, time.time(), timeout=3600)

@@ -1,13 +1,18 @@
+import hmac
+
 from auditlog.models import LogEntry
+from django.conf import settings
+from django.http import Http404, HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer
 from rest_framework import serializers
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
+from apps.core import metriques
 from apps.core.schema import ERROR_400, ERROR_RESPONSES
 from apps.documents.stockage import etat_stockage
 from apps.users.permissions import IsRAIOrAdmin
@@ -32,6 +37,33 @@ from .serializers import AuditLogSerializer
 def health(request: Request) -> Response:
     # The documents storage state is informative: it never alters `status`.
     return Response({"status": "ok", "version": __version__, "stockage_documents": etat_stockage()})
+
+
+@extend_schema(exclude=True)
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def ready(request: Request) -> Response:
+    """Readiness probe: 503 if the database or Redis is down, 200 degraded otherwise."""
+    composants = metriques.etat_composants()
+    if "indisponible" in (composants["base"], composants["redis"]):
+        return Response({"status": "indisponible", "composants": composants}, status=503)
+    degrade = composants["gotenberg"] != "ok" or composants["beat"] == "perime"
+    return Response({"status": "degrade" if degrade else "ok", "composants": composants})
+
+
+@extend_schema(exclude=True)
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def metrics(request: Request) -> HttpResponse:
+    """Protected metrics: 404 unless the configured bearer token is presented."""
+    attendu = settings.METRICS_TOKEN
+    entete = request.headers.get("Authorization", "")
+    fourni = entete[7:] if entete.lower().startswith("bearer ") else ""
+    if not attendu or not hmac.compare_digest(fourni.encode(), attendu.encode()):
+        raise Http404
+    return HttpResponse(metriques.exposition(), content_type="text/plain; version=0.0.4")
 
 
 @extend_schema_view(
