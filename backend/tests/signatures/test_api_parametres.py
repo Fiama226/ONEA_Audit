@@ -70,7 +70,7 @@ def test_patch_puis_trace(admin: User, signataire_factice: object) -> None:
     )
     assert r.status_code == 200
     assert r.json()["mode_libelle"] == "Confirmation et signature électronique"
-    assert r.json()["modifie_par"]["id"] == str(admin.pk)
+    assert r.json()["modifie_par"]["id"] == admin.pk
     ligne = next(
         x for x in _client(admin).get(URL).json() if x["type_document"] == "VALIDATION_RAPPORT"
     )
