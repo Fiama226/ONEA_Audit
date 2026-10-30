@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "apps.suivi",
     "apps.notifications",
     "apps.recherche",
+    "apps.tableaux_de_bord",
 ]
 
 AUTH_USER_MODEL = "users.User"
