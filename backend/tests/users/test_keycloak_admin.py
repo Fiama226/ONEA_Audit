@@ -337,6 +337,8 @@ def _load_prod(overrides: dict[str, str | None]) -> subprocess.CompletedProcess[
         "DOCUMENTS_ROOT": "/var/lib/onea/documents",
         # Required in production since lot 8 (links in reminder e-mails).
         "PLATEFORME_URL": "https://audit.onea.bf",
+        # Required in production since lot 8 (search engine).
+        "MEILI_MASTER_KEY": "prod-meili-key",
     }
     for key, value in overrides.items():
         if value is None:
