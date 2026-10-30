@@ -73,11 +73,9 @@ describe("StepPage", () => {
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Audit des achats");
   });
 
-  it("announces the lot that brings the forms of a generic step", async () => {
+  it("mounts the lot 7 zone skeleton for step XV", async () => {
     render(15, "RAI", allSteps());
-    expect(
-      await screen.findByText("Les formulaires de cette étape seront disponibles au lot 7."),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Rapport provisoire" })).toBeInTheDocument();
   });
 
   it("offers « Valider le jalon » to the RAI when the server allows it", async () => {

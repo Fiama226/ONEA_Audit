@@ -17,6 +17,9 @@ const load = {
   fiche: () => import("@/features/accomplissement/pages/FichePage"),
   constats: () => import("@/features/constats/pages/ConstatsAuditePage"),
   constat: () => import("@/features/constats/pages/ConstatPage"),
+  rapport: () => import("@/features/communication/pages/RapportPage"),
+  reponses: () => import("@/features/communication/pages/ReponsesProvisoirePage"),
+  plan: () => import("@/features/recommandations/pages/PlanActionsPage"),
 };
 
 /** Page d'arrivée d'une mission : audités et lecteurs sans accès aux travaux vont aux réunions. */
@@ -56,6 +59,9 @@ export const missionRoutes: RouteObject[] = [
       { path: "fiches/:ficheId", element: lazyRoute(load.fiche, "FichePage") },
       { path: "constats", element: lazyRoute(load.constats, "ConstatsAuditePage") },
       { path: "constats/:constatId", element: lazyRoute(load.constat, "ConstatPage") },
+      { path: "rapport", element: lazyRoute(load.rapport, "RapportPage") },
+      { path: "reponses-rapport", element: lazyRoute(load.reponses, "ReponsesProvisoirePage") },
+      { path: "plan-actions", element: lazyRoute(load.plan, "PlanActionsPage") },
     ],
   },
 ];

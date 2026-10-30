@@ -1,12 +1,27 @@
 import { Link, Outlet, useLocation, useParams } from "react-router-dom";
 import { isApiError } from "@/api/errors";
+import { useRole } from "@/auth/useRole";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fr } from "@/i18n/fr";
 import { cn } from "@/lib/utils";
 import { useMission } from "../api";
+import type { Mission } from "../types";
 import { MissionHeader } from "./MissionHeader";
 
-type Tab = { to: string; label: string; section: string; work: boolean };
+/** `equipe` : onglet de l'équipe d'audit ; `audite` : onglet de l'audité ; sans valeur : tous. */
+type Tab = { to: string; label: string; section: string; work: boolean; for?: "equipe" | "audite" };
+
+const STATUTS_COMMUNICATION: readonly Mission["statut"][] = [
+  "EN_COMMUNICATION",
+  "RAPPORT_DIFFUSE",
+  "EN_SUIVI",
+  "CLOTUREE",
+];
+
+/** Phase Communication ou postérieure : les onglets du rapport et du plan d'actions s'ouvrent. */
+function inCommunication(mission: Mission): boolean {
+  return mission.phase === "COMMUNICATION" || STATUTS_COMMUNICATION.includes(mission.statut);
+}
 
 /** Les onglets « travaux » exigent `voir_travaux` ; Réunions et Entretiens restent visibles. */
 function tabsFor(currentStep: number): Tab[] {
@@ -24,6 +39,27 @@ function tabsFor(currentStep: number): Tab[] {
     },
     // Visible aussi pour l'audité (constats soumis) ; le serveur filtre le périmètre.
     { to: "constats", label: fr.missions.tabConstats, section: "constats", work: false },
+    // Lot 7 : rapport provisoire et plan d'actions de l'audité ; rapport et plan de l'équipe.
+    {
+      to: "reponses-rapport",
+      label: fr.communication.tabDraftResponses,
+      section: "reponses-rapport",
+      work: false,
+      for: "audite",
+    },
+    {
+      to: "plan-actions",
+      label: fr.communication.tabPlanActions,
+      section: "plan-actions",
+      work: false,
+    },
+    {
+      to: "rapport",
+      label: fr.communication.tabReport,
+      section: "rapport",
+      work: true,
+      for: "equipe",
+    },
   ];
 }
 
@@ -32,6 +68,7 @@ export function MissionLayout() {
   const { id } = useParams();
   const { pathname } = useLocation();
   const mission = useMission(id);
+  const { is } = useRole();
 
   if (mission.isLoading) {
     return (
@@ -55,7 +92,13 @@ export function MissionLayout() {
 
   const data = mission.data;
   const seeWork = data.mes_droits.voir_travaux;
-  const tabs = tabsFor(data.etape_courante?.numero ?? 1).filter((t) => seeWork || !t.work);
+  const audite = is("AUDITE");
+  const communication = inCommunication(data);
+  const lot7 = ["reponses-rapport", "plan-actions", "rapport"];
+  const tabs = tabsFor(data.etape_courante?.numero ?? 1)
+    .filter((t) => seeWork || !t.work)
+    .filter((t) => !lot7.includes(t.section) || communication)
+    .filter((t) => t.for === undefined || (t.for === "audite") === audite);
   const section = pathname.split(`/missions/${data.id}/`)[1]?.split("/")[0];
 
   return (

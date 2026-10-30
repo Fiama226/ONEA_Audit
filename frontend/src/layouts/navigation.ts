@@ -3,6 +3,7 @@ import {
   Briefcase,
   CalendarRange,
   ClipboardCheck,
+  FileCheck,
   FileCog,
   FileText,
   LayoutDashboard,
@@ -21,6 +22,8 @@ const ROUTE_ROLES: Readonly<Record<string, readonly Role[]>> = {
   "/missions": ["RAI", "AUDITEUR", "AUDITE"],
   "/referentiel": ["ADMIN", "RAI", "AUDITEUR", "DG"],
   // ADMIN et DG n'ont pas accès aux documents de mission (l'ADMIN gère les gabarits en /administration).
+  // Rapports diffusés : le DG les consulte ; l'ADMIN n'y a pas accès.
+  "/rapports": ["RAI", "AUDITEUR", "AUDITE", "DG"],
   "/documents": ["RAI", "AUDITEUR", "AUDITE"],
   // Gabarits et numérotation : lecture ADMIN et RAI ; les écritures restent ADMIN (le serveur répond 403).
   "/administration/documents": ["ADMIN", "RAI"],
@@ -60,6 +63,7 @@ export const NAV_GROUPS: NavGroup[] = [
     title: fr.nav.groupFollowUp,
     items: [
       { to: "/recommandations", label: fr.nav.recommandations, icon: ClipboardCheck },
+      { to: "/rapports", label: fr.communication.navDistributed, icon: FileCheck },
       { to: "/documents", label: fr.nav.documents, icon: FileText },
     ],
   },
@@ -121,4 +125,8 @@ export const SEGMENT_LABELS: Record<string, string> = {
   "referentiel-audit": fr.missions.tabAuditFramework,
   fiches: fr.missions.tabFiches,
   constats: fr.missions.tabConstats,
+  rapports: fr.communication.navDistributed,
+  rapport: fr.communication.tabReport,
+  "plan-actions": fr.communication.tabPlanActions,
+  "reponses-rapport": fr.communication.tabDraftResponses,
 };

@@ -19,6 +19,9 @@ import { ErrorPage } from "@/pages/ErrorPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
 
+const rapportsList = () => import("@/features/communication/pages/RapportsDiffusesPage");
+const rapportDetail = () => import("@/features/communication/pages/RapportDiffusePage");
+
 /** Applique la garde de rôle déclarée dans layouts/navigation.ts (source unique). */
 function guarded(path: string, element: ReactNode): ReactNode {
   const roles = rolesFor(path);
@@ -79,6 +82,14 @@ export const appRoutes: RouteObject[] = [
           {
             path: "/recommandations",
             element: <PlaceholderPage title={fr.nav.recommandations} />,
+          },
+          {
+            path: "/rapports",
+            element: guardedOutlet("/rapports"),
+            children: [
+              { index: true, element: lazyRoute(rapportsList, "RapportsDiffusesPage") },
+              { path: ":id", element: lazyRoute(rapportDetail, "RapportDiffusePage") },
+            ],
           },
           { path: "/documents", children: documentRoutes, element: guardedOutlet("/documents") },
           {

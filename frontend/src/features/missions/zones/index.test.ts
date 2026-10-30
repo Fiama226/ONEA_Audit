@@ -23,6 +23,9 @@ describe("zone registry", () => {
 
   it("leaves other steps to the generic zone", () => {
     expect(ZONES[11] ?? GenericZone).toBe(GenericZone);
-    expect(ZONES[15] ?? GenericZone).toBe(GenericZone);
+  });
+
+  it("registers the lot 7 zones for steps XV to XVIII", () => {
+    for (const numero of [15, 16, 17, 18]) expect(ZONES[numero]).toBeDefined();
   });
 });
