@@ -123,3 +123,36 @@ def test_403_avant_400_sur_fiche(equipe_api: Equipe) -> None:
         f"/api/v1/test-sheets/{e.fiche1.pk}/", {"taille_testee": -4}, format="json"
     )
     assert r.status_code == 400
+
+
+def test_suppression_refusee_avec_piece_ou_historique(equipe_api: Equipe) -> None:
+    e = equipe_api
+    auditeur = client_de(e.users["auditeur"])
+    r = auditeur.post(
+        "/api/v1/evidence/",
+        {"fiche": str(e.fiche1.pk), "fichier": pdf(), "libelle": "Facture"},
+        format="multipart",
+    )
+    assert r.status_code == 201
+    r = auditeur.delete(f"/api/v1/test-sheets/{e.fiche1.pk}/")
+    assert r.status_code == 422
+    assert "sans pièce ni historique" in r.json()["detail"]
+    # Fiche soumise (historique) : refusée aussi.
+    r = client_de(e.users["autre"]).delete(f"/api/v1/test-sheets/{e.fiche2.pk}/")
+    assert r.status_code == 422
+
+
+def test_suppression_droit_avant_fenetre(equipe_api: Equipe) -> None:
+    from django.core.exceptions import PermissionDenied
+
+    from apps.accomplissement.services.fiches import supprimer_fiche
+    from apps.core.exceptions import RegleMetierError
+    from apps.missions.models import StatutEtape
+    from tests.missions.conftest import forcer_etapes
+
+    e = equipe_api
+    forcer_etapes(e.mission, {12: StatutEtape.VALIDEE})
+    with pytest.raises(PermissionDenied):
+        supprimer_fiche(e.fiche1, by=e.users["autre"])  # 403 avant le refus de fenêtre
+    with pytest.raises(RegleMetierError):
+        supprimer_fiche(e.fiche1, by=e.users["auditeur"])

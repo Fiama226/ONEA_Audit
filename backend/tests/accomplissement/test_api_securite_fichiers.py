@@ -33,7 +33,7 @@ def test_upload_multipart_et_telechargement_identique(
     assert r["Content-Type"] == "application/pdf"
     assert r["X-Content-Type-Options"] == "nosniff"
     assert "no-store" in r["Cache-Control"]
-    assert r["Content-Security-Policy"] == "sandbox"
+    assert r["Content-Security-Policy"] == "default-src 'none'; sandbox"
     assert r["Content-Length"] == str(len(PDF))
 
 
@@ -131,3 +131,45 @@ def test_aucun_service_statique_des_fichiers(settings) -> None:  # type: ignore[
     assert not getattr(settings, "MEDIA_ROOT", "")  # MEDIA_URL: valeur par défaut de Django
     motifs = [str(p.pattern) for p in get_resolver().url_patterns]
     assert not any("media" in m or "preuves" in m for m in motifs)
+
+
+def test_fiche_dans_l_url_controlee_avant_d_analyser_le_corps(equipe_api: Equipe) -> None:
+    e = equipe_api
+    url = f"/api/v1/evidence/?fiche={e.fiche1.pk}"
+    # Corps multipart illisible : un non-rédacteur reçoit 403 (jamais d'analyse), un inconnu 404.
+    c = client_de(e.users["autre"])
+    r = c.generic("POST", url, b"corps-illisible", content_type="multipart/form-data; boundary=x")
+    assert r.status_code == 403
+    r = client_de(e.users["non_affecte"]).generic(
+        "POST", url, b"corps-illisible", content_type="multipart/form-data; boundary=x"
+    )
+    assert r.status_code == 404
+    # Le rédacteur dépose avec la fiche seulement dans l'URL.
+    ok = client_de(e.users["auditeur"]).post(
+        url, {"fichier": pdf(), "libelle": "Facture"}, format="multipart"
+    )
+    assert ok.status_code == 201, ok.json()
+    # Fiche du corps différente de celle de l'URL : 400.
+    r = client_de(e.users["rai"]).post(
+        url,
+        {"fiche": str(e.fiche2.pk), "fichier": pdf("autre.pdf", PDF + b"z"), "libelle": "x"},
+        format="multipart",
+    )
+    assert r.status_code == 400
+
+
+def test_nginx_ne_sert_aucune_racine_de_documents() -> None:
+    dossier = Path(__file__).resolve().parents[3] / "docker" / "nginx"
+    confs = list(dossier.glob("*.conf"))
+    assert confs
+    autorises = ("/usr/share/nginx/html", "/var/www/static")
+    for conf in confs:
+        texte = conf.read_text(encoding="utf8")
+        for ligne in texte.splitlines():
+            directive = ligne.split("#")[0].strip()
+            if directive.startswith(("root ", "alias ")):
+                # Seuls le front compilé et les statiques Django sont servis.
+                assert any(ok in directive for ok in autorises), (conf.name, directive)
+        assert "fichiers" not in texte
+        assert "preuves" not in texte
+        assert "/var/lib/onea" not in texte
