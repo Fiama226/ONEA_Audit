@@ -8,9 +8,14 @@ import { Sidebar } from "./Sidebar";
 const HIDDEN: Record<Role, string[]> = {
   ADMIN: [fr.nav.missions, fr.nav.documents],
   RAI: [fr.nav.administration],
-  AUDITEUR: [fr.nav.administration],
-  AUDITE: [fr.nav.programmeAnnuel, fr.nav.referentiel, fr.nav.administration],
-  DG: [fr.nav.missions, fr.nav.documents, fr.nav.administration],
+  AUDITEUR: [fr.nav.administration, fr.nav.documentTemplates],
+  AUDITE: [
+    fr.nav.programmeAnnuel,
+    fr.nav.referentiel,
+    fr.nav.administration,
+    fr.nav.documentTemplates,
+  ],
+  DG: [fr.nav.missions, fr.nav.documents, fr.nav.administration, fr.nav.documentTemplates],
 };
 const ALL = [
   fr.nav.dashboard,
@@ -20,6 +25,7 @@ const ALL = [
   fr.nav.recommandations,
   fr.nav.documents,
   fr.nav.administration,
+  fr.nav.documentTemplates,
 ];
 
 function renderSidebar(role: Role, path = "/") {
@@ -42,9 +48,21 @@ describe("Sidebar", () => {
     expect(nav.queryByText(fr.nav.administration)).not.toBeInTheDocument();
   });
 
-  it("gives ADMIN the five entries", () => {
+  it("gives ADMIN the five entries plus the templates", () => {
     const nav = renderSidebar("ADMIN");
-    expect(nav.getAllByRole("link")).toHaveLength(5);
+    expect(nav.getAllByRole("link")).toHaveLength(6);
+  });
+
+  it("marks only the templates entry current under /administration/documents", () => {
+    const nav = renderSidebar("ADMIN", "/administration/documents/numerotation");
+    expect(nav.getByRole("link", { name: fr.nav.documentTemplates })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(nav.getByRole("link", { name: fr.nav.administration })).not.toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("lists Programme annuel before Missions", () => {
@@ -55,7 +73,7 @@ describe("Sidebar", () => {
   });
 
   it("removes the heading of a group whose entries are all hidden", () => {
-    const nav = renderSidebar("RAI");
+    const nav = renderSidebar("AUDITEUR");
     expect(nav.queryByText(fr.nav.groupSettings)).not.toBeInTheDocument();
     expect(nav.getByText(fr.nav.groupMissions)).toBeInTheDocument();
   });

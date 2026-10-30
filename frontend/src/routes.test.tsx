@@ -13,6 +13,7 @@ import { appRoutes } from "./routes";
 // La page d'accueil du référentiel (cartographies) interroge l'API.
 beforeEach(() => {
   server.use(
+    http.get(`${API_URL}/api/v1/document-types/`, () => HttpResponse.json([])),
     http.get(`${API_URL}/api/v1/risk-maps/`, () =>
       HttpResponse.json({ count: 0, next: null, previous: null, results: [] }),
     ),
@@ -31,6 +32,8 @@ const RESTRICTED: [string, string, readonly Role[]][] = [
   // ADMIN et DG : 403 sur les documents de mission.
   ["/documents", fr.nav.documents, ["RAI", "AUDITEUR", "AUDITE"]],
   ["/administration", fr.utilisateurs.title, ["ADMIN"]],
+  // Lecture des gabarits et de la numérotation : ADMIN et RAI (écritures ADMIN, serveur en 403).
+  ["/administration/documents", fr.documentsAdmin.templatesTitle, ["ADMIN", "RAI"]],
 ];
 
 describe("guarded routes", () => {

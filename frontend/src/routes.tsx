@@ -77,10 +77,13 @@ export const appRoutes: RouteObject[] = [
           {
             path: "/administration",
             element: guarded("/administration", <Outlet />),
-            children: [
-              ...administrationRoutes,
-              { path: "documents", children: documentsAdminRoutes },
-            ],
+            children: administrationRoutes,
+          },
+          // Gabarits et numérotation : lecture ADMIN et RAI (garde propre, hors de la garde ADMIN du parent).
+          {
+            path: "/administration/documents",
+            children: documentsAdminRoutes,
+            element: guardedOutlet("/administration/documents"),
           },
           { path: "*", element: <NotFound /> },
         ],

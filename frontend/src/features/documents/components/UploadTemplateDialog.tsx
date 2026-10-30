@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { isApiError } from "@/api/errors";
 import { ALERT_CLASS, FormField } from "@/components/form/FormField";
@@ -20,12 +20,22 @@ import { COMMENT_MAX_LENGTH, templateSchema, type TemplateFormValues } from "../
 
 const t = fr.documentsAdmin;
 
-type Props = { typeDocument: string; open: boolean; onOpenChange: (open: boolean) => void };
+type Props = {
+  typeDocument: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCloseAutoFocus?: (event: Event) => void;
+};
 
-export function UploadTemplateDialog({ typeDocument, open, onOpenChange }: Props) {
+export function UploadTemplateDialog({
+  typeDocument,
+  open,
+  onOpenChange,
+  onCloseAutoFocus,
+}: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onCloseAutoFocus={onCloseAutoFocus}>
         <UploadForm typeDocument={typeDocument} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
@@ -46,20 +56,28 @@ function UploadForm({ typeDocument, onClose }: { typeDocument: string; onClose: 
     defaultValues: { commentaire: "" },
   });
 
+  const controller = useRef<AbortController | null>(null);
+  // Quelle que soit la façon de fermer la boîte (Annuler, Échap, fond), l'envoi en cours est annulé.
+  useEffect(() => () => controller.current?.abort(), []);
+
   async function onSubmit(values: TemplateFormValues) {
-    if (upload.isPending) return;
+    if (controller.current) return;
     setProblems([]);
     setError(null);
     const file = values.fichier?.[0];
     if (!file) return;
+    const current = new AbortController();
+    controller.current = current;
     try {
       await upload.mutateAsync({
         type_document: typeDocument,
         fichier: file,
         commentaire: values.commentaire,
+        signal: current.signal,
       });
       onClose();
     } catch (e) {
+      if (current.signal.aborted) return;
       if (!isApiError(e)) return setError(fr.errors.generic);
       const list = e.errors.fichier ?? [];
       if (list.length > 0) {
@@ -68,6 +86,8 @@ function UploadForm({ typeDocument, onClose }: { typeDocument: string; onClose: 
       } else {
         setError(e.detail);
       }
+    } finally {
+      if (controller.current === current) controller.current = null;
     }
   }
 
@@ -114,7 +134,7 @@ function UploadForm({ typeDocument, onClose }: { typeDocument: string; onClose: 
       </FormField>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onClose}>
-          {fr.common.cancel}
+          {upload.isPending ? t.uploadCancel : fr.common.cancel}
         </Button>
         <Button type="submit" disabled={upload.isPending}>
           {upload.isPending ? t.uploadSubmitting : t.uploadSubmit}

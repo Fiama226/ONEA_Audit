@@ -161,11 +161,19 @@ function EditFormatDialog({
   const [error, setError] = useState<string | null>(null);
   const [serverErrors, setServerErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [previewState, setPreviewState] = useState<{
+    /** Saisie (modèle|portée|abréviation) à laquelle l'aperçu et ses erreurs se rapportent. */
+    key: string;
     numero: string | null;
     errors: Record<string, string[]>;
     failed: boolean;
     pending: boolean;
-  }>({ numero: format.apercu, errors: {}, failed: false, pending: false });
+  }>({
+    key: `${format.modele}|${format.portee}|${format.abreviation}`,
+    numero: format.apercu,
+    errors: {},
+    failed: false,
+    pending: false,
+  });
   const requestId = useRef(0);
   const {
     register,
@@ -190,20 +198,36 @@ function EditFormatDialog({
     if (!modele.trim() || !abreviation.trim() || modele.length > MODEL_MAX_LENGTH) return;
     if (abreviation.length > ABBREVIATION_MAX_LENGTH) return;
     const id = ++requestId.current;
+    const abort = new AbortController();
+    const key = `${modele.trim()}|${portee}|${abreviation.trim()}`;
     const timer = setTimeout(() => {
       setPreviewState((s) => ({ ...s, pending: true }));
-      runPreview({ modele: modele.trim(), portee, abreviation: abreviation.trim() }).then(
+      runPreview({
+        modele: modele.trim(),
+        portee,
+        abreviation: abreviation.trim(),
+        signal: abort.signal,
+      }).then(
         (r) => {
           if (id === requestId.current)
-            setPreviewState({ numero: r.numero, errors: r.errors, failed: false, pending: false });
+            setPreviewState({
+              key,
+              numero: r.numero,
+              errors: r.errors,
+              failed: false,
+              pending: false,
+            });
         },
         () => {
           if (id === requestId.current)
-            setPreviewState({ numero: null, errors: {}, failed: true, pending: false });
+            setPreviewState({ key, numero: null, errors: {}, failed: true, pending: false });
         },
       );
     }, DEBOUNCE_MS);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      abort.abort();
+    };
   }, [modele, portee, abreviation, runPreview]);
 
   async function onSubmit(v: NumberingFormValues) {
@@ -229,10 +253,13 @@ function EditFormatDialog({
     }
   }
 
+  // Les erreurs d'aperçu d'une saisie antérieure ne sont plus affichées.
+  const currentKey = `${(modele ?? "").trim()}|${portee}|${(abreviation ?? "").trim()}`;
+  const previewErrors = previewState.key === currentKey ? previewState.errors : {};
   const fieldError = (name: FieldName): string | undefined =>
     errors[name]?.message ??
     serverErrors[name] ??
-    (previewState.errors[name]?.length ? previewState.errors[name].join(" ") : undefined);
+    (previewErrors[name]?.length ? previewErrors[name].join(" ") : undefined);
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>

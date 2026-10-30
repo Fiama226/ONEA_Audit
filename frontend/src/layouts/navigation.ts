@@ -3,6 +3,7 @@ import {
   Briefcase,
   CalendarRange,
   ClipboardCheck,
+  FileCog,
   FileText,
   LayoutDashboard,
   SlidersHorizontal,
@@ -21,6 +22,8 @@ const ROUTE_ROLES: Readonly<Record<string, readonly Role[]>> = {
   "/referentiel": ["ADMIN", "RAI", "AUDITEUR", "DG"],
   // ADMIN et DG n'ont pas accès aux documents de mission (l'ADMIN gère les gabarits en /administration).
   "/documents": ["RAI", "AUDITEUR", "AUDITE"],
+  // Gabarits et numérotation : lecture ADMIN et RAI ; les écritures restent ADMIN (le serveur répond 403).
+  "/administration/documents": ["ADMIN", "RAI"],
   "/administration": ["ADMIN"],
 };
 
@@ -32,6 +35,8 @@ export type NavItem = {
   to: string;
   label: string;
   icon: LucideIcon;
+  /** Préfixe de chemin pour lequel l'entrée n'est pas marquée active (entrée voisine plus précise). */
+  exclude?: string;
 };
 
 export type NavGroup = { title?: string; items: NavItem[] };
@@ -64,6 +69,12 @@ export const NAV_GROUPS: NavGroup[] = [
         to: "/administration",
         label: fr.nav.administration,
         icon: SlidersHorizontal,
+        exclude: "/administration/documents",
+      },
+      {
+        to: "/administration/documents",
+        label: fr.nav.documentTemplates,
+        icon: FileCog,
       },
     ],
   },

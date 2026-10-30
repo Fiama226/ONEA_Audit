@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { isApiError } from "@/api/errors";
 import {
   AlertDialog,
@@ -21,26 +21,31 @@ type Props = {
   template: Gabarit;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCloseAutoFocus?: (event: Event) => void;
 };
 
-export function ActivateTemplateDialog({ template, open, onOpenChange }: Props) {
+export function ActivateTemplateDialog({ template, open, onOpenChange, onCloseAutoFocus }: Props) {
   const activate = useActivateTemplate();
   const [error, setError] = useState<string | null>(null);
+  const busy = useRef(false);
 
   async function confirm() {
-    if (activate.isPending) return;
+    if (busy.current) return;
+    busy.current = true;
     setError(null);
     try {
       await activate.mutateAsync(template.id);
       onOpenChange(false);
     } catch (e) {
       setError(isApiError(e) ? e.detail : fr.errors.generic);
+    } finally {
+      busy.current = false;
     }
   }
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus}>
         <AlertDialogHeader>
           <AlertDialogTitle>{t.activateTitle(template.version)}</AlertDialogTitle>
           <AlertDialogDescription>
