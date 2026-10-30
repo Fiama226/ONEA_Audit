@@ -92,16 +92,18 @@ def creer_version(
         },
     )
     derniere = document.versions.order_by("-numero_version").first()
-    version: DocumentVersion = DocumentVersion.objects.create(
-        document=document,
-        numero_version=derniere.numero_version + 1 if derniere else 1,
-        statut=statut,
-        gabarit=gabarit,
-        demandee_par=auteur,
-        empreinte_contexte="b" * 64,
-        fichier_docx="docs/t.docx" if docx else "",
-        fichier_pdf="docs/t.pdf" if pdf else "",
-        statut_pdf=StatutPdf.PRET if pdf else StatutPdf.EN_COURS,
-        **{"confirmation_id": rapport.confirmation_validation_id, **extra},
-    )
+    champs: dict[str, Any] = {
+        "document": document,
+        "numero_version": derniere.numero_version + 1 if derniere else 1,
+        "statut": statut,
+        "gabarit": gabarit,
+        "demandee_par": auteur,
+        "empreinte_contexte": "b" * 64,
+        "fichier_docx": "docs/t.docx" if docx else "",
+        "fichier_pdf": "docs/t.pdf" if pdf else "",
+        "statut_pdf": StatutPdf.PRET if pdf else StatutPdf.EN_COURS,
+        "confirmation_id": rapport.confirmation_validation_id,
+        **extra,
+    }
+    version: DocumentVersion = DocumentVersion.objects.create(**champs)
     return version
