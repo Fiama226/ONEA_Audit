@@ -38,3 +38,6 @@ frontend/e2e/screens/
 
 # dependency audit output (scripts/audit-dependances.sh)
 build/audit/
+
+# Pièces justificatives (lot 6) : jamais dans le dépôt
+/var/

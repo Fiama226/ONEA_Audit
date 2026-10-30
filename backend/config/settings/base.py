@@ -1,6 +1,7 @@
 import os
 import re
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 import environ
@@ -42,6 +43,8 @@ INSTALLED_APPS = [
     "apps.missions",
     "apps.programmation",
     "apps.analyse",
+    "apps.accomplissement",
+    "apps.constats",
     "apps.documents",
 ]
 
@@ -120,6 +123,17 @@ DOCUMENTS_ESPACE_MIN_LIBRE_MO: int = env.int("DOCUMENTS_ESPACE_MIN_LIBRE_MO", de
 DOCUMENTS_QUOTA_MO: int = env.int("DOCUMENTS_QUOTA_MO", default=0)  # 0 = no quota
 DOCUMENTS_PDFA: bool = env.bool("DOCUMENTS_PDFA", default=True)
 GOTENBERG_URL: str = env("GOTENBERG_URL", default="http://localhost:3000").rstrip("/")
+# --- Pièces justificatives (lot 6) : disque du serveur, jamais dans Git, jamais sous une URL.
+STOCKAGE_PREUVES: dict[str, Any] = {
+    "BACKEND": env(
+        "STOCKAGE_PREUVES_BACKEND", default="apps.accomplissement.stockage.StockageDisque"
+    ),
+    "OPTIONS": {
+        "RACINE": env("FICHIERS_RACINE", default=str(BASE_DIR.parent / "var" / "fichiers"))
+    },
+}
+PIECE_TAILLE_MAX_OCTETS: int = 50 * 1024 * 1024  # aligné sur `client_max_body_size 50m` de Nginx
+
 DOCUMENTS_CREER_DOSSIER = False  # dev.py enables it; production must not create it
 GOTENBERG_TIMEOUT = 90  # seconds (read timeout of the docx -> PDF conversion)
 
@@ -239,6 +253,17 @@ SPECTACULAR_SETTINGS = {
         "CouvertureOrdreEnum": "apps.analyse.models.CouvertureOrdre.choices",
         "VarianteOrientationEnum": "apps.analyse.models.VarianteOrientation.choices",
         "StatutReferentielEnum": "apps.analyse.models.StatutReferentiel.choices",
+        "NatureTestEnum": "apps.accomplissement.models.NatureTest.choices",
+        "MethodeSelectionEnum": "apps.accomplissement.models.MethodeSelection.choices",
+        "StatutTestEnum": "apps.accomplissement.models.StatutTest.choices",
+        "StatutFicheEnum": "apps.accomplissement.models.StatutFiche.choices",
+        "ConclusionTestEnum": "apps.accomplissement.models.ConclusionTest.choices",
+        "TypeEvenementFicheEnum": "apps.accomplissement.models.TypeEvenementFiche.choices",
+        "StatutConstatEnum": "apps.constats.models.StatutConstat.choices",
+        "CategorieCauseEnum": "apps.constats.models.CategorieCause.choices",
+        "PrioriteRecommandationEnum": "apps.constats.models.PrioriteRecommandation.choices",
+        "PositionAuditeEnum": "apps.constats.models.PositionAudite.choices",
+        "TypeEvenementConstatEnum": "apps.constats.models.TypeEvenementConstat.choices",
     },
 }
 

@@ -14,3 +14,5 @@ class CoreConfig(AppConfig):
         from apps.core.journalisation import connecter_signaux_celery
 
         connecter_signaux_celery()
+
+        from . import consultations  # noqa: F401  (enregistre le modèle Consultation)

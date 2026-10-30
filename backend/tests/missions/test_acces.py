@@ -113,3 +113,19 @@ def test_superviseur_non_confirme_ne_valide_pas(mission_lancee: Mission) -> None
     sup = make_user(Role.AUDITEUR)
     affecter(mission_lancee, sup, RoleMission.SUPERVISEUR, confirmee=False)
     assert not acces.peut_valider_jalon(sup, mission_lancee, 6)
+
+
+def test_peut_valider_travaux(mission_lancee: Mission, rai: User) -> None:
+    sup = make_user(Role.AUDITEUR)
+    affecter(mission_lancee, sup, RoleMission.SUPERVISEUR)
+    chef = make_user(Role.AUDITEUR)
+    affecter(mission_lancee, chef, RoleMission.CHEF_MISSION)
+    assert acces.peut_valider_travaux(rai, mission_lancee)
+    assert acces.peut_valider_travaux(sup, mission_lancee)
+    assert not acces.peut_valider_travaux(chef, mission_lancee)
+
+
+def test_superviseur_non_leve_ne_valide_pas_les_travaux(mission_lancee: Mission) -> None:
+    sup = make_user(Role.AUDITEUR)
+    affecter(mission_lancee, sup, RoleMission.SUPERVISEUR, confirmee=False)
+    assert not acces.peut_valider_travaux(sup, mission_lancee)
