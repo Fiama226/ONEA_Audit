@@ -73,6 +73,7 @@ def test_taux_par_defaut_conformes_a_d3() -> None:
         "export": "30/min",
         "anonyme": "30/min",
         "annuaire": "60/min",
+        "recherche": "60/min",
     }
 
 
