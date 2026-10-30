@@ -5,6 +5,7 @@ own output before handing it to Gotenberg (defence in depth).
 """
 
 import io
+import re
 import zipfile
 from typing import Final
 
@@ -20,6 +21,11 @@ MSG_EXTERNE: Final = (
 MSG_CHAMPS: Final = (
     "Le fichier contient des champs Word qui chargent des fichiers ou des données "
     "externes (INCLUDETEXT, INCLUDEPICTURE, LINK, DDE, DATABASE) : supprimez-les."
+)
+
+MSG_ALTCHUNK: Final = (
+    "Le fichier contient un élément non pris en charge : un document incorporé (altChunk) "
+    "ou un lien vers un fichier à inclure."
 )
 
 NS_REL_PAQUET: Final = "{http://schemas.openxmlformats.org/package/2006/relationships}"
@@ -42,7 +48,14 @@ _CHAMPS_DANGEREUX: Final = (
     "IMPORT",
     "DATABASE",
     "EMBED",
+    "RD",
+    "MACROBUTTON",
+    "AUTOTEXT",
 )
+_ELEMENT_ALTCHUNK: Final = f"{NS_W}altChunk"
+_JETONS_CHAMP: Final = re.compile(r"[“\"][^”\"]*[”\"]|\S+")
+_COMMUTATEURS_A_ARGUMENT: Final = ("\\l", "\\o", "\\t")
+_URL_EXTERNE: Final = re.compile(r"url\(\s*['\"]?\s*(?!#|data:)", re.IGNORECASE)
 _SCHEMAS_LIENS: Final = ("http://", "https://", "mailto:")
 
 
@@ -56,9 +69,32 @@ def parseur() -> etree.XMLParser:
     )
 
 
+def _argument_suit(jetons: list[str], i: int) -> bool:
+    return i + 1 < len(jetons) and not jetons[i + 1].startswith("\\")
+
+
+def _cible_hyperlink(jetons: list[str]) -> str | None:
+    """Target of a `HYPERLINK` field code (None for a bookmark-only link)."""
+    i = 0
+    while i < len(jetons):
+        jeton = jetons[i]
+        if jeton.startswith("\\"):
+            avance = jeton.lower() in _COMMUTATEURS_A_ARGUMENT and _argument_suit(jetons, i)
+            i += 2 if avance else 1
+            continue
+        return jeton.strip('“”"').strip()
+    return None
+
+
 def _instruction_dangereuse(instruction: str) -> bool:
-    mots = instruction.split(None, 1)
-    return bool(mots) and mots[0].upper() in _CHAMPS_DANGEREUX
+    jetons = _JETONS_CHAMP.findall(instruction)
+    if not jetons:
+        return False
+    nom = jetons[0].upper()
+    if nom == "HYPERLINK":
+        cible = _cible_hyperlink(jetons[1:])
+        return cible is not None and not cible.lower().startswith(_SCHEMAS_LIENS)
+    return nom in _CHAMPS_DANGEREUX
 
 
 def _champs_dangereux(racine: etree._Element) -> bool:
@@ -120,6 +156,8 @@ def _verifier_relations(racine: etree._Element) -> str | None:
         genre = (relation.get("Type") or "").lower()
         if any(mot in genre for mot in _MOTS_MACRO):
             return MSG_MACROS
+        if genre.endswith("/afchunk"):
+            return MSG_ALTCHUNK
         if relation.get("TargetMode") != "External":
             continue
         if genre.endswith("/hyperlink"):
@@ -136,6 +174,8 @@ def _verifier_references(racine: etree._Element, ids_hyperliens: set[str]) -> st
     for element in racine.iter():
         if not isinstance(element.tag, str):
             continue
+        if element.tag == _ELEMENT_ALTCHUNK:
+            return MSG_ALTCHUNK
         espace_element = etree.QName(element).namespace
         for cle, valeur in element.attrib.items():
             nom = etree.QName(cle)
@@ -164,11 +204,21 @@ def _verifier_svg(racine: etree._Element) -> str | None:
         return MSG_NON_DOCX
     if any(True for _ in racine.iter(etree.Entity)):
         return MSG_NON_DOCX
+    for voisin in (*racine.itersiblings(preceding=True), *racine.itersiblings()):
+        if isinstance(voisin, etree._ProcessingInstruction) and voisin.target != "xml":
+            return MSG_EXTERNE  # xml-stylesheet and friends load external resources
     for element in racine.iter():
         if not isinstance(element.tag, str):
             continue
+        texte = element.text or ""
+        if element.tag.endswith("}style") and "@import" in texte.lower():
+            return MSG_EXTERNE
+        if _URL_EXTERNE.search(texte):
+            return MSG_EXTERNE
         for cle, valeur in element.attrib.items():
             if etree.QName(cle).localname == "href" and not valeur.startswith(("#", "data:")):
+                return MSG_EXTERNE
+            if _URL_EXTERNE.search(valeur):
                 return MSG_EXTERNE
     return None
 

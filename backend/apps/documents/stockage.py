@@ -211,6 +211,17 @@ def lire(cle: str) -> bytes:
     return contenu
 
 
+def existe(cle: str) -> bool:
+    """True when a file is stored under `cle` (a refused or unreadable key counts as absent)."""
+    stockage = stockage_documents()
+    try:
+        if isinstance(stockage, FileSystemStorage):
+            return _chemin_sur(stockage, cle).is_file()
+        return bool(stockage.exists(cle))
+    except (OSError, SuspiciousFileOperation):
+        return False
+
+
 def etat_stockage() -> Literal["ok", "faible", "indisponible"]:
     """Health of the documents storage (never raises)."""
     stockage = stockage_documents()
