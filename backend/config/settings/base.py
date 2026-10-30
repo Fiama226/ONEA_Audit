@@ -225,6 +225,11 @@ SPECTACULAR_SETTINGS = {
         "StatutFicheEnum": "apps.accomplissement.models.StatutFiche.choices",
         "ConclusionTestEnum": "apps.accomplissement.models.ConclusionTest.choices",
         "TypeEvenementFicheEnum": "apps.accomplissement.models.TypeEvenementFiche.choices",
+        "StatutConstatEnum": "apps.constats.models.StatutConstat.choices",
+        "CategorieCauseEnum": "apps.constats.models.CategorieCause.choices",
+        "PrioriteRecommandationEnum": "apps.constats.models.PrioriteRecommandation.choices",
+        "PositionAuditeEnum": "apps.constats.models.PositionAudite.choices",
+        "TypeEvenementConstatEnum": "apps.constats.models.TypeEvenementConstat.choices",
     },
 }
 
