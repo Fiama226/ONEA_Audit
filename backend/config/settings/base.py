@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "apps.recommandations",
     "apps.communication",
     "apps.documents",
+    "apps.suivi",
     "apps.notifications",
     "apps.recherche",
 ]
