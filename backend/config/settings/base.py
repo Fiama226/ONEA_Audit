@@ -221,6 +221,7 @@ REST_FRAMEWORK = {
             "export": "30/min",
             "anonyme": "30/min",
             "annuaire": "60/min",
+            "recherche": "60/min",
         }.items()
     },
 }
@@ -304,6 +305,10 @@ SPECTACULAR_SETTINGS = {
         "AppreciationGlobaleEnum": "apps.communication.models.AppreciationGlobale.choices",
         "CategorieDestinataireEnum": "apps.communication.models.CategorieDestinataire.choices",
         "TypeEvenementRapportEnum": "apps.communication.models.TypeEvenementRapport.choices",
+        "TypeNotificationEnum": "apps.notifications.models.TypeNotification.choices",
+        "PalierRelanceEnum": "apps.suivi.models.PalierRelance.choices",
+        "StatutRelanceEnum": "apps.suivi.models.StatutRelance.choices",
+        "TypeResultatRechercheEnum": "apps.recherche.serializers.TYPES_RECHERCHE_CHOICES",
     },
 }
 

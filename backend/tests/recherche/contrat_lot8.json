@@ -1,0 +1,17 @@
+{
+  "reponse": {
+    "plus": "bool",
+    "resultats": [
+      {
+        "etape": "null",
+        "extrait": "str",
+        "mission_id": "str",
+        "mission_reference": "str",
+        "objet_id": "str",
+        "sous_titre": "str",
+        "titre": "str",
+        "type": "str"
+      }
+    ]
+  }
+}

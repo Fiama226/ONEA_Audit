@@ -1,0 +1,22 @@
+{
+  "page": {
+    "count": "int",
+    "next": "null",
+    "previous": "null",
+    "results": [
+      {
+        "created_at": "str",
+        "id": "str",
+        "lien": "str",
+        "lue": "bool",
+        "lue_le": "null",
+        "message": "str",
+        "titre": "str",
+        "type": "str"
+      }
+    ]
+  },
+  "compteur": {
+    "count": "int"
+  }
+}
