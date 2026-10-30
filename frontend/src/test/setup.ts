@@ -9,8 +9,9 @@ globalThis.ResizeObserver ??= class {
   unobserve() {}
   disconnect() {}
 };
-// Machines lentes (jsdom + axe) : 1 s par défaut est trop court pour les premiers rendus.
-configure({ asyncUtilTimeout: 4000 });
+// Machines lentes (jsdom + axe) : 1 s par défaut est trop court pour les premiers rendus, et le
+// premier affichage d'une route chargée à la demande (import dynamique) compile sa page.
+configure({ asyncUtilTimeout: 15000 });
 
 beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 afterEach(() => {

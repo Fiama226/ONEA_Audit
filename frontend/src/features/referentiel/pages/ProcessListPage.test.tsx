@@ -10,7 +10,7 @@ const s = fr.refStructure;
 
 beforeAll(() => {
   vi.setConfig({ testTimeout: 20000 });
-  configure({ asyncUtilTimeout: 4000 });
+  configure({ asyncUtilTimeout: 15000 });
 });
 
 function serve(results: object[]) {

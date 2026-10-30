@@ -9,7 +9,7 @@ import { beforeAll, vi } from "vitest";
 // Pages complètes sous jsdom : marge pour les machines chargées (suite complète en parallèle).
 beforeAll(() => {
   vi.setConfig({ testTimeout: 20000 });
-  configure({ asyncUtilTimeout: 4000 });
+  configure({ asyncUtilTimeout: 15000 });
 });
 
 export type MapFixture = {

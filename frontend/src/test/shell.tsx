@@ -102,6 +102,6 @@ export function mockMatchMedia(initial: Record<string, boolean> = {}) {
 export function allowSlowShell() {
   beforeAll(() => {
     vi.setConfig({ testTimeout: 20000 });
-    configure({ asyncUtilTimeout: 4000 });
+    configure({ asyncUtilTimeout: 15000 });
   });
 }

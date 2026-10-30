@@ -22,7 +22,7 @@ beforeEach(() => {
 // Chaque rendu monte le shell complet : marge pour jsdom.
 beforeAll(() => {
   vi.setConfig({ testTimeout: 20000 });
-  configure({ asyncUtilTimeout: 4000 });
+  configure({ asyncUtilTimeout: 15000 });
 });
 
 const RESTRICTED: [string, string, readonly Role[]][] = [
@@ -39,10 +39,11 @@ describe("guarded routes", () => {
   });
 
   describe.each(RESTRICTED)("%s", (path, title, roles) => {
-    it.each(ROLES)("as %s", (role) => {
+    it.each(ROLES)("as %s", async (role) => {
       renderRoutes(appRoutes, role, { path });
       if (roles.includes(role)) {
-        expect(screen.getByRole("heading", { level: 1, name: title })).toBeInTheDocument();
+        // Les pages sont chargées à la demande : attendre la fin du chargement.
+        expect(await screen.findByRole("heading", { level: 1, name: title })).toBeInTheDocument();
         expect(screen.queryByText(fr.errors.forbiddenTitle)).not.toBeInTheDocument();
       } else {
         expect(
@@ -90,10 +91,10 @@ describe("sidebar and routes agree", () => {
 });
 
 describe("referentiel routes", () => {
-  it("redirects /referentiel to the cartographies tab for a RAI", () => {
+  it("redirects /referentiel to the cartographies tab for a RAI", async () => {
     const { router } = renderRoutes(appRoutes, "RAI", { path: "/referentiel" });
     expect(router.state.location.pathname).toBe("/referentiel/cartographies");
-    expect(screen.getByRole("link", { name: "Cartographies" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "Cartographies" })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -106,11 +107,11 @@ describe("referentiel routes", () => {
 });
 
 describe("administration routes", () => {
-  it("redirects an ADMIN from /administration to the users list", () => {
+  it("redirects an ADMIN from /administration to the users list", async () => {
     const { router } = renderRoutes(appRoutes, "ADMIN", { path: "/administration" });
     expect(router.state.location.pathname).toBe("/administration/utilisateurs");
     expect(
-      screen.getByRole("heading", { level: 1, name: fr.utilisateurs.title }),
+      await screen.findByRole("heading", { level: 1, name: fr.utilisateurs.title }),
     ).toBeInTheDocument();
   });
 
@@ -135,9 +136,9 @@ describe("referentiel risk map routes", () => {
     );
   });
 
-  it("renders the risk form page and asks for a map when none is given", () => {
+  it("renders the risk form page and asks for a map when none is given", async () => {
     renderRoutes(appRoutes, "RAI", { path: "/referentiel/risques/nouveau" });
-    expect(screen.getByText(fr.refCartographie.riskMapMissing)).toBeInTheDocument();
+    expect(await screen.findByText(fr.refCartographie.riskMapMissing)).toBeInTheDocument();
   });
 });
 
@@ -150,10 +151,10 @@ describe("programme annuel routes", () => {
     expect(screen.getByRole("status")).toHaveTextContent(fr.errors.forbiddenText);
   });
 
-  it("lets a DG reach the list page", () => {
+  it("lets a DG reach the list page", async () => {
     renderRoutes(appRoutes, "DG", { path: "/programme-annuel" });
     expect(
-      screen.getByRole("heading", { level: 1, name: fr.programmation.title }),
+      await screen.findByRole("heading", { level: 1, name: fr.programmation.title }),
     ).toBeInTheDocument();
   });
 

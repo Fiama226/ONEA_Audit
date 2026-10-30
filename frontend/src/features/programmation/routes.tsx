@@ -1,12 +1,17 @@
 import type { RouteObject } from "react-router-dom";
-import { AuditPlanDetailPage } from "./pages/AuditPlanDetailPage";
-import { AuditPlanLineFormPage } from "./pages/AuditPlanLineFormPage";
-import { AuditPlanListPage } from "./pages/AuditPlanListPage";
+import { lazyRoute } from "@/components/lazyRoute";
+
+const list = () => import("./pages/AuditPlanListPage");
+const detail = () => import("./pages/AuditPlanDetailPage");
+const lineForm = () => import("./pages/AuditPlanLineFormPage");
 
 /** Routes enfants de `/programme-annuel` (la garde de rôle est posée dans routes.tsx). */
 export const programmationRoutes: RouteObject[] = [
-  { index: true, element: <AuditPlanListPage /> },
-  { path: ":id", element: <AuditPlanDetailPage /> },
-  { path: ":id/nouvelle-ligne", element: <AuditPlanLineFormPage creating /> },
-  { path: "lignes/:lineId", element: <AuditPlanLineFormPage /> },
+  { index: true, element: lazyRoute(list, "AuditPlanListPage") },
+  { path: ":id", element: lazyRoute(detail, "AuditPlanDetailPage") },
+  {
+    path: ":id/nouvelle-ligne",
+    element: lazyRoute(lineForm, "AuditPlanLineFormPage", { creating: true }),
+  },
+  { path: "lignes/:lineId", element: lazyRoute(lineForm, "AuditPlanLineFormPage") },
 ];

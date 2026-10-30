@@ -1,16 +1,20 @@
 import { Navigate, useParams, type RouteObject } from "react-router-dom";
-import { AuditFrameworkPage } from "@/features/analyse/pages/AuditFrameworkPage";
+import { lazyRoute } from "@/components/lazyRoute";
 import { useRole } from "@/auth/useRole";
 import { fr } from "@/i18n/fr";
 import { useMission } from "./api";
-import { MissionLayout } from "./components/MissionLayout";
-import { InterviewsPage } from "./pages/InterviewsPage";
-import { MeetingsPage } from "./pages/MeetingsPage";
-import { MissionFormPage } from "./pages/MissionFormPage";
-import { MissionListPage } from "./pages/MissionListPage";
-import { StepPage } from "./pages/StepPage";
-import { TeamPage } from "./pages/TeamPage";
-import { TrackingPage } from "./pages/TrackingPage";
+
+const load = {
+  layout: () => import("./components/MissionLayout"),
+  list: () => import("./pages/MissionListPage"),
+  form: () => import("./pages/MissionFormPage"),
+  step: () => import("./pages/StepPage"),
+  team: () => import("./pages/TeamPage"),
+  meetings: () => import("./pages/MeetingsPage"),
+  interviews: () => import("./pages/InterviewsPage"),
+  tracking: () => import("./pages/TrackingPage"),
+  framework: () => import("@/features/analyse/pages/AuditFrameworkPage"),
+};
 
 /** Page d'arrivée d'une mission : audités et lecteurs sans accès aux travaux vont aux réunions. */
 function MissionIndexRedirect() {
@@ -32,20 +36,20 @@ function MissionIndexRedirect() {
 
 /** Routes enfants de `/missions` (la garde de rôle est posée dans routes.tsx). */
 export const missionRoutes: RouteObject[] = [
-  { index: true, element: <MissionListPage /> },
-  { path: "nouvelle", element: <MissionFormPage /> },
+  { index: true, element: lazyRoute(load.list, "MissionListPage") },
+  { path: "nouvelle", element: lazyRoute(load.form, "MissionFormPage") },
   {
     path: ":id",
-    element: <MissionLayout />,
+    element: lazyRoute(load.layout, "MissionLayout"),
     children: [
       { index: true, element: <MissionIndexRedirect /> },
-      { path: "modifier", element: <MissionFormPage /> },
-      { path: "etapes/:numero", element: <StepPage /> },
-      { path: "equipe", element: <TeamPage /> },
-      { path: "reunions", element: <MeetingsPage /> },
-      { path: "entretiens", element: <InterviewsPage /> },
-      { path: "suivi", element: <TrackingPage /> },
-      { path: "referentiel-audit", element: <AuditFrameworkPage /> },
+      { path: "modifier", element: lazyRoute(load.form, "MissionFormPage") },
+      { path: "etapes/:numero", element: lazyRoute(load.step, "StepPage") },
+      { path: "equipe", element: lazyRoute(load.team, "TeamPage") },
+      { path: "reunions", element: lazyRoute(load.meetings, "MeetingsPage") },
+      { path: "entretiens", element: lazyRoute(load.interviews, "InterviewsPage") },
+      { path: "suivi", element: lazyRoute(load.tracking, "TrackingPage") },
+      { path: "referentiel-audit", element: lazyRoute(load.framework, "AuditFrameworkPage") },
     ],
   },
 ];
