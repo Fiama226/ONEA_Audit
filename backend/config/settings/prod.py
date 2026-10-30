@@ -58,6 +58,9 @@ STORAGES = {
     "documents": configuration_stockage({**os.environ, "DOCUMENTS_ROOT": DOCUMENTS_ROOT}),  # noqa: F405
 }
 
+if not RECHERCHE["CLE"]:  # noqa: F405
+    raise ImproperlyConfigured("MEILI_MASTER_KEY must be set in production")
+
 REST_FRAMEWORK = {
     **REST_FRAMEWORK,
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
