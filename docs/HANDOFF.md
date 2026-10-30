@@ -24,7 +24,7 @@ Plans : `2026-10-28-lot6-accomplissement.md` (14 tâches), `2026-10-29-lot7-comm
 ## 2bis. Mise à jour 2026-10-30 (session Kilo)
 - Fait dans `develop` (7a09a1b) : lot 9 T9/T12 corrigés (ip_range web, access_log par server, 50r/s, API admin Keycloak, portées import/annuaire, THROTTLE_RATE_* dans le compose) ; lot 6 T8 terminé (API constats, 90 tests ciblés verts) ; `feat/lot6-accomplissement` fusionnée ; `schema.d.ts` régénéré, `check-api-fresh` OK ; peuplements démo enregistrés (core, accomplissement, constats).
 - Non fait : `test_api_contrat_lot6` (JSON exact figé, consommé par T13) ; bancs réseau lot 9 non lancés (revue statique seulement) ; suites complètes non relancées ; `main` non avancée.
-- Prochaine étape : lot 6 T10 (fondations frontend), puis T11–T14, lots 7, 8, reste du lot 9.
+- Lot 6 T10 fait (d6030df) : upload XHR/download authentifiés, hooks accomplissement et constats, badges, EvidenceUploader/List, zones VIII–XIV en squelettes, routes `fiches/:id`, `constats`, onglet Constats ; typecheck, eslint, prettier et tests ciblés verts.`n- Prochaine étape : lot 6 T11 (zones VIII, IX, X), T12/T13 (fiches, constats), T14, puis lots 7, 8, reste du lot 9.
 - Les sous-agents Kilo (Sonnet 5.5) ont échoué : crédits Kilo insuffisants (solde négatif).
 
 ## 3. Reste à faire (ordre conseillé)
