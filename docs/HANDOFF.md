@@ -27,6 +27,10 @@ Plans : `2026-10-28-lot6-accomplissement.md` (14 tâches), `2026-10-29-lot7-comm
 - Lot 6 T10 fait (d6030df) : upload XHR/download authentifiés, hooks accomplissement et constats, badges, EvidenceUploader/List, zones VIII–XIV en squelettes, routes `fiches/:id`, `constats`, onglet Constats ; typecheck, eslint, prettier et tests ciblés verts.`n- Lot 6 T11, T12, T13 faits en parallèle (sous-agents) et fusionnés dans develop ; volume `onea-fichiers` ajouté (T14 partiel) ; `test_api_contrat_lot6` créé ; 251 vitest ciblés verts. Revue visuelle ui-designer non faite.`n- Reste lot 6 T14 : e2e Playwright `accomplissement.spec.ts` (banc Docker+Keycloak), `test_contrat_stockage` lot 4, README back, versions 0.6.0. Puis lots 7, 8, reste du lot 9, suites complètes, avancer `main`.
 - Les sous-agents Kilo (Sonnet 5.5) ont échoué : crédits Kilo insuffisants (solde négatif).
 
+## 2ter. Etat 2026-10-30 (fin de session)
+- Dans develop : lots 6 (T1-T13), 7 (T1-T16), 8 (T1-T16), lot 9 (T7, T10, T11, T15, T16, T20, + correctifs T9/T12). Reste : lot 6 T14, lot 7 T17, lot 8 T17 (e2e + docs, pile de recette requise), lot 9 T17-T19, T21-T36 selon avancement.
+- Manques connus : la file de décisions du RAI (DecisionQueue) ne peut pas filtrer reports en attente / relances en échec / sans adresse (aucun filtre back ni écran dédié) : les liens mènent au registre non filtré. Revues visuelles ui-designer et revues sécurité du plan non faites. Suites complètes back et front non relancées ; main non avancée.
+
 ## 3. Reste à faire (ordre conseillé)
 1. **Lot 9 T9 + T12 : appliquer les corrections de revue** (`.superpowers/sdd/2026-10-29-lot9-durcissement/task-9-review.md`, `task-12-review.md`) :
    - C1 `docker/compose.prod.yml` : ajouter `ip_range` au réseau `web` (nginx ne démarrerait pas).

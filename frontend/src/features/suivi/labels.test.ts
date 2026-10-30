@@ -60,10 +60,4 @@ describe("libellés du suivi", () => {
     expect(TRANSITION_FIELD.reject).toBe("motif");
     expect(TRANSITION_FIELD.comment).toBe("texte");
   });
-
-  it("réserve une section vide par tâche parallèle", () => {
-    expect(fr.rechercheNotifications).toEqual({});
-    expect(fr.tableauxDirection).toEqual({});
-    expect(fr.tableauxEquipe).toEqual({});
-  });
 });

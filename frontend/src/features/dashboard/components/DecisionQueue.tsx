@@ -17,18 +17,18 @@ const ROWS: { key: keyof Queue; label: string; to: string }[] = [
   {
     key: "reports_en_attente",
     label: t.queueExtensions,
-    to: "/recommandations?vue=actions&report=EN_ATTENTE",
+    to: "/recommandations?vue=actions",
   },
-  { key: "missions_a_cloturer", label: t.queueMissionsToClose, to: "/missions?statut=EN_SUIVI" },
+  { key: "missions_a_cloturer", label: t.queueMissionsToClose, to: "/missions" },
   {
     key: "relances_en_echec",
     label: t.queueRemindersFailed,
-    to: "/recommandations?vue=actions&relance=ECHEC",
+    to: "/recommandations?vue=actions",
   },
   {
     key: "relances_sans_adresse",
     label: t.queueRemindersNoAddress,
-    to: "/recommandations?vue=actions&relance=SANS_ADRESSE",
+    to: "/recommandations?vue=actions",
   },
 ];
 
