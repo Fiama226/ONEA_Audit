@@ -6,6 +6,8 @@ import { safeReturnPath } from "./safePath";
 import { toRole, type AuthStatus, type Me } from "./types";
 import { AuthContext, type AuthContextValue } from "./useAuth";
 
+const END_SESSION_TIMEOUT_MS = 2000;
+
 type Props = { children: ReactNode; userManager?: OidcClient };
 
 function returnToOf(user: OidcUser): string {
@@ -112,6 +114,17 @@ export function AuthProvider({ children, userManager }: Props) {
   );
 
   const logout = useCallback(async () => {
+    // Fin de session côté serveur (purge du cache userinfo), au plus 2 s ; un échec n'empêche
+    // jamais la déconnexion Keycloak.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), END_SESSION_TIMEOUT_MS);
+    try {
+      await apiFetch<void>("/api/v1/session/fin/", { method: "POST", signal: controller.signal });
+    } catch {
+      // ignoré : voir ci-dessus
+    } finally {
+      clearTimeout(timer);
+    }
     tokenRef.current = null;
     setMe(undefined);
     setStatus("anonymous");

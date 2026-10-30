@@ -1,8 +1,15 @@
+import base64
+import binascii
+import hashlib
+import json
 import logging
+import time
 import uuid
 from collections.abc import Mapping
 from typing import Any
 
+from django.conf import settings
+from django.core.cache import cache
 from django.core.exceptions import SuspiciousOperation
 from django.db import IntegrityError, transaction
 from django.db.models import QuerySet
@@ -33,6 +40,39 @@ def _parse_uuid(value: object) -> uuid.UUID | None:
         return None
 
 
+def userinfo_cache_key(access_token: str) -> str:
+    """Cle de cache D5 : empreinte SHA-256 du jeton, jamais le jeton en clair."""
+    return "oidc:userinfo:" + hashlib.sha256(access_token.encode()).hexdigest()
+
+
+def _token_expiry(token: str) -> float | None:
+    """`exp` du jeton (sans verification de signature : Keycloak l'a validee via userinfo)."""
+    parts = token.split(".")
+    if len(parts) != 3:  # noqa: PLR2004
+        return None
+    try:
+        payload = json.loads(base64.urlsafe_b64decode(parts[1] + "=" * (-len(parts[1]) % 4)))
+    except (binascii.Error, ValueError):
+        return None
+    exp = payload.get("exp") if isinstance(payload, dict) else None
+    return float(exp) if isinstance(exp, int | float) and not isinstance(exp, bool) else None
+
+
+def userinfo_cache_ttl(access_token: str) -> int:
+    """min(duree configuree, exp - maintenant) ; 0 = ne pas mettre en cache."""
+    exp = _token_expiry(access_token)
+    if exp is None:
+        return 0
+    return max(0, min(int(settings.OIDC_USERINFO_CACHE_SECONDES), int(exp - time.time())))
+
+
+def purge_userinfo(access_token: str) -> None:
+    try:
+        cache.delete(userinfo_cache_key(access_token))
+    except Exception:  # noqa: BLE001
+        logger.warning("Purge du cache userinfo impossible")
+
+
 def _role_names(claims: Mapping[str, Any]) -> set[str]:
     raw = claims.get("roles")
     items: list[object] = [raw] if isinstance(raw, str) else raw if isinstance(raw, list) else []
@@ -45,6 +85,27 @@ class OneaOIDCBackend(OIDCAuthenticationBackend):  # type: ignore[misc]
     The role is derived ONLY from the claims returned by the verified userinfo
     endpoint, never from anything supplied by the request.
     """
+
+    def get_userinfo(self, access_token: str, id_token: Any, payload: Any) -> Any:
+        """Userinfo avec cache D5 : seules les reponses reussies sont conservees ; une
+        erreur (401, 5xx, reseau) se propage sans rien mettre en cache. Un cache en panne
+        n'empeche jamais l'authentification."""
+        key = userinfo_cache_key(access_token)
+        try:
+            hit = cache.get(key)
+        except Exception:  # noqa: BLE001
+            logger.warning("Cache userinfo indisponible (lecture)")
+            hit = None
+        if isinstance(hit, dict):
+            return hit
+        claims = super().get_userinfo(access_token, id_token, payload)
+        ttl = userinfo_cache_ttl(access_token)
+        if ttl > 0 and isinstance(claims, dict):
+            try:
+                cache.set(key, claims, ttl)
+            except Exception:  # noqa: BLE001
+                logger.warning("Cache userinfo indisponible (ecriture)")
+        return claims
 
     def verify_claims(self, claims: Mapping[str, Any]) -> bool:
         # A stable UUID subject is mandatory (it is the account key); email is optional.

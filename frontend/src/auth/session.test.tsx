@@ -1,8 +1,11 @@
 import { act, cleanup, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
+import { describe, expect, it, vi } from "vitest";
 import { fr } from "@/i18n/fr";
 import { capturedHandler, fakeUser, mockOidc, renderApp, serveMe } from "@/test/auth";
 import { safeReturnPath } from "./safePath";
+import { API_URL, server } from "@/test/msw";
 import { allowSlowShell } from "@/test/shell";
 
 allowSlowShell();
@@ -34,6 +37,57 @@ describe("expiration de session", () => {
     cleanup();
     expect(oidc.events.removeAccessTokenExpired).toHaveBeenCalled();
     expect(oidc.events.removeSilentRenewError).toHaveBeenCalled();
+  });
+});
+
+describe("fin de session", () => {
+  async function seDeconnecter(oidc: ReturnType<typeof mockOidc>) {
+    renderApp("/", oidc);
+    await screen.findByRole("heading", { name: fr.dashboard.raiTitle });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: new RegExp(fr.shell.userMenu) }));
+    await user.click(await screen.findByRole("menuitem", { name: fr.auth.logout }));
+  }
+
+  it("appelle l'API de fin de session avec le jeton puis signoutRedirect", async () => {
+    serveMe();
+    const ordre: string[] = [];
+    let autorisation: string | null = null;
+    server.use(
+      http.post(`${API_URL}/api/v1/session/fin/`, ({ request }) => {
+        autorisation = request.headers.get("Authorization");
+        ordre.push("api");
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const oidc = mockOidc(fakeUser());
+    (
+      oidc.signoutRedirect as unknown as { mockImplementation: (f: () => Promise<void>) => void }
+    ).mockImplementation(async () => {
+      ordre.push("signout");
+    });
+    await seDeconnecter(oidc);
+    await vi.waitFor(() => expect(oidc.signoutRedirect).toHaveBeenCalled());
+    expect(ordre).toEqual(["api", "signout"]);
+    expect(autorisation).toBe("Bearer tok-123");
+  });
+
+  it("déconnecte quand même si l'API échoue", async () => {
+    serveMe();
+    server.use(
+      http.post(`${API_URL}/api/v1/session/fin/`, () => HttpResponse.json({}, { status: 500 })),
+    );
+    const oidc = mockOidc(fakeUser());
+    await seDeconnecter(oidc);
+    await vi.waitFor(() => expect(oidc.signoutRedirect).toHaveBeenCalled());
+  });
+
+  it("déconnecte quand même si l'API est injoignable", async () => {
+    serveMe();
+    server.use(http.post(`${API_URL}/api/v1/session/fin/`, () => HttpResponse.error()));
+    const oidc = mockOidc(fakeUser());
+    await seDeconnecter(oidc);
+    await vi.waitFor(() => expect(oidc.signoutRedirect).toHaveBeenCalled());
   });
 });
 

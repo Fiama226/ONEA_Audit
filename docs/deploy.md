@@ -326,6 +326,12 @@ est indisponible, la limitation est suspendue et un avertissement est journalis�
   `Cache-Control` propre reçoit `no-store, private`.
 - Limitation de débit : 20 requêtes/s par adresse sur `/api/` (rafale 40), 5/s sur les
   endpoints d'authentification Keycloak (réponse 429).
+- Cache de `userinfo` : la réponse de Keycloak est conservée par jeton (clé = SHA-256 du
+  jeton, jamais le jeton) pendant `min(OIDC_USERINFO_CACHE_SECONDES = 60 s, expiration du
+  jeton)` ; les réponses 401 et 5xx ne sont pas conservées. Un changement de rôle dans
+  Keycloak est donc pris en compte en **60 s au plus** ; la désactivation d'un compte local
+  est immédiate (`is_active`, 403). `POST /api/v1/session/fin/` (appelé par la SPA avant la
+  déconnexion Keycloak) purge l'entrée du jeton présenté.
 - Le code des images est en lecture seule pour l'utilisateur applicatif (non root) ;
   seul `/app/staticfiles` est inscriptible. Les conteneurs tournent avec
   `no-new-privileges` et sans capacités Linux superflues.

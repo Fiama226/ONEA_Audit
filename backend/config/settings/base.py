@@ -357,6 +357,8 @@ KEYCLOAK_ADMIN_API_CLIENT_ID: str = env("KEYCLOAK_ADMIN_API_CLIENT_ID", default=
 KEYCLOAK_ADMIN_API_CLIENT_SECRET: str = env("KEYCLOAK_ADMIN_API_CLIENT_SECRET", default="")
 # The OIDC backend is wired for the DRF bearer path only, NOT in AUTHENTICATION_BACKENDS,
 # so that django authenticate() (admin/session) can never trigger a code-flow exchange.
+# --- Bloc T11 : duree maximale du cache de userinfo (D5), bornee par l'expiration du jeton ---
+OIDC_USERINFO_CACHE_SECONDES: int = env.int("OIDC_USERINFO_CACHE_SECONDES", default=60)
 OIDC_DRF_AUTH_BACKEND = "apps.users.oidc.OneaOIDCBackend"
 AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
 

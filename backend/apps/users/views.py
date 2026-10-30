@@ -15,6 +15,7 @@ from apps.core.schema import ERROR_400, ERROR_503, ERROR_RESPONSES
 
 from .filters import UtilisateurFilter
 from .models import Role, User
+from .oidc import purge_userinfo
 from .permissions import HasRole
 from .serializers import MeSerializer, UtilisateurResumeSerializer
 
@@ -26,6 +27,24 @@ class MeView(APIView):
     def get(self, request: Request) -> Response:
         user = cast(User, request.user)
         return Response(MeSerializer(user).data)
+
+
+class FinSessionView(APIView):
+    """Fin de session (D5) : purge l'entree de cache userinfo du jeton presente, avant la
+    deconnexion Keycloak. Sans jeton valide : 401."""
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Authentification"],
+        summary="Fin de session : purge le cache userinfo du jeton",
+        request=None,
+        responses={204: None, **ERROR_RESPONSES, **ERROR_503},
+    )
+    def post(self, request: Request) -> Response:
+        if isinstance(request.auth, str):
+            purge_userinfo(request.auth)
+        return Response(status=204)
 
 
 @extend_schema_view(

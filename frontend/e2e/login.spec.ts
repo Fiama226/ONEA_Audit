@@ -61,6 +61,16 @@ test("AUDITE signs in and sees neither Référentiel nor Administration", async 
 
 test("a signed-in user can log out and is asked to sign in again", async ({ page }) => {
   await logIn(page, "rai");
+  // Jeton d'accès courant, pour prouver plus bas qu'il ne donne plus accès.
+  const ancienJeton = await page.evaluate(() => {
+    for (const cle of Object.keys(sessionStorage)) {
+      if (!cle.startsWith("oidc.user:")) continue;
+      const brut = sessionStorage.getItem(cle);
+      if (brut) return (JSON.parse(brut) as { access_token: string }).access_token;
+    }
+    return null;
+  });
+  expect(ancienJeton).toBeTruthy();
   await page.getByRole("button", { name: /Menu utilisateur/ }).click();
   await page.getByRole("menuitem", { name: "Se déconnecter" }).click();
   // Keycloak may ask for confirmation when no id_token_hint is sent.
@@ -72,5 +82,24 @@ test("a signed-in user can log out and is asked to sign in again", async ({ page
     await confirm.click();
     await page.waitForURL((url) => url.origin === BASE);
   }
+  // (1) page de connexion affichée
   await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
+  // (2) aucun utilisateur OIDC dans sessionStorage
+  const restes = await page.evaluate(() =>
+    Object.keys(sessionStorage).filter((cle) => cle.startsWith("oidc.user:")),
+  );
+  expect(restes).toEqual([]);
+  // (3) une page protégée renvoie vers la connexion
+  await page.goto("/missions");
+  await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
+  // (4) l'ancien jeton d'accès n'ouvre plus l'API
+  const apiUrl = process.env.VITE_API_URL ?? "http://localhost:8000";
+  const reponse = await page.request.get(`${apiUrl}/api/v1/me/`, {
+    headers: { Authorization: `Bearer ${ancienJeton}` },
+  });
+  expect(reponse.status()).toBe(401);
+  // (5) le bouton Précédent n'affiche aucun contenu protégé
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "Pilotage de l'audit interne" })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Menu principal" })).toHaveCount(0);
 });
