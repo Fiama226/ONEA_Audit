@@ -187,7 +187,12 @@ export function useSaveTestSheet() {
             method: "PATCH",
             json: vars.data,
           }),
-    onSuccess: (_result, { missionId }) => invalidateAccomplissement(client, missionId),
+    onSuccess: (_result, vars) =>
+      invalidateAccomplissement(
+        client,
+        vars.missionId,
+        ...(vars.id === undefined ? [] : [accomplissementKeys.sheet(vars.id)]),
+      ),
   });
 }
 
@@ -209,7 +214,8 @@ export function useSheetAction() {
         method: "POST",
         json: motif === undefined ? {} : { motif },
       }),
-    onSuccess: (_result, { missionId }) => invalidateAccomplissement(client, missionId),
+    onSuccess: (_result, { id, missionId }) =>
+      invalidateAccomplissement(client, missionId, accomplissementKeys.sheet(id)),
   });
 }
 
@@ -250,7 +256,12 @@ export function useUploadEvidence() {
       );
     },
     onSuccess: (_result, { ficheId, missionId }) =>
-      invalidateAccomplissement(client, missionId, accomplissementKeys.evidence(ficheId)),
+      invalidateAccomplissement(
+        client,
+        missionId,
+        accomplissementKeys.evidence(ficheId),
+        accomplissementKeys.sheet(ficheId),
+      ),
   });
 }
 
@@ -267,7 +278,12 @@ export function useUpdateEvidence() {
       data: PieceUpdate;
     }) => apiFetch<Piece>(`${BASE}/evidence/${id}/`, { method: "PATCH", json: data }),
     onSuccess: (_result, { ficheId, missionId }) =>
-      invalidateAccomplissement(client, missionId, accomplissementKeys.evidence(ficheId)),
+      invalidateAccomplissement(
+        client,
+        missionId,
+        accomplissementKeys.evidence(ficheId),
+        accomplissementKeys.sheet(ficheId),
+      ),
   });
 }
 
@@ -277,7 +293,12 @@ export function useRemoveEvidence() {
     mutationFn: ({ id }: { id: string; ficheId: string; missionId: string }) =>
       apiFetch<undefined>(`${BASE}/evidence/${id}/`, { method: "DELETE" }),
     onSuccess: async (_result, { ficheId, missionId }) => {
-      await invalidateAccomplissement(client, missionId, accomplissementKeys.evidence(ficheId));
+      await invalidateAccomplissement(
+        client,
+        missionId,
+        accomplissementKeys.evidence(ficheId),
+        accomplissementKeys.sheet(ficheId),
+      );
     },
   });
 }
