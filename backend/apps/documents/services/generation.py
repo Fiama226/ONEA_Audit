@@ -395,8 +395,11 @@ def ouvrir_version(
     format: str,
     by: User,
     adresse_ip: str | None,  # noqa: A002
+    journaliser: bool = True,
 ) -> tuple[bytes, str]:
-    """Return (content, file name) of a version after an integrity check; trace the access."""
+    """Return (content, file name) of a version after an integrity check; trace the access.
+
+    A `HEAD` request (`journaliser=False`) checks the file but is not a consultation."""
     if format not in FormatFichier.values:
         raise RegleMetierError("Format inconnu.")
     if version.statut != StatutGeneration.PRETE:
@@ -413,13 +416,14 @@ def ouvrir_version(
         logger.critical("Intégrité compromise : version %s, fichier %s absent.", version.pk, cle)
         raise IntegriteError from exc
     verifier_empreinte(contenu, attendue, f"version {version.pk}")
-    ConsultationDocument.objects.create(
-        version=version,
-        utilisateur=by,
-        le=timezone.now(),
-        format=format,
-        adresse_ip=adresse_ip,
-        created_by=by,
-    )
+    if journaliser:
+        ConsultationDocument.objects.create(
+            version=version,
+            utilisateur=by,
+            le=timezone.now(),
+            format=format,
+            adresse_ip=adresse_ip,
+            created_by=by,
+        )
     nom = f"{version.document.numero.replace('/', '-')}_v{version.numero_version}.{extension}"
     return contenu, nom

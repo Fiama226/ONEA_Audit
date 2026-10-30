@@ -129,18 +129,26 @@ def _schema(
     parametres: list[Any] | None = None,
     extra: dict[int, Any] | None = None,
     description: str = "",
+    succes: int = 200,
+    types_binaires: tuple[str, ...] = (),
 ) -> Callable[[F], F]:
+    """Schema of an action; `types_binaires` declares a file response with its real media types."""
     erreurs: dict[int, Any] = {**ERROR_RESPONSES, **ERROR_404, **ERROR_422}
     if request is not None or parametres:
         erreurs.update(ERROR_400)
     erreurs.update(extra or {})
+    reponses: dict[Any, Any] = dict(erreurs)
+    if types_binaires:
+        reponses.update({(succes, type_): OpenApiTypes.BINARY for type_ in types_binaires})
+    else:
+        reponses[succes] = response
     return extend_schema(
         tags=[tag],
         summary=summary,
         description=description,
         request=request,
         parameters=parametres,
-        responses={200: response, **erreurs},
+        responses=reponses,
     )
 
 
@@ -284,13 +292,19 @@ class GabaritViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Documents
         return Response(self.get_serializer(self.get_queryset().get(pk=gabarit.pk)).data)
 
     @_schema(
-        "Télécharger : fichier d'un gabarit (journalisé)", OpenApiTypes.BINARY, extra=ERROR_409
+        "Télécharger : fichier d'un gabarit (journalisé)",
+        OpenApiTypes.BINARY,
+        extra=ERROR_409,
+        types_binaires=(DOCX,),
     )
     @action(detail=True, methods=["get"], pagination_class=None, filter_backends=[])
     def file(self, request: Request, pk: str | None = None) -> FileResponse:
         gabarit = self.get_object()
         contenu, nom = svc_gabarits.fichier_gabarit(
-            gabarit, by=self.acteur, adresse_ip=self.adresse_ip
+            gabarit,
+            by=self.acteur,
+            adresse_ip=self.adresse_ip,
+            journaliser=request.method != "HEAD",
         )
         return reponse_fichier(contenu, nom, DOCX)
 
@@ -299,6 +313,7 @@ class GabaritViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Documents
         OpenApiTypes.BINARY,
         parametres=[serializers.FormatQuerySerializer],
         extra={**ERROR_409, **ERROR_429},
+        types_binaires=(DOCX, PDF),
     )
     @action(detail=True, methods=["get"], pagination_class=None, filter_backends=[])
     def preview(self, request: Request, pk: str | None = None) -> FileResponse:
@@ -496,7 +511,8 @@ class DocumentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Document
         "Générer : une nouvelle version d'un document (traitement en arrière-plan)",
         serializers.DocumentVersionSerializer,
         request=serializers.GenerationSerializer,
-        extra={202: serializers.DocumentVersionSerializer, **ERROR_429},
+        extra=ERROR_429,
+        succes=202,
         description="Répond 202 : suivre `statut` et `statut_pdf` sur la version.",
     )
     @action(detail=False, methods=["post"], pagination_class=None, filter_backends=[])
@@ -579,6 +595,7 @@ class VersionViewSet(mixins.RetrieveModelMixin, DocumentsApiViewSet):
         OpenApiTypes.BINARY,
         parametres=[serializers.FormatQuerySerializer],
         extra=ERROR_409,
+        types_binaires=(DOCX, PDF),
     )
     @action(detail=True, methods=["get"], pagination_class=None)
     def download(self, request: Request, pk: str | None = None) -> FileResponse:
@@ -588,7 +605,11 @@ class VersionViewSet(mixins.RetrieveModelMixin, DocumentsApiViewSet):
         requete.is_valid(raise_exception=True)
         format_ = requete.validated_data["format"]
         contenu, nom = svc_generation.ouvrir_version(
-            version, format=format_.upper(), by=self.acteur, adresse_ip=self.adresse_ip
+            version,
+            format=format_.upper(),
+            by=self.acteur,
+            adresse_ip=self.adresse_ip,
+            journaliser=request.method != "HEAD",
         )
         return reponse_fichier(contenu, nom, TYPES_FICHIERS[format_])
 

@@ -24,6 +24,17 @@ class IntegriteError(RegleMetierError):
         )
 
 
+class GabaritIntrouvableError(RegleMetierError):
+    """The file of a template is missing from the disk (conflict: an administrator must act)."""
+
+    status_http = 409
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Le fichier du gabarit est introuvable sur le serveur : contactez l'administrateur."
+        )
+
+
 def verifier_empreinte(contenu: bytes, attendue: str, contexte: str) -> None:
     """Raise `IntegriteError` (and log CRITICAL) if SHA-256 of `contenu` differs from `attendue`."""
     reelle = hashlib.sha256(contenu).hexdigest()

@@ -6,10 +6,11 @@ context only, never user data.
 
 import hashlib
 import io
+import logging
 import re
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import SuspiciousFileOperation, ValidationError
 from django.db import connection, transaction
 from django.db.models import Max
 from django.utils import timezone
@@ -20,7 +21,7 @@ from apps.core.fichiers import controler_televersement
 from apps.core.services import enregistrer
 from apps.users.models import User
 
-from ..integrite import verifier_empreinte
+from ..integrite import GabaritIntrouvableError, verifier_empreinte
 from ..models import (
     ConsultationDocument,
     FormatFichier,
@@ -32,8 +33,10 @@ from ..moteur.exceptions import RenduError
 from ..moteur.registre import type_document as trouver_type
 from ..moteur.rendu import rendre_docx
 from ..pdf import ConversionPdfError, GotenbergIndisponibleError, convertir_en_pdf
-from ..stockage import FichierExistantError, cle_gabarit, ecrire, lire
+from ..stockage import FichierExistantError, cle_gabarit, ecrire, existe, lire
 from .quota import controler_quota
+
+logger = logging.getLogger(__name__)
 
 MSG_PDF_INDISPONIBLE = "Le service de conversion PDF est indisponible : réessayez plus tard."
 LOCK_GABARIT = 0x47414252  # « GABR »
@@ -42,7 +45,16 @@ _CONTROLE = re.compile(r"[\x00-\x1f\x7f]")
 
 def _contenu(gabarit: GabaritDocument) -> bytes:
     """Stored bytes of a template, verified against its recorded fingerprint."""
-    contenu = lire(gabarit.fichier.name or "")
+    try:
+        contenu = lire(gabarit.fichier.name or "")
+    except (OSError, SuspiciousFileOperation, ValueError) as exc:
+        logger.critical(
+            "Fichier de gabarit introuvable : %s v%s (%s).",
+            gabarit.type_document,
+            gabarit.version,
+            gabarit.fichier.name,
+        )
+        raise GabaritIntrouvableError from exc
     verifier_empreinte(
         contenu, gabarit.empreinte, f"gabarit {gabarit.type_document} v{gabarit.version}"
     )
@@ -171,6 +183,9 @@ def gabarit_actif(type_document_code: str) -> GabaritDocument:
         raise RegleMetierError(
             f"Aucun gabarit actif pour « {t.libelle} » : l'administrateur doit en déposer un."
         )
+    if not existe(gabarit.fichier.name or ""):
+        logger.critical("Gabarit actif sans fichier : %s v%s.", t.code, gabarit.version)
+        raise GabaritIntrouvableError
     return gabarit
 
 
@@ -192,15 +207,17 @@ def apercu_gabarit(gabarit: GabaritDocument, *, format: str) -> tuple[bytes, str
 
 
 def fichier_gabarit(
-    gabarit: GabaritDocument, *, by: User, adresse_ip: str | None
+    gabarit: GabaritDocument, *, by: User, adresse_ip: str | None, journaliser: bool = True
 ) -> tuple[bytes, str]:
+    """Verified bytes of a template; a `HEAD` request (`journaliser=False`) is not a reading."""
     contenu = _contenu(gabarit)
-    ConsultationDocument.objects.create(
-        gabarit=gabarit,
-        utilisateur=by,
-        le=timezone.now(),
-        format=FormatFichier.DOCX,
-        adresse_ip=adresse_ip,
-        created_by=by,
-    )
+    if journaliser:
+        ConsultationDocument.objects.create(
+            gabarit=gabarit,
+            utilisateur=by,
+            le=timezone.now(),
+            format=FormatFichier.DOCX,
+            adresse_ip=adresse_ip,
+            created_by=by,
+        )
     return contenu, gabarit.nom_original
