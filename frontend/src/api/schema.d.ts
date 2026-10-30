@@ -4,6 +4,70 @@
  */
 
 export interface paths {
+    "/api/v1/action-plan-commitments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : engagements sur le plan d'actions
+         * @description Base : liste bornée à une mission (ou une recommandation) visible, sinon 404.
+         */
+        get: operations["v1_action_plan_commitments_list"];
+        put?: never;
+        /**
+         * S'engager sur ses actions (confirmé)
+         * @description Base : liste bornée à une mission (ou une recommandation) visible, sinon 404.
+         */
+        post: operations["v1_action_plan_commitments_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/action-plan-commitments/texte/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Texte exact à confirmer pour s'engager
+         * @description Base : liste bornée à une mission (ou une recommandation) visible, sinon 404.
+         */
+        get: operations["v1_action_plan_commitments_texte_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/action-plans/summary/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Synthèse du plan d'actions (périmètre de l'audité pour l'audité)
+         * @description Synthèse du plan d'actions d'une mission (non paginée).
+         */
+        get: operations["v1_action_plans_summary_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analysis-questionnaires/": {
         parameters: {
             query?: never;
@@ -475,6 +539,58 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corrective-actions/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : actions correctives
+         * @description Base : liste bornée à une mission (ou une recommandation) visible, sinon 404.
+         */
+        get: operations["v1_corrective_actions_list"];
+        put?: never;
+        /**
+         * Créer : actions correctives
+         * @description Base : liste bornée à une mission (ou une recommandation) visible, sinon 404.
+         */
+        post: operations["v1_corrective_actions_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/corrective-actions/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : actions correctives
+         * @description Base : liste bornée à une mission (ou une recommandation) visible, sinon 404.
+         */
+        get: operations["v1_corrective_actions_retrieve"];
+        put?: never;
+        post?: never;
+        /**
+         * Supprimer (logiquement) : actions correctives
+         * @description Base : liste bornée à une mission (ou une recommandation) visible, sinon 404.
+         */
+        delete: operations["v1_corrective_actions_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : actions correctives
+         * @description Base : liste bornée à une mission (ou une recommandation) visible, sinon 404.
+         */
+        patch: operations["v1_corrective_actions_partial_update"];
         trace?: never;
     };
     "/api/v1/directions/": {
@@ -2115,6 +2231,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/risk-acceptances/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lister : acceptations du risque
+         * @description Base : liste bornée à une mission (ou une recommandation) visible, sinon 404.
+         */
+        get: operations["v1_risk_acceptances_list"];
+        put?: never;
+        /**
+         * Accepter le risque d'une recommandation (confirmé)
+         * @description Base : liste bornée à une mission (ou une recommandation) visible, sinon 404.
+         */
+        post: operations["v1_risk_acceptances_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/risk-acceptances/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Détail : acceptation du risque
+         * @description Base : liste bornée à une mission (ou une recommandation) visible, sinon 404.
+         */
+        get: operations["v1_risk_acceptances_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/risk-acceptances/{id}/withdraw/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retirer l'acceptation du risque (auteur ou RAI)
+         * @description Base : liste bornée à une mission (ou une recommandation) visible, sinon 404.
+         */
+        post: operations["v1_risk_acceptances_withdraw_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/risk-maps/": {
         parameters: {
             query?: never;
@@ -2945,6 +3125,55 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AcceptationRequestRequest: {
+            /** @description Doit être vrai : la confirmation explicite de l'audité. */
+            confirme: boolean;
+            /** Format: uuid */
+            recommandation: string;
+            justification: string;
+        };
+        AcceptationResume: {
+            /** Format: uuid */
+            id: string;
+            auteur: number;
+            justification: string;
+        };
+        AcceptationRisque: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly recommandation: string;
+            readonly justification: string;
+            readonly auteur: components["schemas"]["UtilisateurResume"];
+            readonly confirmation: components["schemas"]["ConfirmationResume"];
+            readonly texte: string;
+        };
+        Action: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly mission: string;
+            /** Format: uuid */
+            recommandation: string;
+            readonly constat_reference: string;
+            readonly reference: string;
+            libelle: string;
+            responsable?: number | null;
+            readonly responsable_detail: components["schemas"]["UtilisateurResume"] | null;
+            /**
+             * Échéance
+             * Format: date
+             */
+            echeance?: string | null;
+            /** Indicateur de mise en œuvre */
+            indicateur?: string;
+            /** Moyens (ressources et budget) */
+            moyens?: string;
+            ordre?: number;
+            readonly statut: components["schemas"]["StatutActionEnum"];
+            readonly proposee_par: number;
+            readonly actions_possibles: string[];
+        };
         /**
          * @description * `create` - create
          *     * `update` - update
@@ -2966,6 +3195,22 @@ export interface components {
          * @enum {string}
          */
         ActionEtapeEnum: "DEMARRER" | "TERMINER" | "VALIDER" | "RENVOYER" | "ROUVRIR" | "NON_APPLICABLE" | "RETABLIR" | "PLANIFIER";
+        ActionRequest: {
+            /** Format: uuid */
+            recommandation: string;
+            libelle: string;
+            responsable?: number | null;
+            /**
+             * Échéance
+             * Format: date
+             */
+            echeance?: string | null;
+            /** Indicateur de mise en œuvre */
+            indicateur?: string;
+            /** Moyens (ressources et budget) */
+            moyens?: string;
+            ordre?: number;
+        };
         /** @description Actions que l'administrateur connecté peut effectuer sur le compte. */
         ActionsCompte: {
             modifier_profil: boolean;
@@ -3614,6 +3859,23 @@ export interface components {
             voir_travaux: boolean;
             confirmer_ma_declaration: boolean;
         };
+        EngagementPlanActions: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly mission: string;
+            readonly auteur: components["schemas"]["UtilisateurResume"];
+            readonly confirmation: components["schemas"]["ConfirmationResume"];
+            readonly texte: string;
+            /** Empreinte SHA-256 des actions */
+            readonly empreinte_actions: string;
+        };
+        EngagementRequestRequest: {
+            /** @description Doit être vrai : la confirmation explicite de l'audité. */
+            confirme: boolean;
+            /** Format: uuid */
+            mission: string;
+        };
         EntiteResume: {
             /** Format: uuid */
             readonly id: string;
@@ -3754,6 +4016,13 @@ export interface components {
             numero: number;
             romain: string;
         };
+        /**
+         * @description * `CONFIRME` - Confirmé
+         *     * `A_RENOUVELER` - À renouveler
+         *     * `NON_CONFIRME` - Non confirmé
+         * @enum {string}
+         */
+        EtatEngagementEnum: "CONFIRME" | "A_RENOUVELER" | "NON_CONFIRME";
         /**
          * @description * `ADEQUATE` - Conception adéquate — risque maîtrisé
          *     * `INSUFFISANTE` - Conception insuffisante
@@ -4306,6 +4575,22 @@ export interface components {
             charge_prevue_jours?: string | null;
             justification?: string;
         };
+        LigneRecommandation: {
+            constat: string;
+            reference: string;
+            libelle: string;
+            priorite: components["schemas"]["PrioriteRecommandationEnum"];
+            statut_derive: components["schemas"]["StatutRecommandationDeriveEnum"];
+            nb_actions: number;
+            acceptation: components["schemas"]["AcceptationResume"] | null;
+        };
+        LigneResponsable: {
+            utilisateur: components["schemas"]["UtilisateurResume"];
+            nb_actions: number;
+            /** Format: date */
+            prochaine_echeance: string | null;
+            engagement: components["schemas"]["EtatEngagementEnum"];
+        };
         LigneSuivi: {
             numero: number;
             romain: string;
@@ -4635,6 +4920,36 @@ export interface components {
          * @enum {string}
          */
         OrigineCompteEnum: "CONNEXION" | "ANNUAIRE" | "CSV";
+        PaginatedAcceptationRisqueList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["AcceptationRisque"][];
+        };
+        PaginatedActionList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Action"][];
+        };
         PaginatedAffectationList: {
             /** @example 123 */
             count: number;
@@ -4784,6 +5099,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["DocumentListe"][];
+        };
+        PaginatedEngagementPlanActionsList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["EngagementPlanActions"][];
         };
         PaginatedEntretienList: {
             /** @example 123 */
@@ -5140,6 +5470,22 @@ export interface components {
             /** Format: date-time */
             modifie_le: string | null;
             modifie_par: components["schemas"]["Signataire"] | null;
+        };
+        PatchedActionRequest: {
+            /** Format: uuid */
+            recommandation?: string;
+            libelle?: string;
+            responsable?: number | null;
+            /**
+             * Échéance
+             * Format: date
+             */
+            echeance?: string | null;
+            /** Indicateur de mise en œuvre */
+            indicateur?: string;
+            /** Moyens (ressources et budget) */
+            moyens?: string;
+            ordre?: number;
         };
         PatchedCartographieVersionRequest: {
             /** Année */
@@ -6082,6 +6428,14 @@ export interface components {
             readonly nom_complet: string;
         };
         /**
+         * @description * `A_LANCER` - À lancer
+         *     * `EN_COURS` - En cours
+         *     * `REALISEE` - Réalisée
+         *     * `ABANDONNEE` - Abandonnée (justifiée)
+         * @enum {string}
+         */
+        StatutActionEnum: "A_LANCER" | "EN_COURS" | "REALISEE" | "ABANDONNEE";
+        /**
          * @description * `BROUILLON` - Brouillon
          *     * `VALIDEE` - Validée
          * @enum {string}
@@ -6172,6 +6526,15 @@ export interface components {
          */
         StatutProgrammeEnum: "BROUILLON" | "VALIDE";
         /**
+         * @description * `RISQUE_ACCEPTE` - Risque accepté
+         *     * `SANS_ACTION` - Sans action
+         *     * `A_LANCER` - À lancer
+         *     * `EN_COURS` - En cours
+         *     * `REALISEE` - Réalisée
+         * @enum {string}
+         */
+        StatutRecommandationDeriveEnum: "RISQUE_ACCEPTE" | "SANS_ACTION" | "A_LANCER" | "EN_COURS" | "REALISEE";
+        /**
          * @description * `BROUILLON` - En préparation
          *     * `SOUMIS` - Soumis au RAI
          *     * `RENVOYE` - Renvoyé
@@ -6195,6 +6558,13 @@ export interface components {
             readonly tentatives: number;
             /** @description Échec permanent : seule une relance manuelle peut le résoudre. */
             readonly manuel: boolean;
+        };
+        SynthesePlan: {
+            recommandations: components["schemas"]["LigneRecommandation"][];
+            responsables: components["schemas"]["LigneResponsable"][];
+            recommandations_sans_suite: string[];
+            actions_incompletes: string[];
+            engagements_manquants: string[];
         };
         SyntheseProgramme: {
             nb_lignes: number;
@@ -6292,6 +6662,12 @@ export interface components {
             date_fin_prevue?: string | null;
             /** Format: uuid */
             risque_mission?: string | null;
+        };
+        TexteEngagement: {
+            /** @description Texte exact que l'audité confirme. */
+            texte: string;
+            nb_actions: number;
+            etat: components["schemas"]["EtatEngagementEnum"];
         };
         TexteReponse: {
             accord: string;
@@ -6462,6 +6838,239 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    v1_action_plan_commitments_list: {
+        parameters: {
+            query?: {
+                /** @description Obligatoire pour la liste. */
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedEngagementPlanActionsList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_action_plan_commitments_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EngagementRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["EngagementRequestRequest"];
+                "multipart/form-data": components["schemas"]["EngagementRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EngagementPlanActions"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_action_plan_commitments_texte_retrieve: {
+        parameters: {
+            query: {
+                /** @description Mission (obligatoire). */
+                mission: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TexteEngagement"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_action_plans_summary_retrieve: {
+        parameters: {
+            query: {
+                /** @description Mission (obligatoire). */
+                mission: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SynthesePlan"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_analysis_questionnaires_list: {
         parameters: {
             query?: {
@@ -8719,6 +9328,292 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_corrective_actions_list: {
+        parameters: {
+            query?: {
+                constat?: string;
+                /** @description Vrai : seulement les actions dont je suis responsable. */
+                mine?: boolean;
+                /** @description Obligatoire pour la liste. */
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                recommandation?: string;
+                responsable?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedActionList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_corrective_actions_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ActionRequest"];
+                "multipart/form-data": components["schemas"]["ActionRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Action"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_corrective_actions_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Action"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_corrective_actions_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_corrective_actions_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedActionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedActionRequest"];
+                "multipart/form-data": components["schemas"]["PatchedActionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Action"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15441,6 +16336,230 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risk_acceptances_list: {
+        parameters: {
+            query?: {
+                /** @description Mission ou recommandation requise. */
+                mission?: string;
+                /** @description Quel champ utiliser pour classer les résultats. */
+                ordering?: string;
+                /** @description Un numéro de page de l'ensemble des résultats. */
+                page?: number;
+                /** @description Nombre de résultats à retourner par page. */
+                page_size?: number;
+                /** @description Recommandation ou mission requise. */
+                recommandation?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAcceptationRisqueList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risk_acceptances_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptationRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AcceptationRequestRequest"];
+                "multipart/form-data": components["schemas"]["AcceptationRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptationRisque"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risk_acceptances_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptationRisque"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_risk_acceptances_withdraw_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
