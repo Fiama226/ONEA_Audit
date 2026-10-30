@@ -1,0 +1,5 @@
+{% extends "email/base.html" %}{% block content %}<p>Bonjour {{ nom }},</p>
+{% if corrige %}<p>Un rapport d'audit corrigé vient d'être diffusé pour la mission {{ reference }} « {{ titre }} ». Il remplace le rapport précédent.</p>
+<p>Motif de la correction : {{ motif_correction }}</p>{% else %}<p>Le rapport d'audit de la mission {{ reference }} « {{ titre }} » vient d'être diffusé.</p>{% endif %}
+{% if message %}<p>Message du responsable de l'audit interne :<br>{{ message|linebreaksbr }}</p>{% endif %}
+<p>Le rapport n'est pas joint à ce message : consultez-le et téléchargez-le depuis la plateforme{% if lien %} : <a href="{{ lien }}">{{ lien }}</a>{% else %}.{% endif %}</p>{% endblock %}

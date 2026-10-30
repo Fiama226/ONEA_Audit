@@ -36,6 +36,12 @@ class CommunicationConfig(AppConfig):
         for numero, controles in (*CONTROLES_PROVISOIRE.items(), *CONTROLES_ETAPE.items()):
             enregistrer_controles(numero, controles)
 
+        from apps.missions.services.etapes import ActionEtape, reserver_actions
+
+        from . import recepteurs
         from .documents import enregistrer_types
 
         enregistrer_types()
+        # XVIII : terminer, valider et renvoyer se font depuis l'écran du rapport (D9).
+        reserver_actions(18, ActionEtape.TERMINER, ActionEtape.VALIDER, ActionEtape.RENVOYER)
+        recepteurs.connecter()
