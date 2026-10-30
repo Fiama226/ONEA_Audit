@@ -45,8 +45,13 @@ export function useSaveFinding() {
       vars.id === undefined
         ? apiFetch<Constat>(`${BASE}/findings/`, { method: "POST", json: vars.data })
         : apiFetch<Constat>(`${BASE}/findings/${vars.id}/`, { method: "PATCH", json: vars.data }),
-    onSuccess: (_result, { missionId }) =>
-      invalidateAccomplissement(client, missionId, constatKeys.mission(missionId)),
+    onSuccess: (result, { missionId }) =>
+      invalidateAccomplissement(
+        client,
+        missionId,
+        constatKeys.mission(missionId),
+        constatKeys.detail(result.id),
+      ),
   });
 }
 
@@ -80,8 +85,13 @@ export function useFindingAction() {
         method: "POST",
         json: motif === undefined ? {} : { motif },
       }),
-    onSuccess: (_result, { missionId }) =>
-      invalidateAccomplissement(client, missionId, constatKeys.mission(missionId)),
+    onSuccess: (_result, { id, missionId }) =>
+      invalidateAccomplissement(
+        client,
+        missionId,
+        constatKeys.mission(missionId),
+        constatKeys.detail(id),
+      ),
   });
 }
 

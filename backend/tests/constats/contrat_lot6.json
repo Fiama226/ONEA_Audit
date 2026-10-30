@@ -1,0 +1,244 @@
+{
+  "constat_chef": {
+    "actions_possibles": [],
+    "causes": [
+      {
+        "categorie": "str",
+        "description": "str",
+        "id": "str",
+        "ordre": "int"
+      }
+    ],
+    "conclusion": "str",
+    "consequence": "str",
+    "cycle": "int",
+    "derniere_reponse": {
+      "auteur": {
+        "direction_code": "str",
+        "fonction": "str",
+        "id": "int",
+        "nom_complet": "str",
+        "role": "str",
+        "username": "str"
+      },
+      "commentaire": "str",
+      "confirmation": {
+        "confirme_le": "str",
+        "empreinte": "str",
+        "id": "str",
+        "signataire": {
+          "id": "int",
+          "nom_complet": "str"
+        },
+        "type_document": "str"
+      },
+      "constat": "str",
+      "cycle": "int",
+      "id": "str",
+      "position": "str",
+      "texte": "str",
+      "version_anterieure": "bool"
+    },
+    "empreinte_soumise": "str",
+    "entite": "str",
+    "entite_detail": {
+      "code": "str",
+      "id": "str",
+      "libelle": "str"
+    },
+    "fait_constate": "str",
+    "fiches": [
+      "str"
+    ],
+    "fiches_detail": [
+      {
+        "conclusion": "str",
+        "id": "str",
+        "test_code": "str"
+      }
+    ],
+    "id": "str",
+    "impact": "int",
+    "mission": "str",
+    "motif_renvoi": "str",
+    "niveau": "str",
+    "probabilite": "int",
+    "processus": "str",
+    "processus_detail": {
+      "code": "str",
+      "id": "str",
+      "libelle": "str"
+    },
+    "recommandations": [
+      {
+        "id": "str",
+        "libelle": "str",
+        "ordre": "int",
+        "priorite": "str"
+      }
+    ],
+    "reference": "str",
+    "referentiel": "str",
+    "reponse_cycle_courant": "bool",
+    "risque_mission": "null",
+    "score": "int",
+    "soumis_le": "str",
+    "soumis_par": "int",
+    "statut": "str",
+    "texte_reponse": "null",
+    "titre": "str",
+    "validee_le": "null",
+    "validee_par": "null"
+  },
+  "constat_audite": {
+    "actions_possibles": [
+      "str"
+    ],
+    "causes": [
+      {
+        "categorie": "str",
+        "description": "str",
+        "id": "str",
+        "ordre": "int"
+      }
+    ],
+    "conclusion": "str",
+    "consequence": "str",
+    "cycle": "int",
+    "derniere_reponse": {
+      "auteur": {
+        "direction_code": "str",
+        "fonction": "str",
+        "id": "int",
+        "nom_complet": "str",
+        "role": "str",
+        "username": "str"
+      },
+      "commentaire": "str",
+      "confirmation": {
+        "confirme_le": "str",
+        "empreinte": "str",
+        "id": "str",
+        "signataire": {
+          "id": "int",
+          "nom_complet": "str"
+        },
+        "type_document": "str"
+      },
+      "constat": "str",
+      "cycle": "int",
+      "id": "str",
+      "position": "str",
+      "texte": "str",
+      "version_anterieure": "bool"
+    },
+    "empreinte_soumise": "str",
+    "entite": "str",
+    "entite_detail": {
+      "code": "str",
+      "id": "str",
+      "libelle": "str"
+    },
+    "fait_constate": "str",
+    "fiches": [
+      "str"
+    ],
+    "fiches_detail": "null",
+    "id": "str",
+    "impact": "int",
+    "mission": "str",
+    "motif_renvoi": "null",
+    "niveau": "str",
+    "probabilite": "int",
+    "processus": "str",
+    "processus_detail": {
+      "code": "str",
+      "id": "str",
+      "libelle": "str"
+    },
+    "recommandations": [
+      {
+        "id": "str",
+        "libelle": "str",
+        "ordre": "int",
+        "priorite": "str"
+      }
+    ],
+    "reference": "str",
+    "referentiel": "str",
+    "reponse_cycle_courant": "bool",
+    "risque_mission": "null",
+    "score": "int",
+    "soumis_le": "str",
+    "soumis_par": "int",
+    "statut": "str",
+    "texte_reponse": {
+      "accord": "str",
+      "desaccord": "str"
+    },
+    "titre": "str",
+    "validee_le": "null",
+    "validee_par": "null"
+  },
+  "reponse": {
+    "auteur": {
+      "direction_code": "str",
+      "fonction": "str",
+      "id": "int",
+      "nom_complet": "str",
+      "role": "str",
+      "username": "str"
+    },
+    "commentaire": "str",
+    "confirmation": {
+      "confirme_le": "str",
+      "empreinte": "str",
+      "id": "str",
+      "signataire": {
+        "id": "int",
+        "nom_complet": "str"
+      },
+      "type_document": "str"
+    },
+    "constat": "str",
+    "cycle": "int",
+    "id": "str",
+    "position": "str",
+    "texte": "str",
+    "version_anterieure": "bool"
+  },
+  "reponses_liste": {
+    "count": "int",
+    "next": "null",
+    "previous": "null",
+    "results": [
+      {
+        "auteur": {
+          "direction_code": "str",
+          "fonction": "str",
+          "id": "int",
+          "nom_complet": "str",
+          "role": "str",
+          "username": "str"
+        },
+        "commentaire": "str",
+        "confirmation": {
+          "confirme_le": "str",
+          "empreinte": "str",
+          "id": "str",
+          "signataire": {
+            "id": "int",
+            "nom_complet": "str"
+          },
+          "type_document": "str"
+        },
+        "constat": "str",
+        "cycle": "int",
+        "id": "str",
+        "position": "str",
+        "texte": "str",
+        "version_anterieure": "bool"
+      }
+    ]
+  }
+}
