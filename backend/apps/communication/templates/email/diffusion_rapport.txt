@@ -1,0 +1,9 @@
+{% extends "email/base.txt" %}{% block content %}Bonjour {{ nom }},
+
+{% if corrige %}Un rapport d'audit corrigé vient d'être diffusé pour la mission {{ reference }} « {{ titre }} ». Il remplace le rapport précédent.
+Motif de la correction : {{ motif_correction }}{% else %}Le rapport d'audit de la mission {{ reference }} « {{ titre }} » vient d'être diffusé.{% endif %}
+{% if message %}
+Message du responsable de l'audit interne :
+{{ message }}
+{% endif %}
+Le rapport n'est pas joint à ce message : consultez-le et téléchargez-le depuis la plateforme{% if lien %} : {{ lien }}{% else %}.{% endif %}{% endblock %}

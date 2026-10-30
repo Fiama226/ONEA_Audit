@@ -21,6 +21,8 @@ from .conftest import forcer_etapes
 @pytest.fixture(autouse=True)
 def _registre_restaure() -> Iterator[None]:
     avant = {n: set(a) for n, a in ACTIONS_RESERVEES.items()}
+    # L'app `communication` réserve déjà XVIII au démarrage : ces tests partent d'un registre vide.
+    ACTIONS_RESERVEES.clear()
     yield
     ACTIONS_RESERVEES.clear()
     ACTIONS_RESERVEES.update(avant)
