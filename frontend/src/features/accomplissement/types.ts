@@ -21,3 +21,5 @@ export type PieceUpdate = S["PatchedPieceJustificativeRequest"];
 
 /** Actions de transition d'une fiche (routes `/test-sheets/{id}/<action>/`). */
 export type FicheAction = "submit" | "validate" | "return" | "reopen";
+export type NatureTest = S["NatureTestEnum"];
+export type MethodeSelection = S["MethodeSelectionEnum"];
