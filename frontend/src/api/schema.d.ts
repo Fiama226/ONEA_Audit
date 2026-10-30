@@ -2351,6 +2351,40 @@ export interface paths {
         patch: operations["v1_segregation_grids_partial_update"];
         trace?: never;
     };
+    "/api/v1/signature-settings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lister : modes de signature par type de document */
+        get: operations["v1_signature_settings_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/signature-settings/{type_document}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Modifier : mode de signature d'un type de document */
+        patch: operations["v1_signature_settings_partial_update"];
+        trace?: never;
+    };
     "/api/v1/strengths-weaknesses/": {
         parameters: {
             query?: never;
@@ -4468,6 +4502,17 @@ export interface components {
             readonly reference: string;
             readonly titre: string;
         };
+        ModeDisponible: {
+            mode: components["schemas"]["ModeSignatureParametreEnum"];
+            libelle: string;
+        };
+        /**
+         * @description * `CONFIRMATION` - Confirmation horodatée
+         *     * `SIGNATURE_ELECTRONIQUE` - Signature électronique (PAdES)
+         *     * `CONFIRMATION_ET_SIGNATURE` - Confirmation et signature électronique
+         * @enum {string}
+         */
+        ModeSignatureParametreEnum: "CONFIRMATION" | "SIGNATURE_ELECTRONIQUE" | "CONFIRMATION_ET_SIGNATURE";
         MotifDesactivationRequest: {
             motif: string;
         };
@@ -5085,6 +5130,17 @@ export interface components {
             ASSURANCE: number;
             CONSEIL: number;
         };
+        /** @description Une ligne par type paramétrable (modèle sans ligne : mode par défaut). */
+        ParametreSignature: {
+            type_document: string;
+            type_libelle: string;
+            mode: components["schemas"]["ModeSignatureParametreEnum"];
+            mode_libelle: string;
+            modes_disponibles: components["schemas"]["ModeDisponible"][];
+            /** Format: date-time */
+            modifie_le: string | null;
+            modifie_par: components["schemas"]["Signataire"] | null;
+        };
         PatchedCartographieVersionRequest: {
             /** Année */
             annee?: number;
@@ -5362,6 +5418,9 @@ export interface components {
             libelle?: string;
             description?: string;
             ordre?: number;
+        };
+        PatchedParametreSignatureEcritureRequest: {
+            mode?: components["schemas"]["ModeSignatureParametreEnum"];
         };
         PatchedPieceJustificativeRequest: {
             /** Libellé */
@@ -6269,9 +6328,12 @@ export interface components {
          *     * `VALIDATION_RAPPORT` - Validation du rapport
          *     * `VALIDATION_REFERENTIEL` - Validation du référentiel d'audit
          *     * `REPONSE_CONSTAT` - Réponse à un constat
+         *     * `REPONSE_RAPPORT_PROVISOIRE` - Réponse au rapport provisoire
+         *     * `ACCEPTATION_RISQUE` - Acceptation du risque
+         *     * `ENGAGEMENT_PLAN_ACTIONS` - Engagement sur le plan d'actions
          * @enum {string}
          */
-        TypeDocumentSignableEnum: "ORDRE_MISSION" | "DECLARATION_INDEPENDANCE" | "VALIDATION_RAPPORT" | "VALIDATION_REFERENTIEL" | "REPONSE_CONSTAT";
+        TypeDocumentSignableEnum: "ORDRE_MISSION" | "DECLARATION_INDEPENDANCE" | "VALIDATION_RAPPORT" | "VALIDATION_REFERENTIEL" | "REPONSE_CONSTAT" | "REPONSE_RAPPORT_PROVISOIRE" | "ACCEPTATION_RISQUE" | "ENGAGEMENT_PLAN_ACTIONS";
         /**
          * @description * `DIRECTION` - Direction
          *     * `DEPARTEMENT` - Département
@@ -16473,6 +16535,100 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_signature_settings_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParametreSignature"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_signature_settings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                type_document: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedParametreSignatureEcritureRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedParametreSignatureEcritureRequest"];
+                "multipart/form-data": components["schemas"]["PatchedParametreSignatureEcritureRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParametreSignature"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
