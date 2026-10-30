@@ -38,6 +38,7 @@ ORDRE: tuple[str, ...] = (
     "constats",
     "recommandations",
     "communication",
+    "suivi",
     "documents",
     "notifications",
 )
