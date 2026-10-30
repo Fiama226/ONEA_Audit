@@ -1,0 +1,47 @@
+/* Gabarit d'impression A4 commun (components/print/PrintLayout). Noir sur blanc, sans interface. */
+@page {
+  size: A4 portrait;
+  margin: 20mm 20mm 16mm;
+  @bottom-center {
+    /* Exception documentee : les marges de page ne lisent pas les variables CSS du document.
+       Ce libelle doit rester identique a fr.impression.footer / fr.impression.pageSep (verifie par test). */
+    content: "Document interne DAI — page " counter(page) " / " counter(pages);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+}
+
+@page print-paysage {
+  size: A4 landscape;
+  margin: 15mm 15mm 14mm;
+  @bottom-center {
+    content: "Document interne DAI — page " counter(page) " / " counter(pages);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+}
+
+@media print {
+  html {
+    print-color-adjust: economy;
+  }
+  body {
+    background: var(--surface);
+    color: var(--foreground);
+  }
+  .print-exact {
+    print-color-adjust: exact;
+  }
+  .print-paysage {
+    page: print-paysage;
+  }
+  /* En-tetes de tableau repetes sur chaque page ; lignes et cartes jamais coupees. */
+  thead {
+    display: table-header-group;
+  }
+  tr,
+  li,
+  .print-card {
+    break-inside: avoid;
+  }
+}

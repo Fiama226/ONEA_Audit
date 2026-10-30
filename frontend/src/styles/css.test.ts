@@ -6,9 +6,9 @@ import { fr } from "@/i18n/fr";
 const read = (name: string) => readFileSync(path.resolve(import.meta.dirname, name), "utf8");
 
 describe("stylesheets", () => {
-  it("prints the page counter label from fr.ts wording", () => {
-    expect(read("globals.css")).toContain(
-      `content: "${fr.print.page} " counter(page) " ${fr.print.of} " counter(pages);`,
+  it("prints the footer and page counter from fr.ts wording", () => {
+    expect(read("print.css")).toContain(
+      `content: "${fr.impression.footer} " counter(page) " ${fr.impression.pageSep} " counter(pages);`,
     );
   });
 

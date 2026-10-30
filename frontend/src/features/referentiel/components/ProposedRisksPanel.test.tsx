@@ -66,7 +66,7 @@ describe("ProposedRisksPanel", () => {
     mockReferentiel({ map: VALIDATED });
     proposeRisks();
     renderCarto(routes, "RAI", `/referentiel/cartographies/${VALIDATED.id}`);
-    await screen.findByText(/Cartographie.*2025/);
+    await screen.findByRole("heading", { name: /Cartographie.*2025/ });
     expect(screen.queryByText(/Risques proposés par les missions/)).not.toBeInTheDocument();
   });
 
@@ -74,7 +74,7 @@ describe("ProposedRisksPanel", () => {
     mockReferentiel();
     proposeRisks();
     renderCarto(routes, "AUDITEUR", `/referentiel/cartographies/${DRAFT.id}`);
-    await screen.findByText(/Cartographie.*2026/);
+    await screen.findByRole("heading", { name: /Cartographie.*2026/ });
     expect(screen.queryByText(/Risques proposés par les missions/)).not.toBeInTheDocument();
   });
 });

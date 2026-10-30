@@ -6,6 +6,7 @@ import { isApiError } from "@/api/errors";
 import { useRole } from "@/auth/useRole";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { RiskMatrix, type RiskMatrixCell } from "@/components/RiskMatrix";
+import { PrintLayout } from "@/components/print/PrintLayout";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -253,206 +254,214 @@ export function RiskMapDetailPage() {
   const pageCount = Math.ceil((risks.data?.count ?? 0) / PAGE_SIZE);
 
   return (
-    <div className="grid gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-xl font-semibold">{`${c.detailTitle} ${version.annee}`}</h2>
-          <VersionStatusBadge statut={version.statut} />
-        </div>
-        <div className="flex flex-wrap items-end gap-3 print:hidden">
-          {canEdit && (
-            <>
-              <Button
-                type="button"
-                onClick={() => void navigate(`/referentiel/cartographies/${id}/risques/nouveau`)}
-              >
-                <Plus aria-hidden />
-                {c.addRisk}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setValidating(true)}>
-                {c.validate}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setEditing(true)}>
-                <Pencil aria-hidden />
-                {c.editDraft}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setDeleting(true)}>
-                <Trash2 aria-hidden />
-                {c.deleteDraft}
-              </Button>
-            </>
-          )}
-          <ExportButtons id={id} />
-          <Button
-            type="button"
-            variant="outline"
-            disabled={printing}
-            onClick={() => void startPrint()}
-          >
-            <Printer aria-hidden />
-            {printing ? c.printPreparing : c.printAction}
-          </Button>
-          {otherVersions.length > 0 && (
-            <form
-              className="flex items-end gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (compareChoice)
-                  void navigate(`/referentiel/cartographies/${id}/comparer?avec=${compareChoice}`);
-              }}
-            >
-              <div className="grid gap-1">
-                <Label htmlFor="compare-with" className="sr-only">
-                  {c.compareLabel}
-                </Label>
-                <NativeSelect
-                  id="compare-with"
-                  value={compareChoice}
-                  onChange={(e) => setCompareChoice(e.target.value)}
+    <PrintLayout title={`${c.detailTitle} ${version.annee}`}>
+      <div className="grid gap-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-xl font-semibold print:hidden">{`${c.detailTitle} ${version.annee}`}</h2>
+            <VersionStatusBadge statut={version.statut} />
+          </div>
+          <div className="flex flex-wrap items-end gap-3 print:hidden">
+            {canEdit && (
+              <>
+                <Button
+                  type="button"
+                  onClick={() => void navigate(`/referentiel/cartographies/${id}/risques/nouveau`)}
                 >
-                  <option value="">{c.compareWith}</option>
-                  {otherVersions.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.libelle}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </div>
-              <Button type="submit" variant="outline" disabled={!compareChoice}>
-                {c.compareButton}
-              </Button>
-            </form>
-          )}
-        </div>
-      </div>
-
-      {frozen && <FrozenBanner version={version} />}
-
-      <section aria-labelledby="matrix-title" className="grid gap-3">
-        <h3 id="matrix-title" className="text-base font-semibold">
-          {c.matrixTitle}
-        </h3>
-        {matrix.isError ? (
-          <p role="alert" className="text-sm text-destructive">
-            {c.matrixLoadError}
-          </p>
-        ) : (
-          <>
-            <RiskMatrix
-              size="large"
-              cells={matrix.isLoading ? [] : cells}
-              selected={cellFilter}
-              onSelect={(cell) =>
-                cellFilter?.probability === cell.probability && cellFilter.impact === cell.impact
-                  ? update({ probabilite: null, impact: null })
-                  : update({
-                      probabilite: String(cell.probability),
-                      impact: String(cell.impact),
-                    })
-              }
-            />
-            {matrix.data && (
-              <p className="text-sm text-text-muted">
-                {matrix.data.total} {c.matrixSummary}
-              </p>
+                  <Plus aria-hidden />
+                  {c.addRisk}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setValidating(true)}>
+                  {c.validate}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+                  <Pencil aria-hidden />
+                  {c.editDraft}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setDeleting(true)}>
+                  <Trash2 aria-hidden />
+                  {c.deleteDraft}
+                </Button>
+              </>
             )}
-          </>
-        )}
-      </section>
-
-      <section aria-labelledby="risks-title" className="grid gap-3">
-        <h3 id="risks-title" className="text-base font-semibold">
-          {c.risksTitle}
-        </h3>
-        <RiskFilters
-          values={{ processus, niveau, q: qInput }}
-          processes={processes.data?.results ?? []}
-          onChange={({ q: nextQ, ...rest }) => {
-            if (nextQ !== undefined) setQInput(nextQ);
-            if (Object.keys(rest).length > 0) update(rest);
-          }}
-        />
-        {printError && (
-          <p role="alert" className="text-sm text-destructive print:hidden">
-            {c.printError}
-          </p>
-        )}
-        {cellFilter && (
-          <p className="flex items-center gap-3 text-sm" role="status">
-            <span>
-              {c.filterActive
-                .replace("{p}", String(cellFilter.probability))
-                .replace("{i}", String(cellFilter.impact))}
-            </span>
-            <span aria-hidden>·</span>
-            <Button
-              type="button"
-              variant="link"
-              className="h-auto p-0 print:hidden"
-              onClick={() => update({ probabilite: null, impact: null })}
-            >
-              {c.clearFilter}
-            </Button>
-          </p>
-        )}
-        {risks.isError ? (
-          <div role="alert" className="rounded-lg border border-border bg-surface p-4 text-sm">
-            <p>{c.risksLoadError}</p>
+            <ExportButtons id={id} />
             <Button
               type="button"
               variant="outline"
-              className="mt-3"
-              onClick={() => void risks.refetch()}
+              disabled={printing}
+              onClick={() => void startPrint()}
             >
-              {fr.common.retry}
+              <Printer aria-hidden />
+              {printing ? c.printPreparing : c.printAction}
             </Button>
+            {otherVersions.length > 0 && (
+              <form
+                className="flex items-end gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (compareChoice)
+                    void navigate(
+                      `/referentiel/cartographies/${id}/comparer?avec=${compareChoice}`,
+                    );
+                }}
+              >
+                <div className="grid gap-1">
+                  <Label htmlFor="compare-with" className="sr-only">
+                    {c.compareLabel}
+                  </Label>
+                  <NativeSelect
+                    id="compare-with"
+                    value={compareChoice}
+                    onChange={(e) => setCompareChoice(e.target.value)}
+                  >
+                    <option value="">{c.compareWith}</option>
+                    {otherVersions.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.libelle}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </div>
+                <Button type="submit" variant="outline" disabled={!compareChoice}>
+                  {c.compareButton}
+                </Button>
+              </form>
+            )}
           </div>
-        ) : (
-          <>
-            <div className={printRows ? "print:hidden" : undefined}>
-              <DataTable
-                caption={c.risksCaption}
-                columns={columns}
-                data={rows}
-                total={risks.data?.count ?? 0}
-                page={page}
-                pageSize={PAGE_SIZE}
-                onPageChange={(next) => update({ page: String(next) }, false)}
-                isLoading={risks.isLoading}
-                empty={
-                  <p className="rounded-lg border border-border bg-surface p-6 text-sm text-text-muted">
-                    {filtered ? c.risksEmpty : c.risksEmptyMap}
-                  </p>
+        </div>
+
+        {frozen && <FrozenBanner version={version} />}
+
+        <section aria-labelledby="matrix-title" className="grid gap-3">
+          <h3 id="matrix-title" className="text-base font-semibold">
+            {c.matrixTitle}
+          </h3>
+          {matrix.isError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {c.matrixLoadError}
+            </p>
+          ) : (
+            <>
+              <RiskMatrix
+                size="large"
+                cells={matrix.isLoading ? [] : cells}
+                selected={cellFilter}
+                onSelect={(cell) =>
+                  cellFilter?.probability === cell.probability && cellFilter.impact === cell.impact
+                    ? update({ probabilite: null, impact: null })
+                    : update({
+                        probabilite: String(cell.probability),
+                        impact: String(cell.impact),
+                      })
                 }
               />
+              {matrix.data && (
+                <p className="text-sm text-text-muted">
+                  {matrix.data.total} {c.matrixSummary}
+                </p>
+              )}
+            </>
+          )}
+        </section>
+
+        <section aria-labelledby="risks-title" className="grid gap-3">
+          <h3 id="risks-title" className="text-base font-semibold">
+            {c.risksTitle}
+          </h3>
+          <RiskFilters
+            values={{ processus, niveau, q: qInput }}
+            processes={processes.data?.results ?? []}
+            onChange={({ q: nextQ, ...rest }) => {
+              if (nextQ !== undefined) setQInput(nextQ);
+              if (Object.keys(rest).length > 0) update(rest);
+            }}
+          />
+          {printError && (
+            <p role="alert" className="text-sm text-destructive print:hidden">
+              {c.printError}
+            </p>
+          )}
+          {cellFilter && (
+            <p className="flex items-center gap-3 text-sm" role="status">
+              <span>
+                {c.filterActive
+                  .replace("{p}", String(cellFilter.probability))
+                  .replace("{i}", String(cellFilter.impact))}
+              </span>
+              <span aria-hidden>·</span>
+              <Button
+                type="button"
+                variant="link"
+                className="h-auto p-0 print:hidden"
+                onClick={() => update({ probabilite: null, impact: null })}
+              >
+                {c.clearFilter}
+              </Button>
+            </p>
+          )}
+          {risks.isError ? (
+            <div role="alert" className="rounded-lg border border-border bg-surface p-4 text-sm">
+              <p>{c.risksLoadError}</p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3"
+                onClick={() => void risks.refetch()}
+              >
+                {fr.common.retry}
+              </Button>
             </div>
-            {pageCount > 1 && !printRows && (
-              <p className="hidden text-sm print:block">
-                {c.printPartial.replace("{p}", String(page)).replace("{n}", String(pageCount))}
-              </p>
-            )}
-            {printRows && <PrintTable rows={printRows} />}
-          </>
+          ) : (
+            <>
+              <div className={printRows ? "print:hidden" : undefined}>
+                <DataTable
+                  caption={c.risksCaption}
+                  columns={columns}
+                  data={rows}
+                  total={risks.data?.count ?? 0}
+                  page={page}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={(next) => update({ page: String(next) }, false)}
+                  isLoading={risks.isLoading}
+                  empty={
+                    <p className="rounded-lg border border-border bg-surface p-6 text-sm text-text-muted">
+                      {filtered ? c.risksEmpty : c.risksEmptyMap}
+                    </p>
+                  }
+                />
+              </div>
+              {pageCount > 1 && !printRows && (
+                <p className="hidden text-sm print:block">
+                  {c.printPartial.replace("{p}", String(page)).replace("{n}", String(pageCount))}
+                </p>
+              )}
+              {printRows && <PrintTable rows={printRows} />}
+            </>
+          )}
+        </section>
+
+        {canEdit && <ProposedRisksPanel />}
+
+        {canEdit && (
+          <ValidateRiskMapDialog id={id} open={validating} onOpenChange={setValidating} />
         )}
-      </section>
-
-      {canEdit && <ProposedRisksPanel />}
-
-      {canEdit && <ValidateRiskMapDialog id={id} open={validating} onOpenChange={setValidating} />}
-      {canEdit && <EditRiskMapDialog version={version} open={editing} onOpenChange={setEditing} />}
-      {canEdit && (
-        <ConfirmDeleteDialog
-          open={deleting}
-          onOpenChange={setDeleting}
-          title={c.deleteDraftTitle}
-          description={c.deleteDraftWarning}
-          onConfirm={async () => {
-            await deleteMap.mutateAsync(id);
-            void navigate("/referentiel/cartographies");
-          }}
-          restoreFocus={() => undefined}
-        />
-      )}
-    </div>
+        {canEdit && (
+          <EditRiskMapDialog version={version} open={editing} onOpenChange={setEditing} />
+        )}
+        {canEdit && (
+          <ConfirmDeleteDialog
+            open={deleting}
+            onOpenChange={setDeleting}
+            title={c.deleteDraftTitle}
+            description={c.deleteDraftWarning}
+            onConfirm={async () => {
+              await deleteMap.mutateAsync(id);
+              void navigate("/referentiel/cartographies");
+            }}
+            restoreFocus={() => undefined}
+          />
+        )}
+      </div>
+    </PrintLayout>
   );
 }

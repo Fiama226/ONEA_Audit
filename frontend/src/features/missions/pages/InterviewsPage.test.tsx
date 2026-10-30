@@ -278,7 +278,7 @@ describe("InterviewsPage", () => {
   it("prints the planning with a header and without buttons", async () => {
     renderMission(PATH, "RAI", { handlers: handlers([anInterview()]) });
     await screen.findByText("Prise de connaissance des achats");
-    const title = screen.getByRole("heading", { name: t.planningTitle, hidden: true });
+    const title = screen.getByText(t.planningTitle);
     expect(title.parentElement).toHaveClass("print:block");
     expect(title.parentElement).toHaveTextContent("MI-2026-001");
     const print = screen.getByRole("button", { name: t.printPlanning });
