@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.accomplissement",
     "apps.constats",
     "apps.documents",
+    "apps.notifications",
 ]
 
 AUTH_USER_MODEL = "users.User"
