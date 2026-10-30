@@ -5,8 +5,9 @@ from apps.communication.models import (
     RapportProvisoire,
     StatutRapport,
 )
-from apps.constats.models import Constat
+from apps.constats.models import Constat, StatutConstat
 from apps.missions.models import Mission, StatutEtape, StatutMission
+from apps.users.models import User
 from tests.communication.factories import RapportFactory, RapportProvisoireFactory
 from tests.constats.factories import ConstatFactory
 from tests.missions.conftest import (  # noqa: F401
@@ -58,3 +59,49 @@ def rapport_soumis(mission_en_communication: Mission) -> Rapport:
 def provisoire_transmis(rapport_brouillon: Rapport) -> RapportProvisoire:
     provisoire: RapportProvisoire = RapportProvisoireFactory(rapport=rapport_brouillon)
     return provisoire
+
+
+def _valider(constat: Constat) -> Constat:
+    constat.soumettre()
+    constat.save()
+    constat.valider()
+    constat.save()
+    return constat
+
+
+@pytest.fixture
+def constat_valide(mission_lancee: Mission) -> Constat:  # noqa: F811
+    """Constat VALIDE (niveau faible), créé tant que XIV est ouverte."""
+    constat: Constat = ConstatFactory(
+        mission=mission_lancee, titre="Constat validé", probabilite=2, impact=2
+    )
+    return _valider(constat)
+
+
+@pytest.fixture
+def constat_soumis_non_valide(mission_lancee: Mission) -> Constat:  # noqa: F811
+    constat: Constat = ConstatFactory(mission=mission_lancee, titre="Constat soumis")
+    constat.soumettre()
+    constat.save()
+    assert constat.statut == StatutConstat.SOUMIS
+    return constat
+
+
+@pytest.fixture
+def rapport_redige(
+    constat_valide: Constat,  # noqa: ARG001
+    mission_en_communication: Mission,
+) -> Rapport:
+    """Rapport BROUILLON dont les trois sections obligatoires sont renseignées."""
+    rapport: Rapport = RapportFactory(
+        mission=mission_en_communication, appreciation_globale="PERFECTIBLE"
+    )
+    return rapport
+
+
+@pytest.fixture
+def rai() -> User:
+    from apps.users.models import Role
+    from tests.factories import make_user
+
+    return make_user(Role.RAI)
