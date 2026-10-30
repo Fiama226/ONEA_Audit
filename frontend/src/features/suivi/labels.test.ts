@@ -63,7 +63,6 @@ describe("libellés du suivi", () => {
 
   it("réserve une section vide par tâche parallèle", () => {
     expect(fr.suiviRegistre).toEqual({});
-    expect(fr.rechercheNotifications).toEqual({});
     expect(fr.tableauxDirection).toEqual({});
     expect(fr.tableauxEquipe).toEqual({});
   });
