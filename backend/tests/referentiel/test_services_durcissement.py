@@ -7,6 +7,7 @@ from django.db import IntegrityError, transaction
 from django.http import Http404
 
 from apps.core.exceptions import RegleMetierError
+from apps.core.gardes_sql import maintenance
 from apps.referentiel.exceptions import CartographieFigeeError
 from apps.referentiel.models import (
     CartographieVersion,
@@ -226,7 +227,8 @@ def test_copie_exige_une_source_validee_et_active(rai: User) -> None:
         creer_version(annee=2025, libelle="x", source=brouillon, by=rai)
     assert "source" in exc.value.errors
     valider_version(brouillon, by=rai)
-    CartographieVersion._base_manager.filter(pk=brouillon.pk).update(deleted_at=SUPPRIME)
+    with maintenance():
+        CartographieVersion._base_manager.filter(pk=brouillon.pk).update(deleted_at=SUPPRIME)
     with pytest.raises(RegleMetierError) as exc:
         creer_version(annee=2025, libelle="x", source=brouillon, by=rai)
     assert "source" in exc.value.errors

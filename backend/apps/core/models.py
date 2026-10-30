@@ -54,6 +54,11 @@ class BaseModel(models.Model):
     def hard_delete(self) -> None:
         """Physical deletion escape hatch for tests/admin maintenance.
 
-        Must NEVER be called from request code (CLAUDE.md rule 4).
+        Must NEVER be called from request code (CLAUDE.md rule 4). The database triggers (lot 9,
+        D6) refuse the DELETE unless the connection belongs to the table owner: the maintenance
+        switch is turned on here, and has no effect for the unprivileged application role.
         """
-        super().delete()
+        from .gardes_sql import maintenance
+
+        with maintenance():
+            super().delete()

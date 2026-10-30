@@ -6,6 +6,7 @@ import pytest
 from django.db import transaction
 
 from apps.core.exceptions import RegleMetierError
+from apps.core.gardes_sql import maintenance
 from apps.programmation.exceptions import ProgrammeFigeError
 from apps.programmation.models import LigneProgramme, ProgrammeAnnuel
 from apps.referentiel.models import Direction
@@ -79,7 +80,8 @@ def test_entites_retrait_refuse_sur_programme_valide(programme_valide: Programme
     li = _premiere_ligne(programme_valide)
     d = _direction()
     # Pose directe sur la table de liaison (test uniquement) : le récepteur est contourné.
-    LigneProgramme.entites.through.objects.create(ligneprogramme_id=li.pk, direction_id=d.pk)
+    with maintenance():
+        LigneProgramme.entites.through.objects.create(ligneprogramme_id=li.pk, direction_id=d.pk)
     with pytest.raises(ProgrammeFigeError), transaction.atomic():
         li.entites.remove(d)
     assert li.entites.count() == 1
@@ -88,7 +90,8 @@ def test_entites_retrait_refuse_sur_programme_valide(programme_valide: Programme
 def test_entites_vidage_refuse_sur_programme_valide(programme_valide: ProgrammeAnnuel) -> None:
     li = _premiere_ligne(programme_valide)
     d = _direction()
-    LigneProgramme.entites.through.objects.create(ligneprogramme_id=li.pk, direction_id=d.pk)
+    with maintenance():
+        LigneProgramme.entites.through.objects.create(ligneprogramme_id=li.pk, direction_id=d.pk)
     with pytest.raises(ProgrammeFigeError), transaction.atomic():
         li.entites.clear()
     with pytest.raises(ProgrammeFigeError), transaction.atomic():
@@ -103,7 +106,8 @@ def test_entites_cote_inverse_refuse_sur_programme_valide(
     d = _direction()
     with pytest.raises(ProgrammeFigeError), transaction.atomic():
         d.lignes_programme.add(li)
-    LigneProgramme.entites.through.objects.create(ligneprogramme_id=li.pk, direction_id=d.pk)
+    with maintenance():
+        LigneProgramme.entites.through.objects.create(ligneprogramme_id=li.pk, direction_id=d.pk)
     with pytest.raises(ProgrammeFigeError), transaction.atomic():
         d.lignes_programme.remove(li)
     with pytest.raises(ProgrammeFigeError), transaction.atomic():

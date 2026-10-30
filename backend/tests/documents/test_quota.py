@@ -7,6 +7,7 @@ import pytest
 from django.db import connection
 
 from apps.core.exceptions import RegleMetierError
+from apps.core.gardes_sql import maintenance
 from apps.documents.models import DocumentVersion, GabaritDocument
 from apps.documents.services.quota import controler_quota, utilise_octets
 from tests.accomplissement.factories import PieceFactory
@@ -17,7 +18,10 @@ KO = 1024
 
 
 def _taille(table: str, colonne: str, pk: Any, valeur: int) -> None:
-    with connection.cursor() as cur:  # SQL brut : les gardes du modèle gèlent les tailles
+    with (
+        maintenance(),
+        connection.cursor() as cur,
+    ):  # SQL brut : les gardes du modèle gèlent les tailles
         cur.execute(f"UPDATE {table} SET {colonne} = %s WHERE id = %s", [valeur, pk])  # noqa: S608
 
 

@@ -8,6 +8,7 @@ import pytest
 from django.db import connection
 
 from apps.core.exceptions import RegleMetierError
+from apps.core.gardes_sql import maintenance
 from apps.documents import pdf
 from apps.documents.exceptions import ContratNonRespecteError
 from apps.documents.integrite import IntegriteError
@@ -202,7 +203,7 @@ def test_quota_depasse_refuse(
     settings: Any,
 ) -> None:
     settings.DOCUMENTS_QUOTA_MO = 1
-    with connection.cursor() as cur:  # raw SQL: the model guards freeze the size
+    with maintenance(), connection.cursor() as cur:  # raw SQL: the model guards freeze the size
         cur.execute(
             "UPDATE documents_gabaritdocument SET taille = %s WHERE id = %s",
             [2 * 1024 * 1024, gabarit_actif_test.pk],

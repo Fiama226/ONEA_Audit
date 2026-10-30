@@ -262,6 +262,103 @@ docker compose --env-file .env.prod -f docker/compose.prod.yml start web worker 
 Même procédure pour Keycloak avec le service `keycloak-db` (arrêter `keycloak` pendant la
 restauration). Tester la restauration régulièrement sur un serveur de recette.
 
+## 7bis. Base de données : rôles, gel et maintenance
+
+**Deux rôles PostgreSQL.**
+
+| Rôle | Usage | Droits |
+|---|---|---|
+| `POSTGRES_USER` (propriétaire, défaut `onea`) | service `migrate`, sauvegardes, maintenance | propriétaire des tables |
+| `POSTGRES_APP_USER` (défaut `onea_app`) | `web`, `worker`, `beat` | `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT`, jamais propriétaire ; `SELECT`, `INSERT`, `UPDATE` sur les tables ; `DELETE` uniquement sur les tables de liaison générées et `django_session` ; ni `TRUNCATE`, ni `TRIGGER`, ni `CREATE` ; `USAGE`, `SELECT` sur les séquences |
+
+Le mot de passe du propriétaire n'est présent que dans le service `migrate` ; `web`, `worker` et `beat`
+reçoivent l'URL du rôle applicatif. Les droits sont réappliqués après chaque migration.
+
+**Gel en base.** Des déclencheurs refusent, même par SQL brut, avec le message
+`ERREUR ONEA : <règle>` (SQLSTATE `P0001`) :
+
+- toute suppression physique (`DELETE`) sur les tables des modèles métier (suppression logique seulement) ;
+- toute modification ou suppression des tables en ajout seul : confirmations de signature, journaux
+  d'événements (étapes, fiches, constats, rapports, suivis), journal d'audit (`auditlog_logentry`), journaux
+  de consultation, réponses et avis déposés, rapports provisoires, diffusions, instantanés du programme,
+  engagements sur le plan d'actions ;
+- la modification des colonnes figées : empreintes, tailles et fichiers d'une version de document prête (seul le
+  PDF évolue, une fois), gabarits, numéro et rattachement des documents, pièces justificatives et preuves de mise en
+  œuvre, copies figées d'un suivi d'action, relances et notifications (seuls leurs champs d'état changent) ;
+- toute écriture sur une cartographie validée, ses risques, un programme annuel validé, ses lignes et leurs entités.
+
+Les gels qui dépendent de l'état d'une mission (suspendue, étape close, rapport diffusé…) restent contrôlés
+par l'application : ils admettent des exceptions légitimes (reprise, réouverture).
+
+Le rôle applicatif est refusé deux fois : par le privilège (`permission denied for table …`), puis par le
+déclencheur. Le message `ERREUR ONEA` s'observe avec la connexion du propriétaire :
+
+```
+docker compose --env-file .env.prod -f docker/compose.prod.yml exec -T db \
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "DELETE FROM missions_mission"'
+```
+
+**Vérification (code de sortie 1 au moindre écart : déclencheur absent, désactivé ou modifié, rôle trop puissant).**
+
+```
+docker compose --env-file .env.prod -f docker/compose.prod.yml run --rm migrate \
+  python manage.py installer_gardes_sql --verifier --exiger-role
+docker compose --env-file .env.prod -f docker/compose.prod.yml exec web \
+  python manage.py shell -c "from django.db import connection; c=connection.cursor(); c.execute('select current_user'); print(c.fetchone())"
+```
+
+La seconde commande doit afficher `onea_app`. À rejouer après une restauration (`pg_restore`) : elle
+détecte un gel absent, et `installer_gardes_sql` (sans option) le répare.
+
+**Procédure de maintenance avec contournement.** Seul le propriétaire (ou un superutilisateur) peut lever le
+gel, dans une transaction, avec `SET LOCAL onea.maintenance = 'on'` ; le rôle applicatif n'en tire aucun effet.
+Arrêter d'abord `web`, `worker` et `beat`, sauvegarder, puis :
+
+```
+docker compose --env-file .env.prod -f docker/compose.prod.yml exec -T db \
+  sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+BEGIN;
+SET LOCAL onea.maintenance = 'on';
+-- commandes de correction, une opération documentée à la fois
+COMMIT;
+SQL
+```
+
+Une migration de données Django qui modifie ou supprime des lignes gelées doit s'exécuter dans
+`with apps.core.gardes_sql.maintenance():` (connexion du propriétaire, donc du service `migrate`). Ne jamais
+désactiver un déclencheur (`ALTER TABLE … DISABLE TRIGGER`) : `--verifier` le signale.
+
+**Migration d'une base existante (création du rôle et des droits par commande).** Le script
+`docker/postgres/initdb/10-role-applicatif.sh` ne s'exécute qu'au premier démarrage d'un volume vide.
+Pour une base déjà en service :
+
+1. `sh scripts/backup.sh`, puis ajouter `POSTGRES_APP_USER` et `POSTGRES_APP_PASSWORD` (sans caractères
+   spéciaux) à `.env.prod`.
+2. Créer le rôle :
+
+   ```
+   docker compose --env-file .env.prod -f docker/compose.prod.yml exec -T db sh -c \
+     'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+        -v app_user="$POSTGRES_APP_USER" -v app_password="$POSTGRES_APP_PASSWORD" -v app_db="$POSTGRES_DB"' <<'SQL'
+   SELECT format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT PASSWORD %L',
+                 :'app_user', :'app_password') \gexec
+   SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'app_db', :'app_user') \gexec
+   SQL
+   ```
+
+3. Déployer : `docker compose --env-file .env.prod -f docker/compose.prod.yml up -d`. Le service `migrate`
+   (connexion du propriétaire) pose les déclencheurs et les droits (`post_migrate`), puis `web`, `worker` et
+   `beat` redémarrent avec le rôle applicatif. Sans redéploiement :
+   `docker compose … run --rm migrate python manage.py installer_gardes_sql`.
+4. Vérifier comme ci-dessus (`--verifier --exiger-role`, `select current_user`).
+
+Les lignes existantes ne sont pas contrôlées à la pose des déclencheurs : seules les écritures futures le sont.
+Retour arrière : `DROP TRIGGER` des déclencheurs préfixés `onea_` et `REVOKE` des droits du rôle, ou
+restauration de la sauvegarde.
+
+Limites connues : un superutilisateur contourne les privilèges (pas les déclencheurs, sauf maintenance) ;
+la purge du journal d'audit (`auditlogflush`) exige la maintenance ; `TRUNCATE` par le propriétaire n'est pas
+intercepté (ce droit n'est pas accordé au rôle applicatif).
 ## 8. Variables d'environnement (`.env.prod`)
 
 | Variable | Rôle |
@@ -277,6 +374,7 @@ restauration). Tester la restauration régulièrement sur un serveur de recette.
 | `DJANGO_ADMIN_ENABLED` | `false` par défaut ; `true` expose `/admin/` |
 | `EMAIL_URL` | relais SMTP, ex. `smtp+tls://user:mdp@smtp.onea.bf:587` |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | base applicative |
+| `POSTGRES_APP_USER`, `POSTGRES_APP_PASSWORD` | rôle applicatif sans privilèges de web, worker, eat (voir §7bis) ; obligatoires |
 | `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | administrateur d'amorçage Keycloak |
 | `KEYCLOAK_DB_PASSWORD` | mot de passe de la base Keycloak (instance dédiée) |
 | `OIDC_RP_CLIENT_SECRET` | secret du client confidentiel `onea-backend` ; non utilisé par le chemin Bearer, requis seulement car mozilla-django-oidc le lit à l'initialisation |

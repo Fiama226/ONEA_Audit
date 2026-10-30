@@ -2,6 +2,7 @@ import pytest
 from django.utils import timezone
 
 from apps.core.exceptions import RegleMetierError
+from apps.core.gardes_sql import maintenance
 from apps.missions.exceptions import EtapeCloseError
 from apps.missions.models import Mission, RisqueMission, StatutEtape, StatutMission
 from apps.missions.services.risques import (
@@ -107,7 +108,8 @@ def test_risque_nouveau_et_snapshot(
         3,
         3,
     )
-    Risque._base_manager.filter(pk=risque.pk).update(libelle="Modifié", probabilite=5, impact=5)
+    with maintenance():
+        Risque._base_manager.filter(pk=risque.pk).update(libelle="Modifié", probabilite=5, impact=5)
     copie.refresh_from_db()
     assert (copie.libelle, copie.probabilite, copie.impact) == (risque.libelle, 3, 3)
     assert not copie.nouveau

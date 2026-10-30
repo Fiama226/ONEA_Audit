@@ -3,6 +3,7 @@ from typing import Any
 import pytest
 from rest_framework.test import APIClient
 
+from apps.core.gardes_sql import maintenance
 from apps.missions.models import (
     DeclarationIndependance,
     EtapeMission,
@@ -243,7 +244,8 @@ def test_erreurs_au_format_unique(api_client: APIClient, equipe_complete: Equipe
     # 422 : aucune cartographie validée
     from apps.referentiel.models import CartographieVersion
 
-    CartographieVersion._base_manager.all().update(statut="BROUILLON")
+    with maintenance():
+        CartographieVersion._base_manager.all().update(statut="BROUILLON")
     r = api_client.post("/api/v1/missions/", {"titre": "T", "type": "ASSURANCE"}, format="json")
     assert r.status_code == 422
     assert "cartographie" in r.json()["errors"]

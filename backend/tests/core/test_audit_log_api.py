@@ -10,6 +10,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
+from apps.core.gardes_sql import maintenance
 from apps.users.models import Role, User
 
 from ..factories import make_user
@@ -57,7 +58,8 @@ def test_rai_lists_entries_with_changes(rai_client: APIClient, modified_user: Us
 
 
 def test_actor_is_serialised(rai_client: APIClient, rai: User, modified_user: User) -> None:
-    LogEntry.objects.filter(action=LogEntry.Action.UPDATE).update(actor=rai)
+    with maintenance():
+        LogEntry.objects.filter(action=LogEntry.Action.UPDATE).update(actor=rai)
     results = rai_client.get(URL).json()["results"]
     actors = [r["actor"] for r in results]
     assert {"id": rai.pk, "username": rai.username} in actors
@@ -130,26 +132,31 @@ def test_filter_by_object_id_and_actor(
     results = rai_client.get(URL, {"object_id": str(modified_user.pk)}).json()["results"]
     assert results
     assert {r["object_id"] for r in results} == {str(modified_user.pk)}
-    LogEntry.objects.filter(object_pk=str(modified_user.pk)).update(actor=rai)
+    with maintenance():
+        LogEntry.objects.filter(object_pk=str(modified_user.pk)).update(actor=rai)
     by_actor = rai_client.get(URL, {"actor": rai.pk}).json()["results"]
     assert by_actor
     assert all(r["actor"]["id"] == rai.pk for r in by_actor)
 
 
 def test_date_to_includes_whole_day(rai_client: APIClient, modified_user: User) -> None:
-    LogEntry.objects.all().update(timestamp=dt.datetime(2026, 3, 1, 12, 0, tzinfo=OUAGA))
+    with maintenance():
+        LogEntry.objects.all().update(timestamp=dt.datetime(2026, 3, 1, 12, 0, tzinfo=OUAGA))
     entries = list(LogEntry.objects.order_by("pk"))
     assert len(entries) >= 3
     late, next_day, early = entries[0], entries[1], entries[2]
-    LogEntry.objects.filter(pk=late.pk).update(
-        timestamp=dt.datetime(2026, 3, 10, 23, 30, tzinfo=OUAGA)
-    )
-    LogEntry.objects.filter(pk=next_day.pk).update(
-        timestamp=dt.datetime(2026, 3, 11, 0, 5, tzinfo=OUAGA)
-    )
-    LogEntry.objects.filter(pk=early.pk).update(
-        timestamp=dt.datetime(2026, 3, 9, 23, 55, tzinfo=OUAGA)
-    )
+    with maintenance():
+        LogEntry.objects.filter(pk=late.pk).update(
+            timestamp=dt.datetime(2026, 3, 10, 23, 30, tzinfo=OUAGA)
+        )
+    with maintenance():
+        LogEntry.objects.filter(pk=next_day.pk).update(
+            timestamp=dt.datetime(2026, 3, 11, 0, 5, tzinfo=OUAGA)
+        )
+    with maintenance():
+        LogEntry.objects.filter(pk=early.pk).update(
+            timestamp=dt.datetime(2026, 3, 9, 23, 55, tzinfo=OUAGA)
+        )
     ids = {
         r["id"]
         for r in rai_client.get(URL, {"date_from": "2026-03-10", "date_to": "2026-03-10"}).json()[
@@ -193,7 +200,8 @@ def test_writes_not_allowed(rai_client: APIClient, modified_user: User, method: 
 def test_page_uses_at_most_three_queries(rai_client: APIClient, rai: User) -> None:
     for _ in range(5):
         target = make_user(Role.AUDITE)
-        LogEntry.objects.filter(object_pk=str(target.pk)).update(actor=rai)
+        with maintenance():
+            LogEntry.objects.filter(object_pk=str(target.pk)).update(actor=rai)
     with CaptureQueriesContext(connection) as ctx:
         response = rai_client.get(URL)
     assert response.status_code == 200

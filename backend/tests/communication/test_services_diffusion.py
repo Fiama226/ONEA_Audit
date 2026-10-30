@@ -27,6 +27,7 @@ from apps.communication.services.diffusion import (
     retirer_destinataire,
 )
 from apps.core.exceptions import RegleMetierError
+from apps.core.gardes_sql import maintenance
 from apps.missions.models import EtapeMission, Mission
 from apps.missions.services import aujourd_hui
 from apps.signatures.parametres import modifier_mode
@@ -101,7 +102,7 @@ def test_diffusion_exige_un_destinataire(rapport_valide: Rapport, rai: User) -> 
 
 def test_diffusion_refuse_une_confirmation_alteree(rapport_valide: Rapport, rai: User) -> None:
     creer_version(rapport_valide)
-    with connection.cursor() as c:
+    with maintenance(), connection.cursor() as c:
         c.execute(
             "UPDATE signatures_confirmation SET texte = 'Falsifié' WHERE id = %s",
             [rapport_valide.confirmation_validation_id],
