@@ -44,7 +44,9 @@ RUN chmod 0555 /usr/local/bin/entrypoint.sh /usr/local/bin/healthcheck.py \
 # production settings need runtime secrets that do not exist at build time. The one-shot
 # `migrate` service refreshes the shared static volume at every deployment.
 RUN DJANGO_SETTINGS_MODULE=config.settings.base python manage.py collectstatic --noinput \
-    && chown -R onea:onea /app/staticfiles
+    && chown -R onea:onea /app/staticfiles \
+    && mkdir -p /var/lib/onea/fichiers \
+    && chown onea:onea /var/lib/onea/fichiers
 
 USER onea
 EXPOSE 8000

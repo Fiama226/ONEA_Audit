@@ -50,6 +50,7 @@ x-backend-env: &backend-env
   KEYCLOAK_ADMIN_API_CLIENT_ID: onea-admin-sync
   KEYCLOAK_ADMIN_API_CLIENT_SECRET: ${KEYCLOAK_ADMIN_API_CLIENT_SECRET:?KEYCLOAK_ADMIN_API_CLIENT_SECRET is required}
   DJANGO_ADMIN_ENABLED: ${DJANGO_ADMIN_ENABLED:-false}
+  FICHIERS_RACINE: /var/lib/onea/fichiers
   THROTTLE_RATE_GENERATION: ${THROTTLE_RATE_GENERATION:-20/min}
   THROTTLE_RATE_APERCU: ${THROTTLE_RATE_APERCU:-30/min}
   THROTTLE_RATE_TELEVERSEMENT: ${THROTTLE_RATE_TELEVERSEMENT:-30/hour}
@@ -97,6 +98,7 @@ services:
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-3}
     volumes:
       - *ca-volume
+      - onea-fichiers:/var/lib/onea/fichiers
       - type: bind
         source: ${DOCUMENTS_HOST_DIR:?DOCUMENTS_HOST_DIR is required}
         target: /var/lib/onea/documents
@@ -114,6 +116,7 @@ services:
     environment: *backend-env
     volumes:
       - *ca-volume
+      - onea-fichiers:/var/lib/onea/fichiers
       - type: bind
         source: ${DOCUMENTS_HOST_DIR:?DOCUMENTS_HOST_DIR is required}
         target: /var/lib/onea/documents
@@ -353,3 +356,5 @@ volumes:
   redis-data:
   meili-data:
   static:
+  # Pièces justificatives du lot 6 : jamais dans Git, jamais exposées par nginx, à sauvegarder.
+  onea-fichiers:
