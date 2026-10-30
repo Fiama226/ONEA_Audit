@@ -134,6 +134,15 @@ RECHERCHE = {
     "INDEX": env("MEILI_INDEX", default="onea"),
     "TIMEOUT": 3,
 }
+# Types de documents que l'audité peut trouver dans la recherche (R14, spec §5) ; le rapport
+# n'est indexé pour l'audité et le DG qu'une fois diffusé.
+RECHERCHE_TYPES_DOCUMENTS_AUDITE: list[str] = [
+    "ORDRE_MISSION",
+    "PV_OUVERTURE",
+    "PV_CLOTURE",
+    "RAPPORT_FINAL",
+    "PLAN_ACTIONS",
+]
 GOTENBERG_URL: str = env("GOTENBERG_URL", default="http://localhost:3000").rstrip("/")
 # --- Pièces justificatives (lot 6) : disque du serveur, jamais dans Git, jamais sous une URL.
 STOCKAGE_PREUVES: dict[str, Any] = {
@@ -323,6 +332,10 @@ CELERY_BEAT_SCHEDULE = {
     "suivi-reconciliation": {
         "task": "suivi.reconcilier_suivis",
         "schedule": crontab(minute=5),
+    },
+    "recherche-reconciliation": {
+        "task": "recherche.reconcilier",
+        "schedule": crontab(hour=2, minute=0),
     },
 }
 
