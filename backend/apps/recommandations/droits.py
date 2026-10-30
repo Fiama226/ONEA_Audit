@@ -9,7 +9,7 @@ from uuid import UUID
 
 from django.db.models import Q, QuerySet
 
-from apps.missions.acces import peut_contribuer, role_dans_mission
+from apps.missions.acces import declaration_levee, role_dans_mission
 from apps.missions.models import ROLES_INTERVENANTS, EtapeMission, Mission, RoleMission
 from apps.missions.services.travaux import STATUTS_TRAVAUX
 from apps.referentiel.models import Direction
@@ -46,7 +46,6 @@ def contexte_plan(mission: Mission, user: User) -> ContextePlan:
     )
     role = role_dans_mission(user, mission)
     audite = user.role == Role.AUDITE and role == RoleMission.AUDITE
-    intervenant = user.role == Role.RAI or role in ROLES_INTERVENANTS
     entites: frozenset[str] = frozenset()
     if audite and user.direction_code:
         entites = frozenset(
@@ -56,7 +55,9 @@ def contexte_plan(mission: Mission, user: User) -> ContextePlan:
             )
         )
     return ContextePlan(
-        contribue=intervenant and peut_contribuer(user, mission),
+        # équivalent à peut_contribuer, sans relire le rôle dans la mission (requêtes bornées)
+        contribue=user.role == Role.RAI
+        or (role in ROLES_INTERVENANTS and declaration_levee(user, mission)),
         rai=user.role == Role.RAI,
         audite=audite,
         fenetre=fenetre,
@@ -71,16 +72,19 @@ def peut_proposer(contexte: ContextePlan, entite_id: UUID | str | None) -> bool:
     return contexte.audite and entite_id is not None and str(entite_id) in contexte.entites
 
 
-def actions_action(action: Action, user: User, *, contexte: ContextePlan) -> list[str]:
-    if not contexte.fenetre:
-        return []
+def peut_ecrire_action(action: Action, user: User, *, contexte: ContextePlan) -> bool:
+    """Droit d'écriture sur l'action, indépendamment de la fenêtre (le gel répond 422)."""
     if contexte.contribue:
-        return [MODIFIER, SUPPRIMER]
+        return True
     if contexte.audite and user.pk in (action.proposee_par_id, action.responsable_id):
-        entite_id = action.recommandation.constat.entite_id
-        if peut_proposer(contexte, entite_id):
-            return [MODIFIER, SUPPRIMER]
-    return []
+        return peut_proposer(contexte, action.recommandation.constat.entite_id)
+    return False
+
+
+def actions_action(action: Action, user: User, *, contexte: ContextePlan) -> list[str]:
+    if not contexte.fenetre or not peut_ecrire_action(action, user, contexte=contexte):
+        return []
+    return [MODIFIER, SUPPRIMER]
 
 
 def actions_recommandation(

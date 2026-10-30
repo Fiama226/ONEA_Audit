@@ -276,6 +276,9 @@ SPECTACULAR_SETTINGS = {
         "PrioriteRecommandationEnum": "apps.constats.models.PrioriteRecommandation.choices",
         "PositionAuditeEnum": "apps.constats.models.PositionAudite.choices",
         "TypeEvenementConstatEnum": "apps.constats.models.TypeEvenementConstat.choices",
+        "StatutActionEnum": "apps.recommandations.models.StatutAction.choices",
+        "StatutRecommandationDeriveEnum": "apps.recommandations.serializers.STATUT_DERIVE_CHOICES",
+        "EtatEngagementEnum": "apps.recommandations.serializers.ETAT_ENGAGEMENT_CHOICES",
     },
 }
 

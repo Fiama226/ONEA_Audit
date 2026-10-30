@@ -1,0 +1,125 @@
+{
+  "synthese": {
+    "actions_incompletes": [
+      "str"
+    ],
+    "engagements_manquants": [],
+    "recommandations": [
+      {
+        "acceptation": "null",
+        "constat": "str",
+        "libelle": "str",
+        "nb_actions": "int",
+        "priorite": "str",
+        "reference": "str",
+        "statut_derive": "str"
+      }
+    ],
+    "recommandations_sans_suite": [
+      "str"
+    ],
+    "responsables": [
+      {
+        "engagement": "str",
+        "nb_actions": "int",
+        "prochaine_echeance": "null",
+        "utilisateur": {
+          "direction_code": "str",
+          "fonction": "str",
+          "id": "int",
+          "nom_complet": "str",
+          "role": "str",
+          "username": "str"
+        }
+      }
+    ]
+  },
+  "action": {
+    "actions_possibles": [
+      "str"
+    ],
+    "constat_reference": "str",
+    "echeance": "null",
+    "id": "str",
+    "indicateur": "str",
+    "libelle": "str",
+    "mission": "str",
+    "moyens": "str",
+    "ordre": "int",
+    "proposee_par": "int",
+    "recommandation": "str",
+    "reference": "str",
+    "responsable": "int",
+    "responsable_detail": {
+      "direction_code": "str",
+      "fonction": "str",
+      "id": "int",
+      "nom_complet": "str",
+      "role": "str",
+      "username": "str"
+    },
+    "statut": "str"
+  },
+  "actions_liste": {
+    "count": "int",
+    "next": "null",
+    "previous": "null",
+    "results": [
+      {
+        "actions_possibles": [
+          "str"
+        ],
+        "constat_reference": "str",
+        "echeance": "null",
+        "id": "str",
+        "indicateur": "str",
+        "libelle": "str",
+        "mission": "str",
+        "moyens": "str",
+        "ordre": "int",
+        "proposee_par": "int",
+        "recommandation": "str",
+        "reference": "str",
+        "responsable": "null",
+        "responsable_detail": "null",
+        "statut": "str"
+      }
+    ]
+  },
+  "texte_engagement": {
+    "etat": "str",
+    "nb_actions": "int",
+    "texte": "str"
+  },
+  "engagements_liste": {
+    "count": "int",
+    "next": "null",
+    "previous": "null",
+    "results": [
+      {
+        "auteur": {
+          "direction_code": "str",
+          "fonction": "str",
+          "id": "int",
+          "nom_complet": "str",
+          "role": "str",
+          "username": "str"
+        },
+        "confirmation": {
+          "confirme_le": "str",
+          "empreinte": "str",
+          "id": "str",
+          "signataire": {
+            "id": "int",
+            "nom_complet": "str"
+          },
+          "type_document": "str"
+        },
+        "empreinte_actions": "str",
+        "id": "str",
+        "mission": "str",
+        "texte": "str"
+      }
+    ]
+  }
+}
