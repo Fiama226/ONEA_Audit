@@ -6,13 +6,16 @@
 # Every secret is REQUIRED (${VAR:?}); copy .env.prod.example to .env.prod and fill it in.
 # Only nginx publishes host ports (80/443).
 #
-# Networks:
-#   edge     nginx, web, worker, frontend, keycloak (outbound access: SMTP, LDAP, ...)
-#   backend  internal (no route out): web, worker, beat, migrate, db, redis, meilisearch,
-#            gotenberg
-#   kc       internal (no route out): keycloak, keycloak-db
-# nginx carries the network alias ${SSO_HOST} on `edge`, so web resolves the SSO host to
-# nginx directly (no hairpin through the public address).
+# Networks (docs/deploy.md has the table):
+#   edge     standard: nginx only (ports 80/443)
+#   web      internal, fixed subnet ONEA_SUBNET_WEB: nginx (fixed address ONEA_NGINX_IP, alias
+#            ${SSO_HOST}), web, worker. The only client address web/gunicorn trusts is nginx's.
+#   front    internal: nginx, frontend
+#   sso      internal: nginx, keycloak (Keycloak 8080/9000 are reachable from nginx only)
+#   kc-out   standard: keycloak only (LDAP egress)
+#   mail-out standard: worker only (SMTP egress; web has no route out)
+#   backend  internal: web, worker, beat, migrate, db, redis, meilisearch, gotenberg
+#   kc       internal: keycloak, keycloak-db
 name: ${COMPOSE_PROJECT_NAME:-onea-prod}
 
 x-logging: &logging
@@ -34,12 +37,11 @@ x-backend-env: &backend-env
   REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
   EMAIL_URL: ${EMAIL_URL:?EMAIL_URL is required (e.g. smtp+tls://user:pass@smtp.example.org:587)}
   ALLOWED_HOSTS: ${PUBLIC_HOST:?PUBLIC_HOST is required}
-  CORS_ALLOWED_ORIGINS: https://${PUBLIC_HOST}
   CSRF_TRUSTED_ORIGINS: https://${PUBLIC_HOST}
-  # Reverse-proxy peers (CIDR) whose X-Real-IP is trusted; adjust to the docker network subnet.
-  TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-172.16.0.0/12}
-  # gunicorn: same value (read from the environment by gunicorn, no longer "*").
-  FORWARDED_ALLOW_IPS: ${TRUSTED_PROXY_CIDRS:-172.16.0.0/12}
+  # The only trusted proxy is nginx, at its fixed address on the `web` network.
+  TRUSTED_PROXY_CIDRS: ${ONEA_NGINX_IP:-172.30.10.2}
+  # gunicorn reads this variable itself (never "*").
+  FORWARDED_ALLOW_IPS: ${ONEA_NGINX_IP:-172.30.10.2}
   OIDC_OP_BASE_URL: https://${SSO_HOST:?SSO_HOST is required}/realms/onea
   OIDC_RP_CLIENT_ID: onea-backend
   # Unused by the Bearer path; mozilla-django-oidc reads it at init, hence required.
@@ -96,7 +98,7 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-    networks: [edge, backend]
+    networks: [web, backend]
 
   worker:
     <<: *hardening
@@ -119,8 +121,9 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
-    # edge: the worker sends mail through the organisation's SMTP relay.
-    networks: [backend, edge]
+    # mail-out: the only service allowed to reach the organisation's SMTP relay.
+    # web: Keycloak admin sync goes through nginx.
+    networks: [backend, web, mail-out]
 
   beat:
     <<: *hardening
@@ -150,7 +153,7 @@ services:
         VITE_OIDC_AUTHORITY: https://${SSO_HOST:?SSO_HOST is required}/realms/onea
         VITE_OIDC_CLIENT_ID: onea-frontend
     image: onea-frontend:${APP_VERSION:?APP_VERSION is required (e.g. 1.0.0)}
-    networks: [edge]
+    networks: [front]
 
   # --- Edge: the only service with host ports ---
   nginx:
@@ -166,9 +169,13 @@ services:
       NGINX_ENVSUBST_FILTER: "^(PUBLIC|SSO)_"
       # Addresses allowed to reach the Keycloak admin console / master realm (empty = none)
       ADMIN_ALLOW_CIDR: ${ADMIN_ALLOW_CIDR:-}
+      # Upstream load balancers/proxies (CIDR) allowed to set the client address through
+      # X-Forwarded-For (empty = nginx sees the TCP peer, the default).
+      TRUSTED_UPSTREAM_CIDRS: ${TRUSTED_UPSTREAM_CIDRS:-}
     volumes:
       - ./nginx/prod.conf:/etc/nginx/templates/default.conf.template:ro
       - ./nginx/10-admin-allow.sh:/docker-entrypoint.d/10-admin-allow.sh:ro
+      - ./nginx/20-realip.sh:/docker-entrypoint.d/20-realip.sh:ro
       - ${TLS_CERT_DIR:?TLS_CERT_DIR is required (directory with fullchain.pem and privkey.pem)}:/etc/nginx/certs:ro
       - static:/var/www/static:ro
     healthcheck:
@@ -184,9 +191,13 @@ services:
       keycloak:
         condition: service_healthy
     networks:
-      edge:
+      edge: {}
+      web:
+        ipv4_address: ${ONEA_NGINX_IP:-172.30.10.2}
         aliases:
           - ${SSO_HOST}
+      front: {}
+      sso: {}
 
   # --- Infrastructure (no host ports) ---
   db:
@@ -303,11 +314,22 @@ services:
       timeout: 5s
       retries: 30
       start_period: 60s
-    networks: [edge, kc]
+    networks: [sso, kc, kc-out]
 
 
 networks:
   edge: {}
+  web:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${ONEA_SUBNET_WEB:-172.30.10.0/28}
+  front:
+    internal: true
+  sso:
+    internal: true
+  kc-out: {}
+  mail-out: {}
   backend:
     internal: true
   kc:
