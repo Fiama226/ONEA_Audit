@@ -326,6 +326,17 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+# --- Relances automatiques du suivi des recommandations (lot 8) ---
+RELANCES_ACTIVES: bool = env.bool("RELANCES_ACTIVES", default=True)
+RELANCES_MAX_EMAILS_PAR_EXECUTION: int = env.int("RELANCES_MAX_EMAILS_PAR_EXECUTION", default=200)
+RELANCES_TENTATIVES_MAX = 5
+# Base des liens des e-mails (sans barre finale) ; https:// exigé en production.
+PLATEFORME_URL: str = env("PLATEFORME_URL", default="http://localhost:5173").rstrip("/")
+CELERY_BEAT_SCHEDULE["suivi-relances"] = {
+    "task": "suivi.relances_quotidiennes",
+    "schedule": crontab(hour=7, minute=0),
+}
+
 # --- Email: EMAIL_URL = smtp://mailpit:1025 in compose, smtp://localhost:1025 on host ---
 _email = env.email_url("EMAIL_URL", default="smtp://mailpit:1025")
 EMAIL_BACKEND = _email["EMAIL_BACKEND"]

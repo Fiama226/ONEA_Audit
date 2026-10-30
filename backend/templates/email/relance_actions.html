@@ -1,0 +1,7 @@
+{% extends "email/base.html" %}{% block content %}<p>Bonjour {{ name }},</p>
+<p>Suivi des recommandations : {{ nombre }} action(s) à traiter.</p>
+{% for groupe in groupes %}<h3 style="margin:16px 0 8px;font-size:14px;color:#0b4f8a;">{{ groupe.titre }}</h3>
+<ul style="margin:0;padding-left:20px;">
+{% for a in groupe.actions %}<li style="margin-bottom:8px;">Mission {{ a.mission }} : {{ a.libelle }}<br>Échéance : {{ a.echeance|date:"d/m/Y" }}<br><a href="{{ a.lien }}">{{ a.lien }}</a></li>
+{% endfor %}</ul>
+{% endfor %}<p style="font-size:12px;color:#5f6b76;">Message automatique de la plateforme d'audit interne de l'ONEA. Ne répondez pas à cet e-mail.</p>{% endblock %}

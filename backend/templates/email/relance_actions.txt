@@ -1,0 +1,10 @@
+{% extends "email/base.txt" %}{% block content %}Bonjour {{ name }},
+
+Suivi des recommandations : {{ nombre }} action(s) à traiter.
+{% for groupe in groupes %}
+{{ groupe.titre }}
+{% for a in groupe.actions %}- Mission {{ a.mission }} : {{ a.libelle }}
+  Échéance : {{ a.echeance|date:"d/m/Y" }}
+  Lien : {{ a.lien }}
+{% endfor %}{% endfor %}
+Message automatique de la plateforme d'audit interne de l'ONEA. Ne répondez pas à cet e-mail.{% endblock %}

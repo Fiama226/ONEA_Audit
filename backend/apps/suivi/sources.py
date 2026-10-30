@@ -14,6 +14,7 @@ Noms réels relevés en T1 étape 0 (code fusionné sur `develop`) :
 - type de document du rapport : `RAPPORT_FINAL` (étape XVIII).
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
 from typing import TYPE_CHECKING, Any
@@ -87,3 +88,10 @@ def signal_rapport_diffuse() -> "Signal | None":
     from apps.communication.signals import rapport_diffuse
 
     return rapport_diffuse
+
+
+def libelles_actions(ids: "Iterable[Any]") -> dict[Any, str]:
+    """Libellé (et seulement lui) des actions désignées : sert aux e-mails de relance."""
+    from apps.recommandations.models import Action
+
+    return dict(Action.all_objects.filter(pk__in=list(ids)).values_list("pk", "libelle"))

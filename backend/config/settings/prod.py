@@ -5,6 +5,7 @@ no localhost/mailpit fallbacks. A missing variable raises ImproperlyConfigured a
 """
 
 import os
+from urllib.parse import urlsplit
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -35,6 +36,9 @@ EMAIL_TIMEOUT = 10  # seconds; a dead relay must not hang a worker
 
 if not env("OIDC_OP_BASE_URL").startswith("https://"):  # required in production, no default
     raise ImproperlyConfigured("OIDC_OP_BASE_URL must be an https:// URL in production")
+_plateforme = urlsplit(PLATEFORME_URL)  # noqa: F405
+if _plateforme.scheme != "https" or not _plateforme.hostname or _plateforme.username:
+    raise ImproperlyConfigured("PLATEFORME_URL must be an https:// URL in production")
 if not env.bool("OIDC_VERIFY_SSL", default=True):
     raise ImproperlyConfigured("OIDC_VERIFY_SSL must not be disabled in production")
 _kc_sync_secret = env("KEYCLOAK_ADMIN_API_CLIENT_SECRET", default="")
