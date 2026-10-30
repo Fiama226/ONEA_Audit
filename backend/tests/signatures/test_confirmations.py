@@ -7,6 +7,7 @@ from django.db import IntegrityError, connection, transaction
 from django.utils import timezone
 
 from apps.core.exceptions import RegleMetierError
+from apps.core.gardes_sql import maintenance
 from apps.signatures.exceptions import ConfirmationImmuableError
 from apps.signatures.models import Confirmation
 from apps.signatures.serializers import ConfirmationResumeSerializer
@@ -82,7 +83,7 @@ def test_donnees_alterees_en_base_detectees(rai: User) -> None:
     c = confirmer(
         type_document="ORDRE_MISSION", objet=DirectionFactory(), texte="t", donnees={"a": 1}, by=rai
     )
-    with connection.cursor() as cur:
+    with maintenance(), connection.cursor() as cur:
         cur.execute(
             "UPDATE signatures_confirmation SET donnees = %s::jsonb WHERE id = %s",
             ['{"a": 2}', c.pk],

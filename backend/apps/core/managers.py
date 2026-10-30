@@ -8,8 +8,11 @@ class SoftDeleteQuerySet[T: models.Model](models.QuerySet[T]):
         raise SuppressionPhysiqueInterditeError
 
     def hard_delete(self) -> tuple[int, dict[str, int]]:
-        """Maintenance only; never call from request code."""
-        return super().delete()
+        """Maintenance only; never call from request code (owner connection only, see D6)."""
+        from .gardes_sql import maintenance
+
+        with maintenance():
+            return super().delete()
 
 
 class SoftDeleteManager[T: models.Model](models.Manager[T]):

@@ -6,6 +6,7 @@ from django.urls import get_resolver
 
 from apps.accomplissement.models import PieceJustificative
 from apps.core.consultations import Consultation
+from apps.core.gardes_sql import maintenance
 from tests.accomplissement.fixtures_api import Equipe, client_de
 from tests.accomplissement.fixtures_fiches import PDF, pdf
 
@@ -40,9 +41,10 @@ def test_upload_multipart_et_telechargement_identique(
 def test_en_tetes_surs_pour_html_et_noms_hostiles(
     equipe_api: Equipe, piece: PieceJustificative
 ) -> None:
-    PieceJustificative._base_manager.filter(pk=piece.pk).update(
-        nom_fichier_original='é"\r\nX-Evil: 1/../é.html'
-    )
+    with maintenance():  # falsification volontaire : le gel en base la refuse sinon
+        PieceJustificative._base_manager.filter(pk=piece.pk).update(
+            nom_fichier_original='é"\r\nX-Evil: 1/../é.html'
+        )
     r = client_de(equipe_api.users["rai"]).get(f"/api/v1/evidence/{piece.pk}/download/")
     assert r.status_code == 200
     assert "\n" not in r["Content-Disposition"] and "\r" not in r["Content-Disposition"]

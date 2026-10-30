@@ -33,7 +33,10 @@ x-hardening: &hardening
 x-backend-env: &backend-env
   DJANGO_SETTINGS_MODULE: config.settings.prod
   SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required (see .env.prod.example)}
-  DATABASE_URL: postgres://${POSTGRES_USER:-onea}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-onea}
+  # Application role (D6, lot 9 T10): no superuser, not the table owner, no DELETE/TRUNCATE. The
+  # owner (POSTGRES_USER) is used only by `migrate` below and by backups.
+  DATABASE_URL: postgres://${POSTGRES_APP_USER:-onea_app}:${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is required}@db:5432/${POSTGRES_DB:-onea}
+  POSTGRES_APP_USER: ${POSTGRES_APP_USER:-onea_app}
   REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0
   EMAIL_URL: ${EMAIL_URL:?EMAIL_URL is required (e.g. smtp+tls://user:pass@smtp.example.org:587)}
   ALLOWED_HOSTS: ${PUBLIC_HOST:?PUBLIC_HOST is required}
@@ -79,7 +82,10 @@ services:
       dockerfile: docker/backend.Dockerfile
     image: onea-backend:${APP_VERSION:?APP_VERSION is required (e.g. 1.0.0)}
     command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput"]
-    environment: *backend-env
+    # Owner connection: creates tables, installs the freeze triggers and grants the application role.
+    environment:
+      <<: *backend-env
+      DATABASE_URL: postgres://${POSTGRES_USER:-onea}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-onea}
     volumes:
       - static:/app/staticfiles
     depends_on:
@@ -220,8 +226,12 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-onea}
       POSTGRES_USER: ${POSTGRES_USER:-onea}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      # Read by postgres/initdb/10-role-applicatif.sh (first start of an empty volume only).
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-onea_app}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?POSTGRES_APP_PASSWORD is required}
     volumes:
       - db-data:/var/lib/postgresql/data
+      - ./postgres/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s

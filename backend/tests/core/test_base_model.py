@@ -4,6 +4,7 @@ from django.apps import apps
 from django.utils import timezone
 
 from apps.core.exceptions import SuppressionPhysiqueInterditeError
+from apps.core.gardes_sql import maintenance
 from apps.core.models import BaseModel
 from apps.users.models import User
 from tests.testapp.models import Exemple
@@ -65,7 +66,8 @@ def test_soft_delete_audit_independant_de_l_egalite_d_horodatage(user: User) -> 
     e = Exemple.objects.create(nom="a")
     e.soft_delete(by=user)
     instant = timezone.now()
-    LogEntry.objects.get_for_object(e).update(timestamp=instant)
+    with maintenance():
+        LogEntry.objects.get_for_object(e).update(timestamp=instant)
     entries = LogEntry.objects.get_for_object(e)
     assert entries.values("timestamp").distinct().count() == 1
     suppression = [
