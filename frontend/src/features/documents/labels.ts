@@ -14,6 +14,12 @@ export const STATUT_PDF_LABELS: Record<StatutPdf, string> = {
   ECHEC: "PDF indisponible",
 };
 
+/** Types de documents produits par les missions, pour les rôles sans accès à /document-types/. */
+export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  ORDRE_MISSION: "Ordre de mission",
+  PV_OUVERTURE: "PV de la réunion d'ouverture",
+};
+
 export const STATUT_GABARIT_LABELS: Record<StatutGabarit, string> = {
   DEPOSE: "Déposé",
   ACTIF: "Actif",

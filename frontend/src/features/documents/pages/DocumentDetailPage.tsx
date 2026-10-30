@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { isApiError } from "@/api/errors";
@@ -11,6 +11,7 @@ import { ConsultationsTable } from "../components/ConsultationsTable";
 import { DocumentStatusBadge } from "../components/DocumentStatusBadge";
 import { DownloadButtons } from "../components/DownloadButtons";
 import { VersionHistory } from "../components/VersionHistory";
+import { isInProgress } from "../labels";
 
 const t = fr.documentsRegistre;
 
@@ -25,10 +26,20 @@ export function DocumentDetailPage() {
   const polled = version.data;
 
   // Fin d'un traitement : l'historique des versions est relu pour refléter l'état final.
-  const finalKey = polled ? `${polled.id}:${polled.statut}:${polled.statut_pdf}` : "";
+  // Seule une transition « en cours » -> terminé relit le document, pas le premier chargement.
+  const previous = useRef<{ id: string; inProgress: boolean } | null>(null);
+  const polledId = polled?.id;
+  const polledStatut = polled?.statut;
+  const polledPdf = polled?.statut_pdf;
   useEffect(() => {
-    if (finalKey && id) void client.invalidateQueries({ queryKey: documentKeys.document(id) });
-  }, [finalKey, id, client]);
+    if (!polledId || !polledStatut || !polledPdf) return;
+    const inProgress = isInProgress({ statut: polledStatut, statut_pdf: polledPdf });
+    const before = previous.current;
+    previous.current = { id: polledId, inProgress };
+    if (before?.id === polledId && before.inProgress && !inProgress && id) {
+      void client.invalidateQueries({ queryKey: documentKeys.document(id) });
+    }
+  }, [polledId, polledStatut, polledPdf, id, client]);
 
   if (document.isError) {
     const notFound = isApiError(document.error) && document.error.status === 404;
@@ -100,9 +111,18 @@ export function DocumentDetailPage() {
           </div>
         ) : null}
         {version.timeoutError ? (
-          <p role="alert" className="text-xs text-text-muted">
-            {version.timeoutError.detail}
-          </p>
+          <div role="alert" className={`${ALERT_CLASS} print:hidden`}>
+            <p>{version.timeoutError.detail}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={() => version.restartPolling()}
+            >
+              {fr.common.retry}
+            </Button>
+          </div>
         ) : null}
       </header>
 

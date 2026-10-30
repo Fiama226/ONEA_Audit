@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { isApiError } from "@/api/errors";
 import { useRole } from "@/auth/useRole";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
@@ -12,19 +13,18 @@ import { fr } from "@/i18n/fr";
 import { formatDateTime } from "@/lib/dates";
 import { useDocuments, useDocumentTypes, type DocumentParams } from "../api";
 import { DocumentStatusBadge } from "../components/DocumentStatusBadge";
-import { DownloadCount } from "../components/VersionHistory";
+import { DOCUMENT_TYPE_LABELS } from "../labels";
 import type { DocumentListe } from "../types";
 
 const t = fr.documentsRegistre;
 const PAGE_SIZE = 20;
 const DEBOUNCE_MS = 300;
-/** Code de type de document : majuscules et soulignés. */
-const TYPE_CODE = /^[A-Z_]{1,60}$/;
 
 const LINK_CLASS =
   "font-medium text-primary underline-offset-[3px] hover:underline focus-visible:outline-2 focus-visible:outline-ring";
 
-function makeColumns(showDownloads: boolean): DataTableColumn<DocumentListe>[] {
+/** Le nombre de téléchargements n'est pas exposé par la liste : il figure sur la page du document (RAI). */
+function makeColumns(): DataTableColumn<DocumentListe>[] {
   return [
     {
       id: "numero",
@@ -83,32 +83,23 @@ function makeColumns(showDownloads: boolean): DataTableColumn<DocumentListe>[] {
           <span className="text-text-muted">{fr.documents.notGenerated}</span>
         ),
     },
-    {
-      id: "telechargements",
-      header: t.colDownloads,
-      enableSorting: false,
-      cell: ({ row }) =>
-        // Les consultations ne sont lisibles que par le RAI : pas d'appel (403) pour les autres rôles.
-        showDownloads && row.original.derniere_version ? (
-          <DownloadCount versionId={row.original.derniere_version.id} />
-        ) : (
-          <span className="text-text-muted">—</span>
-        ),
-    },
   ];
 }
 
+const COLUMNS = makeColumns();
+
 export function DocumentListPage() {
   const { is } = useRole();
-  const isRai = is("RAI");
   const [params, setParams] = useSearchParams();
-  const types = useDocumentTypes();
+  // /document-types/ est réservé à l'ADMIN et au RAI (403 sinon) : les autres rôles ont la liste statique.
+  const types = useDocumentTypes(is("RAI"));
+  const typeOptions: { code: string; libelle: string }[] =
+    types.data ??
+    Object.entries(DOCUMENT_TYPE_LABELS).map(([code, libelle]) => ({ code, libelle }));
   const q = (params.get("q") ?? "").slice(0, 100);
   const rawType = params.get("type") ?? "";
-  // Les options viennent du serveur : une valeur inconnue de l'URL est écartée une fois la liste chargée.
-  const type = (types.data ? types.data.some((d) => d.code === rawType) : TYPE_CODE.test(rawType))
-    ? rawType
-    : "";
+  // Une valeur inconnue de l'URL est écartée.
+  const type = typeOptions.some((d) => d.code === rawType) ? rawType : "";
   const page = Math.max(1, Math.floor(Number(params.get("page"))) || 1);
 
   const [search, setSearch] = useState(q);
@@ -148,8 +139,16 @@ export function DocumentListPage() {
     page,
     page_size: PAGE_SIZE,
   };
-  const { data, isLoading, isError, refetch } = useDocuments(query);
-  const columns = useMemo(() => makeColumns(isRai), [isRai]);
+  const { data, isLoading, isError, error, refetch } = useDocuments(query);
+
+  // Page hors limites (404) : retour automatique à la première page, URL assainie.
+  const outOfRange = isError && page > 1 && isApiError(error) && error.status === 404;
+  useEffect(() => {
+    if (!outOfRange) return;
+    const next = new URLSearchParams(params);
+    next.delete("page");
+    setParams(next, { replace: true });
+  }, [outOfRange, params, setParams]);
 
   const filtered = q !== "" || type !== "";
   const empty = filtered ? (
@@ -191,16 +190,11 @@ export function DocumentListPage() {
             onChange={(e) => update({ type: e.target.value })}
           >
             <option value="">{t.allTypes}</option>
-            {types.data ? (
-              types.data.map((d) => (
-                <option key={d.code} value={d.code}>
-                  {d.libelle}
-                </option>
-              ))
-            ) : type ? (
-              // Options pas encore chargées : la valeur de l'URL reste sélectionnée.
-              <option value={type}>{type}</option>
-            ) : null}
+            {typeOptions.map((d) => (
+              <option key={d.code} value={d.code}>
+                {d.libelle}
+              </option>
+            ))}
           </NativeSelect>
         </div>
       </form>
@@ -228,7 +222,7 @@ export function DocumentListPage() {
       ) : (
         <DataTable<DocumentListe>
           caption={t.listCaption}
-          columns={columns}
+          columns={COLUMNS}
           data={data?.results ?? []}
           total={total}
           page={page}
