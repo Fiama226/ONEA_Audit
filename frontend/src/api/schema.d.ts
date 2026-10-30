@@ -2935,6 +2935,27 @@ export interface paths {
         patch: operations["v1_segregation_grids_partial_update"];
         trace?: never;
     };
+    "/api/v1/session/fin/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fin de session : purge le cache userinfo du jeton
+         * @description Fin de session (D5) : purge l'entree de cache userinfo du jeton presente, avant la
+         *     deconnexion Keycloak. Sans jeton valide : 401.
+         */
+        post: operations["v1_session_fin_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/signature-settings/": {
         parameters: {
             query?: never;
@@ -10879,7 +10900,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string;
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": string;
+                    "application/pdf": string;
                 };
             };
             400: {
@@ -11176,14 +11198,6 @@ export interface operations {
             };
         };
         responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DocumentVersion"];
-                };
-            };
             202: {
                 headers: {
                     [name: string]: unknown;
@@ -19956,6 +19970,48 @@ export interface operations {
             };
         };
     };
+    v1_session_fin_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_signature_settings_list: {
         parameters: {
             query?: never;
@@ -20589,7 +20645,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string;
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": string;
                 };
             };
             401: {
@@ -20656,7 +20712,8 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": string;
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": string;
+                    "application/pdf": string;
                 };
             };
             400: {
