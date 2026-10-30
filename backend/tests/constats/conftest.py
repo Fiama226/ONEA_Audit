@@ -3,6 +3,7 @@ import pytest
 from apps.missions.models import Mission, StatutEtape
 from tests.accomplissement.conftest import stockage_temporaire  # noqa: F401
 from tests.constats.factories import fiche_anomalie
+from tests.constats.fixtures_api import equipe_constats  # noqa: F401
 from tests.missions.conftest import (  # noqa: F401
     audite_affecte,
     auditeur_mission,

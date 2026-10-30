@@ -1,12 +1,15 @@
+# ruff: noqa: F811
 """Matrice rôle x route des deux apps du lot 6 (D13) : refus de rôle, visibilité, droits."""
 
 import pytest
 
 from tests.accomplissement.fixtures_api import client_de
-from tests.missions.conftest import audite_affecte, auditeur_mission, chef, mission_lancee  # noqa: F401
-from tests.constats.conftest import mission_en_xiv  # noqa: F401
-from tests.constats.conftest import stockage_temporaire  # noqa: F401
+from tests.constats.conftest import (
+    mission_en_xiv,  # noqa: F401
+    stockage_temporaire,  # noqa: F401
+)
 from tests.constats.fixtures_api import EquipeConstats, equipe_constats  # noqa: F401
+from tests.missions.conftest import audite_affecte, auditeur_mission, chef, mission_lancee  # noqa: F401
 
 pytestmark = pytest.mark.django_db
 

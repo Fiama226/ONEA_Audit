@@ -2,7 +2,7 @@ import pytest
 
 from apps.constats.models import ReponseAudite
 from tests.accomplissement.fixtures_api import client_de
-from tests.constats.fixtures_api import EquipeConstats, equipe_constats  # noqa: F401
+from tests.constats.fixtures_api import EquipeConstats
 
 pytestmark = pytest.mark.django_db
 URL = "/api/v1/finding-responses/"

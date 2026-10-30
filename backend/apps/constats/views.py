@@ -23,8 +23,8 @@ from apps.accomplissement.views import MSG_PARAMETRE, _uuid, _uuid_du_corps
 from apps.core.schema import (
     ERROR_400,
     ERROR_404,
-    ERROR_RESPONSES,
     ERROR_422,
+    ERROR_RESPONSES,
     crud_schema,
 )
 from apps.missions.models import Mission
