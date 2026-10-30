@@ -335,6 +335,8 @@ def _load_prod(overrides: dict[str, str | None]) -> subprocess.CompletedProcess[
         "OIDC_OP_BASE_URL": "https://sso.onea.bf/realms/onea",
         # Required in production since lot 4 (document storage).
         "DOCUMENTS_ROOT": "/var/lib/onea/documents",
+        # Required in production since lot 8 (links in reminder e-mails).
+        "PLATEFORME_URL": "https://audit.onea.bf",
     }
     for key, value in overrides.items():
         if value is None:
