@@ -33,6 +33,9 @@ ORDRE: tuple[str, ...] = (
     "missions",
     "analyse",
     "signatures",
+    "core",
+    "accomplissement",
+    "constats",
     "documents",
 )
 # Les documents écrivent des fichiers et lancent leurs propres transactions : hors bloc atomique.
@@ -160,6 +163,10 @@ class ContexteDemo:
 
     def avertir(self, message: str) -> None:
         self.avertissements.append(message)
+
+
+def peupler(ctx: ContexteDemo) -> None:
+    ctx.ecrire("  Consultations : produites par l'usage (aucune donnée de démonstration).")
 
 
 def peupler_application(label: str, ctx: ContexteDemo) -> None:
