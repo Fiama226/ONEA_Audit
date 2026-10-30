@@ -5,6 +5,8 @@ import time
 import requests
 from django.conf import settings
 
+from apps.core.fichiers import est_pdf
+
 CONNECT_TIMEOUT = 5
 PDFA_PROFIL = "PDF/A-2b"
 # Cold start of LibreOffice inside Gotenberg can answer 503 for ~30 s: bounded retry.
@@ -62,6 +64,6 @@ def convertir_en_pdf(docx: bytes, *, nom: str = "document.docx", pdfa: bool | No
         )
     if reponse.status_code != 200:
         raise ConversionPdfError(f"Conversion PDF refusée (code {reponse.status_code}).")
-    if not reponse.content.startswith(b"%PDF-"):
+    if not est_pdf(reponse.content):
         raise ConversionPdfError("La réponse du service de conversion n'est pas un PDF.")
     return reponse.content

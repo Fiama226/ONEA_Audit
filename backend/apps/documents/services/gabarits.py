@@ -5,22 +5,24 @@ context only, never user data.
 """
 
 import hashlib
+import io
 import re
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import connection, transaction
-from django.db.models import Max, Sum
+from django.db.models import Max
 from django.utils import timezone
 
+from apps.core import antivirus
 from apps.core.exceptions import RegleMetierError
+from apps.core.fichiers import controler_televersement
 from apps.core.services import enregistrer
 from apps.users.models import User
 
 from ..integrite import verifier_empreinte
 from ..models import (
     ConsultationDocument,
-    DocumentVersion,
     FormatFichier,
     GabaritDocument,
     StatutGabarit,
@@ -31,6 +33,7 @@ from ..moteur.registre import type_document as trouver_type
 from ..moteur.rendu import rendre_docx
 from ..pdf import ConversionPdfError, GotenbergIndisponibleError, convertir_en_pdf
 from ..stockage import FichierExistantError, cle_gabarit, ecrire, lire
+from .quota import controler_quota
 
 MSG_PDF_INDISPONIBLE = "Le service de conversion PDF est indisponible : réessayez plus tard."
 LOCK_GABARIT = 0x47414252  # « GABR »
@@ -69,20 +72,6 @@ def _ecrire_idempotent(cle: str, contenu: bytes) -> None:
             raise
 
 
-def _utilise_octets() -> int:
-    gabarits = GabaritDocument.all_objects.aggregate(t=Sum("taille"))["t"] or 0
-    versions = DocumentVersion.all_objects.aggregate(d=Sum("taille_docx"), p=Sum("taille_pdf"))
-    return int(gabarits + (versions["d"] or 0) + (versions["p"] or 0))
-
-
-def _controler_quota(ajout: int) -> None:
-    quota_mo: int = settings.DOCUMENTS_QUOTA_MO
-    if quota_mo and _utilise_octets() + ajout > quota_mo * 1024 * 1024:
-        raise RegleMetierError(
-            "Le quota de stockage des documents est atteint : contactez l'administrateur."
-        )
-
-
 @transaction.atomic
 def deposer_gabarit(
     *,
@@ -95,6 +84,16 @@ def deposer_gabarit(
 ) -> GabaritDocument:
     t = trouver_type(type_document)
     nom_original = _nom_sur(nom_original)
+    # Contrôle commun (type réel, taille, archive sans macro) puis antivirus, avant toute analyse.
+    flux = io.BytesIO(contenu)
+    flux.name = nom_original
+    if not nom_original.lower().endswith(".doc"):  # .doc : message dédié de l'analyseur
+        controler_televersement(
+            flux,
+            extensions=frozenset({"docx"}),
+            taille_max=settings.DOCUMENTS_MAX_GABARIT_MO * 1024 * 1024,
+        )
+    antivirus.analyser(flux)
     # D4: analyse before any write
     balises = analyser_gabarit(
         contenu,
@@ -102,7 +101,7 @@ def deposer_gabarit(
         nom_fichier=nom_original,
         taille_max_mo=settings.DOCUMENTS_MAX_GABARIT_MO,
     )
-    _controler_quota(len(contenu))
+    controler_quota(len(contenu))
     verrouiller_type(t.code)
     version = (
         GabaritDocument.all_objects.filter(type_document=t.code).aggregate(m=Max("version"))["m"]

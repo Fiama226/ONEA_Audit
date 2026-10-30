@@ -83,7 +83,7 @@ def test_depot_type_inconnu(rai: User) -> None:
 def test_depot_quota_depasse(type_test: TypeDocument, rai: User, settings: object) -> None:
     settings.DOCUMENTS_QUOTA_MO = 1  # type: ignore[attr-defined]
     with (
-        patch("apps.documents.services.gabarits._utilise_octets", return_value=1024 * 1024),
+        patch("apps.documents.services.quota.utilise_octets", return_value=1024 * 1024),
         pytest.raises(RegleMetierError, match="quota"),
     ):
         _deposer(type_test, rai)

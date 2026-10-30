@@ -16,10 +16,10 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import SuspiciousFileOperation
 from django.db import transaction
-from django.db.models import Sum
 from django.utils import timezone
 
 from apps.core.exceptions import RegleMetierError
+from apps.core.fichiers import est_pdf
 from apps.missions.gardes import STATUTS_FIGES
 from apps.users.models import User
 
@@ -31,7 +31,6 @@ from ..models import (
     Document,
     DocumentVersion,
     FormatFichier,
-    GabaritDocument,
     StatutGeneration,
     StatutPdf,
 )
@@ -49,12 +48,12 @@ from ..stockage import (
     lire,
 )
 from .gabarits import gabarit_actif
+from .quota import controler_quota
 
 logger = logging.getLogger(__name__)
 
 DELAI_BLOCAGE = timedelta(minutes=15)
 DELAI_BLOCAGE_PDF = timedelta(minutes=30)  # longer than the whole retry chain
-_MO = 1024 * 1024
 _ORGANISATION_DEFAUT = {
     "nom": "Office National de l'Eau et de l'Assainissement",
     "sigle": "ONEA",
@@ -73,19 +72,6 @@ def empreinte_contexte(contexte: dict[str, Any]) -> str:
     """Fingerprint of the data of a context (the volatile `document` entries excluded)."""
     document = {k: v for k, v in contexte.get("document", {}).items() if k not in _VOLATILES}
     return empreinte_json({**contexte, "document": document})
-
-
-def _verifier_quota() -> None:
-    quota = int(getattr(settings, "DOCUMENTS_QUOTA_MO", 0))
-    if quota <= 0:
-        return
-    versions = DocumentVersion.all_objects.aggregate(a=Sum("taille_docx"), b=Sum("taille_pdf"))
-    gabarits = GabaritDocument.all_objects.aggregate(a=Sum("taille"))
-    total = (versions["a"] or 0) + (versions["b"] or 0) + (gabarits["a"] or 0)
-    if total >= quota * _MO:
-        raise RegleMetierError(
-            "Le quota de stockage des documents est atteint : contactez l'administrateur."
-        )
 
 
 def _document_sous_verrou(type_document: str, objet: Any, mission: Any, by: User) -> Document:
@@ -137,7 +123,7 @@ def demander_generation(*, type_document: str, objet_id: Any, by: User) -> Docum
             "Le gabarit actif a été validé pour une version antérieure du contrat : "
             "l'administrateur doit le réactiver."
         )
-    _verifier_quota()
+    controler_quota(0)  # taille inconnue : refusé seulement si le quota est atteint
 
     document = _document_sous_verrou(type_document, objet, mission, by)
     versions = list(document.versions.order_by("-numero_version"))
@@ -296,7 +282,7 @@ def executer_conversion(version_id: str) -> None:
             _, empreinte = ecrire_avec_empreinte(cle, contenu)
         except FichierExistantError:
             existant = lire(cle)
-            if not existant.startswith(b"%PDF-"):
+            if not est_pdf(existant):
                 logger.critical("Fichier inattendu à la clé %s (version %s).", cle, version_id)
                 marquer_echec_pdf(version_id, "un fichier étranger occupe l'emplacement")
                 return

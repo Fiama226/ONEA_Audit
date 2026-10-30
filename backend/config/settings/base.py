@@ -145,6 +145,17 @@ STOCKAGE_PREUVES: dict[str, Any] = {
 }
 PIECE_TAILLE_MAX_OCTETS: int = 50 * 1024 * 1024  # aligné sur `client_max_body_size 50m` de Nginx
 
+# --- Bloc T15 : téléversements. Les fichiers dépassant 5 Mo passent par un fichier temporaire ;
+# la limite de 50 Mo des pièces est contrôlée par `core.fichiers` (et `nginx`, 55 Mo sur /api/).
+DATA_UPLOAD_MAX_MEMORY_SIZE: int = 5 * 1024 * 1024  # corps hors fichiers
+FILE_UPLOAD_MAX_MEMORY_SIZE: int = 5 * 1024 * 1024
+DATA_UPLOAD_MAX_NUMBER_FILES: int = 5
+ANTIVIRUS_MOTEUR: str = env("ANTIVIRUS_MOTEUR", default="aucun")
+if ANTIVIRUS_MOTEUR not in {"aucun", "clamd"}:
+    raise ImproperlyConfigured("ANTIVIRUS_MOTEUR must be 'aucun' or 'clamd'")
+ANTIVIRUS_CLAMD_HOTE: str = env("ANTIVIRUS_CLAMD_HOTE", default="clamav")
+ANTIVIRUS_CLAMD_PORT: int = env.int("ANTIVIRUS_CLAMD_PORT", default=3310)
+
 DOCUMENTS_CREER_DOSSIER = False  # dev.py enables it; production must not create it
 GOTENBERG_TIMEOUT = 90  # seconds (read timeout of the docx -> PDF conversion)
 

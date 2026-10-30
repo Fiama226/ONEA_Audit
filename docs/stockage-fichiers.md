@@ -41,12 +41,49 @@ données.
 | Réglage | Défaut | Effet |
 |---|---|---|
 | `DOCUMENTS_ESPACE_MIN_LIBRE_MO` | 1024 | en dessous, l'écriture est refusée (« Espace disque insuffisant sur le serveur de documents ») et l'état passe à `faible` |
-| `DOCUMENTS_QUOTA_MO` | 0 | réglage réservé : le quota (somme des tailles en base) sera appliqué par la couche documents (tâches suivantes du lot 4) ; le stockage seul ne l'applique pas ; 0 = sans quota |
+| `DOCUMENTS_QUOTA_MO` | 0 | quota unique, appliqué à chaque dépôt et à chaque génération (`documents.services.quota`) ; 0 = sans quota (voir « Quota » ci-dessous) |
 | `DOCUMENTS_MAX_GABARIT_MO` | 10 | taille maximale d'un gabarit Word téléversé |
 
 `GET /api/v1/health/` renvoie `stockage_documents` : `ok`, `faible` (espace libre sous le
 seuil) ou `indisponible` (dossier absent ou non inscriptible). Cet indicateur n'altère pas
 `status`. À surveiller par la supervision du serveur.
+
+## Quota
+
+`controler_quota` est la seule fonction de quota : elle additionne la taille des **gabarits**, des
+**versions Word et PDF** des documents générés **et des pièces justificatives**, lignes
+supprimées logiquement comprises (leurs fichiers restent sur le disque). Un dépôt (gabarit,
+pièce) est refusé (422, « Le quota de stockage des documents est atteint : contactez
+l'administrateur. ») si l'ajout dépasse le quota ; une génération, dont la taille est inconnue,
+est refusée seulement si le quota est déjà atteint. Un pièce redéposée à l'identique (doublon)
+n'est pas recomptée.
+
+## Contrôle des téléversements
+
+Tous les dépôts passent par `core.fichiers` : l'extension doit être autorisée par l'appelant
+**et** concorder avec la signature d'octets du contenu (le `content-type` du client et le
+nom ne comptent jamais) ; les formats texte (txt, csv, eml) sont balayés en entier à la
+recherche d'octets de contrôle ; les archives Word, Excel et OpenDocument sont ouvertes :
+macros (`vbaProject.bin`, extensions `docm`, `xlsm`...) refusées, 2 000 entrées au plus,
+200 Mo décompressés au plus, 20 fois la taille du fichier au plus dès 16 Mo (décidé sur
+l'annuaire de l'archive, sans décompresser). Un fichier vide est refusé. Tailles maximales :
+gabarits 10 Mo, pièces justificatives 50 Mo (`nginx` : 55 Mo sur `/api/`). Les fichiers de plus de 5 Mo
+passent par un fichier temporaire (`FILE_UPLOAD_MAX_MEMORY_SIZE`), le corps hors fichiers est limité à 5 Mo, 5 fichiers
+au plus par requête. Les téléchargements sont toujours en `Content-Disposition: attachment`
+avec `X-Content-Type-Options: nosniff`, et le type servi vient de l'extension de la liste blanche.
+
+Limite connue : les anciens formats OLE (`doc`, `xls`, `msg`) sont reconnus par signature mais
+leurs macros ne sont pas inspectées ; l'antivirus est le recours.
+
+## Antivirus (point d'extension)
+
+`ANTIVIRUS_MOTEUR` : `aucun` (défaut, aucune analyse) ou `clamd`. Avec `clamd`, le fichier est
+envoyé au démon ClamAV (protocole INSTREAM, `ANTIVIRUS_CLAMD_HOTE`, `ANTIVIRUS_CLAMD_PORT`,
+délai 30 s) avant toute écriture : détection → 400 « Le fichier a été refusé par l'analyse
+antivirus. » ; démon injoignable, en erreur ou trop lent → 503 « Analyse antivirus
+indisponible : réessayez plus tard. » (le fichier n'est jamais accepté sans analyse). Régler
+`StreamMaxLength` du démon à 50 Mo au moins. Le service ClamAV lui-même n'est pas livré
+(décision U4).
 
 ## Sauvegarde
 

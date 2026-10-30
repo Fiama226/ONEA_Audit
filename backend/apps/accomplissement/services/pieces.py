@@ -17,16 +17,19 @@ from typing import Any, BinaryIO, cast
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 
+from apps.core import antivirus
 from apps.core.exceptions import RegleMetierError
+from apps.core.fichiers import FichierRefuseError, controler_televersement
 from apps.core.services import appliquer, enregistrer, refuser, relire
+from apps.documents.services.quota import controler_quota
 from apps.missions.models import Mission
 from apps.users.models import User
 
 from .. import droits_fiches as droits
 from ..fichiers import (
+    EXTENSIONS_AUTORISEES,
     MSG_TAILLE,
-    contient_binaire,
-    controler_fichier,
+    en_422,
     nom_affichable,
     taille_maximale,
 )
@@ -38,7 +41,6 @@ from .fiches import MSG_XII, exiger_fiche_modifiable, ouvrir_fenetre
 
 logger = logging.getLogger(__name__)
 
-_LONGUEUR_EN_TETE = 16
 MSG_LIBELLE = "Le libellé est obligatoire."
 
 
@@ -49,26 +51,21 @@ def _exiger_fiche_redigeable(piece: PieceJustificative, by: User, mission: Missi
     exiger_fiche_modifiable(fiche)
 
 
-def _lire_en_tete_et_empreinte(fichier: "UploadedFile[Any]") -> tuple[bytes, str, int, bool]:
-    """Lit le fichier une fois : en-tête, SHA-256, taille réelle (plafonnée) et indice binaire."""
+def _lire_empreinte(fichier: "UploadedFile[Any]") -> tuple[str, int]:
+    """Lit le fichier une fois : SHA-256 et taille réelle (plafonnée : la taille annoncée ment)."""
     maximum = taille_maximale()
     if fichier.size is not None and fichier.size > maximum:
         raise RegleMetierError(MSG_TAILLE, {"fichier": [MSG_TAILLE]})
     fichier.seek(0)
     empreinte = hashlib.sha256()
     taille = 0
-    en_tete = b""
-    binaire = False
     while bloc := fichier.read(BLOC):
-        if not en_tete:
-            en_tete = bloc[:_LONGUEUR_EN_TETE]
         taille += len(bloc)
         if taille > maximum:  # la taille annoncée peut mentir
             raise RegleMetierError(MSG_TAILLE, {"fichier": [MSG_TAILLE]})
-        binaire = binaire or contient_binaire(bloc)
         empreinte.update(bloc)
     fichier.seek(0)
-    return en_tete, empreinte.hexdigest(), taille, binaire
+    return empreinte.hexdigest(), taille
 
 
 @transaction.atomic
@@ -84,8 +81,15 @@ def deposer_piece(
     droits.exiger_redacteur(by, fiche.mission, fiche.test)
     libelle = libelle.strip()
     nom = nom_affichable(fichier.name or "")
-    en_tete, sha256, taille, binaire = _lire_en_tete_et_empreinte(fichier)
-    type_mime = controler_fichier(fichier.name or "", en_tete, taille, binaire=binaire)
+    sha256, taille = _lire_empreinte(fichier)
+    # Contrôle commun (type réel par signature, archive, texte) puis antivirus, avant écriture.
+    try:
+        type_mime = controler_televersement(
+            fichier, extensions=EXTENSIONS_AUTORISEES, taille_max=taille_maximale()
+        ).mime
+    except FichierRefuseError as exc:
+        raise en_422(exc) from exc
+    antivirus.analyser(fichier)
     if not libelle:
         raise refuser(MSG_LIBELLE, libelle=MSG_LIBELLE)
 
@@ -102,6 +106,7 @@ def deposer_piece(
     if existante is not None:
         existante.doublon = True
         return existante
+    controler_quota(taille)  # quota unique : gabarits, versions et pièces
 
     piece = PieceJustificative(
         mission=mission,
