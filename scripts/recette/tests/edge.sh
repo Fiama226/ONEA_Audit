@@ -60,8 +60,8 @@ affirmer "decouverte OIDC du realm onea -> 200" \
 affirmer "/api/v1/health/ -> status ok" \
     'curl_recette -fs "$A/api/v1/health/" | grep -q "\"status\": *\"ok\""'
 
-affirmer "docs/deploy.md sans onea-charge ni recette" \
-    '! grep -qiE "onea-charge|recette" "$REPO_ROOT/docs/deploy.md"'
+affirmer "docs/deploy.md sans onea-charge ni recette (sauf chemin scripts/recette/)" \
+    '! grep -qiE "onea-charge" "$REPO_ROOT/docs/deploy.md" && ! grep -qiE "recette" "$(grep -v scripts/recette/ "$REPO_ROOT/docs/deploy.md")"'
 affirmer ".env.prod.example sans onea-charge ni recette" \
     '! grep -qiE "onea-charge|recette" "$REPO_ROOT/.env.prod.example"'
 

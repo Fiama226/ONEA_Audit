@@ -435,7 +435,7 @@ images portent l'étiquette `APP_VERSION`.
 ## 7. Sauvegardes et restauration
 
 Objectifs (D8) : perte maximale **24 h** (RPO), remise en service **4 h** (RTO). L'exercice
-automatisé de la recette (`scripts/recette/tests/restauration.sh`) vise moins de 30 minutes ; il se
+automatisé du banc (`scripts/recette/tests/restauration.sh`) vise moins de 30 minutes ; il se
 refait **chaque trimestre** en production (runbook).
 
 ### 7.1 Ce qui est sauvegardé
