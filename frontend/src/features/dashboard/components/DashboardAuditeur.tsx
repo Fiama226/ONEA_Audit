@@ -1,83 +1,116 @@
-import { Briefcase } from "lucide-react";
-import { EmptyState } from "@/components/EmptyState";
+import { Link } from "react-router-dom";
+import { StatusPill } from "@/components/StatusPill";
 import { fr } from "@/i18n/fr";
-import { cn } from "@/lib/utils";
-import { MILESTONES, PHASES } from "../phases";
-import { PageHeader, PreviewCard, PreviewSection, SkeletonTable, StatStrip } from "./preview";
+import { STATUT_MISSION_LABELS } from "@/features/missions/labels";
+import type { StatutMission } from "@/features/missions/types";
+import { DueDateCell } from "@/features/suivi/components/DueDateCell";
+import { useDashboardAuditor } from "../api";
+import { PageHeader } from "./preview";
+import { formatDate, PersonalList, QueryState, Tiles } from "./PersonalList";
 
 const d = fr.dashboard;
+const t = fr.tableauxEquipe;
+const LINK = "font-medium text-primary underline-offset-2 hover:underline";
+/** Numéro de l'étape XII (tests d'audit) : la fiche d'un test se documente à cette étape. */
+const TESTS_STEP = 12;
 
 export function DashboardAuditeur() {
+  const query = useDashboardAuditor();
+  const data = query.data;
+
   return (
     <>
       <PageHeader title={d.auditeurTitle} userRole="AUDITEUR" />
-      <EmptyState
-        title={d.emptyTitle}
-        description={d.auditeurText}
-        action={{
-          label: d.auditeurAction,
-          icon: Briefcase,
-          note: `${d.availableAtLot} ${d.auditeurLot}`,
-        }}
+      <QueryState
+        isPending={query.isPending}
+        isError={query.isError}
+        onRetry={() => void query.refetch()}
       />
-      <PreviewSection>
-        <div className="col-span-12">
-          <StatStrip
+      {data && (
+        <div className="flex flex-col gap-6">
+          <Tiles
             items={[
-              { label: d.stepsInProgress, foot: d.allMissions },
-              { label: d.deliverables, foot: d.thisWeek },
-              { label: d.awaitingValidation, foot: d.submittedToRai },
+              { label: t.tileMissions, value: data.mes_missions.length },
+              { label: t.tileSteps, value: data.mes_etapes_en_cours.length },
+              { label: t.tileTests, value: data.mes_tests_a_documenter.length },
+              { label: t.tileToVerify, value: data.actions_a_verifier.length },
             ]}
+          />
+          <PersonalList
+            title={t.missionsTitle}
+            empty={t.missionsEmpty}
+            columns={[
+              { label: t.colReference },
+              { label: t.colMission },
+              { label: t.colStatus },
+              { label: t.colEndDate },
+            ]}
+            rows={data.mes_missions.map((m) => ({
+              key: m.mission_id,
+              cells: [
+                <Link key="r" className={LINK} to={`/missions/${m.mission_id}`}>
+                  {m.reference}
+                </Link>,
+                m.titre,
+                STATUT_MISSION_LABELS[m.statut as StatutMission] ?? m.statut,
+                <DueDateCell key="d" echeance={m.date_fin_prevue} />,
+              ],
+            }))}
+          />
+          <PersonalList
+            title={t.stepsTitle}
+            empty={t.stepsEmpty}
+            columns={[{ label: t.colMission }, { label: t.colStep }, { label: t.colEndDate }]}
+            rows={data.mes_etapes_en_cours.map((e) => ({
+              key: `${e.mission_id}-${e.numero}`,
+              cells: [
+                e.reference,
+                <Link key="s" className={LINK} to={`/missions/${e.mission_id}/etapes/${e.numero}`}>
+                  {t.stepLabel.replace("{romain}", e.romain).replace("{libelle}", e.libelle)}
+                </Link>,
+                <span key="d" className="inline-flex flex-wrap items-center gap-2">
+                  <DueDateCell echeance={e.date_fin_prevue} />
+                  {e.en_retard && <StatusPill label={t.stepLate} tone="danger" />}
+                </span>,
+              ],
+            }))}
+          />
+          <PersonalList
+            title={t.testsTitle}
+            empty={t.testsEmpty}
+            columns={[{ label: t.colMission }, { label: t.colTest }, { label: t.colSheet }]}
+            rows={data.mes_tests_a_documenter.map((x) => ({
+              key: x.test_id,
+              cells: [
+                x.reference,
+                <Link
+                  key="t"
+                  className={LINK}
+                  to={`/missions/${x.mission_id}/etapes/${TESTS_STEP}`}
+                >
+                  {`${x.code} — ${x.libelle}`}
+                </Link>,
+                x.sans_fiche ? t.noSheet : t.sheetStarted,
+              ],
+            }))}
+          />
+          <PersonalList
+            title={t.toVerifyTitle}
+            empty={t.toVerifyEmpty}
+            columns={[{ label: t.colMission }, { label: t.colAction }, { label: t.colDeclaredOn }]}
+            rows={data.actions_a_verifier.map((a) => ({
+              key: a.suivi_id,
+              cells: [
+                a.reference,
+                <Link key="a" className={LINK} to={`/recommandations/actions/${a.suivi_id}`}>
+                  {a.libelle}
+                </Link>,
+                formatDate(a.declaree_le),
+              ],
+            }))}
           />
         </div>
-        <PreviewCard title={d.myStepsInProgress} meta={d.ifaciSteps} span={12}>
-          <div className="grid gap-6 border-b border-border p-5 md:grid-cols-[10fr_4fr_4fr]">
-            {PHASES.map((phase) => (
-              <div key={phase.name}>
-                <p className="text-sm font-semibold">
-                  {phase.name}{" "}
-                  <span className="text-xs font-normal text-text-muted">{phase.range}</span>
-                </p>
-                <ol className="mt-3 flex flex-wrap gap-1">
-                  {phase.steps.map((step) => (
-                    <li
-                      key={step}
-                      className="relative flex size-6 items-center justify-center text-[10px] text-text-muted tabular-nums"
-                    >
-                      <span
-                        className={cn(
-                          "absolute border border-border bg-surface",
-                          MILESTONES.includes(step)
-                            ? "size-[17px] rotate-45 rounded-[2px]"
-                            : "size-6 rounded-full",
-                        )}
-                      />
-                      <span
-                        className={cn("relative", MILESTONES.includes(step) && "font-semibold")}
-                      >
-                        {step}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ))}
-          </div>
-          <p className="flex items-center gap-2 px-5 py-2 text-xs text-text-muted">
-            <span className="size-2.5 rotate-45 rounded-[2px] border border-text-muted bg-surface" />
-            {d.milestoneLegend}
-          </p>
-          <SkeletonTable
-            columns={[
-              { label: d.colMission, width: 90 },
-              { label: d.colStep, width: 60 },
-              { label: d.colPhase, width: 90 },
-              { label: d.colDeliverable, width: 160 },
-              { label: d.colDueDate, width: 72 },
-            ]}
-          />
-        </PreviewCard>
-      </PreviewSection>
+      )}
     </>
   );
 }

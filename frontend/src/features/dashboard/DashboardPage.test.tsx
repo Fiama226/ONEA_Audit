@@ -1,15 +1,15 @@
-import { configure, screen } from "@testing-library/react";
+﻿import { configure, screen } from "@testing-library/react";
 import { axe } from "vitest-axe";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { Role } from "@/auth/types";
 import { fr } from "@/i18n/fr";
+import { http, HttpResponse } from "msw";
+import { API_URL, server } from "@/test/msw";
 import { renderWithAuth } from "@/test/shell";
 import { DashboardPage } from "./pages/DashboardPage";
 
 const CASES: [Role, string, string, string][] = [
   ["RAI", fr.dashboard.raiTitle, fr.dashboard.raiAction, "Disponible au lot 3"],
-  ["AUDITEUR", fr.dashboard.auditeurTitle, fr.dashboard.auditeurAction, "Disponible au lot 3"],
-  ["AUDITE", fr.dashboard.auditeTitle, fr.dashboard.auditeAction, "Disponible au lot 8"],
   ["DG", fr.dashboard.dgTitle, fr.dashboard.dgAction, "Disponible au lot 7"],
   ["ADMIN", fr.shell.adminTitle, fr.dashboard.adminAction, "Disponible au lot 8"],
 ];
@@ -21,6 +21,19 @@ beforeAll(() => {
 });
 
 describe("DashboardPage", () => {
+  it.each([
+    ["AUDITEUR", fr.dashboard.auditeurTitle, "auditor"],
+    ["AUDITE", fr.dashboard.auditeTitle, "auditee"],
+  ] as [Role, string, string][])("renders the live %s dashboard", async (role, title, path) => {
+    server.use(
+      http.get(`${API_URL}/api/v1/dashboards/${path}/`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+    );
+    renderWithAuth(<DashboardPage />, role);
+    expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
   it.each(CASES)("renders the %s dashboard", (role, title, action, note) => {
     renderWithAuth(<DashboardPage />, role);
     expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
