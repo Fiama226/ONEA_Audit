@@ -39,6 +39,7 @@ ORDRE: tuple[str, ...] = (
     "recommandations",
     "communication",
     "documents",
+    "notifications",
 )
 # Les documents écrivent des fichiers et lancent leurs propres transactions : hors bloc atomique.
 SANS_TRANSACTION_GLOBALE = frozenset({"documents"})

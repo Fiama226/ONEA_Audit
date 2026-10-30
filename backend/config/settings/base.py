@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "apps.recommandations",
     "apps.communication",
     "apps.documents",
+    "apps.notifications",
 ]
 
 AUTH_USER_MODEL = "users.User"
