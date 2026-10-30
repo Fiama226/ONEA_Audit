@@ -1,0 +1,395 @@
+{
+  "action_verifiee": {
+    "action_libelle": "str",
+    "actions_possibles": [
+      "str"
+    ],
+    "cloturee_le": "null",
+    "cloturee_par": "null",
+    "constat": {
+      "id": "str",
+      "reference": "str",
+      "titre": "str"
+    },
+    "declaree_le": "str",
+    "declaree_par": {
+      "direction_code": "str",
+      "fonction": "str",
+      "id": "int",
+      "nom_complet": "str",
+      "role": "str",
+      "username": "str"
+    },
+    "demande_report_en_attente": "null",
+    "derniere_activite_le": "str",
+    "echeance": "str",
+    "echeance_initiale": "str",
+    "en_retard": "bool",
+    "entite": {
+      "code": "str",
+      "id": "str",
+      "libelle": "str"
+    },
+    "id": "str",
+    "indicateur": "str",
+    "jours_retard": "null",
+    "justification_abandon": "str",
+    "mission": {
+      "id": "str",
+      "reference": "str",
+      "statut": "str",
+      "titre": "str"
+    },
+    "motif_dernier_rejet": "str",
+    "nombre_preuves": "int",
+    "nombre_reports": "int",
+    "recommandation": {
+      "id": "str",
+      "libelle": "str",
+      "priorite": "str"
+    },
+    "responsable": {
+      "direction_code": "str",
+      "fonction": "str",
+      "id": "int",
+      "nom_complet": "str",
+      "role": "str",
+      "username": "str"
+    },
+    "statut": "str",
+    "verifiee_le": "str",
+    "verifiee_par": {
+      "direction_code": "str",
+      "fonction": "str",
+      "id": "int",
+      "nom_complet": "str",
+      "role": "str",
+      "username": "str"
+    }
+  },
+  "action_avec_report_en_attente": {
+    "action_libelle": "str",
+    "actions_possibles": [
+      "str"
+    ],
+    "cloturee_le": "null",
+    "cloturee_par": "null",
+    "constat": {
+      "id": "str",
+      "reference": "str",
+      "titre": "str"
+    },
+    "declaree_le": "null",
+    "declaree_par": "null",
+    "demande_report_en_attente": {
+      "action": "str",
+      "actions_possibles": [
+        "str"
+      ],
+      "commentaire_decision": "str",
+      "decidee_le": "null",
+      "decidee_par": "null",
+      "demandee_par": {
+        "direction_code": "str",
+        "fonction": "str",
+        "id": "int",
+        "nom_complet": "str",
+        "role": "str",
+        "username": "str"
+      },
+      "echeance_actuelle": "str",
+      "id": "str",
+      "motif": "str",
+      "nouvelle_echeance": "str",
+      "statut": "str"
+    },
+    "derniere_activite_le": "str",
+    "echeance": "str",
+    "echeance_initiale": "str",
+    "en_retard": "bool",
+    "entite": {
+      "code": "str",
+      "id": "str",
+      "libelle": "str"
+    },
+    "id": "str",
+    "indicateur": "str",
+    "jours_retard": "null",
+    "justification_abandon": "str",
+    "mission": {
+      "id": "str",
+      "reference": "str",
+      "statut": "str",
+      "titre": "str"
+    },
+    "motif_dernier_rejet": "str",
+    "nombre_preuves": "int",
+    "nombre_reports": "int",
+    "recommandation": {
+      "id": "str",
+      "libelle": "str",
+      "priorite": "str"
+    },
+    "responsable": {
+      "direction_code": "str",
+      "fonction": "str",
+      "id": "int",
+      "nom_complet": "str",
+      "role": "str",
+      "username": "str"
+    },
+    "statut": "str",
+    "verifiee_le": "null",
+    "verifiee_par": "null"
+  },
+  "actions_liste": {
+    "count": "int",
+    "next": "null",
+    "previous": "null",
+    "results": [
+      {
+        "action_libelle": "str",
+        "actions_possibles": [
+          "str"
+        ],
+        "cloturee_le": "null",
+        "cloturee_par": "null",
+        "constat": {
+          "id": "str",
+          "reference": "str",
+          "titre": "str"
+        },
+        "declaree_le": "null",
+        "declaree_par": "null",
+        "demande_report_en_attente": {
+          "action": "str",
+          "actions_possibles": [
+            "str"
+          ],
+          "commentaire_decision": "str",
+          "decidee_le": "null",
+          "decidee_par": "null",
+          "demandee_par": {
+            "direction_code": "str",
+            "fonction": "str",
+            "id": "int",
+            "nom_complet": "str",
+            "role": "str",
+            "username": "str"
+          },
+          "echeance_actuelle": "str",
+          "id": "str",
+          "motif": "str",
+          "nouvelle_echeance": "str",
+          "statut": "str"
+        },
+        "derniere_activite_le": "str",
+        "echeance": "str",
+        "echeance_initiale": "str",
+        "en_retard": "bool",
+        "entite": {
+          "code": "str",
+          "id": "str",
+          "libelle": "str"
+        },
+        "id": "str",
+        "indicateur": "str",
+        "jours_retard": "null",
+        "justification_abandon": "str",
+        "mission": {
+          "id": "str",
+          "reference": "str",
+          "statut": "str",
+          "titre": "str"
+        },
+        "motif_dernier_rejet": "str",
+        "nombre_preuves": "int",
+        "nombre_reports": "int",
+        "recommandation": {
+          "id": "str",
+          "libelle": "str",
+          "priorite": "str"
+        },
+        "responsable": {
+          "direction_code": "str",
+          "fonction": "str",
+          "id": "int",
+          "nom_complet": "str",
+          "role": "str",
+          "username": "str"
+        },
+        "statut": "str",
+        "verifiee_le": "null",
+        "verifiee_par": "null"
+      }
+    ]
+  },
+  "evenements": [
+    {
+      "id": "str",
+      "le": "str",
+      "par": {
+        "direction_code": "str",
+        "fonction": "str",
+        "id": "int",
+        "nom_complet": "str",
+        "role": "str",
+        "username": "str"
+      },
+      "pour_compte_de": "null",
+      "statut_apres": "str",
+      "statut_avant": "str",
+      "texte": "str",
+      "type": "str"
+    }
+  ],
+  "demande_report_refusee": {
+    "action": "str",
+    "actions_possibles": [],
+    "commentaire_decision": "str",
+    "decidee_le": "str",
+    "decidee_par": {
+      "direction_code": "str",
+      "fonction": "str",
+      "id": "int",
+      "nom_complet": "str",
+      "role": "str",
+      "username": "str"
+    },
+    "demandee_par": {
+      "direction_code": "str",
+      "fonction": "str",
+      "id": "int",
+      "nom_complet": "str",
+      "role": "str",
+      "username": "str"
+    },
+    "echeance_actuelle": "str",
+    "id": "str",
+    "motif": "str",
+    "nouvelle_echeance": "str",
+    "statut": "str"
+  },
+  "reports_liste": {
+    "count": "int",
+    "next": "null",
+    "previous": "null",
+    "results": [
+      {
+        "action": "str",
+        "actions_possibles": [
+          "str"
+        ],
+        "commentaire_decision": "str",
+        "decidee_le": "null",
+        "decidee_par": "null",
+        "demandee_par": {
+          "direction_code": "str",
+          "fonction": "str",
+          "id": "int",
+          "nom_complet": "str",
+          "role": "str",
+          "username": "str"
+        },
+        "echeance_actuelle": "str",
+        "id": "str",
+        "motif": "str",
+        "nouvelle_echeance": "str",
+        "statut": "str"
+      }
+    ]
+  },
+  "preuve": {
+    "actions_possibles": [
+      "str"
+    ],
+    "deposee_le": "str",
+    "deposee_par": {
+      "direction_code": "str",
+      "fonction": "str",
+      "id": "int",
+      "nom_complet": "str",
+      "role": "str",
+      "username": "str"
+    },
+    "description": "str",
+    "empreinte_sha256": "str",
+    "id": "str",
+    "libelle": "str",
+    "nom_fichier_original": "str",
+    "numero": "int",
+    "taille_octets": "int",
+    "type_mime": "str"
+  },
+  "preuves_liste": {
+    "count": "int",
+    "next": "null",
+    "previous": "null",
+    "results": [
+      {
+        "actions_possibles": [
+          "str"
+        ],
+        "deposee_le": "str",
+        "deposee_par": {
+          "direction_code": "str",
+          "fonction": "str",
+          "id": "int",
+          "nom_complet": "str",
+          "role": "str",
+          "username": "str"
+        },
+        "description": "str",
+        "empreinte_sha256": "str",
+        "id": "str",
+        "libelle": "str",
+        "nom_fichier_original": "str",
+        "numero": "int",
+        "taille_octets": "int",
+        "type_mime": "str"
+      }
+    ]
+  },
+  "registre_ligne": {
+    "count": "int",
+    "next": "null",
+    "previous": "null",
+    "results": [
+      {
+        "actions_closes": "int",
+        "actions_en_retard": "int",
+        "actions_total": "int",
+        "constat": {
+          "id": "str",
+          "reference": "str",
+          "titre": "str"
+        },
+        "entite": {
+          "code": "str",
+          "id": "str",
+          "libelle": "str"
+        },
+        "id": "str",
+        "libelle": "str",
+        "mission": {
+          "id": "str",
+          "reference": "str",
+          "statut": "str",
+          "titre": "str"
+        },
+        "priorite": "str",
+        "prochaine_echeance": "str",
+        "risque_accepte": "bool",
+        "statut_suivi": "str"
+      }
+    ]
+  },
+  "erreur": {
+    "detail": "str",
+    "errors": {
+      "motif": [
+        "str"
+      ]
+    }
+  }
+}
