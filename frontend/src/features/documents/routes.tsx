@@ -1,19 +1,21 @@
 import type { RouteObject } from "react-router-dom";
-import { NumberingPage } from "./pages/NumberingPage";
-import { TemplateDetailPage } from "./pages/TemplateDetailPage";
-import { TemplatesPage } from "./pages/TemplatesPage";
-import { DocumentDetailPage } from "./pages/DocumentDetailPage";
-import { DocumentListPage } from "./pages/DocumentListPage";
+import { lazyRoute } from "@/components/lazyRoute";
+
+const templates = () => import("./pages/TemplatesPage");
+const numbering = () => import("./pages/NumberingPage");
+const templateDetail = () => import("./pages/TemplateDetailPage");
+const documentList = () => import("./pages/DocumentListPage");
+const documentDetail = () => import("./pages/DocumentDetailPage");
 
 /** Registre des documents (/documents) ; la garde de rôle est posée dans routes.tsx. */
 export const documentRoutes: RouteObject[] = [
-  { index: true, element: <DocumentListPage /> },
-  { path: ":id", element: <DocumentDetailPage /> },
+  { index: true, element: lazyRoute(documentList, "DocumentListPage") },
+  { path: ":id", element: lazyRoute(documentDetail, "DocumentDetailPage") },
 ];
 
 /** Gabarits et numérotation (/administration/documents), réservés à l'ADMIN par la garde parente. */
 export const documentsAdminRoutes: RouteObject[] = [
-  { index: true, element: <TemplatesPage /> },
-  { path: "numerotation", element: <NumberingPage /> },
-  { path: ":type", element: <TemplateDetailPage /> },
+  { index: true, element: lazyRoute(templates, "TemplatesPage") },
+  { path: "numerotation", element: lazyRoute(numbering, "NumberingPage") },
+  { path: ":type", element: lazyRoute(templateDetail, "TemplateDetailPage") },
 ];

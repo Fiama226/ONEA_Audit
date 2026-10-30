@@ -3,11 +3,11 @@ import { Link, Outlet, createBrowserRouter, type RouteObject } from "react-route
 import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
 import { EmptyState } from "@/components/EmptyState";
+import { lazyRoute } from "@/components/lazyRoute";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { documentRoutes, documentsAdminRoutes } from "@/features/documents/routes";
 import { missionRoutes } from "@/features/missions/routes";
 import { programmationRoutes } from "@/features/programmation/routes";
-import { ReferentielLayout } from "@/features/referentiel/components/ReferentielLayout";
 import { referentielRoutes } from "@/features/referentiel/routes";
 import { administrationRoutes } from "@/features/utilisateurs/routes";
 import { fr } from "@/i18n/fr";
@@ -66,7 +66,13 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: "/referentiel",
-            element: guarded("/referentiel", <ReferentielLayout />),
+            element: guarded(
+              "/referentiel",
+              lazyRoute(
+                () => import("@/features/referentiel/components/ReferentielLayout"),
+                "ReferentielLayout",
+              ),
+            ),
             children: referentielRoutes,
           },
           {

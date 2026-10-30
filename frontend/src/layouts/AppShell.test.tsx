@@ -11,7 +11,7 @@ import { AppShell } from "./AppShell";
 // Le shell complet et les contrôles axe sont lents sous jsdom : délais élargis pour ce fichier.
 beforeAll(() => {
   vi.setConfig({ testTimeout: 20000 });
-  configure({ asyncUtilTimeout: 4000 });
+  configure({ asyncUtilTimeout: 15000 });
 });
 
 const routes = [

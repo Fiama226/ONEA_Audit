@@ -17,7 +17,7 @@ const CASES: [Role, string, string, string][] = [
 // Les contrôles axe sont lents sous jsdom.
 beforeAll(() => {
   vi.setConfig({ testTimeout: 20000 });
-  configure({ asyncUtilTimeout: 4000 });
+  configure({ asyncUtilTimeout: 15000 });
 });
 
 describe("DashboardPage", () => {
