@@ -151,6 +151,11 @@ class FournisseurFicheObservation:
     def peut_consulter(self, user: User, objet: Constat) -> bool:
         return constats_visibles(user, objet.mission).filter(pk=objet.pk).exists()
 
+    def ids_consultables(self, user: User, mission: Mission, objets: list[Constat]) -> set[UUID]:
+        """Variante en lot de `peut_consulter` : une seule requête pour tous les constats."""
+        ids = [o.pk for o in objets]
+        return set(constats_visibles(user, mission).filter(pk__in=ids).values_list("pk", flat=True))
+
     def peut_generer(self, user: User, objet: Constat) -> bool:
         return _intervenant(user, objet.mission)
 
