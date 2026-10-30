@@ -35,3 +35,6 @@ frontend/e2e/screens/
 .dev/
 
 /.recette/
+
+# dependency audit output (scripts/audit-dependances.sh)
+build/audit/
