@@ -42,6 +42,10 @@
   --color-success-text: var(--success-text);
   --color-warning-text: var(--warning-text);
   --color-overlay: var(--overlay);
+  --color-chart-1: var(--chart-1);
+  --color-chart-done: var(--chart-done);
+  --color-chart-open: var(--chart-open);
+  --color-chart-late: var(--chart-late);
   --shadow-floating: var(--shadow-floating);
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
@@ -116,5 +120,20 @@
 @media print {
   .marc-print {
     page: marc;
+  }
+}
+
+/* Graphiques : segment « en retard » hachuré ; segments bordés en contraste forcé. */
+.chart-late-texture {
+  background-image: var(--chart-texture);
+}
+@media (forced-colors: active) {
+  .chart-seg {
+    border: 1px solid CanvasText;
+    forced-color-adjust: none;
+    background-color: Canvas;
+  }
+  .chart-seg-late {
+    background-image: repeating-linear-gradient(45deg, transparent 0 3px, CanvasText 3px 5px);
   }
 }

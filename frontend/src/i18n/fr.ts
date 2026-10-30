@@ -2018,6 +2018,20 @@ export const fr = {
     noProcessLink: "Ouvrir le référentiel des processus",
     calendarEmpty: "Aucune mission prévue à afficher.",
   },
+  charts: {
+    showTable: "Afficher le tableau",
+    hideTable: "Masquer le tableau",
+    legend: "Légende",
+    done: "Clôturées",
+    open: "Ouvertes dans les délais",
+    late: "En retard",
+    direction: "Direction",
+    total: "Total",
+    value: "Valeur",
+    none: "—",
+    noAction: "aucune action",
+    segmentOf: "{label} : {n} sur {total}",
+  },
 } as const;
 
 /** Clés "section.libellé" : le dictionnaire a exactement deux niveaux. */
