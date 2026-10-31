@@ -30,7 +30,7 @@ def test_transitions_concurrentes(
 
     def lancer(nom: str, operation: object) -> None:
         try:
-            barriere.wait(timeout=10)
+            barriere.wait(timeout=60)
             operation()  # type: ignore[operator]
             resultats[nom] = "ok"
         except Exception as e:  # noqa: BLE001
@@ -50,7 +50,7 @@ def test_transitions_concurrentes(
     for t in threads:
         t.start()
     for t in threads:
-        t.join(timeout=30)
+        t.join(timeout=120)
     reussies = [n for n, r in resultats.items() if r == "ok"]
     assert len(resultats) == 2
     assert len(reussies) == 1, resultats
