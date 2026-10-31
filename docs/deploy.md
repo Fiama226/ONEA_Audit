@@ -3,6 +3,8 @@
 Ce document décrit l'installation de la plateforme sur un serveur Linux avec Docker Compose
 (`docker/compose.prod.yml`). Seul `nginx` publie des ports (80 et 443).
 
+Exploitation courante (incidents, mises à jour, restauration, rotation) : [`docs/exploitation/runbook.md`](exploitation/runbook.md). Liste de contrôle de mise en service : [`docs/exploitation/mise-en-production.md`](exploitation/mise-en-production.md).
+
 Réseaux Docker :
 
 | Réseau | Type | Services |
