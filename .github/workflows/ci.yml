@@ -5,8 +5,11 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
+  schedule:
+    - cron: "17 2 * * *" # chaque nuit : recette et restauration
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -103,6 +106,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:coverage
       - run: npm run build
+      - name: Budgets de taille (D10)
+        run: npm run budget
 
   api-fresh:
     # Fails when frontend/src/api/schema.d.ts is stale w.r.t. the backend OpenAPI schema.
@@ -129,40 +134,58 @@ jobs:
       - run: sh scripts/check-api-fresh.sh
 
   images:
-    # Build only (no push) to prove both production images build.
+    # Build sans push, SBOM CycloneDX et analyse trivy (Apache-2.0, image epinglee) des deux images.
+    # Echec sur vulnerabilite HIGH/CRITICAL corrigeable ; aucune derogation n'existe.
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      TRIVY_IMAGE: aquasec/trivy:0.58.1
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - name: Build backend
+        run: docker build -f docker/backend.Dockerfile -t onea-backend:ci .
+      - name: Build frontend
+        run: >-
+          docker build -f docker/frontend.Dockerfile -t onea-frontend:ci
+          --build-arg VITE_API_URL=https://audit.example.org
+          --build-arg VITE_OIDC_AUTHORITY=https://sso.example.org/realms/onea .
+      - name: SBOM CycloneDX
+        run: |
+          mkdir -p build/sbom
+          for img in backend frontend; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/build/sbom:/out" \
+              "$TRIVY_IMAGE" image --format cyclonedx --output "/out/$img.cdx.json" "onea-$img:ci"
+          done
+      - name: Trivy (HIGH et CRITICAL corrigeables)
+        run: |
+          for img in backend frontend; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" image \
+              --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "onea-$img:ci"
+          done
+      - name: Deposer les SBOM (GitHub)
+        if: ${{ always() && env.GITEA_ACTIONS != 'true' }}
+        uses: actions/upload-artifact@v4
         with:
-          context: .
-          file: docker/backend.Dockerfile
-          push: false
-          tags: onea-backend:ci
-      - uses: docker/build-push-action@v6
+          name: sbom-images
+          path: build/sbom/
+          if-no-files-found: ignore
+      - name: Deposer les SBOM (Gitea, v4 non supporte)
+        if: ${{ always() && env.GITEA_ACTIONS == 'true' }}
+        uses: actions/upload-artifact@v3
         with:
-          context: .
-          file: docker/frontend.Dockerfile
-          push: false
-          tags: onea-frontend:ci
-          build-args: |
-            VITE_API_URL=https://audit.example.org
-            VITE_OIDC_AUTHORITY=https://sso.example.org/realms/onea
+          name: sbom-images
+          path: build/sbom/
+          if-no-files-found: ignore
 
   e2e:
-    # Runs the same way as the local verification (dev compose db/redis/keycloak + Django dev
-    # server + Vite through Playwright's webServer) but has not been exercised on a real
-    # runner yet: keep it non-blocking until its first green run, then remove this line.
+    # Via scripts/e2e.sh (base jetable, API 8010, Vite 5174), comme en local.
+    # NON PROUVE sur un runner reel : rester non bloquant tant que trois executions vertes
+    # consecutives ne sont pas consignees (lot 9 T28, etape 2), puis supprimer la ligne suivante.
     continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      DATABASE_URL: postgres://onea:onea-dev-password@127.0.0.1:5432/onea
-      DJANGO_SETTINGS_MODULE: config.settings.dev
-      VITE_API_URL: http://localhost:8000
-      VITE_OIDC_AUTHORITY: http://localhost:8080/realms/onea
+      PYTHON: ${{ github.workspace }}/backend/.venv/bin/python
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -187,26 +210,28 @@ jobs:
           done
           docker compose -f docker/compose.yml -f docker/compose.dev.yml logs keycloak
           exit 1
-      - name: Start the API
+      - run: uv sync --frozen
         working-directory: backend
-        run: |
-          uv sync --frozen
-          export PATH="$PWD/.venv/bin:$PATH"
-          python manage.py migrate --noinput
-          nohup python manage.py runserver 8000 --noreload > ../api.log 2>&1 &
-          for i in $(seq 1 30); do curl -fsS http://localhost:8000/api/v1/health/ && exit 0; sleep 2; done
-          cat ../api.log
-          exit 1
       - run: npm ci --no-audit --no-fund
         working-directory: frontend
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
-      - run: npx playwright test
-        working-directory: frontend
+      - name: Parcours e2e
+        run: bash scripts/e2e.sh
         env:
           CI: "true"
-      - uses: actions/upload-artifact@v4
-        if: always()
+      - name: Deposer (GitHub)
+        if: ${{ always() && env.GITEA_ACTIONS != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          if-no-files-found: ignore
+      - name: Deposer (Gitea, v4 non supporte)
+        if: ${{ always() && env.GITEA_ACTIONS == 'true' }}
+        uses: actions/upload-artifact@v3
         with:
           name: playwright-report
           path: |
@@ -236,8 +261,15 @@ jobs:
       - run: npm ci --no-audit --no-fund
         working-directory: frontend
       - run: bash scripts/audit-dependances.sh build/audit
-      - uses: actions/upload-artifact@v4
-        if: always()
+      - name: Deposer (GitHub)
+        if: ${{ always() && env.GITEA_ACTIONS != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit
+          path: build/audit/
+      - name: Deposer (Gitea, v4 non supporte)
+        if: ${{ always() && env.GITEA_ACTIONS == 'true' }}
+        uses: actions/upload-artifact@v3
         with:
           name: dependency-audit
           path: build/audit/
@@ -257,3 +289,51 @@ jobs:
           docker run --rm -v "$PWD:/repo"
           -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo
           "$GITLEAKS_IMAGE" git --redact --no-banner -c /repo/.gitleaks.toml /repo
+
+  recette:
+    # Pile de recette (compose.prod.yml sans modification) et bancs d'essai de la peripherie.
+    # Sur main, develop et chaque nuit uniquement. Ports 80/443 de l'hote requis.
+    if: ${{ github.event_name == 'schedule' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pile de recette
+        run: |
+          sh scripts/recette/up.sh
+          sh scripts/recette/realm.sh
+      - name: Peripherie (nginx)
+        run: sh scripts/recette/tests/edge.sh
+      - name: Cloisonnement reseau
+        run: sh scripts/recette/tests/reseaux.sh
+      - name: TLS
+        run: sh scripts/recette/tests/tls.sh
+      - name: Journaux
+        run: sh scripts/recette/tests/journaux.sh
+      - name: Secrets
+        run: sh scripts/recette/tests/secrets.sh
+      - name: Journaux des conteneurs en cas d'echec
+        if: failure()
+        run: >-
+          docker compose -p onea-recette --env-file .recette/.env.recette
+          -f docker/compose.prod.yml -f scripts/recette/compose.override.yml logs --tail 200
+      - name: Arret
+        if: always()
+        run: sh scripts/recette/down.sh
+
+  restauration:
+    # Exercice de restauration complet, DESTRUCTIF pour la pile de recette : nuit et manuel.
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pile de recette
+        run: |
+          sh scripts/recette/up.sh
+          sh scripts/recette/realm.sh
+      - name: Exercice de restauration
+        run: sudo bash scripts/recette/tests/restauration.sh
+      - name: Arret
+        if: always()
+        run: sh scripts/recette/down.sh

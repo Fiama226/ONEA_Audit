@@ -69,6 +69,21 @@ Nettoyage unique du lot 3 : la base orpheline `onea_e2e3` est supprimée par le 
 existe (à la main sinon : `docker compose exec db dropdb -U onea onea_e2e3`). Chargement
 initial des listes de référence : `backend/README.md`, section « Référentiel : chargement
 initial ».
+## Intégration continue
+
+Le workflow `.github/workflows/ci.yml` s'exécute sur GitHub Actions et sur Gitea Actions
+(`act_runner`). Jobs : `backend`, `frontend` (avec budgets de taille), `api-fresh`, `images`
+(build, SBOM CycloneDX et trivy), `dependency-audit` (licences, SBOM, vulnérabilités), `secrets-scan`
+(gitleaks), `e2e` (`scripts/e2e.sh`), `recette` (bancs d'essai de la périphérie, sur `main`, `develop`
+et chaque nuit) et `restauration` (nuit et déclenchement manuel).
+
+Écarts Gitea traités : `actions/upload-artifact@v4` n'y est pas pris en charge, d'où une variante
+`@v3` choisie par `env.GITEA_ACTIONS`. `sh scripts/ci/gitea-local.sh` démarre un Gitea et un
+`act_runner` jetables (conteneurs `gitea-ci-local-*`, port 3300) et y pousse la branche courante.
+
+État : le workflow n'a été validé que statiquement. Le job `e2e` reste `continue-on-error` tant que
+trois exécutions vertes consécutives ne sont pas consignées ; l'exécution sur Gitea reste à faire.
+
 ## Démarrer avec Claude Code
 
 ```
