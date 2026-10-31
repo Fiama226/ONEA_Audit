@@ -1,6 +1,6 @@
 # Single source of the API version (health endpoint, OpenAPI schema); mirrors pyproject.toml.
 # Defined before the Celery import so settings can import it without a circular import.
-__version__ = "0.3.0"
+__version__ = "0.6.0"
 
 from .celery import app as celery_app  # noqa: E402
 

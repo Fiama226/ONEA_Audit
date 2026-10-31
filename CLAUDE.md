@@ -31,7 +31,7 @@ Maître d'œuvre : IKA SOLUTION LTD. Langue de travail et de l'interface : **fra
 | Tâches de fond | Celery + Redis (Valkey) |
 | Documents | docxtpl (remplissage des gabarits Word ONEA), Gotenberg (docx → PDF) |
 | Recherche | Meilisearch |
-| Fichiers | Disque du serveur (volume hôte) via l'API de stockage Django ; S3 compatible branchable |
+| Fichiers | Système de fichiers du serveur (volume Docker), via l'interface de stockage ; S3 en option future |
 | Auth | Keycloak (OIDC) via mozilla-django-oidc ; la SPA n'utilise que Keycloak (pas d'auth Django locale ; admin Django en session, hors SPA) |
 | Tests | pytest + pytest-django + factory_boy ; Vitest + Testing Library ; Playwright (e2e) |
 | Qualité | ruff, mypy, ESLint, Prettier, pre-commit |

@@ -1,6 +1,6 @@
 [project]
 name = "onea-audit-backend"
-version = "0.3.0"
+version = "0.6.0"
 description = "ONEA internal audit platform - backend"
 requires-python = ">=3.12"
 dependencies = [

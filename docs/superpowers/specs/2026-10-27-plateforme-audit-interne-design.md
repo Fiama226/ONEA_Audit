@@ -3,6 +3,8 @@
 Date : 27/10/2026. Statut : **approuvé le 27/10/2026** (réponses client intégrées en section 15).
 Auteur : IKA SOLUTION LTD (rédigé avec assistance IA). Client : ONEA, Département Audit Interne (DAI).
 
+> Révision 2026-10-31 (lot 6) : les pièces justificatives sont stockées sur le disque du serveur (volume Docker `onea-fichiers`), via l'interface de stockage ; S3 reste une option future.
+
 ## 1. Intention
 
 Remplacer la conduite des missions d'audit interne sur fichiers Word et Excel dispersés par

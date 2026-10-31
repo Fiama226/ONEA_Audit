@@ -173,6 +173,30 @@ est refusé sauf si `E2E_ALLOW_DB_CLEANUP=1`. Pour une seconde pile à côté de
 (le client Keycloak de dev doit autoriser l'URI de redirection du port choisi).
 
 
+## Accomplissement (lot 6) : programme, fiches, pièces, constats
+
+- **Gel du programme (D5)** : la validation du jalon X par le RAI ou le superviseur fige un
+  instantané vérifiable (empreinte) du programme de travail. Tout état figé refuse les
+  écritures (API, services, `save()`, QuerySets).
+- **Fiches de test (D7)** : documentées par les auditeurs, validées par le RAI ou le
+  superviseur, jamais par l'auteur ; le jalon XIII exige la validation de toutes les fiches.
+- **Stockage des pièces (D8)** : fichiers écrits sur le disque du serveur, hors dépôt, sous
+  `FICHIERS_RACINE` (défaut `var/fichiers`, ignoré par Git), via l'interface
+  `StockageFichiers` (`STOCKAGE_PREUVES_BACKEND`, `StockageDisque` par défaut ; S3 possible
+  plus tard). En production, `FICHIERS_RACINE=/var/lib/onea/fichiers` est le volume Docker
+  nommé `onea-fichiers`, monté sur `web` et `worker`. Aucune exposition par Nginx : seul
+  l'endpoint de téléchargement authentifié sert une pièce. Les pièces ne sont jamais
+  modifiées ni effacées ; l'empreinte SHA-256 est calculée au dépôt et revérifiée au
+  téléchargement.
+- **Sauvegarde** : sauvegarder le volume `onea-fichiers` avec la base (même instant) ; une
+  base restaurée sans son répertoire de fichiers laisse des pièces introuvables.
+- **Intégrité** : `python manage.py verifier_pieces [--mission REF]` recompare chaque pièce à
+  son empreinte ; code de sortie 0 sans écart, 1 sinon (pièce absente, altérée ou orpheline).
+- **Réponse de l'audité (D11)** : l'audité ne voit que les constats soumis et répond
+  accord, ou désaccord motivé (confirmé, horodaté), sans bloquer le flux.
+- **Livrables (D12)** et **droits (D13)** : ADMIN et DG n'accèdent à rien ; chaque action
+  figure dans la piste d'audit et chaque consultation sensible dans le journal.
+
 ## Dependencies and container images (reproducible builds)
 
 `backend/uv.lock` is committed (runtime + `dev` group). CI uses `uv sync --frozen`; the
