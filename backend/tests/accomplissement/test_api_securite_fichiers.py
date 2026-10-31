@@ -164,13 +164,13 @@ def test_nginx_ne_sert_aucune_racine_de_documents() -> None:
     dossier = Path(__file__).resolve().parents[3] / "docker" / "nginx"
     confs = list(dossier.glob("*.conf"))
     assert confs
-    autorises = ("/usr/share/nginx/html", "/var/www/static")
+    autorises = ("/usr/share/nginx/html", "/var/www/static", "/var/www/acme")
     for conf in confs:
         texte = conf.read_text(encoding="utf8")
         for ligne in texte.splitlines():
             directive = ligne.split("#")[0].strip()
             if directive.startswith(("root ", "alias ")):
-                # Seuls le front compilé et les statiques Django sont servis.
+                # Front compilé, statiques Django et webroot ACME (défi HTTP-01, lot 9) uniquement.
                 assert any(ok in directive for ok in autorises), (conf.name, directive)
         assert "fichiers" not in texte
         assert "preuves" not in texte
