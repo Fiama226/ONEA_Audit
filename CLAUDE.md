@@ -13,7 +13,8 @@ Maître d'œuvre : IKA SOLUTION LTD. Langue de travail et de l'interface : **fra
    « génération assistée », pas de chatbot. L'IA sert uniquement à construire le logiciel.
 2. **100 % open source.** Toute dépendance doit être sous licence MIT, BSD, Apache 2.0,
    PostgreSQL, LGPL, AGPL ou MPL-2.0 (mozilla-django-oidc). Licences permissives équivalentes
-   acceptées : ISC, OFL-1.1, 0BSD, BlueOak, CC0, CC-BY-4.0, Python-2.0. Aucun SaaS payant, aucun service propriétaire.
+   acceptées : ISC, OFL-1.1, 0BSD, BlueOak, CC0, CC-BY-4.0, Python-2.0, MIT-0, PSF-2.0 (décision du 2026-11-02). Exception GPL-2.0 : ClamAV,
+   uniquement comme conteneur séparé (aucun lien de code avec l'application). Aucun SaaS payant, aucun service propriétaire.
 3. **Français partout** dans l'interface, les messages, les documents générés et la doc
    fonctionnelle. Le code (identifiants, commits) est en anglais.
 4. **Piste d'audit complète** : toute création, modification, validation est historisée
