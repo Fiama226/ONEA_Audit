@@ -55,7 +55,7 @@ class EquipeSuivi:
 
     @property
     def suivis(self) -> list[SuiviAction]:
-        return list(SuiviAction.objects.filter(mission=self.mission).order_by("created_at"))
+        return list(SuiviAction.objects.filter(mission=self.mission).order_by("action__numero"))
 
     @property
     def suivi(self) -> SuiviAction:

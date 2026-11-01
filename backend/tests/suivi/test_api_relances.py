@@ -30,7 +30,7 @@ def test_reminders_anonyme_401(api_client: Any) -> None:
 
 
 def test_reminders_forme_et_filtres(mission_en_suivi: Any) -> None:  # noqa: F811
-    suivis = list(mission_en_suivi.suivis_actions.order_by("created_at")[:2])
+    suivis = list(mission_en_suivi.suivis_actions.order_by("action__numero")[:2])
     a = RelanceFactory(suivi=suivis[0], palier=PalierRelance.J_MOINS_15)
     b = RelanceFactory(suivi=suivis[1], palier=PalierRelance.J)
     Relance.all_objects.filter(pk=b.pk).update(statut=StatutRelance.ECHEC, erreur="SMTPException")
