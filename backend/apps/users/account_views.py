@@ -13,6 +13,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
+from apps.core import antivirus
 from apps.core.filters import StableOrderingFilter
 from apps.core.schema import (
     ERROR_400,
@@ -263,7 +264,9 @@ class UserAccountViewSet(
     def import_csv(self, request: Request) -> Response:
         serializer = ImportCsvSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        contenu = serializer.validated_data["fichier"].read(provisioning.CSV_MAX_BYTES + 1)
+        fichier = serializer.validated_data["fichier"]
+        antivirus.analyser(fichier)  # SEC-04 : tout téléversement passe par l'antivirus
+        contenu = fichier.read(provisioning.CSV_MAX_BYTES + 1)
         try:
             rapport = provisioning.importer_csv(
                 contenu, by=self.acteur, dry_run=serializer.validated_data["dry_run"]

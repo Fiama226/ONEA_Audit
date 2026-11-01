@@ -206,8 +206,13 @@ DATA_UPLOAD_MAX_MEMORY_SIZE: int = 5 * 1024 * 1024  # corps hors fichiers
 FILE_UPLOAD_MAX_MEMORY_SIZE: int = 5 * 1024 * 1024
 DATA_UPLOAD_MAX_NUMBER_FILES: int = 5
 ANTIVIRUS_MOTEUR: str = env("ANTIVIRUS_MOTEUR", default="aucun")
-if ANTIVIRUS_MOTEUR not in {"aucun", "clamd"}:
-    raise ImproperlyConfigured("ANTIVIRUS_MOTEUR must be 'aucun' or 'clamd'")
+if ANTIVIRUS_MOTEUR not in {"aucun", "clamav", "clamd"}:  # clamd : synonyme historique de clamav
+    raise ImproperlyConfigured("ANTIVIRUS_MOTEUR must be 'aucun' or 'clamav'")
+# Échec fermé : clamd injoignable => fichier refusé (503). `false` = choix explicite d'accepter.
+ANTIVIRUS_ECHEC_FERME: bool = env.bool("ANTIVIRUS_ECHEC_FERME", default=True)
+ANTIVIRUS_TAILLE_MAX_OCTETS: int = (
+    PIECE_TAILLE_MAX_OCTETS  # nginx : 55m
+)
 ANTIVIRUS_CLAMD_HOTE: str = env("ANTIVIRUS_CLAMD_HOTE", default="clamav")
 ANTIVIRUS_CLAMD_PORT: int = env.int("ANTIVIRUS_CLAMD_PORT", default=3310)
 

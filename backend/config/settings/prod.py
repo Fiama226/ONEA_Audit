@@ -64,6 +64,14 @@ STORAGES = {
     "documents": configuration_stockage({**os.environ, "DOCUMENTS_ROOT": DOCUMENTS_ROOT}),  # noqa: F405
 }
 
+# --- SEC-04 : analyse antivirus ClamAV obligatoire (échec fermé par défaut). ---
+ANTIVIRUS_MOTEUR = env("ANTIVIRUS_MOTEUR", default="clamav")
+if ANTIVIRUS_MOTEUR == "aucun" and not env.bool("ANTIVIRUS_AUTORISER_AUCUN", default=False):
+    raise ImproperlyConfigured(
+        "ANTIVIRUS_MOTEUR=aucun is refused in production (set ANTIVIRUS_AUTORISER_AUCUN=true "
+        "to accept the absence of malware scanning explicitly)"
+    )
+
 if not RECHERCHE["CLE"]:  # noqa: F405
     raise ImproperlyConfigured("MEILI_MASTER_KEY must be set in production")
 
