@@ -415,7 +415,22 @@ des mots de passe de test et un client à accès direct par mot de passe).
 8. **Protection contre la force brute** (*Realm settings > Security defenses > Brute force
    detection*) : activée, verrouillage temporaire après 5 échecs, durée croissante - **sur
    le realm `onea` et aussi sur le realm `master`** (celui des administrateurs).
-   Politique de mots de passe : longueur minimale 12.
+   Mêmes valeurs que `scripts/recette/realm.sh` : `failureFactor` 5, `waitIncrementSeconds` 60,
+   `maxFailureWaitSeconds` 900, pas de verrouillage permanent.
+   **Politique de mots de passe** (*Authentication > Policies > Password policy*), sur `onea`
+   et sur `master` : `length(12) and notUsername and passwordHistory(5)`. Pour refuser les
+   mots de passe compromis (ASVS 2.1.7), ajouter la règle *Not Recently Used* n'y suffit pas :
+   déposer une liste de mots interdits (un mot par ligne) dans le dossier
+   `data/password-blacklists/` du conteneur Keycloak et ajouter `passwordBlacklist(<fichier>)`.
+   La liste à retenir est **à décider par l'ONEA** (non livrée).
+   **Second facteur (OTP, décision D19)** : obligatoire pour les comptes qui ont le rôle `ADMIN`
+   du realm `onea` et pour tous les administrateurs du realm `master`. Pour chaque compte
+   concerné : *Users* > compte > *Required user actions* > **Configure OTP** ; au
+   premier passage, Keycloak impose l'enrôlement d'une application TOTP (RFC 6238, par exemple
+   FreeOTP ou Aegis, libres). *Authentication > Policies > OTP Policy* : `totp`, 6 chiffres,
+   30 s. Contrôle : se connecter avec le compte ADMIN, le code à usage unique est demandé. Les
+   comptes `ADMIN` créés plus tard reçoivent la même action requise à leur création. Perte
+   du téléphone : voir le runbook, « Compte verrouillé » (réinitialisation de l'OTP).
 9. **Annuaire AD/LDAP** (si l'ONEA fédère ses comptes) : *User federation > Add LDAP
    provider*, mode lecture seule, import des utilisateurs, synchronisation périodique ;
    mapper les groupes AD vers les rôles de realm ci-dessus et les attributs `direction` /

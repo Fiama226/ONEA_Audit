@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer
 from rest_framework.viewsets import ModelViewSet
 
+from apps.core.identifiants import uuid_du_corps, uuid_strict
 from apps.core.schema import ERROR_400, ERROR_404, ERROR_422, ERROR_RESPONSES, crud_schema
 from apps.missions import acces
 from apps.missions.models import Mission, StatutEtape
@@ -58,10 +59,7 @@ MSG_PARAMETRE = "Ce paramètre est obligatoire."
 
 
 def _uuid(brut: Any) -> UUID | None:
-    try:
-        return UUID(str(brut))
-    except ValueError:
-        return None
+    return uuid_strict(brut)
 
 
 class AnalyseViewSet(MissionApiViewSet):
@@ -182,8 +180,7 @@ class QuestionViewSet(AnalyseViewSet, ModelViewSet[QuestionQuestionnaire]):
         return self._questionnaire_visible(brut).mission
 
     def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        brut = request.data.get("questionnaire") if hasattr(request.data, "get") else None
-        identifiant = _uuid(brut) if brut is not None else None
+        identifiant = uuid_du_corps(request, "questionnaire")
         if identifiant is not None:
             exiger_contribution(self.acteur, self._questionnaire_visible(identifiant).mission)
         return ModelViewSet.create(self, request, *args, **kwargs)

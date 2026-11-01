@@ -33,6 +33,7 @@ from apps.signatures.serializers import ConfirmationResumeSerializer
 from apps.users.models import Role, User
 from apps.users.serializers import UtilisateurResumeSerializer
 
+from . import acces
 from .gardes import STATUTS_ETAPE_CLOSE
 from .models import (
     AffectationMission,
@@ -520,6 +521,24 @@ class DeclarationSerializer(serializers.ModelSerializer[DeclarationIndependance]
             confirmation = svc_declarations.confirmation_de(obj)
         return dict(ConfirmationResumeSerializer(confirmation).data) if confirmation else None
 
+    def to_representation(self, instance: DeclarationIndependance) -> dict[str, Any]:
+        data: dict[str, Any] = dict(super().to_representation(instance))
+        if not self._voit_le_conflit(instance):
+            # SEC-08 : la situation déclarée et son arbitrage restent entre le RAI, le chef de
+            # mission et la personne qui déclare ; les collègues n'en lisent pas le détail.
+            data["description_conflit"] = ""
+            data["arbitrage_justification"] = ""
+        return data
+
+    def _voit_le_conflit(self, obj: DeclarationIndependance) -> bool:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not getattr(user, "is_authenticated", False):
+            return False
+        if user.role == Role.RAI or obj.affectation.utilisateur_id == user.pk:
+            return True
+        return acces.est_chef(cast(User, user), obj.affectation.mission)
+
 
 # --------------------------------------------------------------------------- étapes
 
@@ -695,6 +714,14 @@ class ReunionSerializer(serializers.ModelSerializer[Reunion]):
 
     def get_etape_close(self, obj: Reunion) -> bool:
         return getattr(obj, "etape_statut", None) in STATUTS_ETAPE_CLOSE
+
+    def to_representation(self, instance: Reunion) -> dict[str, Any]:
+        data: dict[str, Any] = dict(super().to_representation(instance))
+        if _est_audite(self) and instance.tenue_le is None:
+            # SEC-09 : compte rendu et décisions d'une réunion non tenue = brouillon de l'équipe.
+            data["compte_rendu"] = ""
+            data["decisions"] = ""
+        return data
 
 
 # --------------------------------------------------------------------------- entretiens

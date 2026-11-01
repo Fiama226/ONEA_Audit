@@ -19,7 +19,7 @@ kc config credentials --server http://localhost:8080 --realm master \
 
 kc create realms -s realm=onea -s enabled=true -s sslRequired=external \
     -s registrationAllowed=false -s loginWithEmailAllowed=true -s duplicateEmailsAllowed=false \
-    -s bruteForceProtected=true -s internationalizationEnabled=true \
+    -s bruteForceProtected=true -s failureFactor=5 -s permanentLockout=false     -s waitIncrementSeconds=60 -s maxFailureWaitSeconds=900     -s 'passwordPolicy=length(12) and notUsername and passwordHistory(5)'     -s otpPolicyType=totp -s otpPolicyDigits=6 -s otpPolicyPeriod=30     -s internationalizationEnabled=true \
     -s 'supportedLocales=["fr"]' -s defaultLocale=fr \
     -s 'attributes.unmanagedAttributePolicy=ADMIN_EDIT' >/dev/null
 
@@ -47,7 +47,7 @@ client_id() { kc get clients -r onea -q "clientId=$1" --fields id --format csv -
 # onea-frontend : public, PKCE S256, URI exactes (pas de joker).
 kc create clients -r onea -s clientId=onea-frontend -s publicClient=true \
     -s standardFlowEnabled=true -s directAccessGrantsEnabled=false \
-    -s "redirectUris=[\"https://$PUBLIC_HOST/auth/callback\",\"https://$PUBLIC_HOST/\"]" \
+    -s "redirectUris=[\"https://$PUBLIC_HOST/callback\",\"https://$PUBLIC_HOST/\"]" \
     -s "webOrigins=[\"https://$PUBLIC_HOST\"]" \
     -s 'attributes."pkce.code.challenge.method"=S256' \
     -s "attributes.\"post.logout.redirect.uris\"=https://$PUBLIC_HOST/" >/dev/null
@@ -87,6 +87,12 @@ creer_compte() {
         -s "attributes.direction=$3" -s "attributes.fonction=$4" >/dev/null
     kc set-password -r onea --username "$1" --new-password "$pw"
     kc add-roles -r onea --uusername "$1" --rolename "$2"
+    # D19 : second facteur obligatoire des comptes ADMIN (action requise a la prochaine connexion).
+    # Desactive par defaut en recette, car token.sh (acces direct par mot de passe) ne sait pas
+    # enrôler un OTP ; RECETTE_ADMIN_OTP=1 l'active pour verifier le parcours au navigateur.
+    if [ "$2" = ADMIN ] && [ "${RECETTE_ADMIN_OTP:-0}" = 1 ]; then
+        kc update "users/$(kc get users -r onea -q "username=$1" --fields id --format csv --noquotes)"             -r onea -s 'requiredActions=["CONFIGURE_TOTP"]'
+    fi
     printf '%s\t%s\t%s\n' "$1" "$pw" "$2" >> "$COMPTES"
 }
 creer_compte rai RAI DAI "Responsable de l'audit interne"
