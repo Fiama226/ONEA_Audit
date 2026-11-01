@@ -5,6 +5,10 @@ from auditlog.models import LogEntry
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from apps.users.models import Role, User
+
+from .parametres import ContenuJournal, contenu_journal
+
 logger = logging.getLogger(__name__)
 
 CHANGES_SCHEMA: dict[str, Any] = {
@@ -39,6 +43,23 @@ ACTION_NAMES: dict[int, str] = {
 }
 
 
+MASQUE = "[masqué]"
+# Entités hors mission, toujours lisibles par l'ADMIN (comptes, référentiel, réglages).
+APPS_HORS_MISSION = {"users", "referentiel", "auth"}
+MODELES_HORS_MISSION = {"signatures.parametresignature", "core.parametreplateforme"}
+
+
+def masquer_pour(request: Any, entree: LogEntry, mode: str | None = None) -> bool:
+    """Vrai si l'ADMIN (et non le RAI) consulte une entité de mission en mode « masqué »."""
+    user = getattr(request, "user", None)
+    if not isinstance(user, User) or user.has_role(Role.RAI) or not user.has_role(Role.ADMIN):
+        return False
+    ct = entree.content_type
+    if ct.app_label in APPS_HORS_MISSION or f"{ct.app_label}.{ct.model}" in MODELES_HORS_MISSION:
+        return False
+    return (mode or contenu_journal()) == ContenuJournal.MASQUE
+
+
 class AuditActorSerializer(serializers.Serializer[Any]):
     id = serializers.IntegerField()
     username = serializers.CharField()
@@ -66,9 +87,23 @@ class AuditLogSerializer(serializers.Serializer[LogEntry]):
     def get_model(self, obj: LogEntry) -> str:
         return f"{obj.content_type.app_label}.{obj.content_type.model}"
 
+    def _masque(self, obj: LogEntry) -> bool:
+        """Mode « masqué » (SEC-02) : l'ADMIN ne lit pas le contenu des entités de mission."""
+        if not hasattr(self, "_mode"):  # une lecture par requête, pas par entrée
+            self._mode = contenu_journal()
+        return masquer_pour(self.context.get("request"), obj, self._mode)
+
+    def to_representation(self, instance: LogEntry) -> dict[str, Any]:
+        data = super().to_representation(instance)
+        if self._masque(instance):
+            data["object_repr"] = MASQUE
+        return data
+
     @extend_schema_field(CHANGES_SCHEMA)
     def get_changes(self, obj: LogEntry) -> dict[str, Any]:
         raw = obj.changes_dict
+        if self._masque(obj):
+            return {champ: [MASQUE, MASQUE] for champ in raw} if isinstance(raw, dict) else {}
         if not isinstance(raw, dict):
             logger.warning("Unexpected audit changes payload on entry %s", obj.pk)
             return {"raw": raw}
@@ -82,3 +117,24 @@ class AuditLogSerializer(serializers.Serializer[LogEntry]):
                 logger.warning("Unexpected audit change shape on entry %s (%s)", obj.pk, field)
                 out[field] = {"raw": value}
         return out
+
+
+class ParametreJournalModifieParSerializer(serializers.Serializer[Any]):
+    id = serializers.IntegerField()
+    nom_complet = serializers.SerializerMethodField()
+
+    def get_nom_complet(self, obj: User) -> str:
+        return obj.get_full_name() or obj.username
+
+
+class ParametreJournalSerializer(serializers.Serializer[dict[str, Any]]):
+    """Réglage `journal_audit_contenu_missions`."""
+
+    valeur = serializers.ChoiceField(choices=list(ContenuJournal.VALEURS))
+    valeur_libelle = serializers.CharField()
+    modifie_le = serializers.DateTimeField(allow_null=True)
+    modifie_par = ParametreJournalModifieParSerializer(allow_null=True)
+
+
+class ParametreJournalEcritureSerializer(serializers.Serializer[dict[str, str]]):
+    valeur = serializers.ChoiceField(choices=list(ContenuJournal.VALEURS))

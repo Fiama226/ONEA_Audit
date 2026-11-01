@@ -28,3 +28,7 @@ class CoreConfig(AppConfig):
         post_migrate.connect(installer_gardes_sql, sender=self, dispatch_uid="core.gardes_sql")
 
         from . import consultations  # noqa: F401  (enregistre le modèle Consultation)
+        from .audit import register
+        from .models import ParametrePlateforme
+
+        register(ParametrePlateforme)

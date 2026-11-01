@@ -252,6 +252,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit-log-settings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Réglage : contenu des missions dans la piste d'audit
+         * @description Contenu des missions dans la piste d'audit pour l'ADMIN (SEC-02) : lecture ADMIN/RAI.
+         */
+        get: operations["audit_log_settings_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Modifier : contenu des missions dans la piste d'audit
+         * @description Contenu des missions dans la piste d'audit pour l'ADMIN (SEC-02) : lecture ADMIN/RAI.
+         */
+        patch: operations["audit_log_settings_partial_update"];
+        trace?: never;
+    };
     "/api/v1/audit-log/{id}/": {
         parameters: {
             query?: never;
@@ -7115,6 +7139,18 @@ export interface components {
             ASSURANCE: number;
             CONSEIL: number;
         };
+        /** @description Réglage `journal_audit_contenu_missions`. */
+        ParametreJournal: {
+            valeur: components["schemas"]["ValeurEnum"];
+            valeur_libelle: string;
+            /** Format: date-time */
+            modifie_le: string | null;
+            modifie_par: components["schemas"]["ParametreJournalModifiePar"] | null;
+        };
+        ParametreJournalModifiePar: {
+            id: number;
+            readonly nom_complet: string;
+        };
         /** @description Une ligne par type paramétrable (modèle sans ligne : mode par défaut). */
         ParametreSignature: {
             type_document: string;
@@ -7428,6 +7464,9 @@ export interface components {
             libelle?: string;
             description?: string;
             ordre?: number;
+        };
+        PatchedParametreJournalEcritureRequest: {
+            valeur?: components["schemas"]["ValeurEnum"];
         };
         PatchedParametreSignatureEcritureRequest: {
             mode?: components["schemas"]["ModeSignatureParametreEnum"];
@@ -8987,6 +9026,12 @@ export interface components {
             readonly direction_code: string;
             readonly fonction: string;
         };
+        /**
+         * @description * `COMPLET` - COMPLET
+         *     * `MASQUE` - MASQUE
+         * @enum {string}
+         */
+        ValeurEnum: "COMPLET" | "MASQUE";
         /** @description Validation du rapport : `confirme` doit être vrai (jamais pré-coché). */
         ValidationRequestRequest: {
             /** @description Doit être vrai : la confirmation explicite de l'utilisateur. */
@@ -10052,6 +10097,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedAuditLogList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    audit_log_settings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParametreJournal"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    audit_log_settings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedParametreJournalEcritureRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedParametreJournalEcritureRequest"];
+                "multipart/form-data": components["schemas"]["PatchedParametreJournalEcritureRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParametreJournal"];
                 };
             };
             400: {

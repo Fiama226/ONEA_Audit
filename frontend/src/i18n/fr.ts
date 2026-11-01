@@ -2009,6 +2009,25 @@ export const fr = {
       CONFIRMATION_ET_SIGNATURE: "Confirmation et signature électronique",
     },
   },
+  journalAuditAdmin: {
+    title: "Piste d'audit : contenu des missions",
+    help: "Détermine ce que l'administrateur voit des missions dans la piste d'audit. Le responsable de l'audit interne n'est pas concerné.",
+    selectLabel: "Contenu des missions visible par l'administrateur dans la piste d'audit",
+    modes: {
+      COMPLET: "Complet : valeurs avant et après de chaque champ",
+      MASQUE: "Masqué : qui, quand et quelle action, sans les valeurs",
+    },
+    modeHelp:
+      "En mode masqué, les valeurs avant et après des entités de mission sont remplacées par « [masqué] » pour l'administrateur.",
+    modifiedBy: (name: string, date: string) => `Modifié le ${date} par ${name}`,
+    never: "Jamais modifié (mode complet par défaut)",
+    readOnly: "Lecture seule : seul l'administrateur peut modifier ce réglage.",
+    loadError: "Impossible de charger le réglage de la piste d'audit.",
+    confirmTitle: (mode: string) => `Appliquer le mode « ${mode} » ?`,
+    confirmText:
+      "Le changement s'applique immédiatement à la lecture de la piste d'audit et est lui-même consigné dans la piste d'audit.",
+    confirmLabel: "Modifier le réglage",
+  },
   documentsRegistre: {
     title: "Documents",
     listCaption: "Registre des documents générés",
