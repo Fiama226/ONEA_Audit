@@ -10,5 +10,6 @@ urlpatterns = [
     path("health/", views.health, name="health"),
     path("health/ready/", views.ready, name="health-ready"),
     path("metrics/", views.metrics, name="metrics"),
+    path("audit-log-settings/", views.ParametreJournalView.as_view(), name="audit-log-settings"),
     *router.urls,
 ]

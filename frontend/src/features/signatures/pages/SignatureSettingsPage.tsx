@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ConfirmActionDialog } from "@/features/missions/components/ConfirmActionDialog";
+import { AuditLogSettingSection } from "../components/AuditLogSettingSection";
 import { fr } from "@/i18n/fr";
 import { formatDateTime } from "@/lib/dates";
 import {
@@ -120,6 +121,7 @@ export function SignatureSettingsPage() {
         {!isAdmin && <p className="mt-1 text-sm text-text-muted">{t.readOnly}</p>}
       </div>
       {body}
+      <AuditLogSettingSection />
       {pending && (
         <ConfirmActionDialog
           open

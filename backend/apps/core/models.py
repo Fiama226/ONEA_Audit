@@ -6,7 +6,7 @@ from django.db import models
 from django.utils import timezone
 
 from .audit import actor_scope
-from .exceptions import SuppressionPhysiqueInterditeError
+from .exceptions import RegleMetierError, SuppressionPhysiqueInterditeError
 from .managers import AllObjectsManager, SoftDeleteManager
 
 if TYPE_CHECKING:
@@ -62,3 +62,30 @@ class BaseModel(models.Model):
 
         with maintenance():
             super().delete()
+
+
+class ParametrePlateforme(BaseModel):
+    """Réglage de plateforme (clé, valeur), modifiable par l'ADMIN ; jamais supprimé.
+
+    Absence de ligne = valeur par défaut du réglage. Chaque changement est tracé dans le
+    journal d'audit (qui, quand, avant, après).
+    """
+
+    cle = models.CharField("clé", max_length=60)
+    valeur = models.CharField("valeur", max_length=60)
+
+    class Meta:
+        ordering = ["cle"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cle"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="parametre_plateforme_cle_unique",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.cle} = {self.valeur}"
+
+    def soft_delete(self, by: "User") -> None:
+        raise RegleMetierError("Un réglage de plateforme ne peut pas être supprimé.")

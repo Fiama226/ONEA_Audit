@@ -36,7 +36,7 @@ Les corrections relèvent de la tâche T29 ; ce document ne modifie aucun code.
 | Id | Gravité | Sujet | Correction |
 |---|---|---|---|
 | SEC-01 | **Élevé** | Un UUID envoyé comme entier JSON contourne les gardes de création (visibilité, déclaration d'indépendance, rôle) | T29 |
-| SEC-02 | Moyen | L'ADMIN lit le contenu de toutes les missions par la piste d'audit (`/api/v1/audit-log/`) | arbitrage utilisateur, puis T29 |
+| SEC-02 | Moyen | **Résolu (paramétrable)** : l'ADMIN lit le contenu des missions par la piste d'audit (`/api/v1/audit-log/`) ; le réglage `journal_audit_contenu_missions` (« complet » par défaut, « masqué ») est modifiable par l'ADMIN (`/api/v1/audit-log-settings/`, page Administration > Signatures) et son changement est audité | résolu (arbitrage utilisateur) |
 | SEC-03 | Moyen | OTP des comptes à privilèges (D19) et politique de mots de passe non documentés ni appliqués | T29 (documentation + `realm.sh`) |
 | SEC-04 | Moyen | Aucune analyse antivirus en production (`ANTIVIRUS_MOTEUR=aucun`, pas de ClamAV livré) ; macros des formats OLE (`doc`, `xls`, `msg`) non inspectées | décision utilisateur (point ouvert), puis T29 |
 | SEC-05 | Faible | Hôte SSO : en-têtes HSTS et `nosniff` doublés ; pas de `Permissions-Policy`, de COOP ni de CORP | T29 |
@@ -121,6 +121,8 @@ sur un objet qui n'est pas le sien. Les rôles ADMIN et DG restent bloqués par
    `backend/tests/test_matrice_droits_lot{6,7,8}.py`).
 
 ### SEC-02 — Moyen — L'ADMIN lit le contenu de toutes les missions par la piste d'audit
+
+> **Résolu (paramétrable).** Décision utilisateur : lecture complète conservée par défaut, mais réglable. Réglage `journal_audit_contenu_missions` (`core.ParametrePlateforme`) : « COMPLET » (défaut) ou « MASQUE ». En mode masqué, l'ADMIN voit qui, quand, l'action et l'entité ; les valeurs avant/après et `object_repr` des entités de mission sont remplacés par « [masqué] » (comptes, référentiel et réglages restent lisibles) ; le RAI n'est pas concerné. Écriture ADMIN seule, changement audité. Tests : `backend/tests/core/test_audit_log_settings.py`.
 
 - `backend/apps/core/views.py:80-90` : `AuditLogViewSet` avec
   `permission_classes = [IsRAIOrAdmin]`, et un queryset non filtré
