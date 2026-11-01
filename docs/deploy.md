@@ -16,12 +16,21 @@ Réseaux Docker :
 | `kc-out` | standard | keycloak seul (sortie LDAP) |
 | `mail-out` | standard | worker seul (sortie SMTP) |
 | `backend` | `internal` | web, worker, beat, migrate, db, redis, meilisearch, gotenberg |
+| `av` | `internal` | clamav, web, worker (clamd, port 3310, joignable de ces trois services seulement) |
+| `av-out` | standard | clamav seul (mise à jour des signatures par freshclam) |
 | `kc` | `internal` | keycloak, keycloak-db |
 
 `nginx` porte l'alias réseau `${SSO_HOST}` sur `web` : `web` et `worker` joignent le SSO à
 travers `nginx`, sans passer par l'adresse publique. Les ports 8080 et 9000 de Keycloak ne
 sont joignables que depuis `nginx` (réseau `sso`). `web` n'a aucune sortie : tout courriel
 part du `worker` (tâche Celery) via `mail-out`. `gotenberg` n'a aucune route sortante.
+ClamAV (SEC-04) est un conteneur séparé : `web` et `worker` l'interrogent sur `av` (protocole
+INSTREAM) ; sa seule route sortante est la mise à jour des signatures (`av-out`, aucun autre
+service). Premier démarrage : téléchargement d'environ 300 Mo de signatures puis chargement en
+mémoire (1 à 3 minutes, `start_period` de 300 s) ; tant que `docker compose ps` n'indique pas
+`clamav` « healthy », les téléversements sont refusés (échec fermé). Le pare-feu de l'hôte doit
+autoriser la sortie HTTPS du conteneur vers `database.clamav.net` (ou un miroir interne à
+renseigner dans `FRESHCLAM_CONF_DatabaseMirror`). Procédures : `docs/exploitation/runbook.md` §11.
 Redis (Valkey) exige un mot de passe (fichier de secret `redis_password`, §3).
 
 Variables de la périphérie :
@@ -680,6 +689,10 @@ intercepté (ce droit n'est pas accordé au rôle applicatif).
 | `THROTTLE_RATE_EXPORT` | export CSV / Excel (défaut `30/min`) |
 | `THROTTLE_RATE_ANNUAIRE` | recherche dans l'annuaire Keycloak/LDAP (défaut `60/min`) |
 | `THROTTLE_RATE_ANONYME` | appelant non authentifié, par adresse client (défaut `30/min`) |
+| `ANTIVIRUS_MOTEUR` | `clamav` (défaut en production) ; `aucun` est **refusé** au démarrage sauf `ANTIVIRUS_AUTORISER_AUCUN=true` |
+| `ANTIVIRUS_ECHEC_FERME` | `true` (défaut) : clamd injoignable ou en erreur, téléversement refusé (503, « Analyse antivirus indisponible : réessayez plus tard. ») ; `false` : accepté sans analyse, journalisé en ERROR (déconseillé) |
+| `ANTIVIRUS_AUTORISER_AUCUN` | `false` (défaut) ; `true` accepte par écrit l'absence d'analyse |
+| `CLAMAV_MEM_LIMIT` | plafond mémoire du conteneur `clamav` (défaut `3g`) |
 | `COMPOSE_PROJECT_NAME`, `WEB_CONCURRENCY` | optionnels |
 
 Le backend en production refuse de démarrer si `SECRET_KEY` (ou `SECRET_KEY_FILE`), `DATABASE_URL`, `EMAIL_URL`,
@@ -697,6 +710,13 @@ réponse 429 « Trop de requêtes : réessayez dans {n} secondes. » avec `Retry
 est indisponible, la limitation est suspendue et un avertissement est journalisé.
 
 ## 9. Notes de sécurité
+
+**Antivirus (SEC-04).** Tout téléversement (gabarits Word, preuves du suivi, pièces justificatives,
+import CSV des comptes) est envoyé à ClamAV avant écriture. Taille maximale analysée : 50 Mo
+(`ANTIVIRUS_TAILLE_MAX_OCTETS`, alignée sur `client_max_body_size 55m` de nginx ; au-delà : 400
+« Le fichier est trop volumineux pour être analysé par l'antivirus. » ; `StreamMaxLength` du démon
+est réglé à 55 Mo dans `compose.prod.yml`). Détection : 400 « Le fichier a été refusé par l'analyse
+antivirus. ». Aucun code GPL dans l'application : ClamAV n'est atteint que par le réseau.
 
 - TLS est terminé par `nginx` ; Django fait confiance à `X-Forwarded-Proto` uniquement parce
   que `nginx` écrase cet en-tête à chaque requête et que `web` ne publie aucun port. Ne

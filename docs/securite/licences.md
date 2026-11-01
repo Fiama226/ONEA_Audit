@@ -7,7 +7,8 @@ execute aussi par le job CI `dependency-audit`. Outils 100 % open source : `pip-
 `@cyclonedx/cyclonedx-npm`, tous lances via `uvx` / `npx` (aucune installation globale).
 
 Regle de reference : CLAUDE.md regle 2 (MIT, BSD, Apache-2.0, PostgreSQL, LGPL, AGPL, MPL-2.0,
-ISC, OFL-1.1, 0BSD, BlueOak, CC0, CC-BY-4.0, Python-2.0).
+ISC, OFL-1.1, 0BSD, BlueOak, CC0, CC-BY-4.0, Python-2.0, MIT-0, PSF-2.0 ; exception GPL-2.0 :
+ClamAV, conteneur séparé uniquement, voir « Composants externes »).
 
 ## Resume
 
@@ -56,6 +57,15 @@ Le paquet `UNLICENSED` signale par license-checker est le projet lui-meme (`onea
 - Backend : `pip-audit` sur l'export verrouille (`uv export --frozen`) : *No known vulnerabilities
   found*. Aucun correctif requis.
 - Frontend : `npm audit` : *found 0 vulnerabilities*. Aucun correctif requis.
+
+## Composants externes (conteneurs)
+
+| Composant | Licence | Statut | Justification |
+|---|---|---|---|
+| ClamAV (`clamav/clamav`) | GPL-2.0 | Exception validée par l'utilisateur (SEC-04) | Antivirus open source de référence, sans équivalent libre. Exécuté dans un **conteneur séparé** : l'application ne l'incorpore pas, ne le lie pas et n'importe aucun de ses fichiers ; elle dialogue par un socket TCP (protocole INSTREAM de clamd, réimplémenté avec la bibliothèque standard Python, `backend/apps/core/antivirus.py`). La GPL s'applique au programme ClamAV lui-même ; elle ne s'étend pas à une application distincte qui l'appelle par un canal de communication ordinaire. Aucune modification de ClamAV : image officielle, non reconstruite. |
+
+Règle de maintien : aucun paquet GPL ne peut entrer dans `backend/` ni `frontend/` ; l'exception
+ne vaut que pour l'image ClamAV de `docker/compose.prod.yml`.
 
 ## Limites et suivi
 

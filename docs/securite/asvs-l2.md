@@ -38,7 +38,7 @@ Les corrections relèvent de la tâche T29 ; ce document ne modifie aucun code.
 | SEC-01 | **Élevé** | Un UUID envoyé comme entier JSON contourne les gardes de création (visibilité, déclaration d'indépendance, rôle) | T29 |
 | SEC-02 | Moyen | L'ADMIN lit le contenu de toutes les missions par la piste d'audit (`/api/v1/audit-log/`) | arbitrage utilisateur, puis T29 |
 | SEC-03 | Moyen | OTP des comptes à privilèges (D19) et politique de mots de passe non documentés ni appliqués | T29 (documentation + `realm.sh`) |
-| SEC-04 | Moyen | Aucune analyse antivirus en production (`ANTIVIRUS_MOTEUR=aucun`, pas de ClamAV livré) ; macros des formats OLE (`doc`, `xls`, `msg`) non inspectées | décision utilisateur (point ouvert), puis T29 |
+| SEC-04 | Moyen | **Résolu** (`feat/lot9-sec04`) : ClamAV livré en conteneur séparé, analyse de tout téléversement, échec fermé. Risque résiduel : macros OLE (`doc`, `xls`, `msg`) inédites ou obfusquées | résolu ; résiduel documenté |
 | SEC-05 | Faible | Hôte SSO : en-têtes HSTS et `nosniff` doublés ; pas de `Permissions-Policy`, de COOP ni de CORP | T29 |
 | SEC-06 | Faible | Realm de recette : URI de redirection `/auth/callback` alors que la SPA utilise `/callback` | T29 |
 | SEC-07 | Faible | Les confirmations horodatées (D10) reposent sur un SHA-256 sans clé : elles détectent une altération accidentelle, pas une falsification par un accès en écriture à la base | T29 (HMAC) ou acceptation |
@@ -159,7 +159,7 @@ sur un objet qui n'est pas le sien. Les rôles ADMIN et DG restent bloqués par
   et, si l'ONEA l'accepte, une liste de mots de passe interdits. Les mêmes réglages dans
   `realm.sh`, et un test `scripts/recette/tests/` qui lit le realm.
 
-### SEC-04 — Moyen — Pas d'analyse antivirus des fichiers téléversés en production
+### SEC-04 — Moyen — Pas d'analyse antivirus des fichiers téléversés en production (RÉSOLU)
 
 - `backend/config/settings/base.py:208` : `ANTIVIRUS_MOTEUR` vaut `aucun` par défaut, et
   `prod.py` ne l'exige pas. `docker/compose.prod.yml` ne livre pas de service ClamAV, et
@@ -175,6 +175,22 @@ sur un objet qui n'est pas le sien. Les rôles ADMIN et DG restent bloqués par
   interne, et exiger `ANTIVIRUS_MOTEUR=clamd` dans `prod.py`. À défaut, refuser `doc`, `xls` et
   `msg` à macros (flux `Macros` / `_VBA_PROJECT` d'OLE) ou les retirer de la liste blanche, et
   consigner l'acceptation du risque.
+
+- **Résolution** : service `clamav` (image officielle, conteneur séparé, licence GPL-2.0 validée
+  par l'utilisateur, `docs/securite/licences.md`) dans `docker/compose.prod.yml` : réseau interne
+  `av` (web et worker seuls), sortie `av-out` réservée à freshclam, volume de signatures, plafond
+  mémoire, `no-new-privileges`, bilan de santé. `ANTIVIRUS_MOTEUR=clamav` par défaut en
+  production, `aucun` refusé par `prod.py` sans `ANTIVIRUS_AUTORISER_AUCUN=true`, échec fermé
+  (`ANTIVIRUS_ECHEC_FERME`), limite 50 Mo alignée sur nginx, analyse de toutes les voies de dépôt
+  (gabarits, preuves, pièces, import CSV). Tests : `backend/tests/core/test_antivirus.py`
+  (faux clamd INSTREAM : sain, FOUND, injoignable, trop gros), `backend/tests/test_prod_settings.py`.
+  Procédures : `docs/exploitation/runbook.md` §11.
+- **Risque résiduel documenté** : les macros des formats OLE (`doc`, `xls`, `msg`) ne sont pas
+  inspectées par l'application. L'analyse de ClamAV (documents OLE2/VBA) en couvre une partie,
+  pas les macros inédites ou obfusquées. Atténuations : téléchargement forcé (`attachment`),
+  consigne aux auditeurs de ne pas activer les macros, préférence pour les formats OOXML
+  contrôlés. Non vérifié sans Docker : démarrage réel de l'image et EICAR de bout en bout
+  (runbook §11).
 
 ### SEC-05 — Faible — En-têtes de sécurité de l'hôte SSO
 
@@ -398,7 +414,7 @@ l'instance jetable de la revue.
 | 12.3.1 Nom du client jamais dans un chemin | C | `core/fichiers.py:13` (le nom ne sert qu'à l'extension), stockage adressé par identifiant | — |
 | 12.3.2 Traversée de chemin | C | `_nom_suspect` sur les archives (`core/fichiers.py:180-181`) ; `nom_telechargement` retire les séparateurs et les caractères de contrôle (`documents/views.py:88-94`) | — |
 | 12.4.1 Stockage hors de la racine web | C | `valider_documents_root` (`prod.py:57`) ; pas de `MEDIA_URL` | — |
-| 12.4.2 Analyse antivirus | NC | `ANTIVIRUS_MOTEUR=aucun` en production | SEC-04 |
+| 12.4.2 Analyse antivirus | C | ClamAV (`compose.prod.yml`), `prod.py` refuse `aucun`, échec fermé ; `backend/tests/core/test_antivirus.py` | SEC-04 (résolu) |
 | 12.5.1 Pas de service de fichiers par extension | C | nginx ne sert que `/static/` (collectstatic) | — |
 | 12.5.2 `Content-Disposition` et `nosniff` sur les téléchargements | C | `as_attachment=True`, `nosniff` (`documents/views.py:97-107`), nginx `nosniff` partout | — |
 | 12.6.1 SSRF par fichier (liens externes OOXML) | C | `verifier_sortie` refuse champs et liens externes (`documents/moteur/controle_ooxml.py`) ; `backend/tests/documents/test_securite.py` | — |

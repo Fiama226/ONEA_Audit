@@ -271,3 +271,25 @@ def test_prod_s3_exige_ses_quatre_variables() -> None:
         result = load_prod({**env, **{k: v for k, v in s3.items() if k != missing}})
         assert result.returncode != 0
         assert missing in result.stderr
+
+
+def test_prod_antivirus_clamav_echec_ferme_par_defaut() -> None:
+    code = PROBE.replace(
+        '"debug": settings.DEBUG,',
+        '"debug": settings.DEBUG, "av": settings.ANTIVIRUS_MOTEUR,'
+        ' "av_ferme": settings.ANTIVIRUS_ECHEC_FERME,'
+        ' "av_taille": settings.ANTIVIRUS_TAILLE_MAX_OCTETS,',
+    )
+    result = load_prod(PROD_ENV, code)
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout.strip().splitlines()[-1])
+    assert data["av"] == "clamav"
+    assert data["av_ferme"] is True
+    assert data["av_taille"] == 50 * 1024 * 1024
+
+
+def test_prod_refuse_antivirus_aucun_sans_accord_explicite() -> None:
+    result = load_prod({**PROD_ENV, "ANTIVIRUS_MOTEUR": "aucun"})
+    assert result.returncode != 0
+    assert "ANTIVIRUS_MOTEUR" in result.stderr
+    assert probe({**PROD_ENV, "ANTIVIRUS_MOTEUR": "aucun", "ANTIVIRUS_AUTORISER_AUCUN": "true"})

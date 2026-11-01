@@ -75,15 +75,18 @@ avec `X-Content-Type-Options: nosniff`, et le type servi vient de l'extension de
 Limite connue : les anciens formats OLE (`doc`, `xls`, `msg`) sont reconnus par signature mais
 leurs macros ne sont pas inspectées ; l'antivirus est le recours.
 
-## Antivirus (point d'extension)
+## Antivirus
 
-`ANTIVIRUS_MOTEUR` : `aucun` (défaut, aucune analyse) ou `clamd`. Avec `clamd`, le fichier est
-envoyé au démon ClamAV (protocole INSTREAM, `ANTIVIRUS_CLAMD_HOTE`, `ANTIVIRUS_CLAMD_PORT`,
-délai 30 s) avant toute écriture : détection → 400 « Le fichier a été refusé par l'analyse
-antivirus. » ; démon injoignable, en erreur ou trop lent → 503 « Analyse antivirus
-indisponible : réessayez plus tard. » (le fichier n'est jamais accepté sans analyse). Régler
-`StreamMaxLength` du démon à 50 Mo au moins. Le service ClamAV lui-même n'est pas livré
-(décision U4).
+`ANTIVIRUS_MOTEUR` : `aucun` (développement seulement) ou `clamav` (synonyme historique :
+`clamd`). En production, `clamav` est le défaut et `aucun` est refusé au démarrage sauf
+`ANTIVIRUS_AUTORISER_AUCUN=true`. Le service `clamav` est livré dans `docker/compose.prod.yml`
+(conteneur séparé, GPL-2.0). Chaque téléversement (gabarits, preuves, pièces, import CSV des
+comptes) est envoyé au démon (INSTREAM, `ANTIVIRUS_CLAMD_HOTE`, `ANTIVIRUS_CLAMD_PORT`, délai
+30 s) avant toute écriture : détection, 400 « Le fichier a été refusé par l'analyse
+antivirus. » ; fichier de plus de 50 Mo, 400 « trop volumineux pour être analysé » ; démon
+injoignable, en erreur ou trop lent, 503 « Analyse antivirus indisponible : réessayez plus
+tard. » (échec fermé, `ANTIVIRUS_ECHEC_FERME=true` par défaut ; `false` accepte sans analyse et
+journalise en ERROR). Procédures : `docs/exploitation/runbook.md` §11.
 
 ## Sauvegarde
 
