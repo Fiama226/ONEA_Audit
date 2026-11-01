@@ -29,6 +29,7 @@ from rest_framework.viewsets import ModelViewSet
 from apps.analyse.gardes import ACTIFS, statuts_etapes
 from apps.core.consultations import journaliser_consultation
 from apps.core.exceptions import RegleMetierError
+from apps.core.identifiants import uuid_du_corps, uuid_strict
 from apps.core.schema import (
     ERROR_400,
     ERROR_404,
@@ -79,16 +80,12 @@ PARAM_MISSION = OpenApiParameter(
 
 
 def _uuid(brut: Any) -> UUID | None:
-    try:
-        return UUID(str(brut))
-    except ValueError:
-        return None
+    return uuid_strict(brut)
 
 
 def _uuid_du_corps(request: Request, champ: str) -> UUID | None:
     """Identifiant lisible du champ du corps, sinon `None` (le sérialiseur répondra 400)."""
-    brut = request.data.get(champ) if hasattr(request.data, "get") else None
-    return _uuid(brut) if brut is not None else None
+    return uuid_du_corps(request, champ)
 
 
 class AccomplissementViewSet(MissionApiViewSet):

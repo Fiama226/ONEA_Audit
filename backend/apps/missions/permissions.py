@@ -14,6 +14,7 @@ from rest_framework.request import Request
 from rest_framework.views import APIView
 
 from apps.core.handlers import FORBIDDEN
+from apps.core.identifiants import uuid_du_corps
 from apps.users.models import Role, User
 
 from . import acces
@@ -53,12 +54,8 @@ def mission_du_corps(request: Request) -> Mission | None:
     Mission invisible : 404, jamais 400. Champ absent ou illisible : `None`, le sérialiseur
     répondra 400.
     """
-    brut = request.data.get("mission") if hasattr(request.data, "get") else None
-    if brut is None:
-        return None
-    try:
-        identifiant = UUID(str(brut))
-    except ValueError:
+    identifiant = uuid_du_corps(request, "mission")
+    if identifiant is None:
         return None
     return mission_visible(cast(User, request.user), identifiant)
 

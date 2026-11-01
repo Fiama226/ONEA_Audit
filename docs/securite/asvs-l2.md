@@ -33,18 +33,18 @@ Les corrections relèvent de la tâche T29 ; ce document ne modifie aucun code.
 
 ## 2. Synthèse des constats
 
-| Id | Gravité | Sujet | Correction |
-|---|---|---|---|
-| SEC-01 | **Élevé** | Un UUID envoyé comme entier JSON contourne les gardes de création (visibilité, déclaration d'indépendance, rôle) | T29 |
-| SEC-02 | Moyen | L'ADMIN lit le contenu de toutes les missions par la piste d'audit (`/api/v1/audit-log/`) | arbitrage utilisateur, puis T29 |
-| SEC-03 | Moyen | OTP des comptes à privilèges (D19) et politique de mots de passe non documentés ni appliqués | T29 (documentation + `realm.sh`) |
-| SEC-04 | Moyen | Aucune analyse antivirus en production (`ANTIVIRUS_MOTEUR=aucun`, pas de ClamAV livré) ; macros des formats OLE (`doc`, `xls`, `msg`) non inspectées | décision utilisateur (point ouvert), puis T29 |
-| SEC-05 | Faible | Hôte SSO : en-têtes HSTS et `nosniff` doublés ; pas de `Permissions-Policy`, de COOP ni de CORP | T29 |
-| SEC-06 | Faible | Realm de recette : URI de redirection `/auth/callback` alors que la SPA utilise `/callback` | T29 |
-| SEC-07 | Faible | Les confirmations horodatées (D10) reposent sur un SHA-256 sans clé : elles détectent une altération accidentelle, pas une falsification par un accès en écriture à la base | T29 (HMAC) ou acceptation |
-| SEC-08 | Faible | Déclarations d'indépendance : `description_conflit` et `arbitrage_justification` lisibles par toute l'équipe de la mission | arbitrage utilisateur |
-| SEC-09 | Faible | L'AUDITE lit le compte rendu et les décisions d'une réunion pas encore tenue | T29 |
-| SEC-10 | Faible | `npm audit` : 14 vulnérabilités modérées (ReDoS de `minimatch`), toutes dans les outils de développement | T29 (mise à jour) |
+| Id | Gravité | Sujet | Correction | Statut |
+|---|---|---|---|---|
+| SEC-01 | **Élevé** | Un UUID envoyé comme entier JSON contourne les gardes de création (visibilité, déclaration d'indépendance, rôle) | T29 | **Corrigé** (T29) : `apps/core/identifiants.py`, `tests/missions/test_sec01_uuid_entier.py` |
+| SEC-02 | Moyen | L'ADMIN lit le contenu de toutes les missions par la piste d'audit (`/api/v1/audit-log/`) | arbitrage utilisateur, puis T29 | Ouvert : arbitrage utilisateur (traité par ailleurs) |
+| SEC-03 | Moyen | OTP des comptes à privilèges (D19) et politique de mots de passe non documentés ni appliqués | T29 (documentation + `realm.sh`) | **Corrigé** (T29) : `deploy.md` §5 étape 8, `realm.sh`, `tests/realm.sh`, runbook ; liste de mots interdits à décider par l'ONEA |
+| SEC-04 | Moyen | Aucune analyse antivirus en production (`ANTIVIRUS_MOTEUR=aucun`, pas de ClamAV livré) ; macros des formats OLE (`doc`, `xls`, `msg`) non inspectées | décision utilisateur (point ouvert), puis T29 | Ouvert : décision utilisateur (traité par ailleurs) |
+| SEC-05 | Faible | Hôte SSO : en-têtes HSTS et `nosniff` doublés ; pas de `Permissions-Policy`, de COOP ni de CORP | T29 | **Corrigé** (T29) : `docker/nginx/prod.conf` ; CSP du realm à régler en recette |
+| SEC-06 | Faible | Realm de recette : URI de redirection `/auth/callback` alors que la SPA utilise `/callback` | T29 | **Corrigé** (T29) : `realm.sh`, `scripts/recette/tests/realm.sh` |
+| SEC-07 | Faible | Les confirmations horodatées (D10) reposent sur un SHA-256 sans clé : elles détectent une altération accidentelle, pas une falsification par un accès en écriture à la base | T29 (HMAC) ou acceptation | Ouvert : décision utilisateur (HMAC avec nouveau secret, ou acceptation) |
+| SEC-08 | Faible | Déclarations d'indépendance : `description_conflit` et `arbitrage_justification` lisibles par toute l'équipe de la mission | arbitrage utilisateur | **Corrigé** (T29) : masquage hors RAI, chef de mission et déclarant ; `tests/missions/test_sec08_sec09.py` |
+| SEC-09 | Faible | L'AUDITE lit le compte rendu et les décisions d'une réunion pas encore tenue | T29 | **Corrigé** (T29) : `ReunionSerializer.to_representation` |
+| SEC-10 | Faible | `npm audit` : 14 vulnérabilités modérées (ReDoS de `minimatch`), toutes dans les outils de développement | T29 (mise à jour) | Ouvert : `overrides` vers `minimatch` 11 incompatible avec `eslint` ; hors produit livré |
 
 Total : **0 critique, 1 élevé, 3 moyens, 6 faibles**. La relecture contradictoire de SEC-01
 (étape 4 du plan) est consignée en §5.
