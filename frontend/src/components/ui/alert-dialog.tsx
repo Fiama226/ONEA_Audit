@@ -3,9 +3,15 @@ import { cn } from "@/lib/utils";
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui";
 
 import { Button } from "@/components/ui/button";
+import { RestoreFocusContext, useRestoreFocus } from "@/lib/useRestoreFocus";
 
 function AlertDialog({ ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
+  const restoreFocus = useRestoreFocus(props.open);
+  return (
+    <RestoreFocusContext.Provider value={restoreFocus}>
+      <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
+    </RestoreFocusContext.Provider>
+  );
 }
 
 function AlertDialogTrigger({
@@ -41,6 +47,7 @@ function AlertDialogContent({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm";
 }) {
+  const restoreFocus = React.useContext(RestoreFocusContext);
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -52,6 +59,10 @@ function AlertDialogContent({
           className,
         )}
         {...props}
+        onCloseAutoFocus={(event) => {
+          props.onCloseAutoFocus?.(event);
+          restoreFocus?.(event);
+        }}
       />
     </AlertDialogPortal>
   );

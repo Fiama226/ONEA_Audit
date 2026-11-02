@@ -5,9 +5,15 @@ import { XIcon } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
 import { Button } from "@/components/ui/button";
+import { RestoreFocusContext, useRestoreFocus } from "@/lib/useRestoreFocus";
 
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />;
+  const restoreFocus = useRestoreFocus(props.open);
+  return (
+    <RestoreFocusContext.Provider value={restoreFocus}>
+      <DialogPrimitive.Root data-slot="dialog" {...props} />
+    </RestoreFocusContext.Provider>
+  );
 }
 
 function DialogTrigger({ ...props }: React.ComponentProps<typeof DialogPrimitive.Trigger>) {
@@ -46,6 +52,7 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
 }) {
+  const restoreFocus = React.useContext(RestoreFocusContext);
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -56,6 +63,10 @@ function DialogContent({
           className,
         )}
         {...props}
+        onCloseAutoFocus={(event) => {
+          props.onCloseAutoFocus?.(event);
+          restoreFocus?.(event);
+        }}
       >
         {children}
         {showCloseButton && (
