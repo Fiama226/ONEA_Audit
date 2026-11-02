@@ -22,6 +22,7 @@ dependencies = [
     "openpyxl>=3.1",
     "docxtpl>=0.20",
     "python-docx>=1.1",
+    "reportlab>=4.2",
 ]
 
 [dependency-groups]
@@ -36,6 +37,7 @@ dev = [
     "djangorestframework-stubs>=3.15",
     "types-openpyxl>=3.1.5.20261017",
     "types-requests>=2.32",
+    "pypdf>=5.0",
 ]
 
 [tool.uv]

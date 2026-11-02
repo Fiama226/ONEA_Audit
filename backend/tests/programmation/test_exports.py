@@ -95,7 +95,7 @@ def test_xlsx_deux_feuilles_dates_et_total(auth_rai: APIClient) -> None:
 
 def test_export_type_invalide_400(auth_rai: APIClient) -> None:
     p = programme()
-    for suffixe in ("?type=pdf", ""):
+    for suffixe in ("?type=docx", ""):
         resp = auth_rai.get(f"/api/v1/audit-plans/{p.id}/export/{suffixe}")
         assert resp.status_code == 400
         assert "type" in resp.json()["errors"]

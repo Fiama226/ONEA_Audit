@@ -9,10 +9,10 @@ import { exportAuditPlan } from "../api";
 export function PlanExportButtons({ id }: { id: string }) {
   const p = fr.programmation;
   const c = fr.programmationPlans;
-  const [pending, setPending] = useState<"csv" | "xlsx" | null>(null);
+  const [pending, setPending] = useState<"csv" | "xlsx" | "pdf" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(type: "csv" | "xlsx") {
+  async function run(type: "csv" | "xlsx" | "pdf") {
     setPending(type);
     setError(null);
     try {
@@ -44,6 +44,15 @@ export function PlanExportButtons({ id }: { id: string }) {
         >
           <Download aria-hidden />
           {p.exportXlsx}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={pending !== null}
+          onClick={() => void run("pdf")}
+        >
+          <Download aria-hidden />
+          {p.exportPdf}
         </Button>
       </div>
       {pending && (

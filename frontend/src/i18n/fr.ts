@@ -698,6 +698,7 @@ export const fr = {
     totalLoad: "Charge totale",
     exportCsv: "Exporter en CSV",
     exportXlsx: "Exporter en Excel",
+    exportPdf: "Exporter en PDF",
     print: "Imprimer",
     deleted: "(supprimé)",
     frozenOn: "Programme validé le",

@@ -135,7 +135,7 @@ export function useAuditPlanSummary(id: string | undefined) {
 }
 
 /** Exporte un programme en CSV ou Excel et déclenche l'enregistrement du fichier. */
-export async function exportAuditPlan(id: string, type: "csv" | "xlsx"): Promise<void> {
+export async function exportAuditPlan(id: string, type: "csv" | "xlsx" | "pdf"): Promise<void> {
   const { blob, filename } = await apiDownload(
     `${BASE}/audit-plans/${id}/export/${toQuery({ type })}`,
   );

@@ -447,8 +447,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Exporter un programme annuel (CSV ou XLSX)
-         * @description Télécharge le programme : missions prévues (CSV ou XLSX) ; le XLSX ajoute une feuille de synthèse.
+         * Exporter un programme annuel (CSV, XLSX ou PDF)
+         * @description Télécharge le programme : missions prévues (CSV ou XLSX) ; le XLSX ajoute une feuille de synthèse ; le PDF (paysage A4) reproduit le modèle d'impression ONEA.
          */
         get: operations["v1_audit_plans_export_retrieve"];
         put?: never;
@@ -11175,8 +11175,8 @@ export interface operations {
         parameters: {
             query: {
                 format?: "" | "json";
-                /** @description Format du fichier : csv (UTF-8, séparateur « ; ») ou xlsx. */
-                type: "csv" | "xlsx";
+                /** @description Format du fichier : csv (UTF-8, séparateur « ; »), xlsx ou pdf. */
+                type: "csv" | "pdf" | "xlsx";
             };
             header?: never;
             path: {
@@ -11194,6 +11194,7 @@ export interface operations {
                 content: {
                     "text/csv; charset=utf-8": string;
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    "application/pdf": string;
                 };
             };
             400: {

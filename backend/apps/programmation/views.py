@@ -32,7 +32,7 @@ from apps.referentiel.permissions import RolePermission
 from apps.referentiel.renderers import PassthroughRenderer
 from apps.users.models import User
 
-from . import exports, services
+from . import exports, pdf, services
 from .filters import LigneFilter, ProgrammeFilter
 from .models import LigneProgramme, ProgrammeAnnuel
 from .permissions import ECRITURE_PROGRAMME, LECTURE_PROGRAMME
@@ -120,23 +120,24 @@ class ProgrammeAnnuelViewSet(_ProgrammeViewSet[ProgrammeAnnuel]):
 
     @extend_schema(
         tags=[TAG],
-        summary="Exporter un programme annuel (CSV ou XLSX)",
+        summary="Exporter un programme annuel (CSV, XLSX ou PDF)",
         description=(
             "Télécharge le programme : missions prévues (CSV ou XLSX) ; le XLSX ajoute "
-            "une feuille de synthèse."
+            "une feuille de synthèse ; le PDF (paysage A4) reproduit le modèle d'impression ONEA."
         ),
         parameters=[
             OpenApiParameter(
                 "type",
                 OpenApiTypes.STR,
                 required=True,
-                enum=["csv", "xlsx"],
-                description="Format du fichier : csv (UTF-8, séparateur « ; ») ou xlsx.",
+                enum=["csv", "xlsx", "pdf"],
+                description="Format du fichier : csv (UTF-8, séparateur « ; »), xlsx ou pdf.",
             ),
         ],
         responses={
             (200, exports.TYPE_CSV): OpenApiTypes.BINARY,
             (200, exports.TYPE_XLSX): OpenApiTypes.BINARY,
+            (200, pdf.TYPE_PDF): OpenApiTypes.BINARY,
             **ERROR_400,
             **ERROR_RESPONSES,
             **ERROR_404,
@@ -152,13 +153,15 @@ class ProgrammeAnnuelViewSet(_ProgrammeViewSet[ProgrammeAnnuel]):
     )
     def export(self, request: Request, pk: str | None = None) -> HttpResponse:
         format_ = request.query_params.get("type")
-        if format_ not in ("csv", "xlsx"):
-            raise ValidationError({"type": ["Format attendu : csv ou xlsx."]})
+        if format_ not in ("csv", "xlsx", "pdf"):
+            raise ValidationError({"type": ["Format attendu : csv, xlsx ou pdf."]})
         programme = self.get_object()
         if format_ == "csv":
             contenu, type_mime = exports.exporter_csv(programme), exports.TYPE_CSV
-        else:
+        elif format_ == "xlsx":
             contenu, type_mime = exports.exporter_xlsx(programme), exports.TYPE_XLSX
+        else:
+            contenu, type_mime = pdf.exporter_pdf(programme), pdf.TYPE_PDF
         reponse = HttpResponse(contenu, content_type=type_mime)
         reponse["Content-Disposition"] = (
             f'attachment; filename="{exports.nom_fichier(programme, format_)}"'
