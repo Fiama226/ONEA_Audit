@@ -6,7 +6,11 @@ import pytest
 from django.http import Http404
 
 from apps.core.exceptions import RegleMetierError
-from apps.documents.generators.missions import FournisseurOrdreMission, contexte_mission
+from apps.documents.generators.missions import (
+    FONCTION_RAI,
+    FournisseurOrdreMission,
+    contexte_mission,
+)
 from apps.documents.models import Document, DocumentVersion
 from apps.documents.moteur.contrats import ecarts_contexte
 from apps.documents.moteur.registre import type_document
@@ -121,3 +125,59 @@ def test_droits_fournisseur_ordre(mission_lancee: Mission, rai: User) -> None:
     assert not f.peut_consulter(make_user(Role.AUDITEUR), mission_lancee)
     with pytest.raises(Http404):
         f.objet(uuid4())
+
+
+def test_fonction_du_signataire_imprimee(
+    mission_lancee: Mission,
+    rai: User,
+    gabarits_provisoires: None,  # noqa: F811
+    django_capture_on_commit_callbacks: Any,
+) -> None:
+    rai.fonction = "Directeur de l'audit interne"
+    rai.save(update_fields=["fonction"])
+    with django_capture_on_commit_callbacks(execute=True):
+        emettre_ordre(mission_lancee, rai)
+    contexte = FournisseurOrdreMission().contexte(mission_lancee)
+    assert contexte["signature"]["fonction"] == "Directeur de l'audit interne"
+    v = DocumentVersion.objects.get(document__mission=mission_lancee)
+    assert "Directeur de l'audit interne" in texte_docx(lire(v.fichier_docx.name))
+
+
+@pytest.mark.parametrize("fonction", ["", "   "])
+def test_fonction_vide_repli_sur_titre_rai(
+    mission_lancee: Mission, rai: User, fonction: str
+) -> None:
+    rai.fonction = fonction
+    rai.save(update_fields=["fonction"])
+    emettre_ordre(mission_lancee, rai)
+    contexte = FournisseurOrdreMission().contexte(mission_lancee)
+    assert contexte["signature"]["fonction"] == FONCTION_RAI
+
+
+def test_fonction_echappee_dans_le_docx(
+    mission_lancee: Mission,
+    rai: User,
+    gabarits_provisoires: None,  # noqa: F811
+    django_capture_on_commit_callbacks: Any,
+) -> None:
+    fonction = 'Directeur & <Chef> "adjoint"'
+    rai.fonction = fonction
+    rai.save(update_fields=["fonction"])
+    with django_capture_on_commit_callbacks(execute=True):
+        emettre_ordre(mission_lancee, rai)
+    v = DocumentVersion.objects.get(document__mission=mission_lancee)
+    assert fonction in texte_docx(lire(v.fichier_docx.name))
+
+
+def test_fonction_vide_imprimee_en_repli_dans_le_docx(
+    mission_lancee: Mission,
+    rai: User,
+    gabarits_provisoires: None,  # noqa: F811
+    django_capture_on_commit_callbacks: Any,
+) -> None:
+    rai.fonction = ""
+    rai.save(update_fields=["fonction"])
+    with django_capture_on_commit_callbacks(execute=True):
+        emettre_ordre(mission_lancee, rai)
+    v = DocumentVersion.objects.get(document__mission=mission_lancee)
+    assert FONCTION_RAI in texte_docx(lire(v.fichier_docx.name))

@@ -193,6 +193,11 @@ def _libelle_role(code: str) -> str:
     return str(RoleMission(code).label) if code in RoleMission.values else code
 
 
+def fonction_signataire(user: User) -> str:
+    """Fonction du signataire (`User.fonction`), à défaut le titre du RAI."""
+    return user.fonction.strip() or FONCTION_RAI
+
+
 def _chaine(valeur: Any) -> str:
     return "" if valeur is None else str(valeur)
 
@@ -220,7 +225,7 @@ def _contexte_ordre(mission: Mission, confirmation: Confirmation) -> dict[str, A
         },
         "signature": {
             "signataire": nom_complet(confirmation.signataire),
-            "fonction": FONCTION_RAI,
+            "fonction": fonction_signataire(confirmation.signataire),
             "date": _date(confirmation.confirme_le),
             "heure": _heure(confirmation.confirme_le),
             "empreinte": confirmation.empreinte,
