@@ -94,6 +94,7 @@ export function DataTable<T extends RowData>({
       <div
         data-slot="table-container"
         className="overflow-x-auto"
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- conteneur défilant : accès clavier (WCAG 2.1.1)
         tabIndex={0}
       >
         <table aria-busy={isLoading} className="w-full caption-bottom text-sm tabular-nums">

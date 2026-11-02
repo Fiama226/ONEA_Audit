@@ -7,6 +7,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- conteneur défilant : accès clavier (WCAG 2.1.1)
       tabIndex={0}
       className="relative w-full overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring"
     >
