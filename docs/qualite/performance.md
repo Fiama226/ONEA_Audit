@@ -222,3 +222,128 @@ Deux routes sont exclues du test de temps car dominées par un service externe :
   reste utile pour les index.
 - Les routes de téléchargement et d'export sont mesurées sur leur première réponse (fichier
   généré à la volée).
+
+## Test de charge (lot 9, tâche 26)
+
+### Ce qui est livré
+
+| Fichier | Rôle |
+|---|---|
+| `loadtest/locustfile.py` | scénario Locust (MIT) et vérification des seuils D10 (code de sortie 1 si un seuil est dépassé) |
+| `loadtest/requirements.in`, `requirements.txt` | Locust 2.47.0 épinglé, dépendances résolues avec empreintes SHA-256 (`uv pip compile --universal --generate-hashes`), installées par `pip install --require-hashes` |
+| `scripts/recette/charge.sh` | lance le scénario sur la recette, relève `docker stats` toutes les 30 s, contrôle la file Celery 2 min après la fin |
+| `scripts/recette/realm.sh` | comptes `charge01…40` (2 RAI, 20 AUDITEUR, 15 AUDITE, 3 DG) dans le realm de recette |
+
+Licences : Locust et ses dépendances sont sous MIT, BSD, Apache-2.0, MPL-2.0 (bidict, certifi) ou PSF ;
+`zope.event` et `zope.interface` sont sous ZPL-2.1 (licence permissive de type BSD, approuvée OSI,
+non listée dans CLAUDE.md : à valider). Outil de test seulement, jamais livré avec l'application.
+
+### Scénario
+
+40 utilisateurs, montée de 2 par seconde, 20 minutes, attente de 1 à 3 s entre deux actions.
+Chaque utilisateur prend un compte `chargeNN`, obtient son jeton par le client `onea-charge`
+(accès direct par mot de passe, recette seulement) et le renouvelle avant expiration. Poids des tâches :
+
+| Part | Tâche | Routes |
+|---|---|---|
+| 30 % | listes | missions (pages de 25 et 50), documents, recommandations du suivi, notifications ; le DG n'a pas accès aux missions : suivi et rapports |
+| 25 % | détail de mission et étapes | `missions/{id}/`, `mission-steps/?mission=` (pas pour l'AUDITE : 403 attendu) |
+| 10 % | référentiel | directions, processus, risques (équipe d'audit) |
+| 10 % | tableau de bord | `dashboards/{rai,auditor,auditee,dg}/` selon le rôle |
+| 15 % | écritures courantes | compte rendu d'entretien (`PATCH interviews/{id}/`), fiche de test (`PATCH test-sheets/{id}/`), équipe d'audit |
+| 5 % | génération de document | `documents/available/`, `POST documents/generate/`, puis attente de l'état `PRETE` : durée de bout en bout |
+| 5 % | téléchargements | `document-versions/{id}/download/` (Word) |
+
+Les écritures refusées par une règle de métier (400, 403, 404, 409, 422 : mission suspendue,
+entretien annulé…) ne sont pas des échecs mais sont comptées et publiées (`refus_metier_ecriture`).
+Toute réponse 5xx, 401, 429 ou lecture autre que 200 est un échec.
+
+### Seuils D10 vérifiés
+
+| Seuil | Règle appliquée |
+|---|---|
+| p95 lecture ≤ 800 ms | p95 de la **pire route** de lecture (pas une moyenne qui masquerait un point lent) |
+| p95 écriture ≤ 1 500 ms | idem, routes d'écriture |
+| génération de bout en bout p95 ≤ 20 s | de la demande à l'état `PRETE` du Word (la conversion PDF n'est pas attendue) |
+| 0 réponse 5xx | compteur dédié |
+| taux d'erreur < 1 % | échecs / requêtes (jetons compris) |
+| file Celery vide 2 min après la fin | `charge.sh` (`LLEN celery`) ; hors Locust |
+
+Une mesure absente (aucune écriture, aucune génération) est un échec : « non mesuré » n'est pas « conforme ».
+Tout seuil relevé par variable (`SEUIL_*`) doit être consigné ici.
+
+### Lancer
+
+```sh
+sh scripts/recette/up.sh && sh scripts/recette/certs.sh && sh scripts/recette/realm.sh
+# peuplement : exec web python manage.py peupler_demo --profil volumetrie --recette
+sh scripts/recette/charge.sh      # 40 utilisateurs, 2/s, 20 min ; CHARGE_USERS / CHARGE_DUREE pour réduire
+```
+
+Sorties dans `.recette/charge/<horodatage>/` : CSV Locust, `resume.json`, `docker-stats.csv`, `locust.log`.
+
+### État de la mesure : ce qui a été mesuré, et ce qui ne l'a pas été
+
+**Non exécuté : `sh scripts/recette/charge.sh` sur la recette (critère d'acceptation de la tâche).**
+La pile de recette tournait sur le poste mais n'appartenait pas à cette tâche et n'a pas été touchée.
+`charge.sh` et `realm.sh` (40 comptes) sont écrits (`sh -n` passe) mais n'ont **pas** été joués. Reste à faire
+à la recette : `sh scripts/recette/charge.sh` en entier (20 min, 40 comptes distincts), puis y consigner
+les résultats avec les `docker stats` des conteneurs de recette.
+
+**Exécuté : une mesure locale, réduite, sur une instance jetable** (1er novembre 2026) :
+
+| | Recette visée | Mesure locale |
+|---|---|---|
+| Machine | VPS | portable i5-11300H, 15,8 Go ; **générateur de charge, API, PostgreSQL, Keycloak, Redis, Celery sur le même hôte** (CPU de l'hôte 80 à 100 % pendant les essais) |
+| API | gunicorn derrière nginx (TLS) | `runserver --noreload` (dev, HTTP, sans nginx ni limitation de débit périphérique D3) ; Celery 4 fils |
+| Keycloak | realm de recette, client `onea-charge`, 40 comptes | Keycloak de développement, client `onea-dev-cli`, **5 comptes seulement** (`rai`, `auditeur1`, `auditeur2`, `audite1`, `dg`) partagés par les 40 utilisateurs virtuels (2 RAI, 20 AUDITEUR, 15 AUDITE, 3 DG) |
+| Données | `peupler_demo --profil volumetrie` | idem à l'échelle 1 : 60 missions, 1 080 étapes, 39 entretiens, 189 documents, 423 versions, 30 directions, 61 comptes ; aucune fiche de test (les peuplements des lots 5 à 8 sont vides) |
+| Gotenberg, Meilisearch | ceux de la recette | conteneurs jetables `gotenberg:8.37.0` et `meilisearch:v1.12.8` (index vide : la recherche n'est pas sollicitée) |
+| Durée | 20 min | **8 min** (montée à 40 en 20 s) |
+| Redis (jetons, débit, Celery) | dédié | base 9 du Redis de développement |
+
+Les 40 utilisateurs virtuels ont été simultanés, mais le partage de 5 comptes a deux conséquences visibles : Keycloak refuse
+environ un quart des connexions simultanées d'un même compte (401 transitoire, rejoué jusqu'à 3 fois ; chaque utilisateur a fini par
+obtenir son jeton), et la limite de génération par utilisateur (20/min, D3) a produit 2 réponses 429. Ces deux écarts n'existent pas
+avec 40 comptes distincts.
+
+Résultat de la dernière mesure (8 min, environ 9 000 requêtes, aucune 5xx ; fichiers dans `docs/qualite/charge/2026-11-02-local/`) :
+
+| Seuil | Mesure | Verdict |
+|---|---|---|
+| p95 lecture (pire route : `documents/available/`) | 360 ms (p95 global 230 ms) | tenu (≤ 800) |
+| p95 écriture (pire route : compte rendu d'entretien) | 390 ms | tenu (≤ 1 500) |
+| génération de bout en bout p95 | 1,7 s (23 générations, médiane 1,3 s) | tenu (≤ 20 s), **conversion PDF non incluse** |
+| 5xx | 0 | tenu |
+| taux d'erreur | 0,37 % (33 / 9 009 : 25 jetons 401, 3 reprises 401, 3 refus 403 du DG sur la liste de missions, 2 réponses 429) | tenu (< 1 %), avec les réserves ci-dessus |
+| file Celery | 0 tâche en attente (contrôlée plus de 2 min après la fin) | tenu |
+
+Ressources (relevés toutes les 30 s, `ressources.csv`) : PostgreSQL au plus 66 % d'un cœur et 196 Mio ; API Python 144 Mio ;
+worker Celery 133 Mio ; Keycloak 484 Mio et au plus 3 % ; Redis 13 Mio ; Gotenberg au plus 36 % (294 Mio) ;
+Meilisearch au plus 46 % (26 Mio). L'API (`runserver`) a consommé environ 300 s de CPU sur 8 min. **Ces chiffres ne valent pas pour le VPS
+de recette** : ils montrent que le scénario fonctionne et qu'aucun point d'accès ne s'effondre ; ils ne qualifient ni la capacité ni la marge.
+
+### Corrections issues de la mesure (avant / après)
+
+| Constat | Avant | Correction | Après |
+|---|---|---|---|
+| Génération impossible (422 « format de numérotation invalide ») pour les types des lots 5 à 8 sur une base neuve : 5 fournisseurs déclaraient `{sequence:02d}`, que le validateur refuse | 16 refus sur 18 demandes (essai court) | modèle par défaut `{sequence}` (la séquence est déjà sur 2 chiffres) ; test `test_numerotation_defauts.py` qui valide le modèle de chaque type enregistré (rouge avant, vert après) | 0 refus de ce type |
+| `GET documents/available/` lent pour un auditeur : 12 types refont les mêmes droits (rôle, déclaration, étapes) | 64 requêtes, 105 ms seul ; **p95 880 ms** sous 40 utilisateurs (seuil 800 dépassé ; médiane 360 ms) | mémo à portée de requête (`apps/core/memoire.py`), utilisé en lecture seule par cette route pour `droits_analyse`, `role_dans_mission`, `declaration_levee` | 18 requêtes, 40 ms seul ; **p95 360 ms**, médiane 140 ms sous 40 utilisateurs |
+| Script : 403 sur `mission-steps` (AUDITE) et sur les téléchargements, 401 de jeton | 8,3 % d'erreurs (1re mesure, 6 min) | rôle respecté par tâche ; reprise du jeton | 0,37 % |
+
+Le budget de requêtes de `documents/available/` (29, mesuré avec un RAI) n'a pas été modifié ; le test de budgets ne couvre pas un
+auditeur, d'où l'écart passé inaperçu à la tâche 23.
+
+### Limites et points ouverts
+
+- La mesure de recette reste à faire (voir plus haut) : c'est elle qui valide les seuils D10 ; la mesure locale n'est qu'un essai du
+  script et un détecteur de défauts.
+- `pg_stat_statements` n'est pas activé sur la base locale : l'analyse s'est faite par comptage des requêtes et profilage de la vue,
+  pas par les statistiques de PostgreSQL. À relever à la recette si un seuil y échoue.
+- La conversion PDF est asynchrone (tâche `convertir_pdf`) : son délai n'entre pas dans la mesure de bout en bout.
+- Aucune écriture sur les fiches de test (pas de données de départ) : seule la route `interviews` est exercée en écriture ;
+  `test-sheets` s'active dès qu'une fiche existe. 360 tirages d'écriture sont restés sans cible (utilisateurs sans entretien visible)
+  et 218 écritures ont été refusées par une règle de métier (missions suspendues notamment).
+- Le test ne couvre ni la limitation de débit périphérique nginx (D3), ni la recherche Meilisearch, ni les téléversements.
+- `tests/performance/test_budgets_requetes.py::test_budget_requetes[/api/v1/audit-log-settings/]` échoue sur `develop` : cette route
+  n'a pas de budget déclaré (antérieur à cette tâche, non corrigé ici).

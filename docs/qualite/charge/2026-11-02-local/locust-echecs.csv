@@ -1,0 +1,12 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+
+POST,[AUTH] jeton,HTTPError('401 Client Error: Unauthorized for url: [AUTH] jeton'),25,2026-11-02T00:03:56Z,2026-11-02T00:08:57Z
+
+GET,[R] recommandations (suivi),CatchResponseError('HTTP 401'),2,2026-11-02T00:04:14Z,2026-11-02T00:04:16Z
+
+GET,[R] missions (découverte),CatchResponseError('HTTP 401'),1,2026-11-02T00:04:14Z,2026-11-02T00:04:14Z
+
+GET,[R] missions (découverte),CatchResponseError('HTTP 403'),3,2026-11-02T00:04:15Z,2026-11-02T00:04:17Z
+
+POST,[W] génération (demande),CatchResponseError('HTTP 429'),2,2026-11-02T00:11:05Z,2026-11-02T00:11:12Z
+

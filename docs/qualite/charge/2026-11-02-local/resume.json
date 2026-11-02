@@ -1,0 +1,42 @@
+{
+  "regles": [
+    {
+      "seuil": "p95 lecture (pire route) <= 800 ms",
+      "mesure": 430,
+      "n": 8305,
+      "ok": true
+    },
+    {
+      "seuil": "p95 écriture (pire route) <= 1500 ms",
+      "mesure": 390,
+      "n": 590,
+      "ok": true
+    },
+    {
+      "seuil": "p95 génération de bout en bout <= 20000 ms",
+      "mesure": 1700,
+      "n": 23,
+      "ok": true
+    },
+    {
+      "seuil": "0 réponse 5xx",
+      "mesure": 0,
+      "n": 9023,
+      "ok": true
+    },
+    {
+      "seuil": "taux d'erreur < 1 %",
+      "mesure": 0.366,
+      "n": 9023,
+      "ok": true
+    }
+  ],
+  "compteurs": {
+    "refus_metier_ecriture": 218,
+    "5xx": 0,
+    "429": 2,
+    "ecritures_sans_cible": 360,
+    "generations_demandees": 23
+  },
+  "comptes": 40
+}
