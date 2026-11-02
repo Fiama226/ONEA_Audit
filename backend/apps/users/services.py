@@ -32,6 +32,21 @@ DIRECTION_INCONNUE = (
 _MAX_LENGTHS = {"matricule": 32, "fonction": 128}
 
 
+def mettre_a_jour_tutoriel(user: User, *, action: str, version: int) -> User:
+    """Mémorise l'état du tutoriel d'accueil de l'utilisateur lui-même (donnée de confort,
+    hors piste d'audit métier). `terminer` et `ignorer` sont équivalents côté serveur."""
+    with transaction.atomic():
+        compte = _lock(user)
+        if action == "reinitialiser":
+            compte.tutoriel_version_vue = None
+            compte.tutoriel_termine_le = None
+        else:
+            compte.tutoriel_version_vue = version
+            compte.tutoriel_termine_le = timezone.now()
+        compte.save(update_fields=["tutoriel_version_vue", "tutoriel_termine_le"])
+    return compte
+
+
 def direction_existe(code: str) -> bool:
     return bool(code) and Direction.objects.filter(code=code, deleted_at__isnull=True).exists()
 
