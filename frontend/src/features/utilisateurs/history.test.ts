@@ -94,3 +94,20 @@ describe("describeChanges", () => {
     ]);
   });
 });
+
+describe("describeChanges — création d'un compte", () => {
+  it("masque les relations inverses et les indicateurs internes, et traduit le rôle provisoire", () => {
+    const e = entry({
+      username: ["None", "qa-adm-u1"],
+      notifications: ["None", "notifications.Notification.None"],
+      suivis_responsable: ["None", "suivi.SuiviAction.None"],
+      affectations_mission: ["None", "missions.AffectationMission.None"],
+      keycloak_sync_manuel: ["None", "False"],
+      role_provisoire: ["None", "True"],
+    });
+    expect(describeChanges(e)).toEqual([
+      { field: "username", label: "Identifiant", before: "—", after: "qa-adm-u1" },
+      { field: "role_provisoire", label: "Rôle provisoire", before: "—", after: "Oui" },
+    ]);
+  });
+});

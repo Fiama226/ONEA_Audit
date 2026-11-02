@@ -146,8 +146,8 @@ raisons suivantes ».
 ### 3.3 Numérotation des documents
 
 1. Onglet « Numérotation » : modèle, portée (« Par mission » ou « Par année »), abréviation, aperçu.
-2. Modifiez un modèle avec les champs permis `{mission}`, `{annee}`, `{code}`, `{sequence:02d}` (exemple
-   `{mission}-{code}-{sequence:02d}`). L'aperçu est calculé par le serveur ; enregistrez.
+2. Modifiez un modèle avec les champs permis `{mission}`, `{annee}`, `{code}`, `{sequence}` (exemple
+   `{mission}-{code}-{sequence}`). L'aperçu est calculé par le serveur ; enregistrez.
 3. L'abréviation ne dépasse pas 8 caractères.
 
 Le nouveau format ne s'applique qu'aux documents créés ensuite.

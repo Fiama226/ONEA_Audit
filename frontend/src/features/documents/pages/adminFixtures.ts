@@ -38,7 +38,7 @@ export function aType(overrides: Partial<DocumentType> = {}): DocumentType {
 export function aFormat(overrides: Partial<FormatNumerotation> = {}): FormatNumerotation {
   return {
     type_document: TYPE_CODE,
-    modele: "{mission}/{code}-{sequence:02d}",
+    modele: "{mission}/{code}-{sequence}",
     portee: "MISSION",
     abreviation: "OM",
     apercu: "MI-2026-001/OM-01",
