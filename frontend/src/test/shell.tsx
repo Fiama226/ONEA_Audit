@@ -16,6 +16,7 @@ export function meFor(role: Role, overrides: Partial<Me> = {}): Me {
     role,
     direction_code: "DAI",
     fonction: "Fonction",
+    tutoriel: { version_vue: 1, termine_le: null },
     ...overrides,
   };
 }
