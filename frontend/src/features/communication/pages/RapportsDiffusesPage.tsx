@@ -111,9 +111,9 @@ export function RapportsDiffusesPage() {
   return (
     <section aria-labelledby="rapports-diffuses-title" className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="rapports-diffuses-title" className="text-lg font-semibold">
+        <h1 id="rapports-diffuses-title" className="text-2xl font-semibold tracking-[-0.012em]">
           {fr.communication.distributedTitle}
-        </h2>
+        </h1>
         {years.length > 0 && (
           <div className="flex items-center gap-2">
             <Label htmlFor="distributed-year">{t.distYear}</Label>

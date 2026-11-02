@@ -90,12 +90,10 @@ export function DataTable<T extends RowData>({
   return (
     <div className="rounded-lg border border-border bg-surface">
       {/* overflow-x-auto : un tableau plus large que l'écran défile au lieu d'être tronqué (WCAG 1.4.10) ;
-          la région est focusable pour le défilement au clavier. */}
+          le conteneur est focusable pour le défilement au clavier. */}
       <div
         data-slot="table-container"
         className="overflow-x-auto"
-        role="region"
-        aria-label={caption}
         tabIndex={0}
       >
         <table aria-busy={isLoading} className="w-full caption-bottom text-sm tabular-nums">

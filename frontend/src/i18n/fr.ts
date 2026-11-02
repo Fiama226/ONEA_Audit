@@ -35,7 +35,7 @@ export const fr = {
   },
   shell: {
     skipToContent: "Aller au contenu principal",
-    searchPlaceholder: "Rechercher une mission, un constat, une action…",
+    searchPlaceholder: "Rechercher dans la plateforme…",
     searchLabel: "Recherche globale",
     openMenu: "Ouvrir le menu",
     closeMenu: "Fermer le menu",
