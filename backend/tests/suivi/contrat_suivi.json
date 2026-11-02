@@ -159,30 +159,16 @@
           "reference": "str",
           "titre": "str"
         },
-        "declaree_le": "null",
-        "declaree_par": "null",
-        "demande_report_en_attente": {
-          "action": "str",
-          "actions_possibles": [
-            "str"
-          ],
-          "commentaire_decision": "str",
-          "decidee_le": "null",
-          "decidee_par": "null",
-          "demandee_par": {
-            "direction_code": "str",
-            "fonction": "str",
-            "id": "int",
-            "nom_complet": "str",
-            "role": "str",
-            "username": "str"
-          },
-          "echeance_actuelle": "str",
-          "id": "str",
-          "motif": "str",
-          "nouvelle_echeance": "str",
-          "statut": "str"
+        "declaree_le": "str",
+        "declaree_par": {
+          "direction_code": "str",
+          "fonction": "str",
+          "id": "int",
+          "nom_complet": "str",
+          "role": "str",
+          "username": "str"
         },
+        "demande_report_en_attente": "null",
         "derniere_activite_le": "str",
         "echeance": "str",
         "echeance_initiale": "str",
@@ -219,8 +205,15 @@
           "username": "str"
         },
         "statut": "str",
-        "verifiee_le": "null",
-        "verifiee_par": "null"
+        "verifiee_le": "str",
+        "verifiee_par": {
+          "direction_code": "str",
+          "fonction": "str",
+          "id": "int",
+          "nom_complet": "str",
+          "role": "str",
+          "username": "str"
+        }
       }
     ]
   },

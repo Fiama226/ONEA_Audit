@@ -183,7 +183,7 @@ class SuiviActionViewSet(SuiviBaseViewSet, mixins.ListModelMixin, mixins.Retriev
     queryset = SuiviAction.objects.none()
     filterset_class = filters.SuiviActionFilter
     ordering_fields = ("echeance", "statut", "derniere_activite_le")
-    ordering = ("echeance",)
+    ordering = ("echeance", "action__numero")
     throttle_scopes: ClassVar[dict[str, str]] = {"export": "export"}
 
     def get_queryset(self) -> QuerySet[SuiviAction]:

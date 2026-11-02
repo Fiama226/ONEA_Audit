@@ -15,6 +15,7 @@ BUDGETS_REQUETES: dict[str, int] = {
     "/api/v1/analysis-questions/{id}/": 5,
     "/api/v1/audit-frameworks/{id}/": 9,
     "/api/v1/audit-frameworks/{id}/snapshot/": 5,
+    "/api/v1/audit-log-settings/": 5,
     "/api/v1/audit-log/": 5,
     "/api/v1/audit-log/{id}/": 5,
     "/api/v1/audit-objectives/": 5,
