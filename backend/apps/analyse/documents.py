@@ -451,7 +451,7 @@ def enregistrer_types() -> None:
                     etape=etape,
                     contrat=contrat,
                     abreviation=abreviation,
-                    modele_numero="{mission}/{code}-{sequence:02d}",
+                    modele_numero="{mission}/{code}-{sequence}",
                     portee_numero="MISSION",
                     fournisseur=FournisseurAnalyse(code),  # type: ignore[arg-type]
                 )

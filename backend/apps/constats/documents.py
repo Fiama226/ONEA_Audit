@@ -181,7 +181,7 @@ def enregistrer_types() -> None:
                 etape=14,
                 contrat=CONTRAT_FICHE_OBSERVATION,
                 abreviation="FO",  # à confirmer avec l'ONEA
-                modele_numero="{mission}/{code}-{sequence:02d}",
+                modele_numero="{mission}/{code}-{sequence}",
                 portee_numero="MISSION",
                 fournisseur=FournisseurFicheObservation(),  # type: ignore[arg-type]
             )

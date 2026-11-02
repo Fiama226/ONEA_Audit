@@ -230,7 +230,7 @@ def enregistrer_types() -> None:
                 etape=ETAPE_PLAN,
                 contrat=CONTRAT_PLAN_ACTIONS,
                 abreviation="PA",
-                modele_numero="{mission}/{code}-{sequence:02d}",
+                modele_numero="{mission}/{code}-{sequence}",
                 portee_numero="MISSION",
                 fournisseur=FournisseurPlanActions(),  # type: ignore[arg-type]
             )
