@@ -34,6 +34,7 @@ from rest_framework.viewsets import GenericViewSet
 from apps.core.exceptions import RegleMetierError
 from apps.core.filters import StableOrderingFilter
 from apps.core.handlers import FORBIDDEN
+from apps.core.memoire import memo_lecture
 from apps.core.reseau import adresse_client
 from apps.core.schema import (
     ERROR_400,
@@ -461,7 +462,8 @@ class DocumentViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, Document
         requete = serializers.MissionQuerySerializer(data=request.query_params)
         requete.is_valid(raise_exception=True)
         mission = mission_visible(self.acteur, requete.validated_data["mission"])
-        lignes = self._disponibles(mission)
+        with memo_lecture():  # lecture seule : droits mémorisés le temps de la requête
+            lignes = self._disponibles(mission)
         return Response(cast(Any, serializers.DocumentDisponibleSerializer)(lignes, many=True).data)
 
     def _disponibles(self, mission: Mission) -> _Lignes:
