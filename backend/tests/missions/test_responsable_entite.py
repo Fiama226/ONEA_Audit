@@ -1,6 +1,5 @@
-from django.utils import timezone
-
 import pytest
+from django.utils import timezone
 
 from apps.missions import acces
 from apps.missions.models import AffectationMission, Mission, RoleMission
