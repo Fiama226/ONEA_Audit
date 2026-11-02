@@ -47,6 +47,7 @@ export function Header() {
             variant="ghost"
             size="icon"
             aria-label={fr.shell.openMenu}
+            data-tour="menu-bouton"
             className="lg:hidden"
           >
             <Menu className="size-5" strokeWidth={1.5} aria-hidden />

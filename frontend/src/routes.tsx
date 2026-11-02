@@ -10,6 +10,7 @@ import { missionRoutes } from "@/features/missions/routes";
 import { programmationRoutes } from "@/features/programmation/routes";
 import { referentielRoutes } from "@/features/referentiel/routes";
 import { signatureAdminRoutes } from "@/features/signatures/routes";
+import { MonComptePage } from "@/features/tutoriel/pages/MonComptePage";
 import { administrationRoutes } from "@/features/utilisateurs/routes";
 import { fr } from "@/i18n/fr";
 import { AppShell } from "@/layouts/AppShell";
@@ -98,6 +99,7 @@ export const appRoutes: RouteObject[] = [
             path: "/notifications",
             element: lazyRoute(suiviPages.notifications, "NotificationsPage"),
           },
+          { path: "/mon-compte", element: <MonComptePage /> },
           { path: "/recherche", element: lazyRoute(suiviPages.search, "SearchPage") },
           {
             path: "/rapports",

@@ -20,7 +20,11 @@ export function SidebarNav({
   const groups = navFor(role);
 
   return (
-    <nav aria-label={fr.nav.primary} className="flex-1 overflow-y-auto px-3 pb-3">
+    <nav
+      aria-label={fr.nav.primary}
+      data-tour="menu-lateral"
+      className="flex-1 overflow-y-auto px-3 pb-3"
+    >
       {groups.map((group, index) => (
         <div key={group.title ?? index} className={cn(index > 0 && "mt-1")}>
           {group.title &&
@@ -47,6 +51,15 @@ export function SidebarNav({
   );
 }
 
+const TOUR_IDS: Record<string, string> = {
+  "/": "nav-tableau-de-bord",
+  "/administration/documents": "nav-gabarits",
+  "/administration/signatures": "nav-signatures",
+};
+
+/** Repère de la visite guidée : `nav-<segment>` (voir features/tutoriel). */
+const tourId = (to: string) => TOUR_IDS[to] ?? `nav-${to.slice(1)}`;
+
 function NavItemLink({
   to,
   label,
@@ -67,6 +80,7 @@ function NavItemLink({
   const link = (
     <NavLink
       to={to}
+      data-tour={tourId(to)}
       end={to === "/"}
       aria-current={excluded ? false : "page"}
       onClick={onNavigate}

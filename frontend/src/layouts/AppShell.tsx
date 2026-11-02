@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { fr } from "@/i18n/fr";
+import { TutorielProvider } from "@/features/tutoriel/TutorielProvider";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { useSidebarCollapsed } from "./useSidebarCollapsed";
@@ -8,7 +9,7 @@ import { useSidebarCollapsed } from "./useSidebarCollapsed";
 export function AppShell() {
   const [collapsed, toggle] = useSidebarCollapsed();
   return (
-    <>
+    <TutorielProvider>
       <a
         href="#contenu"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
@@ -34,6 +35,6 @@ export function AppShell() {
           </main>
         </div>
       </div>
-    </>
+    </TutorielProvider>
   );
 }

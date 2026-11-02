@@ -113,6 +113,7 @@ export const SEGMENT_LABELS: Record<string, string> = {
   actions: fr.suivi.crumbActions,
   notifications: fr.suivi.crumbNotifications,
   recherche: fr.suivi.crumbSearch,
+  "mon-compte": fr.tutoriel.accountTitle,
   "suivi-recommandations": fr.suivi.tabFollowUp,
   documents: fr.nav.documents,
   gabarits: fr.documents.tabTemplates,
