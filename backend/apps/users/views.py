@@ -13,11 +13,17 @@ from rest_framework.viewsets import GenericViewSet
 from apps.core.filters import StableOrderingFilter
 from apps.core.schema import ERROR_400, ERROR_503, ERROR_RESPONSES
 
+from . import services
 from .filters import UtilisateurFilter
 from .models import Role, User
 from .oidc import purge_userinfo
 from .permissions import HasRole
-from .serializers import MeSerializer, UtilisateurResumeSerializer
+from .serializers import (
+    MeSerializer,
+    TutorielActionSerializer,
+    TutorielSerializer,
+    UtilisateurResumeSerializer,
+)
 
 
 class MeView(APIView):
@@ -27,6 +33,26 @@ class MeView(APIView):
     def get(self, request: Request) -> Response:
         user = cast(User, request.user)
         return Response(MeSerializer(user).data)
+
+
+class TutorielView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        tags=["Authentification"],
+        summary="Enregistrer l'état du tutoriel d'accueil",
+        request=TutorielActionSerializer,
+        responses={200: TutorielSerializer, **ERROR_400, **ERROR_RESPONSES, **ERROR_503},
+    )
+    def post(self, request: Request) -> Response:
+        serializer = TutorielActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        compte = services.mettre_a_jour_tutoriel(
+            cast(User, request.user),
+            action=serializer.validated_data["action"],
+            version=serializer.validated_data["version"],
+        )
+        return Response(TutorielSerializer(compte).data)
 
 
 class FinSessionView(APIView):

@@ -11,6 +11,12 @@ class Role(models.TextChoices):
     DG = "DG", "Direction générale"
 
 
+class ActionTutoriel(models.TextChoices):
+    TERMINER = "terminer", "Terminer"
+    IGNORER = "ignorer", "Ignorer"
+    REINITIALISER = "reinitialiser", "Réinitialiser"
+
+
 class OrigineCompte(models.TextChoices):
     CONNEXION = "CONNEXION", "Première connexion"
     ANNUAIRE = "ANNUAIRE", "Import annuaire"
@@ -52,6 +58,10 @@ class User(AbstractUser):
     keycloak_sync_tentatives = models.PositiveIntegerField(default=0)
     # Permanent failure (404, refused): no automatic retry, manual relaunch only.
     keycloak_sync_manuel = models.BooleanField(default=False)
+
+    # Tutoriel d'accueil guidé : dernière version du parcours vue ou ignorée (null = jamais).
+    tutoriel_version_vue = models.PositiveIntegerField(null=True, blank=True)
+    tutoriel_termine_le = models.DateTimeField(null=True, blank=True)
 
     class Meta(AbstractUser.Meta):
         constraints = [

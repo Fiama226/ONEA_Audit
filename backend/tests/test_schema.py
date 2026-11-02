@@ -41,6 +41,7 @@ def test_schema_exposes_me_component_with_expected_fields(api_client: APIClient)
         "role",
         "direction_code",
         "fonction",
+        "tutoriel",
     }
 
 

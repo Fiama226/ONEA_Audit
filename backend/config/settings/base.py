@@ -295,6 +295,9 @@ SPECTACULAR_SETTINGS = {
     "REDOC_DIST": "SIDECAR",
     # Stable component names for enums shared by several serializers and filters.
     "ENUM_NAME_OVERRIDES": {
+        # Journal d'audit (liste inline dans apps.core.serializers) : nom historique conservé.
+        "ActionEnum": ["create", "update", "delete", "access", "unknown"],
+        "ActionTutorielEnum": "apps.users.models.ActionTutoriel.choices",
         "TypeEntiteEnum": "apps.referentiel.models.TypeEntite.choices",
         "FamilleProcessusEnum": "apps.referentiel.models.FamilleProcessus.choices",
         "NatureObjetEnum": "apps.referentiel.models.NatureObjet.choices",

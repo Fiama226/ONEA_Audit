@@ -2041,6 +2041,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/tutoriel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enregistrer l'état du tutoriel d'accueil */
+        post: operations["v1_me_tutoriel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/meetings/": {
         parameters: {
             query?: never;
@@ -4380,6 +4397,13 @@ export interface components {
             moyens?: string;
             ordre?: number;
         };
+        /**
+         * @description * `terminer` - Terminer
+         *     * `ignorer` - Ignorer
+         *     * `reinitialiser` - Réinitialiser
+         * @enum {string}
+         */
+        ActionTutorielEnum: "terminer" | "ignorer" | "reinitialiser";
         /** @description Actions que l'administrateur connecté peut effectuer sur le compte. */
         ActionsCompte: {
             modifier_profil: boolean;
@@ -6075,6 +6099,7 @@ export interface components {
             readonly role: components["schemas"]["RoleEnum"];
             readonly direction_code: string;
             readonly fonction: string;
+            readonly tutoriel: components["schemas"]["Tutoriel"];
         };
         /**
          * @description * `EXHAUSTIF` - Exhaustif
@@ -8848,6 +8873,16 @@ export interface components {
         TransmissionRequestRequest: {
             /** @default 15 */
             delai_jours: number;
+        };
+        /** @description État du tutoriel d'accueil de l'utilisateur connecté. */
+        Tutoriel: {
+            readonly version_vue: number | null;
+            /** Format: date-time */
+            readonly termine_le: string | null;
+        };
+        TutorielActionRequest: {
+            action: components["schemas"]["ActionTutorielEnum"];
+            version: number;
         };
         /**
          * @description * `ACCORD` - Accord
@@ -17256,6 +17291,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Me"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_me_tutoriel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TutorielActionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TutorielActionRequest"];
+                "multipart/form-data": components["schemas"]["TutorielActionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Tutoriel"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             401: {
