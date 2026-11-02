@@ -1,0 +1,161 @@
+horodatage,service,cpu,memoire
+00:03:53,onea-db-1,10.78%,191.7MiB / 5.787GiB
+00:03:53,onea-redis-1,4.55%,12.55MiB / 5.787GiB
+00:03:53,onea-keycloak-1,0.31%,484.1MiB / 5.787GiB
+00:03:53,l9t26-gotenberg,1.37%,282.1MiB / 5.787GiB
+00:03:53,l9t26-meili,0.12%,26.06MiB / 5.787GiB
+00:03:53,web(python),cumulCPU=2.7s,116MiB
+00:03:53,worker(python),cumulCPU=27.4s,132MiB
+00:03:53,systeme(hote),85%,
+00:04:27,onea-db-1,35.59%,195.3MiB / 5.787GiB
+00:04:27,onea-redis-1,0.35%,12.78MiB / 5.787GiB
+00:04:27,onea-keycloak-1,0.24%,485.5MiB / 5.787GiB
+00:04:27,l9t26-gotenberg,0.06%,282.1MiB / 5.787GiB
+00:04:27,l9t26-meili,0.07%,26.06MiB / 5.787GiB
+00:04:27,web(python),cumulCPU=24.2s,138MiB
+00:04:27,worker(python),cumulCPU=27.4s,132MiB
+00:04:27,systeme(hote),74%,
+00:05:00,onea-db-1,50.30%,200MiB / 5.787GiB
+00:05:00,onea-redis-1,2.36%,13.07MiB / 5.787GiB
+00:05:00,onea-keycloak-1,1.14%,484.7MiB / 5.787GiB
+00:05:00,l9t26-gotenberg,0.03%,283.2MiB / 5.787GiB
+00:05:00,l9t26-meili,0.08%,26.4MiB / 5.787GiB
+00:05:00,web(python),cumulCPU=42s,142MiB
+00:05:00,worker(python),cumulCPU=28.1s,132MiB
+00:05:00,systeme(hote),43%,
+00:05:33,onea-db-1,47.20%,199.3MiB / 5.787GiB
+00:05:33,onea-redis-1,0.62%,12.82MiB / 5.787GiB
+00:05:33,onea-keycloak-1,0.27%,484.7MiB / 5.787GiB
+00:05:33,l9t26-gotenberg,0.08%,290.8MiB / 5.787GiB
+00:05:33,l9t26-meili,0.21%,31.07MiB / 5.787GiB
+00:05:33,web(python),cumulCPU=59s,143MiB
+00:05:33,worker(python),cumulCPU=28.8s,132MiB
+00:05:33,systeme(hote),79%,
+00:06:06,onea-db-1,61.93%,200.3MiB / 5.787GiB
+00:06:06,onea-redis-1,3.85%,12.81MiB / 5.787GiB
+00:06:06,onea-keycloak-1,0.93%,484.7MiB / 5.787GiB
+00:06:06,l9t26-gotenberg,35.70%,303.9MiB / 5.787GiB
+00:06:06,l9t26-meili,46.35%,26.57MiB / 5.787GiB
+00:06:06,web(python),cumulCPU=78.5s,143MiB
+00:06:06,worker(python),cumulCPU=29s,132MiB
+00:06:06,systeme(hote),91%,
+00:06:40,onea-db-1,37.27%,193.2MiB / 5.787GiB
+00:06:40,onea-redis-1,0.47%,12.82MiB / 5.787GiB
+00:06:40,onea-keycloak-1,0.20%,481.4MiB / 5.787GiB
+00:06:40,l9t26-gotenberg,0.11%,216.8MiB / 5.787GiB
+00:06:40,l9t26-meili,0.07%,26.41MiB / 5.787GiB
+00:06:40,web(python),cumulCPU=98.2s,144MiB
+00:06:40,worker(python),cumulCPU=29.9s,133MiB
+00:06:40,systeme(hote),68%,
+00:07:12,onea-db-1,32.90%,191.1MiB / 5.787GiB
+00:07:12,onea-redis-1,4.64%,12.82MiB / 5.787GiB
+00:07:12,onea-keycloak-1,0.32%,481.4MiB / 5.787GiB
+00:07:12,l9t26-gotenberg,0.06%,216.8MiB / 5.787GiB
+00:07:12,l9t26-meili,0.12%,25.93MiB / 5.787GiB
+00:07:12,web(python),cumulCPU=119.6s,144MiB
+00:07:12,worker(python),cumulCPU=29.9s,133MiB
+00:07:12,systeme(hote),93%,
+00:07:46,onea-db-1,52.20%,190.8MiB / 5.787GiB
+00:07:46,onea-redis-1,0.58%,13.04MiB / 5.787GiB
+00:07:46,onea-keycloak-1,2.85%,481.4MiB / 5.787GiB
+00:07:46,l9t26-gotenberg,0.06%,216.8MiB / 5.787GiB
+00:07:46,l9t26-meili,0.09%,25.93MiB / 5.787GiB
+00:07:46,web(python),cumulCPU=142s,144MiB
+00:07:46,worker(python),cumulCPU=30s,133MiB
+00:07:46,systeme(hote),87%,
+00:08:19,onea-db-1,65.75%,203.8MiB / 5.787GiB
+00:08:19,onea-redis-1,1.10%,12.83MiB / 5.787GiB
+00:08:19,onea-keycloak-1,1.48%,482.4MiB / 5.787GiB
+00:08:19,l9t26-gotenberg,0.07%,272.1MiB / 5.787GiB
+00:08:19,l9t26-meili,1.51%,26.2MiB / 5.787GiB
+00:08:19,web(python),cumulCPU=164.4s,144MiB
+00:08:19,worker(python),cumulCPU=30.3s,133MiB
+00:08:19,systeme(hote),96%,
+00:08:52,onea-db-1,50.34%,194.1MiB / 5.787GiB
+00:08:52,onea-redis-1,0.60%,12.82MiB / 5.787GiB
+00:08:52,onea-keycloak-1,0.29%,483.6MiB / 5.787GiB
+00:08:52,l9t26-gotenberg,0.30%,279.2MiB / 5.787GiB
+00:08:52,l9t26-meili,0.09%,25.96MiB / 5.787GiB
+00:08:52,web(python),cumulCPU=186.9s,144MiB
+00:08:52,worker(python),cumulCPU=30.4s,133MiB
+00:08:52,systeme(hote),90%,
+00:09:26,onea-db-1,45.78%,201MiB / 5.787GiB
+00:09:26,onea-redis-1,0.51%,12.84MiB / 5.787GiB
+00:09:26,onea-keycloak-1,0.33%,483.7MiB / 5.787GiB
+00:09:26,l9t26-gotenberg,0.08%,281.8MiB / 5.787GiB
+00:09:26,l9t26-meili,0.08%,25.96MiB / 5.787GiB
+00:09:26,web(python),cumulCPU=210s,143MiB
+00:09:26,worker(python),cumulCPU=30.7s,133MiB
+00:09:26,systeme(hote),71%,
+00:09:59,onea-db-1,33.66%,190.8MiB / 5.787GiB
+00:09:59,onea-redis-1,0.54%,12.83MiB / 5.787GiB
+00:09:59,onea-keycloak-1,0.78%,483.6MiB / 5.787GiB
+00:09:59,l9t26-gotenberg,0.05%,288.2MiB / 5.787GiB
+00:09:59,l9t26-meili,0.19%,25.94MiB / 5.787GiB
+00:09:59,web(python),cumulCPU=233.6s,144MiB
+00:09:59,worker(python),cumulCPU=31.1s,133MiB
+00:09:59,systeme(hote),77%,
+00:10:32,onea-db-1,53.94%,201.9MiB / 5.787GiB
+00:10:32,onea-redis-1,0.56%,12.84MiB / 5.787GiB
+00:10:32,onea-keycloak-1,0.24%,483.6MiB / 5.787GiB
+00:10:32,l9t26-gotenberg,0.06%,289MiB / 5.787GiB
+00:10:32,l9t26-meili,0.08%,25.97MiB / 5.787GiB
+00:10:32,web(python),cumulCPU=255.5s,144MiB
+00:10:32,worker(python),cumulCPU=31.4s,133MiB
+00:10:32,systeme(hote),96%,
+00:11:05,onea-db-1,37.81%,200.2MiB / 5.787GiB
+00:11:05,onea-redis-1,0.80%,13.09MiB / 5.787GiB
+00:11:05,onea-keycloak-1,0.21%,483.6MiB / 5.787GiB
+00:11:05,l9t26-gotenberg,0.06%,290.9MiB / 5.787GiB
+00:11:05,l9t26-meili,2.31%,26.14MiB / 5.787GiB
+00:11:05,web(python),cumulCPU=277.7s,144MiB
+00:11:05,worker(python),cumulCPU=32s,133MiB
+00:11:05,systeme(hote),85%,
+00:11:38,onea-db-1,31.25%,196.5MiB / 5.787GiB
+00:11:38,onea-redis-1,0.40%,12.84MiB / 5.787GiB
+00:11:38,onea-keycloak-1,0.28%,483.5MiB / 5.787GiB
+00:11:38,l9t26-gotenberg,0.07%,294.4MiB / 5.787GiB
+00:11:38,l9t26-meili,0.09%,25.95MiB / 5.787GiB
+00:11:38,web(python),cumulCPU=300.1s,144MiB
+00:11:38,worker(python),cumulCPU=32.4s,133MiB
+00:11:38,systeme(hote),74%,
+00:12:11,onea-db-1,3.72%,195.3MiB / 5.787GiB
+00:12:11,onea-redis-1,0.16%,12.67MiB / 5.787GiB
+00:12:11,onea-keycloak-1,0.23%,483.4MiB / 5.787GiB
+00:12:11,l9t26-gotenberg,0.04%,280.4MiB / 5.787GiB
+00:12:11,l9t26-meili,0.11%,25.9MiB / 5.787GiB
+00:12:11,web(python),cumulCPU=311.8s,140MiB
+00:12:11,worker(python),cumulCPU=33.1s,133MiB
+00:12:11,systeme(hote),35%,
+00:12:44,onea-db-1,10.84%,198.7MiB / 5.787GiB
+00:12:44,onea-redis-1,0.18%,12.67MiB / 5.787GiB
+00:12:44,onea-keycloak-1,0.21%,483.4MiB / 5.787GiB
+00:12:44,l9t26-gotenberg,0.04%,280.4MiB / 5.787GiB
+00:12:44,l9t26-meili,0.06%,25.9MiB / 5.787GiB
+00:12:44,web(python),cumulCPU=311.8s,140MiB
+00:12:44,worker(python),cumulCPU=33.1s,133MiB
+00:12:44,systeme(hote),40%,
+00:13:17,onea-db-1,5.49%,199.4MiB / 5.787GiB
+00:13:17,onea-redis-1,0.29%,12.67MiB / 5.787GiB
+00:13:17,onea-keycloak-1,0.29%,483.4MiB / 5.787GiB
+00:13:17,l9t26-gotenberg,0.09%,280.4MiB / 5.787GiB
+00:13:17,l9t26-meili,0.28%,25.9MiB / 5.787GiB
+00:13:17,web(python),cumulCPU=311.8s,140MiB
+00:13:17,worker(python),cumulCPU=33.2s,133MiB
+00:13:17,systeme(hote),57%,
+00:13:50,onea-db-1,10.55%,188.8MiB / 5.787GiB
+00:13:50,onea-redis-1,5.52%,12.68MiB / 5.787GiB
+00:13:50,onea-keycloak-1,4.87%,483.4MiB / 5.787GiB
+00:13:50,l9t26-gotenberg,0.07%,279.8MiB / 5.787GiB
+00:13:50,l9t26-meili,0.40%,25.9MiB / 5.787GiB
+00:13:50,web(python),cumulCPU=311.8s,140MiB
+00:13:50,worker(python),cumulCPU=33.2s,133MiB
+00:13:50,systeme(hote),71%,
+00:14:23,onea-db-1,0.01%,188.8MiB / 5.787GiB
+00:14:23,onea-redis-1,0.21%,12.64MiB / 5.787GiB
+00:14:23,onea-keycloak-1,0.41%,483.4MiB / 5.787GiB
+00:14:23,l9t26-gotenberg,0.09%,279.8MiB / 5.787GiB
+00:14:23,l9t26-meili,0.09%,25.9MiB / 5.787GiB
+00:14:23,web(python),cumulCPU=311.8s,140MiB
+00:14:23,worker(python),cumulCPU=33.3s,133MiB
+00:14:23,systeme(hote),65%,

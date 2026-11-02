@@ -102,4 +102,17 @@ creer_compte audite1 AUDITE DEX "Chef de service"
 creer_compte dg DG DG "Directeur general"
 creer_compte admin ADMIN DSI "Administrateur plateforme"
 
+# T26 : 40 comptes de charge (2 RAI, 20 AUDITEUR, 15 AUDITE, 3 DG), lies aux comptes
+# applicatifs charge01..40 du profil volumetrie (peupler_demo) par le nom d'utilisateur.
+i=1
+while [ "$i" -le 40 ]; do
+    n=$(printf 'charge%02d' "$i")
+    if [ "$i" -le 2 ]; then creer_compte "$n" RAI DAI "Charge RAI"
+    elif [ "$i" -le 22 ]; then creer_compte "$n" AUDITEUR DAI "Charge auditeur"
+    elif [ "$i" -le 37 ]; then creer_compte "$n" AUDITE DEX "Charge audite"
+    else creer_compte "$n" DG DG "Charge DG"
+    fi
+    i=$((i + 1))
+done
+
 echo "Realm onea de recette cree. Comptes : $COMPTES (utilisateur, mot de passe, role)."

@@ -8,6 +8,7 @@ III, V, VI, VII (1). Le gel de mission est lu sur l'instance `mission` fournie p
 
 from dataclasses import dataclass
 
+from apps.core.memoire import memoise
 from apps.missions.acces import declaration_levee, peut_contribuer, role_dans_mission
 from apps.missions.gardes import STATUTS_FIGES
 from apps.missions.models import ROLES_INTERVENANTS, Mission, RoleMission, StatutEtape
@@ -43,6 +44,11 @@ def _profil(user: User, mission: Mission) -> tuple[bool, bool, bool]:
 
 
 def droits_analyse(user: User, mission: Mission) -> DroitsAnalyse:
+    """Mémorisé dans un bloc `memo_lecture()` (lecture seule), sinon recalculé."""
+    return memoise(("droits_analyse", user.pk, mission.pk), lambda: _calculer(user, mission))
+
+
+def _calculer(user: User, mission: Mission) -> DroitsAnalyse:
     voir_travaux, contribue, audite = _profil(user, mission)
     if not (voir_travaux or audite):
         return DroitsAnalyse()

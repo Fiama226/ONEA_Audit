@@ -4,6 +4,7 @@ from uuid import UUID
 
 from django.db.models import Q, QuerySet
 
+from apps.core.memoire import memoise
 from apps.referentiel.models import Direction
 from apps.users.models import Role, User
 
@@ -18,8 +19,14 @@ from .models import (
 
 
 def role_dans_mission(user: User, mission: Mission) -> str | None:
-    return (
-        mission.affectations.filter(utilisateur=user).values_list("role_mission", flat=True).first()
+    """Rôle de l'utilisateur dans la mission ; mémorisé dans un bloc `memo_lecture()`."""
+    return memoise(
+        ("role_dans_mission", user.pk, mission.pk),
+        lambda: (
+            mission.affectations.filter(utilisateur=user)
+            .values_list("role_mission", flat=True)
+            .first()
+        ),
     )
 
 
@@ -36,12 +43,17 @@ def est_superviseur(user: User, mission: Mission) -> bool:
 
 
 def declaration_levee(user: User, mission: Mission) -> bool:
-    declaration = DeclarationIndependance.objects.filter(
-        affectation__mission=mission,
-        affectation__utilisateur=user,
-        affectation__deleted_at__isnull=True,
-    ).first()
-    return declaration is not None and declaration.levee
+    """Déclaration d'indépendance levée ; mémorisée dans un bloc `memo_lecture()`."""
+
+    def calcul() -> bool:
+        declaration = DeclarationIndependance.objects.filter(
+            affectation__mission=mission,
+            affectation__utilisateur=user,
+            affectation__deleted_at__isnull=True,
+        ).first()
+        return declaration is not None and declaration.levee
+
+    return memoise(("declaration_levee", user.pk, mission.pk), calcul)
 
 
 def peut_contribuer(user: User, mission: Mission) -> bool:

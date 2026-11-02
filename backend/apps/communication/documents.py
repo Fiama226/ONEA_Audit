@@ -38,7 +38,7 @@ from .droits import peut_lire_rapport_interne
 from .models import Rapport, RapportProvisoire, StatutRapport
 from .services.assemblage import _points_forts
 
-MODELE_NUMERO = "{mission}/{code}-{sequence:02d}"
+MODELE_NUMERO = "{mission}/{code}-{sequence}"
 MSG_PV_NON_TENU = "Marquez la réunion de clôture comme tenue avant de générer le PV."
 MSG_NON_VALIDE = "Le rapport n'est pas encore validé."
 MSG_DIFFUSE = "Le rapport est diffusé : émettez un rapport corrigé."
