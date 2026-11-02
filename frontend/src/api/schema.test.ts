@@ -25,6 +25,7 @@ describe("generated OpenAPI types", () => {
       | "role"
       | "direction_code"
       | "fonction"
+      | "tutoriel"
     >();
   });
 

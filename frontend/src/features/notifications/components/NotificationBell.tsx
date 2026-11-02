@@ -95,6 +95,7 @@ export function NotificationBell() {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
+        data-tour="notifications"
         aria-label={T.bellLabel.replace("{n}", String(count))}
         className="relative inline-flex size-9 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-subtle focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[state=open]:bg-surface-subtle"
       >

@@ -1,4 +1,6 @@
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, CircleHelp, LogOut, UserRound } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useTutoriel } from "@/features/tutoriel/context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,6 +18,7 @@ const ROLE_BADGE = "h-5 rounded-sm bg-background px-1.5 text-xs font-normal text
 
 export function UserMenu() {
   const { me, logout } = useAuth();
+  const { relancer } = useTutoriel();
   if (!me) return null;
 
   const fullName = `${me.first_name ?? ""} ${me.last_name ?? ""}`.trim() || me.username;
@@ -25,7 +28,10 @@ export function UserMenu() {
   // visible se réduit à l'avatar, nom et rôle restent lus.
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex h-10 items-center gap-2 rounded-md px-1 text-sm transition-colors hover:bg-surface-subtle data-[state=open]:bg-surface-subtle lg:px-1.5">
+      <DropdownMenuTrigger
+        data-tour="menu-utilisateur"
+        className="flex h-10 items-center gap-2 rounded-md px-1 text-sm transition-colors hover:bg-surface-subtle data-[state=open]:bg-surface-subtle lg:px-1.5"
+      >
         <Initials initials={initials} />
         <span className="font-medium max-lg:sr-only">{fullName}</span>{" "}
         <Badge variant="outline" className={`${ROLE_BADGE} max-lg:sr-only`}>
@@ -52,6 +58,17 @@ export function UserMenu() {
             {fr.roles[me.role]}
           </Badge>
         </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="h-9 gap-3 px-3">
+          <Link to="/mon-compte">
+            <UserRound aria-hidden />
+            {fr.tutoriel.menuAccount}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem className="h-9 gap-3 px-3" onSelect={relancer}>
+          <CircleHelp aria-hidden />
+          {fr.tutoriel.menuTour}
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="h-9 gap-3 px-3"

@@ -26,6 +26,7 @@ export function GlobalSearchInput() {
     <>
       <form
         role="search"
+        data-tour="recherche"
         onSubmit={submit}
         aria-label={fr.shell.searchLabel}
         className="relative hidden lg:block lg:w-60 xl:w-80"
@@ -51,7 +52,7 @@ export function GlobalSearchInput() {
         size="icon"
         className="bg-surface-subtle text-text-muted lg:hidden"
       >
-        <Link to="/recherche" aria-label={fr.rechercheNotifications.searchOpenMobile}>
+        <Link to="/recherche" data-tour="recherche" aria-label={fr.rechercheNotifications.searchOpenMobile}>
           <Search className="size-4" aria-hidden />
         </Link>
       </Button>
