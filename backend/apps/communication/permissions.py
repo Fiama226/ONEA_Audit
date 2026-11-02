@@ -19,7 +19,11 @@ from apps.missions.acces import missions_visibles, role_dans_mission
 from apps.missions.models import Mission, RoleMission
 from apps.users.models import Role, User
 
-from .droits import peut_lire_rapport_interne, rapports_diffuses_visibles
+from .droits import (
+    peut_lire_rapport_interne,
+    rapports_diffuses_visibles,
+    rapports_dont_destinataire,
+)
 from .models import (
     DestinataireDiffusion,
     Rapport,
@@ -50,10 +54,15 @@ def rapports_lisibles(user: User) -> QuerySet[Rapport]:
     """Rapports dont l'existence est connue de `user` (sinon 404).
 
     DG : les rapports diffusés. Autres : ceux de leurs missions visibles ; le droit de lire un
-    rapport avant sa diffusion est contrôlé ensuite (403, `peut_lire`).
+    rapport avant sa diffusion est contrôlé ensuite (403, `peut_lire`). Le destinataire interne
+    d'une diffusion, non affecté à la mission, ne connaît que ce rapport diffusé (écart 1).
     """
     if user.role == Role.DG:
         return rapports_diffuses_visibles(user)
+    if user.role in (Role.AUDITEUR, Role.AUDITE):
+        return Rapport.objects.filter(
+            Q(mission__in=missions_visibles(user)) | Q(pk__in=rapports_dont_destinataire(user))
+        )
     return Rapport.objects.filter(mission__in=missions_visibles(user))
 
 
@@ -106,10 +115,14 @@ def audite_affecte(user: User, mission: Mission) -> bool:
     return user.role == Role.AUDITE and role_dans_mission(user, mission) == RoleMission.AUDITE
 
 
-def peut_telecharger(user: User, mission: Mission) -> bool:
-    """RAI, intervenants, audité affecté, DG (le rapport doit en outre être diffusé)."""
+def peut_telecharger(user: User, rapport: Rapport) -> bool:
+    """RAI, intervenants, audité affecté, DG, destinataire interne de la diffusion (le rapport doit
+    en outre être diffusé)."""
     if user.role in (Role.RAI, Role.DG):
         return True
-    if user.role == Role.AUDITEUR:
-        return peut_lire_rapport_interne(user, mission)
-    return audite_affecte(user, mission)
+    mission = rapport.mission
+    if user.role == Role.AUDITEUR and peut_lire_rapport_interne(user, mission):
+        return True
+    if audite_affecte(user, mission):
+        return True
+    return rapports_dont_destinataire(user).filter(pk=rapport.pk).exists()

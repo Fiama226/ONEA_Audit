@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 
 from apps.constats.models import Constat
 from apps.missions.acces import (
@@ -108,14 +108,27 @@ def actions_rapport(rapport: Rapport, user: User, *, contexte: ContexteRapport) 
     return actions
 
 
+def rapports_dont_destinataire(user: User) -> QuerySet[Rapport]:
+    """Rapports diffusés dont `user` figure, comme destinataire interne actif, dans la liste de
+    diffusion (écart 1). Donne la lecture du rapport et de ses pièces de diffusion, jamais celle de
+    la mission : les destinataires sont figés à la diffusion et n'existent qu'à elle."""
+    return Rapport.objects.filter(
+        statut__in=[StatutRapport.DIFFUSE, StatutRapport.REMPLACE],
+        pk__in=DestinataireDiffusion.objects.filter(utilisateur=user).values("rapport_id"),
+    )
+
+
 def rapports_diffuses_visibles(user: User) -> QuerySet[Rapport]:
     """Rapports diffusés visibles de `user` (D13) : DG et RAI tous ; AUDITEUR et AUDITE ceux de
-    leurs missions visibles ; ADMIN aucun. Inclut les rapports remplacés par un rapport corrigé."""
+    leurs missions visibles ou dont ils sont destinataires de la diffusion ; ADMIN aucun. Inclut
+    les rapports remplacés par un rapport corrigé."""
     diffuses = Rapport.objects.filter(statut__in=[StatutRapport.DIFFUSE, StatutRapport.REMPLACE])
     if user.role in (Role.DG, Role.RAI):
         return diffuses
     if user.role in (Role.AUDITEUR, Role.AUDITE):
-        return diffuses.filter(mission__in=missions_visibles(user))
+        return diffuses.filter(
+            Q(mission__in=missions_visibles(user)) | Q(pk__in=rapports_dont_destinataire(user))
+        )
     return Rapport.objects.none()
 
 
