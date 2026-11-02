@@ -2,7 +2,7 @@
   "realm": "onea",
   "enabled": true,
   "displayName": "ONEA - Audit interne",
-  "loginTheme": "keycloak",
+  "loginTheme": "onea",
   "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,

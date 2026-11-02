@@ -37,7 +37,7 @@ export function PrintLayout({
             <td className="pb-6 print:pb-4">
               <header className="flex items-start justify-between gap-6 border-b border-foreground pb-3">
                 <div className="flex items-center gap-3">
-                  <LogoMark mono className="size-6" />
+                  <LogoMark className="size-10" />
                   <div>
                     <p className="text-xs font-bold tracking-[0.08em]">ONEA</p>
                     <p className="text-[11px]">{fr.print.organisation}</p>
