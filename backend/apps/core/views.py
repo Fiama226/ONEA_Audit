@@ -1,9 +1,10 @@
 import hmac
-from typing import cast
+from typing import Any, cast
 
 from auditlog.models import LogEntry
 from django.conf import settings
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
+from django.views import defaults
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer
 from rest_framework import serializers
@@ -137,3 +138,29 @@ class ParametreJournalView(APIView):
             corps.validated_data["valeur"], by=cast(User, request.user)
         )
         return Response(ParametreJournalSerializer(_reglage_journal()).data)
+
+
+# --- Erreurs hors cadre DRF (URL inconnue, panne inattendue) ---------------------------------
+
+
+def _est_api(request: HttpRequest) -> bool:
+    return request.path.startswith("/api/")
+
+
+def erreur_404(
+    request: HttpRequest, exception: Exception, *args: Any, **kwargs: Any
+) -> HttpResponse:
+    """URL inconnue : les routes /api/ répondent dans le format {detail, errors}, jamais en HTML."""
+    if _est_api(request):
+        return JsonResponse({"detail": "Non trouvé.", "errors": {}}, status=404)
+    return defaults.page_not_found(request, exception, *args, **kwargs)
+
+
+def erreur_500(request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+    """Panne inattendue : message français sans détail technique pour les routes /api/."""
+    if _est_api(request):
+        return JsonResponse(
+            {"detail": "Une erreur est survenue. Réessayez dans quelques instants.", "errors": {}},
+            status=500,
+        )
+    return defaults.server_error(request, *args, **kwargs)

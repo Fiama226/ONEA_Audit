@@ -43,3 +43,6 @@ urlpatterns = [
 # /admin/ is opt-in in production (DJANGO_ADMIN_ENABLED=true); on by default in dev/test.
 if settings.DJANGO_ADMIN_ENABLED:
     urlpatterns.insert(0, path("admin/", admin.site.urls))
+
+handler404 = "apps.core.views.erreur_404"
+handler500 = "apps.core.views.erreur_500"
