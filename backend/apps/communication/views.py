@@ -487,9 +487,7 @@ class RapportViewSet(
     def download(self, request: Request, pk: str | None = None) -> FileResponse:
         rapport = self.get_object()
         # Version non diffusée, ou lecteur hors périmètre : 404 (l'existence n'est pas révélée).
-        if rapport.statut not in STATUTS_DIFFUSES or not peut_telecharger(
-            self.acteur, rapport.mission
-        ):
+        if rapport.statut not in STATUTS_DIFFUSES or not peut_telecharger(self.acteur, rapport):
             raise Http404
         requete = serializers.TelechargementQuerySerializer(data=request.query_params)
         requete.is_valid(raise_exception=True)

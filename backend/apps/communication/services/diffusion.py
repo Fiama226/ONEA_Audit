@@ -248,7 +248,7 @@ def _integre(rapport: Rapport) -> bool:
 
 def _lien(rapport: Rapport) -> str:
     base = str(getattr(settings, "FRONTEND_URL", "")).rstrip("/")
-    return f"{base}/missions/{rapport.mission_id}/rapport" if base else ""
+    return f"{base}/rapports/{rapport.pk}" if base else ""
 
 
 def _envoyer(rapport: Rapport, destinataires: list[tuple[str, str]], message: str) -> None:
