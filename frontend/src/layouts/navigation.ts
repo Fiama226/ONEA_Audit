@@ -7,6 +7,7 @@ import {
   FileCog,
   FileText,
   LayoutDashboard,
+  PenLine,
   SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -42,7 +43,7 @@ export type NavItem = {
   label: string;
   icon: LucideIcon;
   /** Préfixe de chemin pour lequel l'entrée n'est pas marquée active (entrée voisine plus précise). */
-  exclude?: string;
+  exclude?: string | string[];
 };
 
 export type NavGroup = { title?: string; items: NavItem[] };
@@ -76,12 +77,17 @@ export const NAV_GROUPS: NavGroup[] = [
         to: "/administration",
         label: fr.nav.administration,
         icon: SlidersHorizontal,
-        exclude: "/administration/documents",
+        exclude: ["/administration/documents", "/administration/signatures"],
       },
       {
         to: "/administration/documents",
         label: fr.nav.documentTemplates,
         icon: FileCog,
+      },
+      {
+        to: "/administration/signatures",
+        label: fr.signatureAdmin.title,
+        icon: PenLine,
       },
     ],
   },

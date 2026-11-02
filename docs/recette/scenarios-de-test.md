@@ -283,6 +283,7 @@ préparées.
 | Documents | non | oui | oui | oui | non |
 | Administration | oui | non | non | non | non |
 | Gabarits de documents | oui | oui | non | non | non |
+| Mode de signature | oui | oui | non | non | non |
 
 **Résultat attendu** : le menu correspond au tableau (source : `frontend/src/layouts/navigation.ts`). Un groupe sans entrée visible disparaît avec son titre.
 
