@@ -80,8 +80,10 @@ export function DocumentDetailPage() {
   return (
     <div className="grid gap-6">
       <header className="grid gap-2">
-        <h1 className="text-2xl font-semibold tracking-[-0.012em]">{doc.numero}</h1>
-        <dl className="grid gap-x-8 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+        <h1 className="text-2xl font-semibold tracking-[-0.012em] [overflow-wrap:anywhere]">
+          {doc.numero}
+        </h1>
+        <dl className="grid gap-x-8 gap-y-1 text-sm [overflow-wrap:anywhere] sm:grid-cols-[auto_1fr]">
           <dt className="text-text-muted">{t.type}</dt>
           <dd>{doc.type_document_libelle}</dd>
           <dt className="text-text-muted">{t.mission}</dt>

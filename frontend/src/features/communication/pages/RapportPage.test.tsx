@@ -43,6 +43,13 @@ function renderPage(rapport: Rapport | null, role: Role = "AUDITEUR") {
   });
 }
 
+describe("RapportPage — accès", () => {
+  it("refuse l'accès direct à l'audité au lieu de planter", async () => {
+    renderPage(aRapport(), "AUDITE");
+    expect(await screen.findByText(fr.errors.forbiddenTitle)).toBeInTheDocument();
+  });
+});
+
 describe("RapportPage — rédaction", () => {
   it("propose de créer le rapport lorsqu'il n'existe pas", async () => {
     let created: unknown;

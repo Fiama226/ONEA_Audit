@@ -49,7 +49,7 @@ export function DashboardAuditeur() {
               key: m.mission_id,
               cells: [
                 <Link key="r" className={LINK} to={`/missions/${m.mission_id}`}>
-                  {m.reference}
+                  {m.reference || m.titre}
                 </Link>,
                 m.titre,
                 STATUT_MISSION_LABELS[m.statut as StatutMission] ?? m.statut,

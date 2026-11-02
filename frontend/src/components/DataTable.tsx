@@ -89,8 +89,14 @@ export function DataTable<T extends RowData>({
 
   return (
     <div className="rounded-lg border border-border bg-surface">
-      {/* overflow-x-clip (et non auto) : pas de conteneur de défilement, l'en-tête colle à la page. */}
-      <div data-slot="table-container" className="overflow-x-clip">
+      {/* overflow-x-auto : un tableau plus large que l'écran défile au lieu d'être tronqué (WCAG 1.4.10) ;
+          le conteneur est focusable pour le défilement au clavier. */}
+      <div
+        data-slot="table-container"
+        className="overflow-x-auto"
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- conteneur défilant : accès clavier (WCAG 2.1.1)
+        tabIndex={0}
+      >
         <table aria-busy={isLoading} className="w-full caption-bottom text-sm tabular-nums">
           <TableCaption className="sr-only">{caption}</TableCaption>
           <TableHeader className="sticky top-0 z-10 bg-surface-subtle">
@@ -164,7 +170,7 @@ export function DataTable<T extends RowData>({
           </TableBody>
         </table>
       </div>
-      <div className="flex items-center justify-between gap-4 border-t border-border px-4 py-2 text-sm text-text-muted print:hidden">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border px-4 py-2 text-sm text-text-muted print:hidden">
         <span className="tabular-nums">
           {total} {total === 1 ? fr.table.result : fr.table.results}
         </span>

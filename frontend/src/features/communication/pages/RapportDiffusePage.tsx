@@ -73,9 +73,9 @@ function Detail({ data }: { data: Rapport | RapportDiffuse }) {
       >
         <div className="grid gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 id="rapport-diffuse-title" className="text-lg font-semibold">
+            <h1 id="rapport-diffuse-title" className="text-2xl font-semibold tracking-[-0.012em]">
               {title}
-            </h2>
+            </h1>
             <AppreciationBadge appreciation={data.appreciation_globale} />
           </div>
           {mention !== "" && (

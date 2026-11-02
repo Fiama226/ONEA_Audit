@@ -51,7 +51,7 @@ describe("SignatureSettingsPage", () => {
     ).toEqual([]);
     expect(screen.getByRole("option", { name: "Signature électronique (PAdES)" })).toBeDisabled();
     expect(
-      screen.getByText("Disponible après l'installation de la signature électronique (lot 7 bis)."),
+      screen.getByText("Disponible après l'installation de la signature électronique."),
     ).toBeInTheDocument();
 
     await userEvent.selectOptions(select, "CONFIRMATION_ET_SIGNATURE");
