@@ -30,6 +30,7 @@ function member(u: UtilisateurResume): Affectation {
     utilisateur: u.id,
     utilisateur_detail: u,
     role_mission: "AUDITEUR",
+    responsable_entite: false,
     declaration: null,
   };
 }

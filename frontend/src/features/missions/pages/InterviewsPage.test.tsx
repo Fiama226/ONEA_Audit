@@ -35,6 +35,7 @@ const assignment: Affectation = {
   utilisateur: awa.id,
   utilisateur_detail: awa,
   role_mission: "AUDITEUR",
+  responsable_entite: false,
   declaration: null,
 };
 

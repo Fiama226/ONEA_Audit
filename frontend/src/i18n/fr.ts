@@ -465,6 +465,18 @@ export const fr = {
     assignPickerAuditeur: "Auditeurs",
     assignPickerAudite: "Audités",
     assignDefaultsHelp: "Les audités rattachés aux entités de la mission sont pré-cochés.",
+    entityManager: "Responsable de l'entité",
+    entityManagerHelp:
+      "Seul le responsable de l'entité peut accepter un risque ou répondre au rapport provisoire au nom de sa direction. Un seul par direction ; à cocher pour une seule personne à la fois.",
+    entityManagerSingleOnly: "Sélectionnez une seule personne pour la désigner responsable.",
+    entityManagerSet: "Désigner responsable de l'entité",
+    entityManagerUnset: "Retirer la désignation de responsable",
+    entityManagerSetTitle: "Désigner le responsable de l'entité ?",
+    entityManagerSetText:
+      "Cette personne pourra accepter un risque et répondre au rapport provisoire au nom de sa direction.",
+    entityManagerUnsetTitle: "Retirer la désignation de responsable de l'entité ?",
+    entityManagerUnsetText:
+      "Cette personne ne pourra plus engager sa direction (acceptation de risque, réponse au rapport provisoire).",
     arbitrate: "Arbitrer",
     arbitrateTitle: "Arbitrer la situation déclarée",
     arbitrateSituation: "Situation déclarée :",
@@ -1075,8 +1087,7 @@ export const fr = {
     loading: "Chargement de l'étape VII…",
     frameworkRequired:
       "Le référentiel d'audit doit être validé (jalon VI) avant de sélectionner les objectifs d'audit.",
-    wordNote:
-      "Le rapport d'orientation sera généré au format Word par le moteur de documents.",
+    wordNote: "Le rapport d'orientation sera généré au format Word par le moteur de documents.",
     objectivesTitle: "Objectifs d'audit",
     objectivesIntro:
       "Un objectif d'audit par contrôle clé du MARC. Les codes OA ne sont jamais réutilisés.",

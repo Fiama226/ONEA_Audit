@@ -191,6 +191,18 @@ export function useAssign() {
   });
 }
 
+export function useSetEntityManager() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, responsable }: { id: string; responsable: boolean }) =>
+      apiFetch<Affectation>(`${BASE}/mission-assignments/${id}/`, {
+        method: "PATCH",
+        json: { responsable_entite: responsable },
+      }),
+    onSuccess: (a) => invalidateMission(client, a.mission, missionKeys.assignments(a.mission)),
+  });
+}
+
 export function useUnassign() {
   const client = useQueryClient();
   return useMutation({
