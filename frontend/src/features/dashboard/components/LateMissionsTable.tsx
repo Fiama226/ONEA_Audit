@@ -27,7 +27,7 @@ export function LateMissionsTable({ missions }: { missions: Late[] }) {
           <tr key={m.mission_id} className={ROW}>
             <td className={CELL}>
               <Link to={`/missions/${m.mission_id}`} className="font-medium underline">
-                {m.reference}
+                {m.reference || m.titre}
               </Link>
             </td>
             <td className={CELL}>{m.titre}</td>
