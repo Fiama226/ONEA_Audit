@@ -81,7 +81,8 @@ function Toggle({
 
 /** Filtres du registre sur une ligne ; l'état est tenu par la page (paramètres d'URL). */
 export function RegisterFilters({ view, role, values, onChange, onReset }: Props) {
-  const missions = useMissions({ page_size: 100 });
+  // Le DG n'a pas accès à la liste des missions (403) : on ne l'interroge pas.
+  const missions = useMissions({ page_size: 100 }, { enabled: role !== "DG" });
   const directions = useDirections({ page_size: 100 });
   const statusLabels =
     view === "actions" ? STATUT_SUIVI_LABELS : STATUT_RECOMMANDATION_SUIVI_LABELS;
