@@ -2,7 +2,13 @@ import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it } from "vitest";
 import { fr } from "@/i18n/fr";
 import { API_URL, server } from "@/test/msw";
-import { apiDownload, apiFetch, apiUpload, setTokenProvider } from "./client";
+import {
+  apiDownload,
+  apiFetch,
+  apiUpload,
+  setTokenProvider,
+  setUnauthorizedHandler,
+} from "./client";
 import { ApiError, isApiError } from "./errors";
 
 describe("apiDownload filename sanitising", () => {
@@ -250,5 +256,43 @@ describe("apiFetch", () => {
     const error = await apiFetch("/api/html/").catch((e: unknown) => e);
     expect(isApiError(error)).toBe(true);
     expect((error as ApiError).detail).toBe(fr.errors.generic);
+  });
+});
+
+describe("session expirée en cours d'utilisation (401)", () => {
+  afterEach(() => setUnauthorizedHandler(null));
+
+  it("signale le 401 d'une requête métier au gestionnaire de session", async () => {
+    let calls = 0;
+    setUnauthorizedHandler(() => {
+      calls += 1;
+    });
+    server.use(
+      http.get(`${API_URL}/api/v1/ressource/`, () =>
+        HttpResponse.json({ detail: "Session expirée.", errors: {} }, { status: 401 }),
+      ),
+    );
+    await expect(apiFetch("/api/v1/ressource/")).rejects.toMatchObject({ status: 401 });
+    expect(calls).toBe(1);
+  });
+
+  it("ne le déclenche pas pour la fin de session ni pour un 403", async () => {
+    let calls = 0;
+    setUnauthorizedHandler(() => {
+      calls += 1;
+    });
+    server.use(
+      http.post(`${API_URL}/api/v1/session/fin/`, () =>
+        HttpResponse.json({ detail: "x", errors: {} }, { status: 401 }),
+      ),
+      http.get(`${API_URL}/api/v1/interdit/`, () =>
+        HttpResponse.json({ detail: "x", errors: {} }, { status: 403 }),
+      ),
+    );
+    await expect(apiFetch("/api/v1/session/fin/", { method: "POST" })).rejects.toBeInstanceOf(
+      ApiError,
+    );
+    await expect(apiFetch("/api/v1/interdit/")).rejects.toBeInstanceOf(ApiError);
+    expect(calls).toBe(0);
   });
 });

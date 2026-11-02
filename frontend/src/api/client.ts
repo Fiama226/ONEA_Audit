@@ -15,6 +15,21 @@ export function currentToken(): string | null {
   return getAccessToken() ?? null;
 }
 
+type UnauthorizedHandler = () => void;
+
+let onUnauthorized: UnauthorizedHandler | null = null;
+
+/**
+ * Enregistre la réaction à un 401 reçu en cours d'utilisation (jeton révoqué ou session
+ * terminée ailleurs) : l'application ramène alors vers la connexion au lieu d'afficher des erreurs.
+ */
+export function setUnauthorizedHandler(fn: UnauthorizedHandler | null): void {
+  onUnauthorized = fn;
+}
+
+/** Appels pour lesquels un 401 ne signifie pas « session expirée » (la fin de session elle-même). */
+const SANS_REDIRECTION_401 = ["/api/v1/session/fin/"];
+
 export function baseUrl(): string {
   const url = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8000";
   return url.replace(/\/+$/, "");
@@ -83,7 +98,10 @@ async function send(path: string, init: ApiInit, accept: string): Promise<Respon
     throw new ApiError(0, fr.errors.network);
   }
 
-  if (!response.ok) throw await toApiError(response);
+  if (!response.ok) {
+    if (response.status === 401 && !SANS_REDIRECTION_401.includes(path)) onUnauthorized?.();
+    throw await toApiError(response);
+  }
   return response;
 }
 

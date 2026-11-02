@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { apiFetch, setTokenProvider } from "@/api/client";
+import { apiFetch, setTokenProvider, setUnauthorizedHandler } from "@/api/client";
 import { isApiError } from "@/api/errors";
 import { createUserManager, type OidcClient, type OidcUser } from "./oidc";
 import { safeReturnPath } from "./safePath";
@@ -40,6 +40,16 @@ export function AuthProvider({ children, userManager }: Props) {
       // le stockage local est déjà considéré comme vide
     }
   }, [oidc]);
+
+  useEffect(() => {
+    // 401 en cours d'utilisation (session terminée ailleurs, jeton révoqué) : retour à la connexion.
+    setUnauthorizedHandler(() => {
+      if (tokenRef.current === null) return;
+      setSessionExpired(true);
+      void goAnonymous();
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [goAnonymous]);
 
   useEffect(() => {
     const onLoaded = (user: OidcUser) => {
