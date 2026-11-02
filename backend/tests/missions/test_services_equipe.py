@@ -15,10 +15,14 @@ from apps.missions.services.equipe import (
     MSG_CHEF_RETRAIT,
     MSG_DEJA_AFFECTE,
     MSG_INTERVENANT,
+    MSG_RESPONSABLE_AUDITE,
+    MSG_RESPONSABLE_DIRECTION,
+    MSG_RESPONSABLE_EXISTE,
     MSG_SUPERVISEUR_CHEF,
     MSG_SUPERVISEUR_EXISTE,
     affecter,
     audites_par_defaut,
+    definir_responsable_entite,
     desaffecter,
     remplacer_chef,
 )
@@ -142,3 +146,113 @@ def test_audites_par_defaut_par_direction_code(rai: User, mission: Mission):
     assert list(audites_par_defaut(mission)) == [ok]
     mission.entites.add(d2)
     assert audites_par_defaut(mission).count() == 2
+
+
+# --------------------------------------------------------------- responsable de l'entité
+
+
+def _audite(direction: str = "DEX") -> User:
+    return make_user(Role.AUDITE, direction_code=direction)
+
+
+def test_affecter_responsable_entite(rai: User, mission: Mission):
+    a = affecter(
+        mission,
+        utilisateur=_audite(),
+        role_mission="AUDITE",
+        responsable_entite=True,
+        by=rai,
+    )
+    assert a.responsable_entite is True
+    assert (
+        affecter(mission, utilisateur=_audite(), role_mission="AUDITE", by=rai).responsable_entite
+        is False
+    )
+
+
+def test_responsable_entite_refuse_pour_un_intervenant(rai: User, mission: Mission):
+    msg = _refus(
+        mission=mission,
+        utilisateur=make_user(Role.AUDITEUR),
+        role_mission="AUDITEUR",
+        responsable_entite=True,
+        by=rai,
+    )
+    assert msg == MSG_RESPONSABLE_AUDITE
+
+
+def test_un_seul_responsable_par_direction(rai: User, mission: Mission):
+    affecter(mission, utilisateur=_audite(), role_mission="AUDITE", responsable_entite=True, by=rai)
+    msg = _refus(
+        mission=mission,
+        utilisateur=_audite(),
+        role_mission="AUDITE",
+        responsable_entite=True,
+        by=rai,
+    )
+    assert msg == MSG_RESPONSABLE_EXISTE
+    # une autre direction reste libre
+    affecter(
+        mission,
+        utilisateur=_audite("DAF"),
+        role_mission="AUDITE",
+        responsable_entite=True,
+        by=rai,
+    )
+
+
+def test_responsable_desaffecte_libere_la_place(rai: User, mission: Mission):
+    premier = affecter(
+        mission, utilisateur=_audite(), role_mission="AUDITE", responsable_entite=True, by=rai
+    )
+    desaffecter(premier, by=rai)
+    nouveau = affecter(
+        mission, utilisateur=_audite(), role_mission="AUDITE", responsable_entite=True, by=rai
+    )
+    assert nouveau.responsable_entite
+
+
+def test_designer_puis_retirer_le_responsable(rai: User, mission: Mission):
+    a = affecter(mission, utilisateur=_audite(), role_mission="AUDITE", by=rai)
+    a = definir_responsable_entite(a, responsable=True, by=rai)
+    assert AffectationMission.objects.get(pk=a.pk).responsable_entite is True
+    a = definir_responsable_entite(a, responsable=False, by=rai)
+    assert AffectationMission.objects.get(pk=a.pk).responsable_entite is False
+
+
+def test_designer_refuse_si_autre_responsable_meme_direction(rai: User, mission: Mission):
+    affecter(mission, utilisateur=_audite(), role_mission="AUDITE", responsable_entite=True, by=rai)
+    b = affecter(mission, utilisateur=_audite(), role_mission="AUDITE", by=rai)
+    with pytest.raises(RegleMetierError) as e:
+        definir_responsable_entite(b, responsable=True, by=rai)
+    assert e.value.errors["responsable_entite"] == [MSG_RESPONSABLE_EXISTE]
+
+
+def test_designer_refuse_pour_un_intervenant(rai: User, mission: Mission):
+    a = affecter(mission, utilisateur=make_user(Role.AUDITEUR), role_mission="AUDITEUR", by=rai)
+    with pytest.raises(RegleMetierError) as e:
+        definir_responsable_entite(a, responsable=True, by=rai)
+    assert e.value.errors["responsable_entite"] == [MSG_RESPONSABLE_AUDITE]
+
+
+def test_designer_refuse_sans_direction(rai: User, mission: Mission):
+    a = affecter(mission, utilisateur=_audite(""), role_mission="AUDITE", by=rai)
+    with pytest.raises(RegleMetierError) as e:
+        definir_responsable_entite(a, responsable=True, by=rai)
+    assert e.value.errors["responsable_entite"] == [MSG_RESPONSABLE_DIRECTION]
+
+
+def test_designer_refuse_sur_mission_figee(rai: User, mission: Mission):
+    a = affecter(mission, utilisateur=_audite(), role_mission="AUDITE", by=rai)
+    Mission.objects.filter(pk=mission.pk).update(statut=StatutMission.SUSPENDUE)
+    with pytest.raises(Exception):  # noqa: B017 - MissionFigeeError
+        definir_responsable_entite(a, responsable=True, by=rai)
+
+
+def test_changement_de_responsable_est_trace(rai: User, mission: Mission):
+    from auditlog.models import LogEntry
+
+    a = affecter(mission, utilisateur=_audite(), role_mission="AUDITE", by=rai)
+    definir_responsable_entite(a, responsable=True, by=rai)
+    entrees = LogEntry.objects.get_for_object(a)
+    assert any("responsable_entite" in e.changes_dict for e in entrees)

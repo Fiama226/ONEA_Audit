@@ -22,6 +22,14 @@ MSG_CHEF_EXISTE = "Cette mission a déjà un chef de mission."
 MSG_SUPERVISEUR_EXISTE = "Cette mission a déjà un superviseur."
 MSG_SUPERVISEUR_CHEF = "Le superviseur ne peut pas être le chef de mission."
 MSG_DEJA_AFFECTE = "Cet utilisateur est déjà affecté à la mission."
+MSG_RESPONSABLE_AUDITE = "Seul un audité peut être désigné responsable de l'entité."
+MSG_RESPONSABLE_DIRECTION = (
+    "Cet audité n'a pas de direction renseignée : il ne peut pas être responsable de l'entité."
+)
+MSG_RESPONSABLE_EXISTE = (
+    "Cette direction a déjà un responsable de l'entité dans cette mission. "
+    "Retirez-lui d'abord cette désignation."
+)
 MSG_CHEF_RETRAIT = "Le chef de mission ne peut être retiré qu'en le remplaçant."
 
 
@@ -33,9 +41,48 @@ def _actives(mission: Mission) -> QuerySet[AffectationMission]:
     return AffectationMission.objects.filter(mission=mission).select_related("utilisateur")
 
 
+def _controler_responsable(
+    existantes: list[AffectationMission], utilisateur: User, role_mission: str
+) -> None:
+    """Un responsable de l'entité est un audité, avec une direction, unique pour cette direction."""
+    erreur = "responsable_entite"
+    if role_mission != RoleMission.AUDITE:
+        raise refuser(MSG_RESPONSABLE_AUDITE, **{erreur: MSG_RESPONSABLE_AUDITE})
+    if not utilisateur.direction_code:
+        raise refuser(MSG_RESPONSABLE_DIRECTION, **{erreur: MSG_RESPONSABLE_DIRECTION})
+    if any(
+        a.responsable_entite
+        and a.utilisateur_id != utilisateur.pk
+        and a.utilisateur.direction_code == utilisateur.direction_code
+        for a in existantes
+    ):
+        raise refuser(MSG_RESPONSABLE_EXISTE, **{erreur: MSG_RESPONSABLE_EXISTE})
+
+
+@transaction.atomic
+def definir_responsable_entite(
+    affectation: AffectationMission, *, responsable: bool, by: User
+) -> AffectationMission:
+    """Désigne ou retire le responsable de l'entité (mission verrouillée, trace d'audit)."""
+    verrouiller_mission(affectation.mission_id)
+    affectation = relire(affectation)
+    if responsable and not affectation.responsable_entite:
+        existantes = list(_actives(affectation.mission).select_for_update(of=("self",)))
+        _controler_responsable(existantes, affectation.utilisateur, affectation.role_mission)
+    if affectation.responsable_entite != responsable:
+        affectation.responsable_entite = responsable
+        enregistrer(affectation, by=by)
+    return affectation
+
+
 @transaction.atomic
 def affecter(
-    mission: Mission, *, utilisateur: User, role_mission: str, by: User
+    mission: Mission,
+    *,
+    utilisateur: User,
+    role_mission: str,
+    by: User,
+    responsable_entite: bool = False,
 ) -> AffectationMission:
     mission = verrouiller_mission(mission)
     if role_mission not in RoleMission.values:
@@ -61,9 +108,14 @@ def affecter(
         raise refuser(MSG_CHEF_EXISTE, role_mission=MSG_CHEF_EXISTE)
     if role_mission == RoleMission.SUPERVISEUR and RoleMission.SUPERVISEUR in roles.values():
         raise refuser(MSG_SUPERVISEUR_EXISTE, role_mission=MSG_SUPERVISEUR_EXISTE)
+    if responsable_entite:
+        _controler_responsable(existantes, utilisateur, role_mission)
 
     affectation = AffectationMission(
-        mission=mission, utilisateur=utilisateur, role_mission=role_mission
+        mission=mission,
+        utilisateur=utilisateur,
+        role_mission=role_mission,
+        responsable_entite=responsable_entite,
     )
     enregistrer(affectation, by=by, creation=True)
     if role_mission in ROLES_INTERVENANTS:

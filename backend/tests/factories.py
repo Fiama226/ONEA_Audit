@@ -206,6 +206,7 @@ class AffectationFactory(factory.django.DjangoModelFactory):
     mission = factory.SubFactory(MissionFactory)
     utilisateur = factory.SubFactory(UserFactory)
     role_mission = RoleMission.AUDITEUR
+    responsable_entite = False
 
 
 class DeclarationFactory(factory.django.DjangoModelFactory):

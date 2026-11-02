@@ -183,3 +183,17 @@ def test_constats_a_repondre(
 ) -> None:
     assert constats_a_repondre(audite_entite_a, provisoire_transmis) == [constat_a.pk]
     assert constats_a_repondre(chef, provisoire_transmis) == []
+
+
+def test_collaborateur_non_designe_ne_repond_pas(
+    provisoire_transmis: RapportProvisoire, constat_a: Constat, audite_entite_a: User
+) -> None:
+    from apps.missions.models import RoleMission
+    from apps.users.models import Role
+    from tests.factories import make_user
+
+    collegue = make_user(Role.AUDITE, direction_code=audite_entite_a.direction_code)
+    affecter(provisoire_transmis.mission, collegue, RoleMission.AUDITE, responsable_entite=False)
+    with pytest.raises(PermissionDenied):
+        repondre_provisoire(provisoire_transmis, constat=constat_a, commentaire="x", by=collegue)
+    assert constats_a_repondre(collegue, provisoire_transmis) == []

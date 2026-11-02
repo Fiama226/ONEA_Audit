@@ -88,3 +88,20 @@ def test_retrait_par_auteur_ou_rai_puis_nouvelle_acceptation(
     forcer_etapes(mission_en_communication, {16: StatutEtape.TERMINEE})
     with pytest.raises(RegleMetierError):
         retirer_acceptation(nouvelle, by=audite_entite_a)
+
+
+def test_collaborateur_de_la_meme_direction_refuse(
+    recommandations: list[Recommandation], mission_en_communication: Mission, audite_entite_a: User
+) -> None:
+    """Seul le responsable désigné engage sa direction, pas un collègue affecté de la même."""
+    from apps.missions.models import RoleMission
+    from apps.users.models import Role
+    from tests.factories import make_user
+    from tests.missions.conftest import affecter
+
+    reco = recommandations[0]
+    collegue = make_user(Role.AUDITE, direction_code=audite_entite_a.direction_code)
+    affecter(mission_en_communication, collegue, RoleMission.AUDITE, responsable_entite=False)
+    with pytest.raises(PermissionDenied):
+        accepter_risque(reco, justification="x", by=collegue)
+    accepter_risque(reco, justification="x", by=audite_entite_a)

@@ -191,6 +191,13 @@ class AffectationSerializer(serializers.ModelSerializer[AffectationMission]):
     utilisateur = CleRelation(queryset=User.objects.filter(is_active=True))
     utilisateur_detail = UtilisateurResumeSerializer(source="utilisateur", read_only=True)
     role_mission = serializers.ChoiceField(choices=RoleMission.choices)
+    responsable_entite = serializers.BooleanField(
+        default=False,
+        help_text=(
+            "Audité habilité à engager sa direction (acceptation de risque, réponse au rapport "
+            "provisoire). Un seul par direction et par mission."
+        ),
+    )
     declaration = serializers.SerializerMethodField()
 
     class Meta:
@@ -201,6 +208,7 @@ class AffectationSerializer(serializers.ModelSerializer[AffectationMission]):
             "utilisateur",
             "utilisateur_detail",
             "role_mission",
+            "responsable_entite",
             "declaration",
         )
         read_only_fields = ("id",)
