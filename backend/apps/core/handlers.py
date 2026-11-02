@@ -4,7 +4,7 @@ from typing import Any
 
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
-from rest_framework.exceptions import NotFound, Throttled, ValidationError
+from rest_framework.exceptions import NotFound, ParseError, Throttled, ValidationError
 from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import exception_handler, set_rollback
@@ -14,6 +14,7 @@ from .exceptions import RegleMetierError
 INVALID_DATA = "Données invalides."
 NOT_FOUND = "Non trouvé."
 FORBIDDEN = "Accès refusé."
+UNREADABLE_BODY = "La requête est mal formée : son contenu est illisible."
 
 
 def _flatten(detail: Any, path: str = "") -> dict[str, list[str]]:
@@ -73,7 +74,10 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
             "errors": {},
         }
         return response
-    if isinstance(exc, ValidationError):
+    if isinstance(exc, ParseError):
+        # le message du décodeur (anglais, technique) ne doit pas atteindre l'utilisateur
+        response.data = {"detail": UNREADABLE_BODY, "errors": {}}
+    elif isinstance(exc, ValidationError):
         response.data = {"detail": INVALID_DATA, "errors": _flatten(exc.detail)}
     else:
         response.data = {"detail": _localized(exc, _detail_message(response.data)), "errors": {}}

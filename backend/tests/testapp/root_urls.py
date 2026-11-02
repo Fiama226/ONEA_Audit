@@ -2,6 +2,7 @@
 
 from django.urls import include, path
 
+from config.urls import handler404, handler500  # noqa: F401
 from config.urls import urlpatterns as project_urlpatterns
 
 urlpatterns = [

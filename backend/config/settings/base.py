@@ -210,9 +210,7 @@ if ANTIVIRUS_MOTEUR not in {"aucun", "clamav", "clamd"}:  # clamd : synonyme his
     raise ImproperlyConfigured("ANTIVIRUS_MOTEUR must be 'aucun' or 'clamav'")
 # Échec fermé : clamd injoignable => fichier refusé (503). `false` = choix explicite d'accepter.
 ANTIVIRUS_ECHEC_FERME: bool = env.bool("ANTIVIRUS_ECHEC_FERME", default=True)
-ANTIVIRUS_TAILLE_MAX_OCTETS: int = (
-    PIECE_TAILLE_MAX_OCTETS  # nginx : 55m
-)
+ANTIVIRUS_TAILLE_MAX_OCTETS: int = PIECE_TAILLE_MAX_OCTETS  # nginx : 55m
 ANTIVIRUS_CLAMD_HOTE: str = env("ANTIVIRUS_CLAMD_HOTE", default="clamav")
 ANTIVIRUS_CLAMD_PORT: int = env.int("ANTIVIRUS_CLAMD_PORT", default=3310)
 
@@ -249,6 +247,11 @@ def _taux_debit(portee: str, defaut: str) -> str:
 
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.core.handlers.api_exception_handler",
+    "DEFAULT_PARSER_CLASSES": [
+        "apps.core.parsers.JSONParserSur",
+        "rest_framework.parsers.FormParser",
+        "rest_framework.parsers.MultiPartParser",
+    ],
     # Bearer-only (D4): the Django session authenticates /admin/ and the schema views only.
     "DEFAULT_AUTHENTICATION_CLASSES": ["apps.users.authentication.OIDCBearerAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
