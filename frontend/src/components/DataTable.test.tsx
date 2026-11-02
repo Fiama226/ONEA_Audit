@@ -48,13 +48,13 @@ describe("DataTable", () => {
     expect(props.onPageChange).toHaveBeenCalledWith(1);
   });
 
-  it("keeps the header sticky: no scroll container between thead and the page", () => {
+  it("scrolls horizontally in a labelled, focusable region instead of clipping wide tables", () => {
     setup();
     const table = screen.getByRole("table");
-    expect(table.parentElement).toHaveClass("overflow-x-clip");
-    for (let el = table.parentElement; el; el = el.parentElement) {
-      expect(el).not.toHaveClass("overflow-x-auto");
-    }
+    const region = table.parentElement as HTMLElement;
+    expect(region).toHaveClass("overflow-x-auto");
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(screen.getByRole("region")).toBe(region);
     expect(table.querySelector("thead")).toHaveClass("sticky");
   });
 
