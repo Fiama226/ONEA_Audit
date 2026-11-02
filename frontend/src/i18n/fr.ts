@@ -1075,8 +1075,7 @@ export const fr = {
     loading: "Chargement de l'étape VII…",
     frameworkRequired:
       "Le référentiel d'audit doit être validé (jalon VI) avant de sélectionner les objectifs d'audit.",
-    wordNote:
-      "Le rapport d'orientation sera généré au format Word par le moteur de documents.",
+    wordNote: "Le rapport d'orientation sera généré au format Word par le moteur de documents.",
     objectivesTitle: "Objectifs d'audit",
     objectivesIntro:
       "Un objectif d'audit par contrôle clé du MARC. Les codes OA ne sont jamais réutilisés.",
@@ -2783,6 +2782,84 @@ export const fr = {
     searchError: "La recherche a échoué. Réessayez plus tard.",
     searchCount: "{n} résultat(s)",
     searchMission: "Mission {ref}",
+  },
+  tutoriel: {
+    welcomeTitle: "Bienvenue sur la plateforme d'audit interne",
+    welcomeText:
+      "Une visite guidée de quelques minutes vous présente les principaux éléments de l'interface qui vous sont accessibles.",
+    welcomeRole: "Profil : {role}",
+    start: "Commencer la visite",
+    later: "Plus tard",
+    skip: "Passer la visite",
+    previous: "Précédent",
+    next: "Suivant",
+    finish: "Terminer",
+    dialogLabel: "Visite guidée",
+    progress: "{n} / {total}",
+    progressSr: "Étape {n} sur {total}",
+    accountTitle: "Mon compte",
+    accountIntro: "Informations de votre compte, issues de l'annuaire de l'ONEA.",
+    accountName: "Nom",
+    accountEmail: "Adresse électronique",
+    accountRole: "Rôle",
+    accountDirection: "Direction",
+    accountFonction: "Fonction",
+    tourSection: "Visite guidée",
+    tourSectionText:
+      "Revoyez la présentation des principaux éléments de la plateforme adaptés à votre rôle.",
+    replay: "Revoir la visite guidée",
+    menuAccount: "Mon compte",
+    menuTour: "Visite guidée de la plateforme",
+    steps: {
+      "tableau-de-bord": {
+        title: "Tableau de bord",
+        body: "Votre page d'accueil : indicateurs et éléments à traiter en priorité selon votre rôle.",
+      },
+      menu: {
+        title: "Menu de navigation",
+        body: "Accédez aux sections de la plateforme. Seules celles ouvertes à votre rôle sont affichées.",
+      },
+      programme: {
+        title: "Programme annuel",
+        body: "Consultez les missions prévues pour l'exercice et leur état d'avancement.",
+      },
+      missions: {
+        title: "Missions",
+        body: "Le cœur de l'activité : les missions d'audit, leurs étapes, leurs travaux et leurs documents.",
+      },
+      recommandations: {
+        title: "Recommandations",
+        body: "Suivez les recommandations, leurs plans d'actions et leurs échéances.",
+      },
+      rapports: {
+        title: "Rapports diffusés",
+        body: "Retrouvez les rapports d'audit qui ont été diffusés.",
+      },
+      documents: {
+        title: "Documents",
+        body: "Les documents produits dans le cadre des missions auxquelles vous contribuez.",
+      },
+      administration: {
+        title: "Administration",
+        body: "Gérez les comptes utilisateurs, les rôles et le paramétrage de la plateforme.",
+      },
+      gabarits: {
+        title: "Gabarits de documents",
+        body: "Consultez et paramétrez les gabarits Word utilisés pour générer les documents.",
+      },
+      recherche: {
+        title: "Recherche",
+        body: "Retrouvez rapidement une mission, un risque, une recommandation ou un document.",
+      },
+      notifications: {
+        title: "Notifications",
+        body: "Les alertes qui vous concernent : demandes de validation, échéances, diffusions.",
+      },
+      "menu-utilisateur": {
+        title: "Votre compte",
+        body: "Consultez votre profil, relancez cette visite guidée ou déconnectez-vous.",
+      },
+    },
   },
 } as const;
 
