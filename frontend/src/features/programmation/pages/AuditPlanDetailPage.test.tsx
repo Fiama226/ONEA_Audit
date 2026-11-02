@@ -98,6 +98,7 @@ describe("AuditPlanDetailPage", () => {
     renderPlan(path, "RAI");
     expect(await screen.findByText(/Programme validé le 20\/01\/2026/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Exporter en Excel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Exporter en PDF" })).toBeInTheDocument();
     for (const name of [
       "Ajouter une mission prévue",
       "Modifier",
