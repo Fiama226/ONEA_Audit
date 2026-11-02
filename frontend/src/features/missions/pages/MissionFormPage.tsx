@@ -134,9 +134,16 @@ function MissionForm({ mission, frozen }: { mission?: Mission; frozen: boolean }
 
   return (
     <div className="max-w-3xl">
-      <h1 className="mb-4 text-2xl font-semibold tracking-[-0.012em]">
-        {mission ? fr.missions.editMission : fr.missions.newMission}
-      </h1>
+      {/* En modification, l'en-tête de la mission porte déjà le h1 de la page. */}
+      {mission ? (
+        <h2 className="mb-4 text-2xl font-semibold tracking-[-0.012em]">
+          {fr.missions.editMission}
+        </h2>
+      ) : (
+        <h1 className="mb-4 text-2xl font-semibold tracking-[-0.012em]">
+          {fr.missions.newMission}
+        </h1>
+      )}
       {formError && (
         <div role="alert" tabIndex={-1} ref={alertRef} className={`mb-4 ${ALERT_CLASS}`}>
           <p className="font-medium">{m.formErrorTitle}</p>

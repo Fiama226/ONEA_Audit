@@ -255,7 +255,7 @@ export function RiskMapDetailPage() {
 
   return (
     <PrintLayout title={`${c.detailTitle} ${version.annee}`}>
-      <div className="grid gap-6">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-xl font-semibold print:hidden">{`${c.detailTitle} ${version.annee}`}</h2>
@@ -357,7 +357,7 @@ export function RiskMapDetailPage() {
               />
               {matrix.data && (
                 <p className="text-sm text-text-muted">
-                  {matrix.data.total} {c.matrixSummary}
+                  {matrix.data.total} {matrix.data.total > 1 ? c.matrixSummary : c.matrixSummaryOne}
                 </p>
               )}
             </>

@@ -65,13 +65,11 @@ export function RiskMatrix({
       <span aria-hidden className="rotate-180 text-xs text-text-muted [writing-mode:vertical-rl]">
         {fr.dashboard.probability}
       </span>
-      <div className="min-w-0 flex-1">
+      {/* La largeur maximale porte sur le bloc entier : l'axe « Impact » et la légende restent centrés sous la grille. */}
+      <div className={cn("min-w-0 flex-1", size === "large" ? "max-w-[440px]" : "max-w-[272px]")}>
         <table
           aria-label={fr.dashboard.matrixLabel}
-          className={cn(
-            "print-exact w-full table-fixed border-separate [border-spacing:3px]",
-            size === "large" ? "max-w-[440px]" : "max-w-[272px]",
-          )}
+          className="print-exact w-full table-fixed border-separate [border-spacing:3px]"
         >
           <tbody>
             {[...SCALE].reverse().map((p) => (

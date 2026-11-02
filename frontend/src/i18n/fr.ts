@@ -2186,6 +2186,7 @@ export const fr = {
     matrixTitle: "Matrice des risques",
     matrixLoadError: "Impossible de charger la matrice.",
     matrixSummary: "risques au total",
+    matrixSummaryOne: "risque au total",
     filterActive: "Probabilité {p} × impact {i}",
     clearFilter: "Effacer le filtre",
     risksTitle: "Risques",
