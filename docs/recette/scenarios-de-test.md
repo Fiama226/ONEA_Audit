@@ -283,6 +283,7 @@ préparées.
 | Documents | non | oui | oui | oui | non |
 | Administration | oui | non | non | non | non |
 | Gabarits de documents | oui | oui | non | non | non |
+| Mode de signature | oui | oui | non | non | non |
 
 **Résultat attendu** : le menu correspond au tableau (source : `frontend/src/layouts/navigation.ts`). Un groupe sans entrée visible disparaît avec son titre.
 
@@ -657,9 +658,9 @@ préparées.
 **Rôle** : `admin` (écriture), `rai` (lecture) · **Préconditions** : aucune.
 1. Gabarits › Numérotation : lire le tableau (modèle, portée Par mission/Par année, abréviation, aperçu).
 2. Modifier un format : essayer un modèle vide, une abréviation de plus de 8 caractères, un champ non permis.
-3. Saisir un modèle valide `{mission}-{code}-{sequence:02d}` ; observer l'aperçu calculé par le serveur ; enregistrer.
+3. Saisir un modèle valide `{mission}-{code}-{sequence}` ; observer l'aperçu calculé par le serveur ; enregistrer.
 
-**Résultat attendu** : champs permis `{mission}`, `{annee}`, `{code}`, `{sequence:02d}` ; erreurs « Saisissez un modèle. », « L'abréviation ne peut pas dépasser 8 caractères. » ; le nouveau format ne vaut que pour les documents créés ensuite.
+**Résultat attendu** : champs permis `{mission}`, `{annee}`, `{code}`, `{sequence}` ; erreurs « Saisissez un modèle. », « L'abréviation ne peut pas dépasser 8 caractères. » ; le nouveau format ne vaut que pour les documents créés ensuite.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 

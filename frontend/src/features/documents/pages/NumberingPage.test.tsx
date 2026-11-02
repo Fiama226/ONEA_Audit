@@ -32,7 +32,7 @@ describe("NumberingPage", () => {
     expect(await screen.findByText("Par mission")).toBeInTheDocument();
     expect(screen.getByText("MI-2026-001/OM-01")).toBeInTheDocument();
     expect(
-      screen.getByText(/Champs permis : \{mission\}, \{annee\}, \{code\}, \{sequence:02d\}/),
+      screen.getByText(/Champs permis : \{mission\}, \{annee\}, \{code\}, \{sequence\}/),
     ).toBeInTheDocument();
     expect(
       (await axe(container, { rules: { "color-contrast": { enabled: false } } })).violations,
@@ -47,7 +47,7 @@ describe("NumberingPage", () => {
           numero: null,
           errors: {
             modele: [
-              `Champ inconnu : {seq}. Champs permis : {mission}, {annee}, {code}, {sequence:02d}.`,
+              `Champ inconnu : {seq}. Champs permis : {mission}, {annee}, {code}, {sequence}.`,
             ],
           },
           echo: body.modele,
@@ -88,7 +88,7 @@ describe("NumberingPage", () => {
     expect(await screen.findByText("Abréviation déjà utilisée.")).toBeInTheDocument();
     expect(screen.getByLabelText("Abréviation")).toHaveFocus();
     expect(patched).toEqual({
-      modele: "{mission}/{code}-{sequence:02d}",
+      modele: "{mission}/{code}-{sequence}",
       portee: "MISSION",
       abreviation: "OM",
     });

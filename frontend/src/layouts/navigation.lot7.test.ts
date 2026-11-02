@@ -22,3 +22,12 @@ describe("navigation du lot 7", () => {
     expect(labels("ADMIN")).not.toContain(fr.communication.navDistributed);
   });
 });
+
+describe("navigation : mode de signature et piste d'audit", () => {
+  it("rend /administration/signatures accessible depuis le menu de l'ADMIN et du RAI", () => {
+    expect(labels("ADMIN")).toContain(fr.signatureAdmin.title);
+    expect(labels("RAI")).toContain(fr.signatureAdmin.title);
+    expect(labels("AUDITEUR")).not.toContain(fr.signatureAdmin.title);
+    expect(labels("DG")).not.toContain(fr.signatureAdmin.title);
+  });
+});

@@ -55,7 +55,7 @@ function NavItemLink({
   onNavigate,
   exclude,
 }: {
-  exclude?: string;
+  exclude?: string | string[];
   to: string;
   label: string;
   icon: LucideIcon;
@@ -63,7 +63,7 @@ function NavItemLink({
   onNavigate?: () => void;
 }) {
   const { pathname } = useLocation();
-  const excluded = exclude !== undefined && pathname.startsWith(exclude);
+  const excluded = [exclude ?? []].flat().some((prefix) => pathname.startsWith(prefix));
   const link = (
     <NavLink
       to={to}

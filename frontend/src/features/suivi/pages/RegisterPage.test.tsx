@@ -51,6 +51,19 @@ function setup(role: "RAI" | "AUDITE" | "DG", path = "/recommandations") {
 beforeEach(() => download.mockReset());
 
 describe("RegisterPage", () => {
+  it("n'interroge pas la liste des missions pour le DG (accès refusé côté serveur)", async () => {
+    const calls: string[] = [];
+    setup("DG");
+    server.use(
+      http.get(`${BASE}/missions/`, ({ request }) => {
+        calls.push(request.url);
+        return HttpResponse.json({ detail: "Accès refusé." }, { status: 403 });
+      }),
+    );
+    await screen.findByText("Fiabiliser les inventaires");
+    expect(calls).toEqual([]);
+  });
+
   it("liste les recommandations par défaut et bascule vers les actions (paramètre vue)", async () => {
     const user = userEvent.setup();
     const { router } = setup("RAI");

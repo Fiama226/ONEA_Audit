@@ -1959,7 +1959,7 @@ export const fr = {
     contractEmpty: "Ce contrat ne comporte aucune balise.",
     numberingTitle: "Numérotation des documents",
     numberingHelp:
-      "Champs permis : {mission}, {annee}, {code}, {sequence:02d}. Un changement ne vaut que pour les documents créés ensuite.",
+      "Champs permis : {mission}, {annee}, {code}, {sequence}. Un changement ne vaut que pour les documents créés ensuite.",
     numberingCaption: "Formats de numérotation par type de document",
     numberingLoadError: "Impossible de charger les formats de numérotation.",
     colModel: "Modèle",

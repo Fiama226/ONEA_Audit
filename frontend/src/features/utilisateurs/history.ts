@@ -65,6 +65,11 @@ const HIDDEN_FIELDS = new Set([
   "keycloak_sync_tentatives",
   "password",
   "last_login",
+  // Relations inverses et indicateurs internes : sans sens pour l'administrateur.
+  "notifications",
+  "suivis_responsable",
+  "affectations_mission",
+  "keycloak_sync_manuel",
 ]);
 
 const ENUM_VALUES: Record<string, Record<string, string>> = {
@@ -75,7 +80,12 @@ const ENUM_VALUES: Record<string, Record<string, string>> = {
   is_active: { True: "Actif", False: "Désactivé" },
 };
 
-const BOOLEAN_FIELDS = new Set(["profil_gere_localement", "is_staff", "is_superuser"]);
+const BOOLEAN_FIELDS = new Set([
+  "profil_gere_localement",
+  "is_staff",
+  "is_superuser",
+  "role_provisoire",
+]);
 
 function formatValue(field: string, value: unknown): string {
   if (value === null || value === undefined) return EMPTY_VALUE;
