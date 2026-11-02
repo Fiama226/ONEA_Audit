@@ -140,6 +140,25 @@ describe("RegisterPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("n'interroge pas la liste des missions pour le DG (accès refusé côté serveur)", async () => {
+    const missionCalls: string[] = [];
+    server.use(
+      http.get(`${BASE}/missions/`, ({ request }) => {
+        missionCalls.push(request.url);
+        return HttpResponse.json({ detail: "Accès refusé." }, { status: 403 });
+      }),
+      http.get(`${BASE}/directions/`, () => HttpResponse.json(pageOf([]))),
+      http.get(`${BASE}/follow-up/recommendations/`, () => HttpResponse.json(pageOf([]))),
+      http.get(`${BASE}/follow-up/actions/`, () => HttpResponse.json(pageOf([]))),
+    );
+    renderRoutes([{ path: "/recommandations", element: <RegisterPage /> }], "DG", {
+      path: "/recommandations",
+    });
+    await screen.findByText("Aucune recommandation ne correspond aux filtres.");
+    expect(missionCalls).toEqual([]);
+    expect(screen.queryByLabelText("Mission")).toBeNull();
+  });
+
   it("n'a aucune violation axe", async () => {
     const { container } = setup("RAI", "/recommandations?vue=actions");
     await screen.findByText("Formaliser le rapprochement mensuel");

@@ -81,7 +81,9 @@ function Toggle({
 
 /** Filtres du registre sur une ligne ; l'état est tenu par la page (paramètres d'URL). */
 export function RegisterFilters({ view, role, values, onChange, onReset }: Props) {
-  const missions = useMissions({ page_size: 100 });
+  // Le DG n'a pas accès à la liste des missions (403) : pas de filtre par mission pour lui.
+  const canFilterByMission = role !== "DG";
+  const missions = useMissions({ page_size: 100 }, { enabled: canFilterByMission });
   const directions = useDirections({ page_size: 100 });
   const statusLabels =
     view === "actions" ? STATUT_SUIVI_LABELS : STATUT_RECOMMANDATION_SUIVI_LABELS;
@@ -107,23 +109,25 @@ export function RegisterFilters({ view, role, values, onChange, onReset }: Props
           />
         )}
       </Field>
-      <Field label={t.filterMission}>
-        {(id) => (
-          <NativeSelect
-            id={id}
-            className="w-56"
-            value={values.mission}
-            onChange={(e) => onChange({ mission: e.target.value })}
-          >
-            <option value="">{t.filterAll}</option>
-            {(missions.data?.results ?? []).map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.reference} · {m.titre}
-              </option>
-            ))}
-          </NativeSelect>
-        )}
-      </Field>
+      {canFilterByMission && (
+        <Field label={t.filterMission}>
+          {(id) => (
+            <NativeSelect
+              id={id}
+              className="w-56"
+              value={values.mission}
+              onChange={(e) => onChange({ mission: e.target.value })}
+            >
+              <option value="">{t.filterAll}</option>
+              {(missions.data?.results ?? []).map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.reference} · {m.titre}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
+        </Field>
+      )}
       <Field label={t.filterEntity}>
         {(id) => (
           <NativeSelect

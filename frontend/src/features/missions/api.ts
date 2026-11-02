@@ -91,8 +91,9 @@ function sameFilters(previousKey: QueryKey, params: MissionParams): boolean {
   return filtersOf(previousKey[2] as object) === filtersOf(params);
 }
 
-export function useMissions(params: MissionParams = {}) {
+export function useMissions(params: MissionParams = {}, options: { enabled?: boolean } = {}) {
   return useQuery({
+    enabled: options.enabled ?? true,
     queryKey: missionKeys.list(params),
     queryFn: () => apiFetch<S["PaginatedMissionListeList"]>(`${BASE}/missions/${toQuery(params)}`),
     // Garde la page précédente seulement si les filtres sont identiques (pagination, tri).
