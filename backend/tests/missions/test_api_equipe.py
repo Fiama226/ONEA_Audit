@@ -1,9 +1,11 @@
 from rest_framework.test import APIClient
 
-from apps.missions.models import DeclarationIndependance, Mission, StatutDeclaration
+from apps.missions.models import DeclarationIndependance, Mission, RoleMission, StatutDeclaration
 from apps.signatures.models import Confirmation
 from apps.users.models import Role, User
 from tests.factories import make_user
+
+from .conftest import affecter
 
 Equipe = tuple[Mission, dict[str, User]]
 
@@ -153,3 +155,74 @@ def test_conflit_puis_arbitrage(api_client: APIClient, equipe_complete: Equipe) 
     assert r.status_code == 200, r.json()
     assert r.json()["levee"] is True
     assert r.json()["arbitre_par"]["id"] == users["rai"].id
+
+
+def test_affecter_un_responsable_de_l_entite(
+    api_client: APIClient, equipe_complete: Equipe
+) -> None:
+    m, users = equipe_complete
+    api_client.force_authenticate(users["rai"])
+    audite = make_user(Role.AUDITE, direction_code="DEX")
+    corps = {
+        "mission": str(m.id),
+        "utilisateur": audite.id,
+        "role_mission": "AUDITE",
+        "responsable_entite": True,
+    }
+    r = api_client.post("/api/v1/mission-assignments/", corps, format="json")
+    assert r.status_code == 201, r.json()
+    assert r.json()["responsable_entite"] is True
+    # Valeur par défaut : faux.
+    autre = make_user(Role.AUDITE, direction_code="DAF")
+    corps2 = {"mission": str(m.id), "utilisateur": autre.id, "role_mission": "AUDITE"}
+    assert (
+        api_client.post("/api/v1/mission-assignments/", corps2, format="json").json()[
+            "responsable_entite"
+        ]
+        is False
+    )
+    # Second responsable de la même direction : erreur rattachée au champ.
+    collegue = make_user(Role.AUDITE, direction_code="DEX")
+    corps3 = {**corps, "utilisateur": collegue.id}
+    r3 = api_client.post("/api/v1/mission-assignments/", corps3, format="json")
+    assert r3.status_code == 422
+    assert "responsable_entite" in r3.json()["errors"]
+    # Réservé aux audités.
+    corps4 = {**corps, "utilisateur": make_user(Role.AUDITEUR).id, "role_mission": "AUDITEUR"}
+    r4 = api_client.post("/api/v1/mission-assignments/", corps4, format="json")
+    assert r4.status_code == 422
+    assert "responsable_entite" in r4.json()["errors"]
+
+
+def test_modifier_le_responsable_de_l_entite(
+    api_client: APIClient, equipe_complete: Equipe
+) -> None:
+    m, users = equipe_complete
+    audite = make_user(Role.AUDITE, direction_code="DEX")
+    affectation = affecter(m, audite, RoleMission.AUDITE, responsable_entite=False)
+    url = f"/api/v1/mission-assignments/{affectation.id}/"
+    for qui, statut in (("chef", 403), ("audite_affecte", 403), ("auditeur_non_affecte", 404)):
+        api_client.force_authenticate(users[qui])
+        r = api_client.patch(url, {"responsable_entite": True}, format="json")
+        assert r.status_code == statut, (qui, r.status_code)
+    api_client.force_authenticate(users["rai"])
+    r = api_client.patch(url, {"responsable_entite": True}, format="json")
+    assert r.status_code == 200, r.json()
+    assert r.json()["responsable_entite"] is True
+    # Les autres champs ne se modifient pas par PATCH.
+    r = api_client.patch(url, {"role_mission": "AUDITEUR"}, format="json")
+    assert r.status_code == 200
+    assert r.json()["role_mission"] == "AUDITE"
+    # Corps invalide : 400 ; second responsable : 422 sur le champ.
+    assert api_client.patch(url, {"responsable_entite": "x"}, format="json").status_code == 400
+    collegue = affecter(
+        m,
+        make_user(Role.AUDITE, direction_code="DEX"),
+        RoleMission.AUDITE,
+        responsable_entite=False,
+    )
+    r = api_client.patch(
+        f"/api/v1/mission-assignments/{collegue.id}/", {"responsable_entite": True}, format="json"
+    )
+    assert r.status_code == 422
+    assert "responsable_entite" in r.json()["errors"]

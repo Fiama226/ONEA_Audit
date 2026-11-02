@@ -465,6 +465,18 @@ export const fr = {
     assignPickerAuditeur: "Auditeurs",
     assignPickerAudite: "Audités",
     assignDefaultsHelp: "Les audités rattachés aux entités de la mission sont pré-cochés.",
+    entityManager: "Responsable de l'entité",
+    entityManagerHelp:
+      "Seul le responsable de l'entité peut accepter un risque ou répondre au rapport provisoire au nom de sa direction. Un seul par direction ; à cocher pour une seule personne à la fois.",
+    entityManagerSingleOnly: "Sélectionnez une seule personne pour la désigner responsable.",
+    entityManagerSet: "Désigner responsable de l'entité",
+    entityManagerUnset: "Retirer la désignation de responsable",
+    entityManagerSetTitle: "Désigner le responsable de l'entité ?",
+    entityManagerSetText:
+      "Cette personne pourra accepter un risque et répondre au rapport provisoire au nom de sa direction.",
+    entityManagerUnsetTitle: "Retirer la désignation de responsable de l'entité ?",
+    entityManagerUnsetText:
+      "Cette personne ne pourra plus engager sa direction (acceptation de risque, réponse au rapport provisoire).",
     arbitrate: "Arbitrer",
     arbitrateTitle: "Arbitrer la situation déclarée",
     arbitrateSituation: "Situation déclarée :",

@@ -2175,7 +2175,11 @@ export interface paths {
         delete: operations["v1_mission_assignments_destroy"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Désigner ou retirer le responsable de l'entité
+         * @description Seul `responsable_entite` est pris en compte ; les autres champs sont ignorés.
+         */
+        patch: operations["v1_mission_assignments_partial_update"];
         trace?: never;
     };
     "/api/v1/mission-risks/": {
@@ -4420,6 +4424,11 @@ export interface components {
             utilisateur: number;
             readonly utilisateur_detail: components["schemas"]["UtilisateurResume"];
             role_mission: components["schemas"]["RoleMissionEnum"];
+            /**
+             * @description Audité habilité à engager sa direction (acceptation de risque, réponse au rapport provisoire). Un seul par direction et par mission.
+             * @default false
+             */
+            responsable_entite: boolean;
             readonly declaration: components["schemas"]["DeclarationResume"] | null;
         };
         AffectationRequest: {
@@ -4427,6 +4436,11 @@ export interface components {
             mission: string;
             utilisateur: number;
             role_mission: components["schemas"]["RoleMissionEnum"];
+            /**
+             * @description Audité habilité à engager sa direction (acceptation de risque, réponse au rapport provisoire). Un seul par direction et par mission.
+             * @default false
+             */
+            responsable_entite: boolean;
         };
         AnalyseGrille: {
             taches_sans_acteur: string[];
@@ -7202,6 +7216,17 @@ export interface components {
             /** Moyens (ressources et budget) */
             moyens?: string;
             ordre?: number;
+        };
+        PatchedAffectationRequest: {
+            /** Format: uuid */
+            mission?: string;
+            utilisateur?: number;
+            role_mission?: components["schemas"]["RoleMissionEnum"];
+            /**
+             * @description Audité habilité à engager sa direction (acceptation de risque, réponse au rapport provisoire). Un seul par direction et par mission.
+             * @default false
+             */
+            responsable_entite: boolean;
         };
         PatchedCartographieVersionRequest: {
             /** Année */
@@ -17906,6 +17931,74 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_mission_assignments_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) affectation. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAffectationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedAffectationRequest"];
+                "multipart/form-data": components["schemas"]["PatchedAffectationRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Affectation"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
             401: {
                 headers: {

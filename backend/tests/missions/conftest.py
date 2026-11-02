@@ -30,10 +30,21 @@ def forcer_etapes(mission: Mission, statuts: Mapping[int, str]) -> None:
 
 
 def affecter(
-    mission: Mission, utilisateur: User, role_mission: str, *, confirmee: bool = True
+    mission: Mission,
+    utilisateur: User,
+    role_mission: str,
+    *,
+    confirmee: bool = True,
+    responsable_entite: bool | None = None,
 ) -> AffectationMission:
+    """`responsable_entite` : par défaut vrai pour un audité (comportement historique des tests)."""
+    if responsable_entite is None:
+        responsable_entite = role_mission == RoleMission.AUDITE
     affectation = AffectationFactory(
-        mission=mission, utilisateur=utilisateur, role_mission=role_mission
+        mission=mission,
+        utilisateur=utilisateur,
+        role_mission=role_mission,
+        responsable_entite=responsable_entite,
     )
     if role_mission != RoleMission.AUDITE:
         DeclarationFactory(

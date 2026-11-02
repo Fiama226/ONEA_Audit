@@ -3,10 +3,11 @@ import { useParams } from "react-router-dom";
 import { useAuth } from "@/auth/useAuth";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { ALERT_CLASS } from "@/components/form/FormField";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { fr } from "@/i18n/fr";
 import { formatDate } from "@/lib/dates";
-import { useMission, useUnassign } from "../api";
+import { useMission, useSetEntityManager, useUnassign } from "../api";
 import { ArbitrateDialog } from "../components/ArbitrateDialog";
 import { AssignDialog } from "../components/AssignDialog";
 import { ConfirmActionDialog } from "../components/ConfirmActionDialog";
@@ -31,13 +32,15 @@ type Dialog =
   | { kind: "replace" }
   | { kind: "declare" }
   | { kind: "arbitrate"; affectation: string }
-  | { kind: "unassign"; affectation: Affectation };
+  | { kind: "unassign"; affectation: Affectation }
+  | { kind: "entity-manager"; affectation: Affectation };
 
 export function TeamPage() {
   const { id } = useParams();
   const { me } = useAuth();
   const mission = useMission(id);
   const unassign = useUnassign();
+  const setEntityManager = useSetEntityManager();
   const [dialog, setDialog] = useState<Dialog | null>(null);
 
   if (mission.isError) {
@@ -74,7 +77,12 @@ export function TeamPage() {
       id: "role",
       header: m.colRole,
       enableSorting: false,
-      cell: ({ row }) => ROLE_MISSION_LABELS[row.original.role_mission],
+      cell: ({ row }) => (
+        <span className="flex flex-wrap items-center gap-2">
+          {ROLE_MISSION_LABELS[row.original.role_mission]}
+          {row.original.responsable_entite && <Badge variant="secondary">{m.entityManager}</Badge>}
+        </span>
+      ),
     },
     {
       id: "declaration",
@@ -116,6 +124,17 @@ export function TeamPage() {
                 onClick={() => setDialog({ kind: "replace" })}
               >
                 {m.replaceChief}
+              </Button>
+            )}
+            {canAssign && a.role_mission === "AUDITE" && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                aria-label={`${a.responsable_entite ? m.entityManagerUnset : m.entityManagerSet} : ${name}`}
+                onClick={() => setDialog({ kind: "entity-manager", affectation: a })}
+              >
+                {a.responsable_entite ? m.entityManagerUnset : m.entityManagerSet}
               </Button>
             )}
             {canAssign && a.role_mission !== "CHEF_MISSION" && (
@@ -183,6 +202,32 @@ export function TeamPage() {
           missionId={data.id}
           affectationId={dialog.affectation}
           onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === "entity-manager" && (
+        <ConfirmActionDialog
+          open
+          onOpenChange={(open) => !open && setDialog(null)}
+          title={
+            dialog.affectation.responsable_entite
+              ? m.entityManagerUnsetTitle
+              : m.entityManagerSetTitle
+          }
+          text={
+            dialog.affectation.responsable_entite
+              ? m.entityManagerUnsetText
+              : m.entityManagerSetText
+          }
+          confirmLabel={
+            dialog.affectation.responsable_entite ? m.entityManagerUnset : m.entityManagerSet
+          }
+          requireCheck={false}
+          onConfirm={() =>
+            setEntityManager.mutateAsync({
+              id: dialog.affectation.id,
+              responsable: !dialog.affectation.responsable_entite,
+            })
+          }
         />
       )}
       {dialog?.kind === "unassign" && (

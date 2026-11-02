@@ -264,6 +264,15 @@ class AffectationMission(MissionEnfantModel):
     role_mission = models.CharField(
         "rôle dans la mission", max_length=16, choices=RoleMission.choices
     )
+    responsable_entite = models.BooleanField(
+        "responsable de l'entité",
+        default=False,
+        help_text=(
+            "Audité habilité à engager sa direction (acceptation de risque, réponse au "
+            "rapport provisoire). Au plus un par direction et par mission (contrôlé par le "
+            "service d'équipe : la direction vient du compte, pas de l'affectation)."
+        ),
+    )
 
     class Meta:
         verbose_name = "affectation"
@@ -284,6 +293,10 @@ class AffectationMission(MissionEnfantModel):
                 fields=["mission"],
                 condition=Q(deleted_at__isnull=True, role_mission=RoleMission.SUPERVISEUR),
                 name="affectation_superviseur_unique_actif",
+            ),
+            models.CheckConstraint(
+                condition=Q(responsable_entite=False) | Q(role_mission=RoleMission.AUDITE),
+                name="affectation_responsable_entite_audite",
             ),
         ]
 

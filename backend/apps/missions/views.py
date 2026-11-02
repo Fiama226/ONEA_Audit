@@ -399,6 +399,20 @@ class MissionViewSet(MissionApiViewSet, ModelViewSet[Mission]):
             **ERROR_422,
         },
     ),
+    partial_update=extend_schema(
+        tags=[TAG],
+        summary="Désigner ou retirer le responsable de l'entité",
+        description=(
+            "Seul `responsable_entite` est pris en compte ; les autres champs sont ignorés."
+        ),
+        responses={
+            200: serializers.AffectationSerializer,
+            **ERROR_400,
+            **ERROR_RESPONSES,
+            **ERROR_404,
+            **ERROR_422,
+        },
+    ),
     destroy=extend_schema(
         tags=[TAG],
         summary="Désaffecter (logiquement)",
@@ -410,6 +424,7 @@ class AffectationViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
     mixins.DestroyModelMixin,
 ):
     serializer_class = serializers.AffectationSerializer
@@ -417,7 +432,7 @@ class AffectationViewSet(
     filterset_class = filters.AffectationFilter
     ordering_fields = ("created_at",)
     ordering = ("created_at",)
-    actions_rai = frozenset({"destroy"})
+    actions_rai = frozenset({"destroy", "partial_update"})
 
     def get_queryset(self) -> QuerySet[AffectationMission]:
         return _affectations(detail=True).filter(mission__in=acces.missions_visibles(self.acteur))
@@ -433,8 +448,19 @@ class AffectationViewSet(
             donnees["mission"],
             utilisateur=donnees["utilisateur"],
             role_mission=donnees["role_mission"],
+            responsable_entite=donnees["responsable_entite"],
             by=self.acteur,
         )
+        self._publier(serializer, affectation)
+
+    def perform_update(self, serializer: BaseSerializer[AffectationMission]) -> None:
+        # Seule la désignation du responsable de l'entité est modifiable (équipe figée sinon).
+        affectation = self._cible(serializer)
+        responsable = serializer.validated_data.get("responsable_entite")
+        if responsable is not None:
+            affectation = svc_equipe.definir_responsable_entite(
+                affectation, responsable=responsable, by=self.acteur
+            )
         self._publier(serializer, affectation)
 
     def perform_destroy(self, instance: AffectationMission) -> None:

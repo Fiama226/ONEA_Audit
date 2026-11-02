@@ -79,11 +79,24 @@ def peut_valider_travaux(user: User, mission: Mission) -> bool:
     return peut_valider_jalon(user, mission, 13)
 
 
+def _est_designe_responsable(user: User, mission: Mission) -> bool:
+    return memoise(
+        ("est_designe_responsable", user.pk, mission.pk),
+        lambda: mission.affectations.filter(
+            utilisateur=user, role_mission=RoleMission.AUDITE, responsable_entite=True
+        ).exists(),
+    )
+
+
 def est_responsable_entite(user: User, mission: Mission, entite_id: UUID | str) -> bool:
-    """AUDITE affecté (affectation active) dont la direction est celle de l'entité."""
+    """AUDITE affecté, désigné responsable de l'entité sur cette mission, de la direction visée.
+
+    Il ne suffit plus d'être un audité affecté de la même direction : l'affectation active doit
+    porter l'indicateur `responsable_entite` (changement A de l'analyse des rôles).
+    """
     if user.role != Role.AUDITE or not user.direction_code:
         return False
-    if role_dans_mission(user, mission) != RoleMission.AUDITE:
+    if not _est_designe_responsable(user, mission):
         return False
     return Direction.objects.filter(pk=entite_id, code=user.direction_code).exists()
 
