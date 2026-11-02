@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { isApiError } from "@/api/errors";
+import { useRole } from "@/auth/useRole";
+import { ForbiddenView } from "@/components/ForbiddenView";
 import { ALERT_CLASS } from "@/components/form/FormField";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,7 @@ const t = fr.rapportFinal;
 /** Rapport d'audit de la mission : rédaction, aperçu, soumission et validation. */
 export function RapportPage() {
   const { id } = useParams();
+  const { is } = useRole();
   const report = useMissionReport(id);
   const create = useCreateReport();
   const [createError, setCreateError] = useState<string | null>(null);
@@ -29,6 +32,9 @@ export function RapportPage() {
       setCreateError(isApiError(e) ? e.detail : t.createError);
     }
   }
+
+  // L'audité ne voit que les rapports diffusés (/rapports) : l'onglet est masqué, l'URL directe est refusée.
+  if (is("AUDITE")) return <ForbiddenView />;
 
   let body;
   if (report.isPending) {
