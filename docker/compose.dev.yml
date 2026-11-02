@@ -33,6 +33,7 @@ services:
       KEYCLOAK_ADMIN_API_CLIENT_SECRET: ${KEYCLOAK_ADMIN_API_CLIENT_SECRET:?KEYCLOAK_ADMIN_API_CLIENT_SECRET is required (see .env.example)}
     volumes:
       - ./keycloak/realm-onea.json:/opt/keycloak/data/import/realm-onea.json:ro
+      - ./keycloak/themes/onea:/opt/keycloak/themes/onea:ro
     ports:
       - "127.0.0.1:${KEYCLOAK_PORT:-8080}:8080"
     healthcheck:

@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { safeReturnPath } from "@/auth/safePath";
 import { useAuth } from "@/auth/useAuth";
+import { LogoMark } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fr } from "@/i18n/fr";
@@ -23,7 +24,8 @@ export function LoginPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md items-center p-6">
       <Card className="w-full">
-        <CardHeader>
+        <CardHeader className="items-center text-center">
+          <LogoMark className="mb-2 size-32" />
           <CardTitle>{fr.app.name}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">

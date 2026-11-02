@@ -89,3 +89,10 @@ en-tête avec logo ONEA et référence de mission, pied avec pagination et menti
 ## Ton rédactionnel
 Vouvoiement, phrases courtes, vocabulaire IFACI/IIA exact (constat, recommandation,
 plan d'actions, référentiel d'audit). Boutons à l'infinitif (« Valider le rapport »).
+
+## Logo officiel
+Le seul logo autorisé est le logo officiel ONEA (`frontend/src/assets/logo-onea.jpg`, copie non modifiée
+de `LOGO.jpg`, carré 500 × 500, fond blanc). Texte alternatif : « ONEA — Office national de l'eau et de
+l'assainissement ». Sur fond sombre il est posé sur une pastille blanche arrondie (le JPG n'est pas
+transparent). Dérivés générés par redimensionnement (Pillow) : `frontend/public/favicon.ico`,
+`favicon-32.png`, `apple-touch-icon.png` (180 px) et `docker/keycloak/themes/onea/login/resources/img/logo-onea.png`.

@@ -407,6 +407,8 @@ services:
       JAVA_OPTS_KC_HEAP: "-XX:MaxRAMPercentage=65 -XX:InitialRAMPercentage=25"
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
+    volumes:
+      - ./keycloak/themes/onea:/opt/keycloak/themes/onea:ro
     depends_on:
       keycloak-db:
         condition: service_healthy
