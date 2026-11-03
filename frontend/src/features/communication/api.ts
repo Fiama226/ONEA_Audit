@@ -30,6 +30,7 @@ import type {
   ReponseRapport,
   ReponseRapportInput,
   TexteReponseRapport,
+  SignatureRapport,
   TexteValidation,
 } from "./types";
 
@@ -137,6 +138,15 @@ export function useValidationText(id: string | undefined) {
     queryKey: communicationKeys.validationText(id),
     queryFn: () => apiFetch<TexteValidation>(`${BASE}/reports/${id}/validation-text/`),
     enabled: id !== undefined,
+  });
+}
+
+/** Signature électronique PAdES du rapport final : signataire, date et validité vérifiée. */
+export function useReportSignature(id: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: communicationKeys.signature(id),
+    queryFn: () => apiFetch<SignatureRapport>(`${BASE}/reports/${id}/signature/`),
+    enabled: id !== undefined && enabled,
   });
 }
 

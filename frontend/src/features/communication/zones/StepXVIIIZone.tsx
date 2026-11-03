@@ -6,12 +6,13 @@ import { ConfirmActionDialog } from "@/features/missions/components/ConfirmActio
 import type { ZoneProps } from "@/features/missions/zones";
 import { fr } from "@/i18n/fr";
 import { formatDateTime } from "@/lib/dates";
-import { useMissionReport, useRecipients, useReportAction } from "../api";
+import { useMissionReport, useRecipients, useReportAction, useReportSignature } from "../api";
 import { CorrectedReportDialog } from "../components/CorrectedReportDialog";
 import { DistributionTracking } from "../components/DistributionTracking";
 import { DocumentSlot } from "../components/DocumentSlot";
 import { RapportStatusBadge } from "../components/RapportStatusBadge";
 import { RecipientsEditor } from "../components/RecipientsEditor";
+import { SignaturePanel } from "../components/SignaturePanel";
 import { ValidationPanel } from "../components/ValidationPanel";
 import type { Rapport } from "../types";
 
@@ -21,11 +22,12 @@ const t = fr.rapportFinal;
 export function distributeBlocker(
   rapport: Rapport,
   recipientCount: number | undefined,
+  signed = false,
 ): string | null {
   const final = rapport.version_finale;
   if (!final || final.statut !== "PRETE") return t.notGenerated;
   if (final.statut_pdf !== "PRET") return t.pdfNotReady;
-  if (rapport.signature_electronique_requise) return t.signatureMissing;
+  if (rapport.signature_electronique_requise && !signed) return t.signatureMissing;
   if (recipientCount === 0) return t.noRecipients;
   return null;
 }
@@ -120,6 +122,7 @@ function ReportFlow({ rapport }: { rapport: Rapport }) {
               missionId={rapport.mission}
             />
           </section>
+          <SignaturePanel rapport={rapport} />
           <RecipientsEditor
             rapportId={rapport.id}
             missionId={rapport.mission}
@@ -156,11 +159,16 @@ function ReportFlow({ rapport }: { rapport: Rapport }) {
 
 function DistributeControl({ rapport }: { rapport: Rapport }) {
   const recipients = useRecipients(rapport.id);
+  const signature = useReportSignature(rapport.id, rapport.signature_electronique_requise);
   const action = useReportAction();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   if (!rapport.actions_possibles.includes("DIFFUSER")) return null;
-  const reason = distributeBlocker(rapport, recipients.data?.results.length);
+  const reason = distributeBlocker(
+    rapport,
+    recipients.data?.results.length,
+    signature.data?.signee === true,
+  );
   const reasonId = "distribute-reason";
 
   return (
