@@ -113,6 +113,13 @@ def cle_version(document_id: UUID, numero_version: int, extension: Literal["docx
     return f"versions/{document_id}/v{numero_version:03d}.{extension}"
 
 
+def cle_signature(version_id: UUID) -> str:
+    """Clé du PDF signé (PAdES) d'une version de document."""
+    if not isinstance(version_id, UUID):
+        raise ValueError("Clé de signature invalide.")
+    return f"signatures/{version_id}/v001-signe.pdf"
+
+
 def _min_libre_octets() -> int:
     return int(settings.DOCUMENTS_ESPACE_MIN_LIBRE_MO) * _MO
 

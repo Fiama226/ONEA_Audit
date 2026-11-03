@@ -216,6 +216,8 @@ sur un objet qui n'est pas le sien. Les rôles ADMIN et DG restent bloqués par
 
 ### SEC-07 — Faible — Les confirmations horodatées ne sont pas scellées par une clé
 
+> Mise à jour 2026-11-03 : la signature PAdES du rapport final (lot 7 bis, `docs/exploitation/signature-electronique.md`) apporte un scellement par clé du PDF diffusé lorsque le certificat de l'ONEA est configuré. Les confirmations D10 elles-mêmes restent en SHA-256 sans clé (risque accepté inchangé).
+
 - `backend/apps/signatures/services.py:43-52` : `empreinte = sha256(texte canonique + données)`,
   stockée dans la même base ; `verifier` (l.80-85) la recalcule. Quiconque peut écrire dans la
   base peut modifier une confirmation et recalculer l'empreinte. Les déclencheurs SQL

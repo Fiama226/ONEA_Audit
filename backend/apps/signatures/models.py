@@ -9,7 +9,7 @@ from apps.core.exceptions import RegleMetierError
 from apps.core.models import BaseModel
 from apps.users.models import User
 
-from .exceptions import ConfirmationImmuableError
+from .exceptions import ConfirmationImmuableError, SignatureImmuableError
 from .managers import ConfirmationAllManager, ConfirmationManager
 
 
@@ -128,3 +128,52 @@ class Confirmation(BaseModel):
 
     def soft_delete(self, by: User) -> None:
         raise ConfirmationImmuableError
+
+
+class SignatureElectronique(BaseModel):
+    """Signature PAdES posée sur le PDF d'une version de document (lot 7 bis).
+
+    Immuable : une signature n'est jamais modifiée ni supprimée. Le PDF signé est stocké en
+    écriture unique ; aucune clé privée n'est jamais conservée ici.
+    """
+
+    version = models.ForeignKey(
+        "documents.DocumentVersion", on_delete=models.PROTECT, related_name="+"
+    )
+    signe_par = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
+    signe_le = models.DateTimeField("signé le")
+    sujet = models.CharField("sujet du certificat", max_length=500)
+    emetteur = models.CharField("émetteur du certificat", max_length=500)
+    numero_serie = models.CharField("numéro de série", max_length=100)
+    empreinte_certificat = models.CharField("empreinte du certificat", max_length=64)
+    raison = models.CharField("raison", max_length=300, blank=True)
+    lieu = models.CharField("lieu", max_length=200, blank=True)
+    cle_stockage = models.CharField("clé du PDF signé", max_length=200)
+    empreinte_pdf_signe = models.CharField("empreinte du PDF signé", max_length=64)
+    taille = models.PositiveIntegerField("taille (octets)")
+    horodatage_tsa = models.BooleanField("horodatage RFC 3161", default=False)
+
+    class Meta:
+        ordering = ["-signe_le"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["version"],
+                condition=Q(deleted_at__isnull=True),
+                name="signature_electronique_une_par_version",
+            ),
+            models.CheckConstraint(
+                condition=Q(empreinte_pdf_signe__regex=r"^[0-9a-f]{64}$"),
+                name="signature_electronique_empreinte_sha256",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"Signature de {self.version_id} le {self.signe_le:%d/%m/%Y}"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self._state.adding or kwargs.get("force_update") or kwargs.get("update_fields"):
+            raise SignatureImmuableError
+        super().save(*args, **kwargs)
+
+    def soft_delete(self, by: User) -> None:
+        raise SignatureImmuableError

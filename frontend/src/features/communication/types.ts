@@ -10,6 +10,8 @@ export type RapportModification = S["PatchedRapportModificationRequestRequest"];
 export type StatutRapport = S["StatutRapportEnum"];
 export type AppreciationGlobale = S["AppreciationGlobaleEnum"];
 export type TexteValidation = S["TexteValidation"];
+/** Signature PAdES du rapport final et résultat de sa vérification. */
+export type SignatureRapport = S["SignatureElectronique"];
 
 export type RapportProvisoire = S["RapportProvisoire"];
 export type ConstatProvisoire = S["ConstatProvisoire"];
@@ -24,13 +26,14 @@ export type CategorieDestinataire = S["CategorieDestinataireEnum"];
 
 /** Actions de transition d'un rapport (routes `/reports/{id}/<action>/`). */
 export type RapportAction =
-  "submit" | "validate" | "return" | "distribute" | "correct" | "acknowledge";
+  "submit" | "validate" | "return" | "distribute" | "correct" | "acknowledge" | "sign";
 
 /** Charge utile de chaque action : motif (renvoi, correction), message (diffusion), confirmation (validation). */
 export type RapportActionPayload = {
   motif?: string;
   message?: string;
   confirme?: boolean;
+  lieu?: string;
 };
 
 export type FormatRapport = "pdf" | "docx";

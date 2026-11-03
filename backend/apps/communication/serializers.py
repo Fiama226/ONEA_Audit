@@ -350,6 +350,24 @@ class DiffusionRequestSerializer(serializers.Serializer[Any]):
     message = serializers.CharField(required=False, allow_blank=True, default="")
 
 
+class SignatureRequestSerializer(serializers.Serializer[Any]):
+    lieu = serializers.CharField(required=False, allow_blank=True, default="", max_length=200)
+
+
+class SignatureElectroniqueSerializer(serializers.Serializer[Any]):
+    """Signature PAdES posée sur le rapport final, avec le résultat de sa vérification."""
+
+    signee = serializers.BooleanField()
+    valide = serializers.BooleanField()
+    signataire = serializers.CharField(allow_blank=True)
+    emetteur = serializers.CharField(allow_blank=True)
+    signe_par = serializers.CharField(allow_blank=True)
+    signe_le = serializers.DateTimeField(allow_null=True)
+    horodatage_tsa = serializers.BooleanField()
+    empreinte_certificat = serializers.CharField(allow_blank=True)
+    motif = serializers.CharField(allow_blank=True, help_text="Cause de l'invalidité, en français.")
+
+
 class TransmissionRequestSerializer(serializers.Serializer[Any]):
     delai_jours = serializers.IntegerField(required=False, default=15)
 

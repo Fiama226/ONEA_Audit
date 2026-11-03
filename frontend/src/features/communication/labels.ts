@@ -34,4 +34,5 @@ export const RAPPORT_ACTION_LABELS: Record<RapportAction, string> = {
   distribute: "Diffuser le rapport",
   correct: "Établir un rapport corrigé",
   acknowledge: "Accuser réception",
+  sign: "Signer électroniquement",
 };

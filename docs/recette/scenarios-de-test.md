@@ -1393,14 +1393,14 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
 ### S4-23 — Réglages admin : mode de signature
-**Rôle** : `admin`, `rai` · **Préconditions** : aucun signataire électronique installé.
+**Rôle** : `admin`, `rai` · **Préconditions** : aucun certificat de signature configuré (sinon, les modes électroniques sont sélectionnables : voir `docs/exploitation/signature-electronique.md`).
 1. `admin` : Administration › Mode de signature (`/administration/signatures`) : lire le tableau (types : ordre de mission, déclaration d'indépendance, validation du rapport ; mode en vigueur ; modifié le, par).
 2. Ouvrir la liste des modes d'un type : constater lesquels sont proposés.
 3. Tenter de choisir « Signature électronique (PAdES) ».
 4. `rai` : ouvrir la même page.
 5. Confirmer qu'un changement de mode ne touche que les validations futures.
 
-**Résultat attendu** : seul « Confirmation horodatée » est disponible (« Disponible après l'installation de la signature électronique (lot 7 bis) ») ; tentative électronique : « La signature électronique n'est pas encore disponible sur cette plateforme. » ; `rai` : « Lecture seule : seul l'administrateur peut modifier le mode de signature. » ; le mode « Confirmation » appliqué au rapport (S3-22) produit une confirmation horodatée avec empreinte, pas une signature qualifiée (SEC-07 : empreinte non scellée par clé).
+**Résultat attendu** : seul « Confirmation horodatée » est disponible (« Disponible lorsque le certificat de signature de l'ONEA est configuré sur le serveur ») ; tentative électronique : « La signature électronique n'est pas encore disponible sur cette plateforme. » ; `rai` : « Lecture seule : seul l'administrateur peut modifier le mode de signature. » ; le mode « Confirmation » appliqué au rapport (S3-22) produit une confirmation horodatée avec empreinte, pas une signature qualifiée (SEC-07 : empreinte non scellée par clé).
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 

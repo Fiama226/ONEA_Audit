@@ -3290,6 +3290,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/{id}/sign/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Signer électroniquement (PAdES) le rapport final validé (RAI)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        post: operations["v1_reports_sign_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{id}/signature/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Vérifier la signature électronique du rapport final (signataire, date)
+         * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
+         */
+        get: operations["v1_reports_signature_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/{id}/submit/": {
         parameters: {
             query?: never;
@@ -8465,6 +8505,24 @@ export interface components {
             readonly id: number;
             readonly nom_complet: string;
         };
+        /** @description Signature PAdES posée sur le rapport final, avec le résultat de sa vérification. */
+        SignatureElectronique: {
+            signee: boolean;
+            valide: boolean;
+            signataire: string;
+            emetteur: string;
+            signe_par: string;
+            /** Format: date-time */
+            signe_le: string | null;
+            horodatage_tsa: boolean;
+            empreinte_certificat: string;
+            /** @description Cause de l'invalidité, en français. */
+            motif: string;
+        };
+        SignatureRequestRequest: {
+            /** @default  */
+            lieu: string;
+        };
         /**
          * @description * `A_LANCER` - À lancer
          *     * `EN_COURS` - En cours
@@ -8981,9 +9039,10 @@ export interface components {
          *     * `REINITIALISE` - Réinitialisé
          *     * `DIFFUSE` - Diffusé
          *     * `CORRIGE` - Rapport corrigé émis
+         *     * `SIGNE` - Signé électroniquement
          * @enum {string}
          */
-        TypeEvenementRapportEnum: "CREE" | "PROVISOIRE_TRANSMIS" | "SOUMIS" | "VALIDE" | "RENVOYE" | "REINITIALISE" | "DIFFUSE" | "CORRIGE";
+        TypeEvenementRapportEnum: "CREE" | "PROVISOIRE_TRANSMIS" | "SOUMIS" | "VALIDE" | "RENVOYE" | "REINITIALISE" | "DIFFUSE" | "CORRIGE" | "SIGNE";
         /**
          * @description * `OUVERT` - Suivi ouvert
          *     * `DEMARRE` - Action démarrée
@@ -22416,6 +22475,118 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_sign_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SignatureRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SignatureRequestRequest"];
+                "multipart/form-data": components["schemas"]["SignatureRequestRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignatureElectronique"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_reports_signature_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignatureElectronique"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

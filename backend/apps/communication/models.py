@@ -61,6 +61,7 @@ class TypeEvenementRapport(models.TextChoices):
     REINITIALISE = "REINITIALISE", "Réinitialisé"
     DIFFUSE = "DIFFUSE", "Diffusé"
     CORRIGE = "CORRIGE", "Rapport corrigé émis"
+    SIGNE = "SIGNE", "Signé électroniquement"
 
 
 def _mission_fk(related_name: str) -> models.ForeignKey[Mission]:

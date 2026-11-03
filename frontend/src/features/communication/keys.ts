@@ -12,6 +12,7 @@ export const communicationKeys = {
   preview: (id: string | undefined) => [...ROOT, "report", id, "preview"] as QueryKey,
   validationText: (id: string | undefined) =>
     [...ROOT, "report", id, "validation-text"] as QueryKey,
+  signature: (id: string | undefined) => [...ROOT, "report", id, "signature"] as QueryKey,
   drafts: (rapportId: string | undefined) => [...ROOT, "drafts", rapportId] as QueryKey,
   draftResponses: (params?: object) => [...ROOT, "draft-responses", params ?? null] as QueryKey,
   draftResponseText: (provisoireId: string | undefined, constatId: string | undefined) =>

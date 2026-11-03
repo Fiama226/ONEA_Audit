@@ -44,3 +44,5 @@ build/audit/
 
 # Pièces justificatives (lot 6) : jamais dans le dépôt
 /var/
+*.p12
+*.pfx

@@ -197,6 +197,20 @@ est refusé sauf si `E2E_ALLOW_DB_CLEANUP=1`. Pour une seconde pile à côté de
 - **Livrables (D12)** et **droits (D13)** : ADMIN et DG n'accèdent à rien ; chaque action
   figure dans la piste d'audit et chaque consultation sensible dans le journal.
 
+## Signature électronique PAdES (lot 7 bis)
+
+- `apps/signatures/pades.py` : `SignatairePades` (pyHanko, MIT) signe par ajout incrémental le PDF du
+  rapport final avec le PKCS#12 de l'ONEA (`SIGNATURE_PKCS12_FILE`, phrase secrète par `env_secret`) ; le
+  PDF signé est écrit en écriture unique (`cle_signature`) et sa `SignatureElectronique` est immuable.
+- Enregistré dans `SignaturesConfig.ready` seulement si le certificat est configuré : sinon le mode
+  électronique reste indisponible et la confirmation horodatée sert de repli.
+- API : `POST /api/v1/reports/{id}/sign/` (RAI, rapport VALIDE, mode électronique figé),
+  `GET /api/v1/reports/{id}/signature/` (état vérifié : signataire, date, validité) ; le téléchargement
+  du rapport diffusé renvoie le PDF signé. Porte de diffusion : un rapport en mode électronique ne se
+  diffuse qu'une fois signé.
+- Certificat de développement : `manage.py generer_certificat_signature_dev`. Exploitation et
+  certificat réel : `docs/exploitation/signature-electronique.md`.
+
 ## Dependencies and container images (reproducible builds)
 
 `backend/uv.lock` is committed (runtime + `dev` group). CI uses `uv sync --frozen`; the
