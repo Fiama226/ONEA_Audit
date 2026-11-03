@@ -56,11 +56,9 @@ une mission au bon statut pour chaque exercice (indiqué en tête de fiche).
 ## 4. Réinitialisation entre deux sessions
 Objectif : revenir à un état identique en moins de 15 minutes (cible du plan, **non mesurée**).
 
-1. Arrêter la pile et supprimer ses volumes : `scripts/recette/down.sh` (vérifier dans le script qu'il
-   supprime bien les volumes ; sinon `docker compose ... down -v` sur le projet de recette
-   uniquement).
-2. Supprimer le dossier de documents de la recette.
-3. Relancer les étapes 1.1 (pile, realm, `peupler_demo`). La graine par défaut (2026) rend le jeu
+1. Exécuter `sh scripts/recette/down.sh` : il supprime conteneurs, volumes, dossier de documents
+   et `.recette/` du projet `onea-recette` (lu dans le script).
+2. Relancer les étapes 1.1 (pile, realm, `peupler_demo`). La graine par défaut (2026) rend le jeu
    de données reproductible.
 
 Ne jamais exécuter ces commandes sur la pile de développement ni sur la production.
