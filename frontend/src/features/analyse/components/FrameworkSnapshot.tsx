@@ -65,7 +65,7 @@ export function FrameworkSnapshot({ snapshot }: { snapshot: InstantaneReferentie
       <p className="text-sm font-medium">
         {t.snapshotNotice.replace("{date}", formatDate(snapshot.confirmation.confirme_le))}
       </p>
-      <div className="marc-print overflow-x-auto rounded-md border border-border">
+      <div className="marc-print overflow-hidden rounded-md border border-border">
         <Table aria-label={t.marcCaption} className="text-xs">
           <TableHeader>
             <TableRow>
@@ -141,7 +141,7 @@ export function FrameworkSnapshot({ snapshot }: { snapshot: InstantaneReferentie
           </TableBody>
         </Table>
       </div>
-      <div className="overflow-x-auto rounded-md border border-border">
+      <div className="overflow-hidden rounded-md border border-border">
         <Table aria-label={t.swTitle} className="text-xs">
           <TableHeader>
             <TableRow>

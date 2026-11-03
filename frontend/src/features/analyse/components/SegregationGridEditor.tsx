@@ -17,6 +17,7 @@ import {
   segregationGridSchema,
 } from "../schemas/segregationGrid";
 import type { GrilleSeparation, RoleTache } from "../types";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const t = fr.analyseIII;
 const ROLES = Object.keys(ROLE_TACHE_LABELS) as RoleTache[];
@@ -163,7 +164,7 @@ export function SegregationGridEditor({ processus, mission, grid, editable }: Pr
     >
       {landscape && <style media="print">{"@page grille { size: A4 landscape; }"}</style>}
       {heading}
-      <div className="overflow-x-auto">
+      <ScrollRegion label={t.gridCaption.replace("{process}", processus.code)}>
         <table
           className="w-full border-collapse text-sm"
           aria-describedby={errors.length > 0 ? errorId : undefined}
@@ -278,7 +279,7 @@ export function SegregationGridEditor({ processus, mission, grid, editable }: Pr
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollRegion>
       <p className="text-xs text-text-muted">{t.gridLegend}</p>
       {writable && (
         <div className="flex flex-wrap gap-2 print:hidden">

@@ -11,5 +11,6 @@ export const suiviKeys = {
   recommendations: (params?: object) => [...ROOT, "recommendations", params ?? null] as QueryKey,
   evidence: (actionId: string | undefined) => [...ROOT, "action", actionId, "evidence"] as QueryKey,
   extensions: (params?: object) => [...ROOT, "extensions", params ?? null] as QueryKey,
+  reminders: (params?: object) => [...ROOT, "reminders", params ?? null] as QueryKey,
   missionsToClose: () => [...ROOT, "missions-to-close"] as QueryKey,
 };

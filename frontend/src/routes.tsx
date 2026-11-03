@@ -26,6 +26,8 @@ const rapportDetail = () => import("@/features/communication/pages/RapportDiffus
 const suiviPages = {
   register: () => import("@/features/suivi/pages/RegisterPage"),
   action: () => import("@/features/suivi/pages/ActionPage"),
+  extensions: () => import("@/features/suivi/pages/ExtensionRequestsPage"),
+  reminders: () => import("@/features/suivi/pages/RemindersPage"),
   notifications: () => import("@/features/notifications/pages/NotificationsPage"),
   search: () => import("@/features/recherche/pages/SearchPage"),
 };
@@ -93,6 +95,22 @@ export const appRoutes: RouteObject[] = [
             children: [
               { index: true, element: lazyRoute(suiviPages.register, "RegisterPage") },
               { path: "actions/:id", element: lazyRoute(suiviPages.action, "ActionPage") },
+              {
+                path: "reports",
+                element: (
+                  <RequireRole roles={["RAI"]}>
+                    {lazyRoute(suiviPages.extensions, "ExtensionRequestsPage")}
+                  </RequireRole>
+                ),
+              },
+              {
+                path: "relances",
+                element: (
+                  <RequireRole roles={["RAI"]}>
+                    {lazyRoute(suiviPages.reminders, "RemindersPage")}
+                  </RequireRole>
+                ),
+              },
             ],
           },
           {

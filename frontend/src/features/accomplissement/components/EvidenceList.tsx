@@ -15,6 +15,7 @@ import { formatDateTime } from "@/lib/dates";
 import { fr } from "@/i18n/fr";
 import { useEvidence, useRemoveEvidence, useUpdateEvidence } from "../api";
 import type { Piece } from "../types";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const t = fr.accomplissement.evidence;
 const r = fr.fiches;
@@ -77,7 +78,7 @@ export function EvidenceList({ ficheId, missionId }: Props) {
           {message}
         </p>
       )}
-      <div className="overflow-x-auto">
+      <ScrollRegion label={t.listLabel}>
         <table className="w-full text-left text-sm" aria-label={t.listLabel}>
           <thead>
             <tr className="border-b border-border text-xs text-text-muted">
@@ -177,7 +178,7 @@ export function EvidenceList({ ficheId, missionId }: Props) {
             })}
           </tbody>
         </table>
-      </div>
+      </ScrollRegion>
     </div>
   );
 }

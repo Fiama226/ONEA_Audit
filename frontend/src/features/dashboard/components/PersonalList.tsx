@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { fr } from "@/i18n/fr";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const t = fr.tableauxEquipe;
 
@@ -27,7 +28,7 @@ export function PersonalList({
       {rows.length === 0 ? (
         <p className="px-5 py-6 text-sm text-text-muted">{empty}</p>
       ) : (
-        <div className="overflow-x-auto">
+        <ScrollRegion label={title}>
           <table className="w-full border-collapse text-left text-sm">
             <caption className="sr-only">{title}</caption>
             <thead>
@@ -55,7 +56,7 @@ export function PersonalList({
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       )}
     </section>
   );

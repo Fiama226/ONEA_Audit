@@ -75,6 +75,9 @@ x-backend-env: &backend-env
   THROTTLE_RATE_ANONYME: ${THROTTLE_RATE_ANONYME:-30/min}
   THROTTLE_RATE_ANNUAIRE: ${THROTTLE_RATE_ANNUAIRE:-60/min}
   THROTTLE_RATE_RECHERCHE: ${THROTTLE_RATE_RECHERCHE:-60/min}
+  # Base of the links in reminder e-mails (https:// required by prod.py) and the daily reminder switch.
+  PLATEFORME_URL: https://${PUBLIC_HOST:?PUBLIC_HOST is required}
+  RELANCES_ACTIVES: ${RELANCES_ACTIVES:-true}
   MEILI_URL: http://meilisearch:7700
   MEILI_MASTER_KEY_FILE: /run/secrets/meili_master_key
   GOTENBERG_URL: http://gotenberg:3000
@@ -102,7 +105,7 @@ services:
       context: ..
       dockerfile: docker/backend.Dockerfile
     image: onea-backend:${APP_VERSION:?APP_VERSION is required (e.g. 1.0.0)}
-    command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput"]
+    command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py configurer_recherche && python manage.py collectstatic --noinput"]
     # Owner connection: creates tables, installs the freeze triggers and grants the application role.
     environment:
       <<: *backend-env
@@ -115,6 +118,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      meilisearch:
         condition: service_healthy
     networks: [backend]
 

@@ -15,6 +15,7 @@ import { fr } from "@/i18n/fr";
 import { useImportCsv } from "../api";
 import type { RapportImport } from "../types";
 import { ImportReport } from "./ImportReport";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const t = fr.utilisateurs.import;
 /** Limite serveur (1 Mo) : inutile d'envoyer un fichier plus gros. */
@@ -93,7 +94,9 @@ function CsvImport({ onClose }: { onClose: () => void }) {
         <p>{t.csvFormat}</p>
         <p>{t.csvAdmin}</p>
         <p className="font-semibold">{t.csvExample}</p>
-        <pre className="overflow-x-auto text-xs">{t.csvExampleText}</pre>
+        <ScrollRegion label={t.csvExample}>
+          <pre className="text-xs">{t.csvExampleText}</pre>
+        </ScrollRegion>
       </div>
       {!done && (
         <div className="grid gap-1.5">

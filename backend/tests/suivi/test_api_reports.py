@@ -134,3 +134,17 @@ def test_liste_filtres_et_requetes_bornees(
     assert rai.get(REPORTS, {"mission": str(e.mission.pk)}).json()["count"] == 3
     assert rai.get(REPORTS, {"statut": "INCONNU"}).status_code == 400
     assert client_de(e.users["non_affecte"]).get(REPORTS).json()["results"] == []
+
+
+def test_liste_expose_mission_et_action_pour_ecran_dedie(equipe_suivi: EquipeSuivi) -> None:
+    """Le journal des reports affiche la mission et l'action sans requête supplémentaire."""
+    e = equipe_suivi
+    assert _demander(e).status_code == 201
+    rai = client_de(e.users["rai"])
+    ligne = rai.get(REPORTS, {"statut": "EN_ATTENTE"}).json()["results"][0]
+    assert ligne["mission_id"] == str(e.mission.pk)
+    assert ligne["mission_reference"] == e.mission.reference
+    assert ligne["action_libelle"] == e.suivi.action.libelle
+    # le détail garde la forme figée du contrat
+    detail = rai.get(f"{REPORTS}{ligne['id']}/").json()
+    assert "mission_reference" not in detail

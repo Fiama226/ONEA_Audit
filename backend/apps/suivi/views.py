@@ -24,6 +24,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.renderers import JSONRenderer
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.serializers import BaseSerializer
 
 from apps.accomplissement.fichiers import MSG_TAILLE, taille_maximale
 from apps.accomplissement.views import (
@@ -635,7 +636,7 @@ class PreuveViewSet(SuiviBaseViewSet, mixins.ListModelMixin, mixins.RetrieveMode
         tags=[TAG_REPORTS],
         summary="Lister : demandes de report d'échéance",
         responses={
-            200: serializers.DemandeReportSerializer(many=True),
+            200: serializers.DemandeReportListeSerializer(many=True),
             **ERROR_400,
             **ERROR_RESPONSES,
         },
@@ -670,10 +671,15 @@ class DemandeReportViewSet(
     ordering_fields = ("created_at", "nouvelle_echeance")
     ordering = ("-created_at",)
 
+    def get_serializer_class(self) -> type[BaseSerializer[Any]]:
+        if self.action == "list":
+            return serializers.DemandeReportListeSerializer
+        return super().get_serializer_class()
+
     def get_queryset(self) -> QuerySet[DemandeReport]:
         return DemandeReport.objects.filter(
             mission__in=missions_suivi_visibles(self.acteur)
-        ).select_related("suivi", "demandee_par", "decidee_par", "mission")
+        ).select_related("suivi__action", "demandee_par", "decidee_par", "mission")
 
     def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         identifiant = _uuid_du_corps(request, "action")

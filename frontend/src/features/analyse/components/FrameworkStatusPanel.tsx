@@ -85,7 +85,7 @@ export function FrameworkStatusPanel({
       {framework.avis.length === 0 ? (
         <p className="text-sm text-text-muted">{t.noOpinion}</p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border">
+        <div className="overflow-hidden rounded-md border border-border">
           <Table aria-label={t.opinionsTitle}>
             <TableHeader>
               <TableRow>

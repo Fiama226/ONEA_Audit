@@ -1259,10 +1259,10 @@ acceptée à tort est un échec (gravité « Sécurité » pour toute fuite de d
 2. « Constats » : seuls les constats soumis ou validés de son entité apparaissent.
 3. Rapport (avant diffusion) : `/missions/<id>/rapport`.
 4. Entretiens : notes internes de synthèse.
-5. Réunions : compte rendu d'une réunion **non tenue** (constat SEC-09 connu).
+5. Réunions : compte rendu d'une réunion **non tenue** (SEC-09, corrigé : champs vides pour l'audité).
 6. Fiche de suivi, référentiel d'audit (avant diffusion).
 
-**Résultat attendu** : fiches, pièces, brouillons et rapport interne : refusés ou absents ; notes internes d'entretien masquées. Écart connu : le compte rendu d'une réunion pas encore tenue peut être lisible par l'audité (SEC-09) ; l'indiquer sans le considérer comme nouveau.
+**Résultat attendu** : fiches, pièces, brouillons et rapport interne : refusés ou absents ; notes internes d'entretien masquées. Le compte rendu et les décisions d'une réunion pas encore tenue sont vides pour l'audité (SEC-09, corrigé).
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1534,8 +1534,8 @@ Remarques de lecture :
 | **Antivirus** : `ANTIVIRUS_MOTEUR=aucun` par défaut, ClamAV (conteneur séparé) non livré en développement ; les formats OLE (`doc`, `xls`, `msg`) ne sont pas inspectés pour les macros | `core/antivirus.py`, ASVS SEC-04 | S4-13 étape 4 N/A sans ClamAV |
 | **OTP des comptes à privilèges** et politique de mots de passe : non appliqués en développement | ASVS SEC-03 | S1-04 : pas de verrouillage garanti |
 | **Piste d'audit sans écran** : API seule ; lecture du contenu des missions possible par l'ADMIN | ASVS SEC-02, `core/views.py` | S4-22 |
-| **Conflits d'intérêts lisibles par toute l'équipe** ; **compte rendu d'une réunion non tenue lisible par l'audité** | ASVS SEC-08, SEC-09 | constats connus à ne pas rouvrir |
-| **File de décisions du RAI** : les liens « Reports en attente », « Relances en échec », « Relances sans adresse » mènent au registre non filtré | `docs/HANDOFF.md` §2ter | S4-21 |
+| **Conflits d'intérêts lisibles par toute l'équipe** | ASVS SEC-08 | constat connu à ne pas rouvrir (SEC-09, compte rendu d'une réunion non tenue, est corrigé) |
+| ~~File de décisions du RAI : liens vers le registre non filtré~~ : corrigé, les liens mènent aux écrans `/recommandations/reports` et `/recommandations/relances` filtrés | `docs/HANDOFF.md` §2ter | S4-21 (clos) |
 | **Relances** : aucun écran dédié (API réservée au RAI, commande `envoyer_relances`, tâche quotidienne à 7 h) | `suivi/urls_relances.py` | S3-30 |
 | **Tableau de bord ADMIN** : écran d'attente | `DashboardAdmin.tsx` | S1-02 |
 | **Revues visuelles « ui-designer » et revues de sécurité des plans non faites** | `docs/HANDOFF.md` | remarques d'ergonomie attendues |

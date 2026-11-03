@@ -120,6 +120,30 @@ export const demandeReportFixture = {
   actions_possibles: ["accept", "refuse"],
 } satisfies S["DemandeReport"];
 
+export const demandeReportListeFixture = {
+  ...demandeReportFixture,
+  mission_id: MISSION_ID,
+  mission_reference: "MI-2026-001",
+  action_libelle: "Formaliser le rapprochement mensuel",
+} satisfies S["DemandeReportListe"];
+
+export const relanceFixture = {
+  id: "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa",
+  suivi: SUIVI_ID,
+  mission_id: MISSION_ID,
+  mission_reference: "MI-2026-001",
+  action_libelle: "Formaliser le rapprochement mensuel",
+  palier: "J",
+  echeance_reference: "2026-12-31",
+  destinataire: responsableFixture,
+  copie: null,
+  statut: "ECHEC",
+  tentatives: 3,
+  envoyee_le: null,
+  erreur: "SMTPException",
+  created_at: "2026-12-31T07:00:00Z",
+} satisfies S["Relance"];
+
 export const missionACloturerFixture = {
   id: MISSION_ID,
   reference: "MI-2026-001",

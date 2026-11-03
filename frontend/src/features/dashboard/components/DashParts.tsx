@@ -2,6 +2,7 @@ import { useId, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { fr } from "@/i18n/fr";
 import { cn } from "@/lib/utils";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const t = fr.tableauxDirection;
 
@@ -45,7 +46,7 @@ export function DashTable({
 }) {
   if (isEmpty) return <p className="text-sm text-text-muted">{empty}</p>;
   return (
-    <div className="overflow-x-auto">
+    <ScrollRegion label={caption}>
       <table className="w-full border-collapse text-left text-sm">
         <caption className="sr-only">{caption}</caption>
         <thead>
@@ -66,7 +67,7 @@ export function DashTable({
         </thead>
         <tbody>{children}</tbody>
       </table>
-    </div>
+    </ScrollRegion>
   );
 }
 

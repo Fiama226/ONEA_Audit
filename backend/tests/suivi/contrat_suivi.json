@@ -270,6 +270,7 @@
     "results": [
       {
         "action": "str",
+        "action_libelle": "str",
         "actions_possibles": [
           "str"
         ],
@@ -286,6 +287,8 @@
         },
         "echeance_actuelle": "str",
         "id": "str",
+        "mission_id": "str",
+        "mission_reference": "str",
         "motif": "str",
         "nouvelle_echeance": "str",
         "statut": "str"

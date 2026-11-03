@@ -8,6 +8,7 @@ import { useTracking } from "../api";
 import { StepStatusBadge } from "../components/StepStatusBadge";
 import { formatDays, formatGap } from "../format";
 import { PHASE_LABELS, PHASE_ORDER, PHASE_RANGES, TYPE_EVENEMENT_ETAPE_LABELS } from "../labels";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const m = fr.missionEtapes;
 
@@ -77,7 +78,7 @@ export function TrackingPage() {
             .replace("{reel}", `${formatDays(data.total_reel)} j`)}
         </p>
 
-        <div className="overflow-x-auto">
+        <ScrollRegion label={m.trackingCaption}>
           <table className="w-full text-left text-sm">
             <caption className="sr-only">{m.trackingCaption}</caption>
             <thead>
@@ -126,7 +127,7 @@ export function TrackingPage() {
               </tbody>
             ))}
           </table>
-        </div>
+        </ScrollRegion>
 
         <section aria-labelledby="tracking-journal" className="grid gap-2">
           <h3 id="tracking-journal" className="text-base font-semibold">

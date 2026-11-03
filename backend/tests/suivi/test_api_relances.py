@@ -67,6 +67,27 @@ def test_reminders_forme_et_filtres(mission_en_suivi: Any) -> None:  # noqa: F81
     assert client.get(URL, {"date_apres": "pas-une-date"}).status_code == 400
 
 
+def test_reminders_filtre_sans_adresse_et_comptes_de_la_file(
+    mission_en_suivi: Any,  # noqa: F811
+) -> None:
+    """Les filtres de l'écran dédié correspondent exactement aux compteurs de la file du RAI."""
+    from apps.tableaux_de_bord.agregats import file_decisions_rai
+
+    suivis = list(mission_en_suivi.suivis_actions.order_by("action__numero")[:2])
+    a = RelanceFactory(suivi=suivis[0], palier=PalierRelance.J_MOINS_15)
+    b = RelanceFactory(suivi=suivis[1], palier=PalierRelance.J)
+    Relance.all_objects.filter(pk=a.pk).update(statut=StatutRelance.SANS_ADRESSE)
+    Relance.all_objects.filter(pk=b.pk).update(statut=StatutRelance.ECHEC)
+    client = client_de(make_user(Role.RAI))
+    file = file_decisions_rai()
+    sans = client.get(URL, {"statut": "SANS_ADRESSE"}).json()
+    echec = client.get(URL, {"statut": "ECHEC"}).json()
+    assert [r["id"] for r in sans["results"]] == [str(a.pk)]
+    assert [r["id"] for r in echec["results"]] == [str(b.pk)]
+    assert sans["count"] == file["relances_sans_adresse"]
+    assert echec["count"] == file["relances_en_echec"]
+
+
 def test_reminders_lecture_seule(mission_en_suivi: Any) -> None:  # noqa: F811
     client = client_de(make_user(Role.RAI))
     assert client.post(URL, {}).status_code == 405

@@ -3,6 +3,7 @@ import { fr } from "@/i18n/fr";
 import { formatDateTime } from "@/lib/dates";
 import { useFindingResponses } from "../api";
 import { PositionBadge } from "./PositionBadge";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const t = fr.constatsUi;
 
@@ -24,7 +25,7 @@ export function ReponsesHistory({ constatId }: { constatId: string }) {
     body = <p className="text-sm text-text-muted">{t.historyEmpty}</p>;
   } else {
     body = (
-      <div className="overflow-x-auto">
+      <ScrollRegion label={t.historyCaption}>
         <table className="w-full text-left text-sm">
           <caption className="sr-only">{t.historyCaption}</caption>
           <thead>
@@ -71,7 +72,7 @@ export function ReponsesHistory({ constatId }: { constatId: string }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollRegion>
     );
   }
 

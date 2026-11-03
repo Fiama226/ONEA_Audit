@@ -3,6 +3,7 @@ import { fr } from "@/i18n/fr";
 import { useEvidence } from "../api";
 import type { Fiche } from "../types";
 import { ConclusionBadge } from "./ConclusionBadge";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const t = fr.fiches;
 
@@ -21,7 +22,7 @@ export function ValidationQueue({ missionId, sheets }: Props) {
   const queue = sheets.filter((sheet) => sheet.statut === "SOUMIS");
   if (queue.length === 0) return <p className="text-sm text-text-muted">{t.queueEmpty}</p>;
   return (
-    <div className="overflow-x-auto">
+    <ScrollRegion label={t.queueTable}>
       <table className="w-full text-left text-sm" aria-label={t.queueTable}>
         <thead>
           <tr className="border-b border-border text-xs text-text-muted">
@@ -70,6 +71,6 @@ export function ValidationQueue({ missionId, sheets }: Props) {
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollRegion>
   );
 }

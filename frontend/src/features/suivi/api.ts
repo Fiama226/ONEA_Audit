@@ -22,12 +22,15 @@ import type {
   ActionSuivie,
   DecisionReport,
   DemandeReport,
+  DemandeReportListe,
   EvenementAction,
   ExportKind,
   ExtensionInput,
   ExtensionParams,
   FormatExport,
   MissionACloturer,
+  ReminderParams,
+  Relance,
   MissionSuivie,
   PreuveMiseEnOeuvre,
   RecommandationSuivie,
@@ -214,6 +217,24 @@ export function useExtensionRequests(params: ExtensionParams = {}) {
   return useQuery({
     queryKey: suiviKeys.extensions(params),
     queryFn: () => fetchAllFollowUp<DemandeReport>("follow-up/extension-requests", params),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Journal des reports (RAI) : lignes enrichies de la mission et de l'action. */
+export function useExtensionJournal(params: ExtensionParams = {}) {
+  return useQuery({
+    queryKey: suiviKeys.extensions({ journal: true, ...params }),
+    queryFn: () => fetchAllFollowUp<DemandeReportListe>("follow-up/extension-requests", params),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Journal des relances (RAI) ; `statut` reprend les filtres de la file de décisions. */
+export function useReminders(params: ReminderParams = {}) {
+  return useQuery({
+    queryKey: suiviKeys.reminders(params),
+    queryFn: () => fetchAllFollowUp<Relance>("reminders", params),
     placeholderData: keepPreviousData,
   });
 }

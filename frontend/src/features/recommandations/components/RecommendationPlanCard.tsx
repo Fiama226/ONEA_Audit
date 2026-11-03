@@ -14,6 +14,7 @@ import { EcheanceCell } from "./EcheanceCell";
 import { RiskAcceptanceDialog } from "./RiskAcceptanceDialog";
 import { ConfirmActionDialog } from "@/features/missions/components/ConfirmActionDialog";
 import { StatusPill } from "@/components/StatusPill";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const t = fr.planActions;
 
@@ -93,7 +94,7 @@ export function RecommendationPlanCard({
       ) : actions.length === 0 ? (
         <p className="text-sm text-text-muted">{t.noActions}</p>
       ) : (
-        <div className="overflow-x-auto">
+        <ScrollRegion label={t.actionsCaption.replace("{reference}", ligne.reference)}>
           <table className="w-full text-left text-sm">
             <caption className="sr-only">
               {t.actionsCaption.replace("{reference}", ligne.reference)}
@@ -159,7 +160,7 @@ export function RecommendationPlanCard({
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       )}
 
       {reco && (canAdd || canAccept || canWithdraw) && (
