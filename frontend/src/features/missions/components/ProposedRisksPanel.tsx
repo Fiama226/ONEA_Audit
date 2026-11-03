@@ -3,6 +3,7 @@ import { ListIncompleteAlert } from "@/components/ListIncompleteAlert";
 import { RiskLevelBadge } from "@/features/referentiel/components/RiskLevelBadge";
 import { fr } from "@/i18n/fr";
 import { useProposedRisks } from "../api";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const m = fr.missionEtapes;
 
@@ -28,7 +29,7 @@ export function ProposedRisksPanel() {
       ) : (
         <>
           <ListIncompleteAlert count={proposed.data?.count ?? 0} loaded={rows.length} />
-          <div className="overflow-x-auto">
+          <ScrollRegion label={m.proposedCaption}>
             <table className="w-full text-left text-sm">
               <caption className="sr-only">{m.proposedCaption}</caption>
               <thead>
@@ -73,7 +74,7 @@ export function ProposedRisksPanel() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollRegion>
         </>
       )}
     </section>

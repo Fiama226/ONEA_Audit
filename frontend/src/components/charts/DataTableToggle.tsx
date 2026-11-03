@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { fr } from "@/i18n/fr";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 export interface ChartTable {
   columns: string[];
@@ -25,7 +26,7 @@ export function DataTableToggle({ caption, table }: { caption: string; table: Ch
       </Button>
       <div id={id}>
         {open && (
-          <div className="mt-2 overflow-x-auto">
+          <ScrollRegion label={caption} className="mt-2">
             <table className="w-full border-collapse text-sm">
               <caption className="pb-1 text-left font-medium">{caption}</caption>
               <thead>
@@ -63,7 +64,7 @@ export function DataTableToggle({ caption, table }: { caption: string; table: Ch
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollRegion>
         )}
       </div>
     </div>

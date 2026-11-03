@@ -13,6 +13,7 @@ import { ComplementaryTestDialog } from "../components/ComplementaryTestDialog";
 import { ConclusionBadge } from "../components/ConclusionBadge";
 import { FicheStatusBadge } from "../components/FicheStatusBadge";
 import type { TestPrevu } from "../types";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const t = fr.fiches;
 
@@ -93,7 +94,7 @@ export function StepXIIZone({ mission, step }: ZoneProps) {
         {rows.length === 0 ? (
           <p className="text-sm text-text-muted">{onlyMine ? t.noMyTests : t.noTests}</p>
         ) : (
-          <div className="overflow-x-auto">
+          <ScrollRegion label={t.testsTable}>
             <table className="w-full text-left text-sm" aria-label={t.testsTable}>
               <thead>
                 <tr className="border-b border-border text-xs text-text-muted">
@@ -188,7 +189,7 @@ export function StepXIIZone({ mission, step }: ZoneProps) {
                 })}
               </tbody>
             </table>
-          </div>
+          </ScrollRegion>
         )}
       </>
     );

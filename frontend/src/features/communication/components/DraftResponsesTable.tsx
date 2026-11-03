@@ -2,6 +2,7 @@ import { StatusPill } from "@/components/StatusPill";
 import { fr } from "@/i18n/fr";
 import { formatDateTime } from "@/lib/dates";
 import type { ReponseRapport, RapportProvisoire } from "../types";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const t = fr.rapportProvisoire;
 
@@ -10,7 +11,7 @@ type Props = { provisoire: RapportProvisoire; responses: readonly ReponseRapport
 /** Suivi des réponses : par constat, entité attendue, date de réception et mention « Hors délai ». */
 export function DraftResponsesTable({ provisoire, responses }: Props) {
   return (
-    <div className="overflow-x-auto">
+    <ScrollRegion label={t.responsesLabel}>
       <table className="w-full text-left text-sm">
         <caption className="sr-only">{t.responsesLabel}</caption>
         <thead>
@@ -50,6 +51,6 @@ export function DraftResponsesTable({ provisoire, responses }: Props) {
           })}
         </tbody>
       </table>
-    </div>
+    </ScrollRegion>
   );
 }

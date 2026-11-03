@@ -2,6 +2,7 @@ import { fr } from "@/i18n/fr";
 import { formatDateTime } from "@/lib/dates";
 import { TYPE_EVENEMENT_ETAPE_LABELS } from "../labels";
 import type { Etape } from "../types";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const m = fr.missionEtapes;
 
@@ -16,7 +17,7 @@ export function StepJournal({ step }: { step: Etape }) {
       {step.evenements.length === 0 ? (
         <p className="text-sm text-text-muted">{m.journalEmpty}</p>
       ) : (
-        <div className="overflow-x-auto">
+        <ScrollRegion label={m.journalTitle}>
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border text-text-muted">
@@ -45,7 +46,7 @@ export function StepJournal({ step }: { step: Etape }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       )}
     </section>
   );

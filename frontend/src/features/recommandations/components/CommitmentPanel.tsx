@@ -7,6 +7,7 @@ import { fr } from "@/i18n/fr";
 import { useCommit, useCommitmentText } from "../api";
 import type { EtatEngagement, SynthesePlan } from "../types";
 import { EcheanceCell } from "./EcheanceCell";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const t = fr.planActions;
 
@@ -44,7 +45,7 @@ export function CommitmentPanel({ missionId, summary, audite, writable }: Props)
       ) : summary.responsables.length === 0 ? (
         <p className="text-sm text-text-muted">{t.commitmentNoOwners}</p>
       ) : (
-        <div className="overflow-x-auto">
+        <ScrollRegion label={t.commitmentTable}>
           <table className="w-full text-left text-sm">
             <caption className="sr-only">{t.commitmentTable}</caption>
             <thead>
@@ -78,7 +79,7 @@ export function CommitmentPanel({ missionId, summary, audite, writable }: Props)
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       )}
     </section>
   );

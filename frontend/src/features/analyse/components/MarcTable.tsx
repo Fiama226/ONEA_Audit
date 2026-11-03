@@ -133,7 +133,7 @@ export function MarcTable({ missionId, editable, level = 3 }: Props) {
         </p>
       )}
       <ListIncompleteAlert count={lines.data.count} loaded={rows.length} />
-      <div className="overflow-x-auto rounded-md border border-border">
+      <div className="overflow-hidden rounded-md border border-border">
         <Table aria-label={t.marcCaption} className="text-xs">
           <TableHeader>
             <TableRow>

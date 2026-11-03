@@ -9,6 +9,7 @@ import { ConfirmActionDialog } from "../components/ConfirmActionDialog";
 import { MissionRiskDialog } from "../components/MissionRiskDialog";
 import { RiskSelectDialog } from "../components/RiskSelectDialog";
 import type { Etape, Mission, RisqueMission } from "../types";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const m = fr.missionEtapes;
 
@@ -119,7 +120,7 @@ export function StepIVZone({ mission, step }: { mission: Mission; step: Etape })
               {risks.isLoading ? fr.common.loading : cellFilter ? m.riskEmptyFiltered : m.riskEmpty}
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <ScrollRegion label={m.riskCaption}>
               <table className="w-full text-left text-sm">
                 <caption className="sr-only">{m.riskCaption}</caption>
                 <thead>
@@ -196,7 +197,7 @@ export function StepIVZone({ mission, step }: { mission: Mission; step: Etape })
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollRegion>
           )}
         </div>
         <div className="min-w-0">

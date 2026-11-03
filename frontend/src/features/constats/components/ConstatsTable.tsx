@@ -4,6 +4,7 @@ import { RiskLevelBadge } from "@/features/referentiel/components/RiskLevelBadge
 import { fr } from "@/i18n/fr";
 import type { Constat } from "../types";
 import { ConstatStatusBadge } from "./ConstatStatusBadge";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const t = fr.constatsUi;
 
@@ -23,7 +24,7 @@ export function ReponseCell({ constat }: { constat: Constat }) {
 /** Tableau des constats d'une mission ; les liens mènent à la page du constat. */
 export function ConstatsTable({ missionId, constats }: { missionId: string; constats: Constat[] }) {
   return (
-    <div className="overflow-x-auto">
+    <ScrollRegion label={t.tableCaption}>
       <table className="w-full text-left text-sm">
         <caption className="sr-only">{t.tableCaption}</caption>
         <thead>
@@ -74,6 +75,6 @@ export function ConstatsTable({ missionId, constats }: { missionId: string; cons
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollRegion>
   );
 }

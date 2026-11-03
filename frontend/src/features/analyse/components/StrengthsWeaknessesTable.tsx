@@ -223,7 +223,7 @@ export function StrengthsWeaknessesTable({ missionId, editable, level = 3 }: Pro
                 </Button>
               )}
             </div>
-            <div className="overflow-x-auto rounded-md border border-border">
+            <div className="overflow-hidden rounded-md border border-border">
               <Table aria-labelledby={headingId} className="text-xs">
                 <TableHeader>
                   <TableRow>
@@ -251,7 +251,7 @@ export function StrengthsWeaknessesTable({ missionId, editable, level = 3 }: Pro
                       <TableCell className="whitespace-normal">
                         {r.libelle}
                         {r.liee && (
-                          <span className="ml-2 inline-flex h-5 items-center rounded-sm border border-border px-1.5 text-[11px] font-medium">
+                          <span className="ml-2 inline-flex h-5 items-center rounded-sm border border-border px-1.5 text-xs font-medium">
                             {t.fromMarc}
                           </span>
                         )}

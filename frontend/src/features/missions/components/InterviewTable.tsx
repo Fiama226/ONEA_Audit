@@ -70,7 +70,7 @@ export function InterviewTable({ mission, interviews, filterable = false, label 
           </NativeSelect>
         </div>
       )}
-      <div className="overflow-x-auto rounded-md border border-border">
+      <div className="overflow-hidden rounded-md border border-border">
         <Table aria-label={label}>
           <TableHeader>
             <TableRow>

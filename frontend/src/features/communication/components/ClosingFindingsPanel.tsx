@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useFindings } from "@/features/constats/api";
 import { PositionBadge } from "@/features/constats/components/PositionBadge";
 import { fr } from "@/i18n/fr";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 
 const t = fr.rapportProvisoire;
 
@@ -32,7 +33,7 @@ export function ClosingFindingsPanel({ missionId }: { missionId: string }) {
       validated.length === 0 ? (
         <p className="text-sm text-text-muted">{t.findingsEmpty}</p>
       ) : (
-        <div className="overflow-x-auto">
+        <ScrollRegion label={t.findingsLabel}>
           <table className="w-full text-left text-sm">
             <caption className="sr-only">{t.findingsLabel}</caption>
             <thead>
@@ -68,7 +69,7 @@ export function ClosingFindingsPanel({ missionId }: { missionId: string }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollRegion>
       );
   }
 
