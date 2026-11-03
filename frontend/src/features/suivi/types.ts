@@ -7,6 +7,7 @@ export type RecommandationSuivie = S["RecommandationSuivi"];
 export type EvenementAction = S["EvenementActionSuivi"];
 export type PreuveMiseEnOeuvre = S["Preuve"];
 export type DemandeReport = S["DemandeReport"];
+export type DemandeReportListe = S["DemandeReportListe"];
 export type MissionACloturer = S["MissionACloturer"];
 export type MissionSuivie = S["MissionSuivi"];
 export type Relance = S["Relance"];
@@ -15,6 +16,8 @@ export type StatutSuivi = S["StatutSuiviEnum"];
 export type StatutRecommandationSuivi = S["StatutRecommandationSuiviEnum"];
 export type TypeEvenementSuivi = S["TypeEvenementSuiviEnum"];
 export type StatutDemandeReport = S["StatutDemandeReportEnum"];
+export type StatutRelance = S["StatutRelanceEnum"];
+export type PalierRelance = S["PalierRelanceEnum"];
 export type PrioriteRecommandation = S["PrioriteRecommandationEnum"];
 
 /** Transitions du suivi d'une action (une route POST chacune). */
@@ -71,3 +74,10 @@ export type ExtensionParams = {
 };
 
 export type ExtensionInput = S["DemandeReportRequestRequest"];
+
+export type ReminderParams = {
+  statut?: StatutRelance;
+  mission?: string;
+  page?: number;
+  page_size?: number;
+};

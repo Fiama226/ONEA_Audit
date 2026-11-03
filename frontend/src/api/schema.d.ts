@@ -4978,6 +4978,39 @@ export interface components {
             readonly commentaire_decision: string;
             readonly actions_possibles: string[];
         };
+        /** @description Ligne du journal des reports : ajoute la mission et l'action pour l'écran dédié du RAI. */
+        DemandeReportListe: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly action: string;
+            /**
+             * Échéance actuelle
+             * Format: date
+             */
+            readonly echeance_actuelle: string;
+            /**
+             * Nouvelle échéance
+             * Format: date
+             */
+            readonly nouvelle_echeance: string;
+            readonly motif: string;
+            readonly statut: components["schemas"]["StatutDemandeReportEnum"];
+            readonly demandee_par: components["schemas"]["UtilisateurResume"];
+            readonly decidee_par: components["schemas"]["UtilisateurResume"] | null;
+            /**
+             * Décidée le
+             * Format: date-time
+             */
+            readonly decidee_le: string | null;
+            /** Commentaire de la décision */
+            readonly commentaire_decision: string;
+            readonly actions_possibles: string[];
+            /** Format: uuid */
+            readonly mission_id: string;
+            readonly mission_reference: string;
+            readonly action_libelle: string;
+        };
         DemandeReportRequestRequest: {
             /** Format: uuid */
             action: string;
@@ -6601,7 +6634,7 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["Declaration"][];
         };
-        PaginatedDemandeReportList: {
+        PaginatedDemandeReportListeList: {
             /** @example 123 */
             count: number;
             /**
@@ -6614,7 +6647,7 @@ export interface components {
              * @example http://api.example.org/accounts/?page=2
              */
             previous?: string | null;
-            results: components["schemas"]["DemandeReport"][];
+            results: components["schemas"]["DemandeReportListe"][];
         };
         PaginatedDescriptionProcessusList: {
             /** @example 123 */
@@ -15700,7 +15733,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedDemandeReportList"];
+                    "application/json": components["schemas"]["PaginatedDemandeReportListeList"];
                 };
             };
             400: {

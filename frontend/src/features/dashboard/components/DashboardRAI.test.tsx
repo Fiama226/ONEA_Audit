@@ -63,6 +63,20 @@ describe("DashboardRAI", () => {
     expect(link).toHaveAttribute("href", "/recommandations?vue=actions&statut=VERIFIEE");
   });
 
+  it("mène reports et relances vers leurs écrans filtrés", async () => {
+    serve();
+    renderWithAuth(<DashboardRAI />, "RAI");
+    const reports = await screen.findByRole("link", { name: new RegExp(t.queueExtensions) });
+    expect(reports).toHaveAttribute("href", "/recommandations/reports?statut=EN_ATTENTE");
+    expect(screen.getByRole("link", { name: new RegExp(t.queueRemindersFailed) })).toHaveAttribute(
+      "href",
+      "/recommandations/relances?statut=ECHEC",
+    );
+    expect(
+      screen.getByRole("link", { name: new RegExp(t.queueRemindersNoAddress) }),
+    ).toHaveAttribute("href", "/recommandations/relances?statut=SANS_ADRESSE");
+  });
+
   it("lie les missions par statut à la liste filtrée", async () => {
     serve();
     renderWithAuth(<DashboardRAI />, "RAI");
