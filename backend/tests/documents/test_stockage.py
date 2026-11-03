@@ -152,7 +152,7 @@ def test_compose_sans_minio() -> None:
     ]
     assert cibles
     for fichier in cibles:
-        assert "minio" not in fichier.read_text(encoding="utf-8").lower(), fichier
+        assert "minio" not in fichier.read_text(encoding="utf-8", errors="ignore").lower(), fichier
 
 
 def test_compose_prod_monte_le_volume_documents_sur_web_et_worker_seulement() -> None:

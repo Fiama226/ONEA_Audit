@@ -110,6 +110,7 @@ BUDGETS_REQUETES: dict[str, int] = {
     "/api/v1/reports/{id}/": 10,
     "/api/v1/reports/{id}/download/": 5,
     "/api/v1/reports/{id}/preview/": 13,
+    "/api/v1/reports/{id}/signature/": 5,
     "/api/v1/reports/{id}/validation-text/": 5,
     "/api/v1/risk-acceptances/": 5,
     "/api/v1/risk-acceptances/{id}/": 5,
