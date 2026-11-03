@@ -110,6 +110,7 @@ export const ROUTES: readonly EntreeRoute[] = [
   { motif: "/administration/documents/numerotation", roles: ADMIN_LECTURE },
   { motif: "/administration/documents/:type", roles: ADMIN_LECTURE, parametres: ["gabarit"] },
   { motif: "/administration/signatures", roles: ADMIN_LECTURE },
+  { motif: "/mon-compte", roles: TOUS },
 ];
 
 /** Pages publiques hors coque (sans rôle). */
