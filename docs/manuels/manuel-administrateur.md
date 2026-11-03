@@ -160,9 +160,13 @@ Le nouveau format ne s'applique qu'aux documents créés ensuite.
 
 1. « Administration », « Mode de signature » (`/administration/signatures`). Le tableau liste les types
    (ordre de mission, déclaration d'indépendance, validation du rapport), le mode en vigueur, la date et l'auteur de la dernière modification.
-2. Seul le mode « Confirmation horodatée » est disponible. Le mode « Signature électronique (PAdES) » est
-   présenté comme « Disponible après l'installation de la signature électronique (lot 7 bis) » ; le choisir
-   répond : « La signature électronique n'est pas encore disponible sur cette plateforme. »
+2. Tant que le certificat de signature de l'ONEA n'est pas configuré sur le serveur, seul le mode
+   « Confirmation horodatée » est disponible : les modes électroniques sont présentés comme « Disponible
+   lorsque le certificat de signature de l'ONEA est configuré sur le serveur » ; les choisir répond :
+   « La signature électronique n'est pas encore disponible sur cette plateforme. » Une fois le certificat
+   installé (voir `docs/exploitation/signature-electronique.md`), « Signature électronique (PAdES) » et
+   « Confirmation et signature électronique » deviennent sélectionnables : le RAI doit alors signer le
+   rapport validé avant de le diffuser.
 3. Un changement de mode ne concerne que les validations futures.
 
 Le RAI voit la même page en lecture seule.

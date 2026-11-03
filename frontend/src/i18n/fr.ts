@@ -2022,7 +2022,8 @@ export const fr = {
     colModifiedBy: "Par",
     never: "Jamais modifié",
     selectLabel: (type: string) => `Mode de signature de ${type}`,
-    unavailableHelp: "Disponible après l'installation de la signature électronique.",
+    unavailableHelp:
+      "Disponible lorsque le certificat de signature de l'ONEA est configuré sur le serveur.",
     readOnly: "Lecture seule : seul l'administrateur peut modifier le mode de signature.",
     loadError: "Impossible de charger les modes de signature.",
     confirmTitle: (type: string, mode: string) => `Appliquer « ${mode} » à ${type} ?`,

@@ -51,7 +51,9 @@ describe("SignatureSettingsPage", () => {
     ).toEqual([]);
     expect(screen.getByRole("option", { name: "Signature électronique (PAdES)" })).toBeDisabled();
     expect(
-      screen.getByText("Disponible après l'installation de la signature électronique."),
+      screen.getByText(
+        "Disponible lorsque le certificat de signature de l'ONEA est configuré sur le serveur.",
+      ),
     ).toBeInTheDocument();
 
     await userEvent.selectOptions(select, "CONFIRMATION_ET_SIGNATURE");
