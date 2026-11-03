@@ -197,6 +197,26 @@ est refusé sauf si `E2E_ALLOW_DB_CLEANUP=1`. Pour une seconde pile à côté de
 - **Livrables (D12)** et **droits (D13)** : ADMIN et DG n'accèdent à rien ; chaque action
   figure dans la piste d'audit et chaque consultation sensible dans le journal.
 
+## Suivi, relances et recherche (lot 8)
+
+- **Suivi** (`apps.suivi`) : registre des recommandations et des actions, preuves de mise en
+  oeuvre, demandes de report d'échéance (décision du RAI), clôture de mission. Le tableau de
+  bord du RAI (« File de décisions ») renvoie vers les écrans filtrés
+  `/recommandations?vue=actions&statut=VERIFIEE`, `/recommandations/reports?statut=EN_ATTENTE`,
+  `/recommandations/relances?statut=ECHEC` et `?statut=SANS_ADRESSE` (RAI seulement ; l'API
+  correspondante est `GET /api/v1/reminders/` et `GET /api/v1/follow-up/extension-requests/`, filtre `statut`).
+- **Relances** : tâche Celery `suivi.relances_quotidiennes` à 07:00 (`suivi-relances`), paliers
+  J-15, J et J+15, une relance par palier. `RELANCES_ACTIVES=false` les suspend ;
+  `PLATEFORME_URL` (https en production) fonde les liens des courriels. Exploitation :
+  `python manage.py envoyer_relances --simulation [--date AAAA-MM-JJ]` liste ce qui serait envoyé
+  sans rien écrire. Une relance « sans adresse » ou « en échec » reste visible au RAI.
+- **Recherche** : Meilisearch n'est jamais exposé (ni Nginx ni le frontend) ; seul
+  `GET /api/v1/search/` y accède, avec le périmètre de l'utilisateur. `python manage.py
+  configurer_recherche` (exécuté par le service `migrate` en production) applique les
+  réglages de l'index ; `python manage.py reindexer [--type TYPE]` le reconstruit. La
+  réconciliation de l'index (`recherche-reconciliation`, 02:00) rattrape les écarts ; celle du suivi
+  (`suivi-reconciliation`) tourne chaque heure.
+
 ## Dependencies and container images (reproducible builds)
 
 `backend/uv.lock` is committed (runtime + `dev` group). CI uses `uv sync --frozen`; the

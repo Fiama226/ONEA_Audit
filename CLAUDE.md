@@ -41,7 +41,8 @@ Maître d'œuvre : IKA SOLUTION LTD. Langue de travail et de l'interface : **fra
 ## Structure du dépôt
 
 ```
-backend/          Django (apps: core, missions, risques, documents, recommandations, referentiel, users)
+backend/          Django (apps: core, referentiel, programmation, missions, accomplissement, constats, analyse, communication,
+            signatures, documents, recommandations, suivi, notifications, tableaux_de_bord, recherche, users)
 frontend/         React + Vite
 docs/             spécifications, plans, charte graphique, domaine métier
 docs/superpowers/specs/   documents de conception approuvés
