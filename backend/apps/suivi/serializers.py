@@ -115,6 +115,23 @@ class DemandeReportSerializer(serializers.ModelSerializer[DemandeReport]):
         return droits.actions_demande(obj, _acteur(self), contexte=_contexte(self, obj.mission_id))
 
 
+class DemandeReportListeSerializer(DemandeReportSerializer):
+    """Ligne du journal des reports : ajoute la mission et l'action pour l'écran dédié du RAI."""
+
+    mission_id = serializers.UUIDField(read_only=True)
+    mission_reference = serializers.CharField(source="mission.reference", read_only=True)
+    action_libelle = serializers.CharField(source="suivi.action.libelle", read_only=True)
+
+    class Meta(DemandeReportSerializer.Meta):
+        fields = (  # type: ignore[assignment]
+            *DemandeReportSerializer.Meta.fields,
+            "mission_id",
+            "mission_reference",
+            "action_libelle",
+        )
+        read_only_fields = fields  # type: ignore[assignment]
+
+
 class DemandeReportRequestSerializer(serializers.Serializer[Any]):
     action = serializers.PrimaryKeyRelatedField(queryset=SuiviAction.objects.all())
     nouvelle_echeance = serializers.DateField()
