@@ -44,6 +44,8 @@ from apps.missions.permissions import (
 )
 from apps.missions.services import aujourd_hui
 from apps.missions.views import MissionApiViewSet
+from apps.signatures.electronique import ResultatVerification, signataire_electronique
+from apps.signatures.pades import lire_pdf_signe, signature_de
 from apps.users.models import Role
 
 from . import filters, serializers
@@ -70,6 +72,7 @@ from .services import correction as svc_correction
 from .services import diffusion as svc_diffusion
 from .services import provisoire as svc_provisoire
 from .services import redaction as svc_redaction
+from .services import signature as svc_signature
 from .services import soumission as svc_soumission
 from .services import validation as svc_validation
 from .services._textes import texte_reponse_provisoire
@@ -207,7 +210,7 @@ class RapportViewSet(
     ordering = ("numero_version",)
     content_negotiation_class = NegociationSansFormat  # `?format=pdf|docx` est un format de fichier
     http_method_names = ["get", "post", "patch", "head", "options"]
-    lecteurs = frozenset({"list", "retrieve", "download", "acknowledge"})
+    lecteurs = frozenset({"list", "retrieve", "download", "acknowledge", "signature"})
     audite_actions = lecteurs
     dg_actions = lecteurs
 
@@ -411,6 +414,73 @@ class RapportViewSet(
 
     @_action_ecriture(
         TAG_RAPPORTS,
+        "Signer électroniquement (PAdES) le rapport final validé (RAI)",
+        serializers.SignatureElectroniqueSerializer,
+        request=serializers.SignatureRequestSerializer,
+        code=201,
+    )
+    @action(detail=True, methods=["post"], pagination_class=None, filter_backends=[])
+    def sign(self, request: Request, pk: str | None = None) -> Response:
+        rapport = self.objet_interne()
+        self.exiger_rai()
+        corps = serializers.SignatureRequestSerializer(data=request.data)
+        corps.is_valid(raise_exception=True)
+        svc_signature.signer_rapport(rapport, by=self.acteur, lieu=corps.validated_data["lieu"])
+        return Response(self._etat_signature(rapport), status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        tags=[TAG_RAPPORTS],
+        summary="Vérifier la signature électronique du rapport final (signataire, date)",
+        responses={
+            200: serializers.SignatureElectroniqueSerializer,
+            **ERROR_RESPONSES,
+            **ERROR_404,
+        },
+    )
+    @action(detail=True, methods=["get"], pagination_class=None, filter_backends=[])
+    def signature(self, request: Request, pk: str | None = None) -> Response:
+        rapport = self.get_object()
+        if rapport.statut in STATUTS_DIFFUSES and peut_telecharger(self.acteur, rapport):
+            return Response(self._etat_signature(rapport))
+        self.exiger_equipe_ou_rai(rapport.mission)
+        return Response(self._etat_signature(rapport))
+
+    def _etat_signature(self, rapport: Rapport) -> dict[str, Any]:
+        enregistre = svc_signature.signature_du_rapport(rapport)
+        if enregistre is None:
+            return {
+                "signee": False,
+                "valide": False,
+                "signataire": "",
+                "emetteur": "",
+                "signe_par": "",
+                "signe_le": None,
+                "horodatage_tsa": False,
+                "empreinte_certificat": "",
+                "motif": "Le rapport n'est pas signé électroniquement.",
+            }
+        signataire = signataire_electronique()
+        resultat = (
+            signataire.verifier(enregistre.version)
+            if signataire is not None
+            else ResultatVerification(
+                False, enregistre.sujet, enregistre.signe_le, "Vérification indisponible."
+            )
+        )
+        return {
+            "signee": True,
+            "valide": resultat.valide,
+            "signataire": resultat.signataire or enregistre.sujet,
+            "emetteur": enregistre.emetteur,
+            "signe_par": enregistre.signe_par.get_full_name() or enregistre.signe_par.username,
+            "signe_le": resultat.signe_le or enregistre.signe_le,
+            "horodatage_tsa": enregistre.horodatage_tsa,
+            "empreinte_certificat": enregistre.empreinte_certificat,
+            "motif": resultat.motif,
+        }
+
+    @_action_ecriture(
+        TAG_RAPPORTS,
         "Émettre un rapport corrigé (motif, RAI)",
         serializers.RapportSerializer,
         request=serializers.MotifRequestSerializer,
@@ -503,6 +573,10 @@ class RapportViewSet(
         contenu, nom = ouvrir_version(
             version, format=format_.upper(), by=self.acteur, adresse_ip=self.adresse_ip
         )
+        if format_ == "pdf" and version.pk == diffusion.version_rapport_id:
+            signe = signature_de(version)
+            if signe is not None:  # le PDF signé remplace le PDF d'origine (empreinte contrôlée)
+                contenu = lire_pdf_signe(signe)
         svc_diffusion.noter_consultation(rapport, self.acteur)
         return reponse_fichier(contenu, nom, PDF if format_ == "pdf" else DOCX)
 

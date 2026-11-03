@@ -22,6 +22,8 @@ dependencies = [
     "openpyxl>=3.1",
     "docxtpl>=0.20",
     "python-docx>=1.1",
+    "pyhanko>=0.25",
+    "pyhanko-certvalidator>=0.27",
 ]
 
 [dependency-groups]

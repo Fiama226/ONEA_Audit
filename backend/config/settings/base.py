@@ -514,3 +514,15 @@ LOGGING = {
 
 # --- T13: protected metrics endpoint (empty token = endpoint disabled, always 404) ---
 METRICS_TOKEN: str = env_secret("METRICS_TOKEN", default="")
+
+# --- Lot 7 bis : signature électronique PAdES (pyHanko). Désactivée tant que le certificat n'est
+# pas fourni : le mode « Confirmation horodatée » reste alors le seul disponible.
+# Certificat de l'ONEA : fichier PKCS#12 (hors dépôt, volume ou secret Docker) + phrase secrète.
+SIGNATURE_PKCS12_FILE: str = env("SIGNATURE_PKCS12_FILE", default="")
+SIGNATURE_PKCS12_PASSPHRASE: str = env_secret("SIGNATURE_PKCS12_PASSPHRASE", default="")
+# Ancres de confiance (PEM : autorité de certification de l'ONEA). Vide = le certificat de
+# signature lui-même (certificat autosigné de dev ou cachet serveur sans PKI).
+SIGNATURE_ANCRES_CONFIANCE: str = env("SIGNATURE_ANCRES_CONFIANCE", default="")
+# Serveur d'horodatage RFC 3161 interne (optionnel) : niveau PAdES B-T ; vide = B-B.
+SIGNATURE_TSA_URL: str = env("SIGNATURE_TSA_URL", default="")
+SIGNATURE_ELECTRONIQUE_ACTIVE: bool = bool(SIGNATURE_PKCS12_FILE)
