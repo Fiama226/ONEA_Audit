@@ -4798,6 +4798,8 @@ export interface components {
                     raw: unknown;
                 };
             };
+            /** @description Business action named by the service that wrote the entry (additional_data.action), e.g. creation_compte, reinitialisation_mot_de_passe, changement_mot_de_passe, reinitialisation_par_code, activation_otp; null when none. */
+            readonly action_metier: string | null;
         };
         AvisAudite: {
             /** Format: uuid */
@@ -12262,6 +12264,14 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     v1_auth_login_otp_create: {
@@ -12304,6 +12314,14 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
