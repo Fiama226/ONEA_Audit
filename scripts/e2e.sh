@@ -8,6 +8,8 @@
 # La pile de dev (8000/5173, base onea) continue de tourner. Compare les comptes de
 # missions_mission et referentiel_cartographieversion de la base onea avant/après.
 #
+# Les comptes de test (admin, rai, dg, auditeur1, auditeur2, delegue1, audite1) sont créés par
+# `manage.py creer_comptes_e2e` avec le mot de passe E2E_PASSWORD (défaut dans ce script).
 # Variables : E2E_DB_NAME (doit valoir ^onea_e2e_[0-9]+$, sinon code 2 avant toute écriture),
 # E2E_API_PORT (8010), E2E_WEB_PORT (5174), PYTHON (interpréteur), ONEA_VENV, DB_PORT, REDIS_PORT.
 # Codes : 2 nom de base refusé ; 3 pile de dev absente ; 4 comptes de la base onea modifiés.
@@ -121,6 +123,12 @@ export MEILI_URL="http://127.0.0.1:9"
 export REDIS_URL="redis://localhost:${REDIS_HOST_PORT}/14"
 
 (cd "$ROOT/backend" && "$PY" manage.py migrate --noinput) || { STATUS=1; exit 1; }
+
+# Comptes de test avec un mot de passe connu (e2e uniquement : la commande refuse tout hors
+# DEBUG et hors base onea_e2e_<nombre>). Les specs se connectent par le vrai formulaire.
+E2E_PASSWORD="${E2E_PASSWORD:-Onea-e2e-2026-pwd}"
+export E2E_PASSWORD
+(cd "$ROOT/backend" && "$PY" manage.py creer_comptes_e2e) || { STATUS=1; exit 1; }
 
 (cd "$ROOT/backend" && exec "$PY" manage.py runserver "127.0.0.1:${API_PORT}" --noreload) \
   >"$TMP/api.log" 2>&1 &

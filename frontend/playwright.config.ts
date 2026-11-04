@@ -1,8 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // e2e runs against a throw-away database: `scripts/e2e.sh` (or e2e.ps1) creates it, starts the
-// API (127.0.0.1:8010) and Vite (5174), runs Playwright, then drops everything. Needs the dev
-// stack's Keycloak (realm "onea", client onea-frontend allowing http://localhost:5174/*).
+// API (127.0.0.1:8010) and Vite (5174), runs Playwright, then drops everything. The test accounts
+// (password E2E_PASSWORD) come from `manage.py creer_comptes_e2e`, run by the script; the specs
+// log in through the /connexion form.
 // Variables: WEB_PORT (5174), E2E_API_URL (http://localhost:8000 when run by hand; the script
 // sets http://localhost:8010), E2E_WEB_EXTERNAL=1 (the web server is already started by the
 // script; otherwise Playwright starts Vite itself), E2E_RUN_ID (unique prefix of test data).

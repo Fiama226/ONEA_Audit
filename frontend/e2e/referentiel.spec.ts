@@ -1,24 +1,11 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { E2E_RUN_ID } from "./api";
+import { logIn } from "./session";
 
 // Full-stack RAI flow of the Référentiel (lot 2) on a throw-away database (scripts/e2e.sh). Creates a process
 // "ZZE" and two risk maps (2098, then its copy 2099); nothing is cleaned up.
-const PASSWORD = "onea2026";
-const BASE = `http://localhost:${process.env.WEB_PORT ?? "5174"}`;
 const PROCESS_LABEL = `Processus de test e2e ${E2E_RUN_ID}`;
-
-async function logIn(page: Page, username: string) {
-  await page.goto("/");
-  const loginButton = page.getByRole("button", { name: "Se connecter" });
-  await expect(loginButton).toBeEnabled();
-  await loginButton.click();
-  await page.waitForURL(/\/realms\/onea\/protocol\/openid-connect\/auth/);
-  await page.locator("#username").fill(username);
-  await page.locator("#password").fill(PASSWORD);
-  await page.locator("#kc-login").click();
-  await page.waitForURL(`${BASE}/`);
-}
 
 async function addRisk(page: Page, libelle: string, probabilite: string, impact: string) {
   await page.getByRole("button", { name: "Ajouter un risque" }).click();

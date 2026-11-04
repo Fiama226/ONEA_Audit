@@ -3,6 +3,7 @@
 # Équivalent de scripts/e2e.sh (voir son en-tête) : crée onea_e2e_<horodatage>, migre, lance
 # l'API (127.0.0.1:8010) et Vite (5174), exécute Playwright, puis supprime serveurs, base et
 # dossier temporaire. Compare les comptes de la base onea avant/après.
+# Les comptes de test sont créés par `manage.py creer_comptes_e2e` (mot de passe E2E_PASSWORD).
 # Variables : E2E_DB_NAME (doit valoir ^onea_e2e_[0-9]+$, sinon code 2 avant toute écriture),
 # E2E_API_PORT, E2E_WEB_PORT, PYTHON, ONEA_VENV. Codes : 2 nom refusé ; 3 pile de dev absente ;
 # 4 comptes de la base onea modifiés.
@@ -107,6 +108,15 @@ try {
   $migrated = $LASTEXITCODE
   Pop-Location
   if ($migrated) { throw 'migrate a échoué' }
+
+  # Comptes de test avec un mot de passe connu (e2e uniquement : la commande refuse tout hors
+  # DEBUG et hors base onea_e2e_<nombre>). Les specs se connectent par le vrai formulaire.
+  if (-not $env:E2E_PASSWORD) { $env:E2E_PASSWORD = 'Onea-e2e-2026-pwd' }
+  Push-Location (Join-Path $Root 'backend')
+  & $Py manage.py creer_comptes_e2e
+  $seeded = $LASTEXITCODE
+  Pop-Location
+  if ($seeded) { throw 'creer_comptes_e2e a échoué' }
 
   $Procs += Start-Process -FilePath $Py -ArgumentList @('manage.py', 'runserver', "127.0.0.1:$ApiPort", '--noreload') `
     -WorkingDirectory (Join-Path $Root 'backend') -WindowStyle Hidden -PassThru `

@@ -1,5 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-import { devToken, provisionUsers } from "./api";
+import { expect, test } from "@playwright/test";
+import { ApiSession, logIn } from "./session";
 
 // Lot 7 (communication et signatures) sur une base jetable (scripts/e2e.ps1 ou e2e.sh).
 //
@@ -11,28 +11,8 @@ import { devToken, provisionUsers } from "./api";
 //    certificat de développement (commande generer_certificat_signature_dev) ; sinon ignoré.
 //    La préparation complète d'une mission en Communication (lots 3 à 6) n'est pas automatisée
 //    ici : elle relève de la pile de recette.
-const PASSWORD = "onea2026";
-const WEB_PORT = process.env.WEB_PORT ?? "5174";
-const BASE = `http://localhost:${WEB_PORT}`;
-const API = process.env.E2E_API_URL ?? "http://localhost:8000";
-
-async function logIn(page: Page, username: string) {
-  await page.goto("/");
-  const loginButton = page.getByRole("button", { name: "Se connecter" });
-  await expect(loginButton).toBeEnabled();
-  await loginButton.click();
-  await page.waitForURL(/\/realms\/onea\/protocol\/openid-connect\/auth/);
-  await page.locator("#username").fill(username);
-  await page.locator("#password").fill(PASSWORD);
-  await page.locator("#kc-login").click();
-  await page.waitForURL(`${BASE}/`);
-}
 
 test.describe.configure({ mode: "serial" });
-
-test.beforeAll(async () => {
-  await provisionUsers();
-});
 
 test("ADMIN : le mode de signature du rapport est paramétrable, la confirmation reste disponible", async ({
   page,
@@ -50,17 +30,18 @@ test("ADMIN : le mode de signature du rapport est paramétrable, la confirmation
 test("RAI : signe le rapport final (PAdES) et la vérification le confirme", async () => {
   const reportId = process.env.E2E_REPORT_ID;
   test.skip(!reportId, "E2E_REPORT_ID absent : rapport validé non préparé.");
-  const token = await devToken("rai");
-  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-  const signed = await fetch(`${API}/api/v1/reports/${reportId}/sign/`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ lieu: "Ouagadougou" }),
-  });
-  expect([201, 422]).toContain(signed.status); // 422 si déjà signé (idempotence du rejeu)
-  const verification = await fetch(`${API}/api/v1/reports/${reportId}/signature/`, { headers });
-  expect(verification.status).toBe(200);
-  const body = (await verification.json()) as { signee: boolean; valide: boolean };
-  expect(body.signee).toBe(true);
-  expect(body.valide).toBe(true);
+  const rai = await ApiSession.login("rai");
+  try {
+    const signed = await rai.write("POST", `/api/v1/reports/${reportId}/sign/`, {
+      lieu: "Ouagadougou",
+    });
+    expect([201, 422]).toContain(signed.status()); // 422 si déjà signé (idempotence du rejeu)
+    const verification = await rai.raw(`/api/v1/reports/${reportId}/signature/`);
+    expect(verification.status()).toBe(200);
+    const body = (await verification.json()) as { signee: boolean; valide: boolean };
+    expect(body.signee).toBe(true);
+    expect(body.valide).toBe(true);
+  } finally {
+    await rai.dispose();
+  }
 });

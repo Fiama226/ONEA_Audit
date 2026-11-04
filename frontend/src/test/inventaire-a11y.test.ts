@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DIALOGUES, ROUTES } from "../../e2e/inventaire";
+import { DIALOGUES, PAGES_PUBLIQUES, ROUTES } from "../../e2e/inventaire";
 
 const lire = (chemin: string) => readFileSync(resolve(process.cwd(), chemin), "utf8");
 const motifs = new Set(ROUTES.map((r) => r.motif));
@@ -71,5 +71,26 @@ describe("test_inventaire_complet", () => {
 
   it("ne référence que des écrans inventoriés pour les dialogues", () => {
     for (const d of DIALOGUES) expect(motifs, d.libelle).toContain(d.motif);
+  });
+
+  it("couvre les pages d'authentification publiques", () => {
+    const publiques = PAGES_AUTHENTIFICATION.filter((p) => p !== "/mot-de-passe/changer");
+    expect([...PAGES_PUBLIQUES].sort()).toEqual([...publiques].sort());
+    // Le changement de mot de passe exige une session : il est parcouru avec les routes connectées.
+    expect(motifs).toContain("/mot-de-passe/changer");
+    expect(motifs).toContain("/mon-compte");
+  });
+
+  it("ouvre l'administration des comptes à un agent délégué", () => {
+    const delegues = ROUTES.filter((r) => r.delegue).map((r) => r.motif);
+    expect(delegues).toEqual(
+      expect.arrayContaining([
+        "/administration",
+        "/administration/utilisateurs",
+        "/administration/utilisateurs/:id",
+      ]),
+    );
+    // Les gabarits et signatures restent hors délégation (lecture ADMIN et RAI).
+    for (const motif of delegues) expect(motif.startsWith("/administration/documents")).toBe(false);
   });
 });

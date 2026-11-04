@@ -1,40 +1,37 @@
 import { expect, test } from "@playwright/test";
-import { devToken, provisionUsers } from "./api";
 import { logIn } from "./lot8-support";
+import { ApiSession } from "./session";
 
 // Lot 8 search journeys (plan T17). The index is filled by the API signals; a finding is looked up
 // by a word of its title. Without a finding visible to the RAI the journeys are skipped.
-const API = process.env.E2E_API_URL ?? "http://localhost:8000";
 
 type Finding = { id: string; titre: string; statut: string };
 
+/** Findings visible to the RAI (session cookie), or `null` when the list cannot be read. */
+async function listFindings(query: string): Promise<Finding[] | null> {
+  const rai = await ApiSession.login("rai");
+  try {
+    const response = await rai.raw(`/api/v1/findings/?${query}`);
+    if (!response.ok()) return null;
+    return ((await response.json()) as { results: Finding[] }).results;
+  } finally {
+    await rai.dispose();
+  }
+}
+
 async function someFinding(): Promise<Finding | null> {
-  const token = await devToken("rai");
-  const response = await fetch(`${API}/api/v1/findings/?page_size=50`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) return null;
-  const body = (await response.json()) as { results: Finding[] };
-  return body.results.find((f) => f.statut !== "BROUILLON") ?? null;
+  const body = await listFindings("page_size=50");
+  return body?.find((f) => f.statut !== "BROUILLON") ?? null;
 }
 
 async function draftFinding(): Promise<Finding | null> {
-  const token = await devToken("rai");
-  const response = await fetch(`${API}/api/v1/findings/?statut=BROUILLON&page_size=1`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) return null;
-  return ((await response.json()) as { results: Finding[] }).results[0] ?? null;
+  return (await listFindings("statut=BROUILLON&page_size=1"))?.[0] ?? null;
 }
 
 /** Longest word of a title: the most specific search term. */
 function keyword(titre: string): string {
   return titre.split(/\s+/).reduce((a, b) => (b.length > a.length ? b : a), "");
 }
-
-test.beforeAll(async () => {
-  await provisionUsers();
-});
 
 test("le RAI trouve un constat par un mot de son titre", async ({ page }) => {
   const finding = await someFinding();

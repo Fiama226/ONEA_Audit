@@ -1,21 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
+import { logIn } from "./session";
 
-// Impression A4 des écrans de document (gabarit PrintLayout) sur les données de démonstration
-// (`peupler_demo`). Chaque écran est rendu en média « print » puis exporté en PDF : au moins une
+// Impression A4 des écrans de document (gabarit PrintLayout) sur les données présentes dans la base jetable. Chaque écran est rendu en média « print » puis exporté en PDF : au moins une
 // page, titre et référence visibles, en-tête ONEA, aucune action d'écran. Les PDF sont joints au
 // rapport Playwright (artefacts). Pile de dev requise (voir login.spec.ts).
-const PASSWORD = "onea2026";
-const BASE = "http://localhost:5173";
-
-async function logIn(page: Page, username: string) {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Se connecter" }).click();
-  await page.waitForURL(/\/realms\/onea\/protocol\/openid-connect\/auth/);
-  await page.locator("#username").fill(username);
-  await page.locator("#password").fill(PASSWORD);
-  await page.locator("#kc-login").click();
-  await page.waitForURL(`${BASE}/`);
-}
 
 function pageCount(pdf: Buffer): number {
   return (pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;

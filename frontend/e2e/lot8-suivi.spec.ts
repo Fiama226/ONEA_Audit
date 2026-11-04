@@ -1,5 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { provisionUsers } from "./api";
 import {
   firstFollowUpAction,
   logIn,
@@ -13,10 +12,6 @@ import {
 // The decision-queue links are checked without any seed.
 
 test.describe("File de décisions du RAI", () => {
-  test.beforeAll(async () => {
-    await provisionUsers();
-  });
-
   for (const [libelle, chemin, titre] of [
     [
       "Reports en attente",
@@ -57,7 +52,6 @@ test.describe("Suivi d'une action : preuve, vérification, clôture", () => {
   let action: FollowUpAction | null = null;
 
   test.beforeAll(async () => {
-    await provisionUsers();
     action = await firstFollowUpAction("A_LANCER");
   });
 
