@@ -106,7 +106,7 @@ class ConnexionView(_CsrfObligatoireMixin, APIView):
         tags=["Authentification"],
         summary="Connexion par identifiant (ou courriel) et mot de passe",
         request=ConnexionSerializer,
-        responses={200: EtatSessionSerializer, **ERROR_400, **ERROR_RESPONSES},
+        responses={200: EtatSessionSerializer, **ERROR_400, **ERROR_429, **ERROR_RESPONSES},
     )
     def post(self, request: Request) -> Response:
         serializer = ConnexionSerializer(data=request.data)
@@ -158,7 +158,7 @@ class ConnexionCodeView(_CsrfObligatoireMixin, APIView):
         tags=["Authentification"],
         summary="Connexion : vérification du code reçu par courriel",
         request=CodeConnexionSerializer,
-        responses={200: EtatSessionSerializer, **ERROR_400, **ERROR_RESPONSES},
+        responses={200: EtatSessionSerializer, **ERROR_400, **ERROR_429, **ERROR_RESPONSES},
     )
     def post(self, request: Request) -> Response:
         serializer = CodeConnexionSerializer(data=request.data)

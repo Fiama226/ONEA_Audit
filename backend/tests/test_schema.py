@@ -115,3 +115,21 @@ def test_version_has_a_single_source() -> None:
     pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
     declared = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
     assert declared == __version__
+
+
+def test_throttled_auth_endpoints_document_429(api_client: APIClient) -> None:
+    """Every rate-limited authentication endpoint documents its 429 (final review M3)."""
+    paths = _schema(api_client)["paths"]
+    for path in (
+        "/api/v1/auth/login/",
+        "/api/v1/auth/login/otp/",
+        "/api/v1/auth/password/forgot/",
+        "/api/v1/auth/password/reset/",
+        "/api/v1/auth/password/change/",
+        "/api/v1/auth/otp/disable/",
+    ):
+        reponse = paths[path]["post"]["responses"]["429"]
+        schema = reponse["content"]["application/json"]["schema"]["$ref"]
+        assert schema == "#/components/schemas/ApiError", path
+    audit = _schema(api_client)["components"]["schemas"]["AuditLog"]["properties"]
+    assert audit["action_metier"]["nullable"] is True
