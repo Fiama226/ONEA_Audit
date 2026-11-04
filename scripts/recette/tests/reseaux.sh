@@ -22,6 +22,22 @@ affirmer "web : aucune sortie vers Internet" '! sortie web'
 affirmer "gotenberg : aucune sortie vers Internet" \
     '! compose_recette exec -T gotenberg sh -c "curl -s -m 3 -o /dev/null https://1.1.1.1"'
 
+# Adresse du client : X-Forwarded-For / X-Real-IP usurpes ne doivent jamais etre enregistres.
+# Connexion par session avec un compte de recette habilite a creer une direction (defaut : admin,
+# $RECETTE_COMPTE_ECRITURE), puis une ecriture portant les en-tetes usurpes ; l'adresse enregistree
+# par le journal d'audit doit etre celle vue par nginx, pas 6.6.6.6.
+JAR="$RECETTE_DIR/session-reseaux.jar"
+affirmer "adresse usurpee 6.6.6.6 absente du journal d'audit, adresse reelle presente" '
+    tok=$(connexion_session "$JAR" "${RECETTE_COMPTE_ECRITURE:-admin}") && [ -n "$tok" ] &&
+    code="Z$(date +%s | tail -c 6)" &&
+    curl_recette -fs -o /dev/null -b "$JAR" -H "X-CSRFToken: $tok" -H "Referer: $A/"         -H "X-Forwarded-For: 6.6.6.6" -H "X-Real-IP: 6.6.6.6" -H "Content-Type: application/json" -X POST         -d "{\"code\":\"$code\",\"libelle\":\"Recette reseau\",\"type\":\"DIRECTION\"}" "$A/api/v1/directions/" &&
+    adr=$(compose_recette exec -T web python manage.py shell -c "
+from auditlog.models import LogEntry
+e = LogEntry.objects.filter(object_repr__contains=\"$code\").order_by(\"-pk\").first()
+print(e.remote_addr if e else \"AUCUNE\")" | tail -n 1 | tr -d "\r") &&
+    [ -n "$adr" ] && [ "$adr" != "AUCUNE" ] && [ "$adr" != "6.6.6.6" ]'
+rm -f "$JAR"
+
 # Debit : 300 requetes en une seconde depuis une adresse -> au moins une 429.
 affirmer "300 requetes/s -> au moins une 429" '
     n=$(seq 1 300 | xargs -P 100 -I{} curl -sk -o /dev/null -w "%{http_code}\n" \

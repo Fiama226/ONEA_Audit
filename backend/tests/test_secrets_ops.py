@@ -214,7 +214,7 @@ def test_compose_declare_les_secrets_et_chaque_service_les_monte() -> None:
     for nom in ("web", "worker", "beat", "migrate", "db", "redis", "meilisearch"):
         env = services[nom].get("environment", {})
         for cle, valeur in env.items():
-            if cle.endswith("_FILE"):
+            if cle.endswith("_FILE") and cle != "SSL_CERT_FILE":  # bundle de CA, pas un secret
                 secret = str(valeur).rsplit("/", 1)[-1]
                 assert secret in services[nom]["secrets"], f"{nom} : {cle} sans secret monté"
     # Chaque secret déclaré est utilisé par au moins un service.

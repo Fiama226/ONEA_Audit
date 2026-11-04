@@ -101,3 +101,9 @@ def test_prod_exige_session_cookie_secure_et_origines_csrf_dans_compose() -> Non
 def test_vite_proxifie_l_api_pour_une_origine_unique_en_dev() -> None:
     texte = (RACINE / "frontend" / "vite.config.ts").read_text(encoding="utf-8")
     assert "proxy" in texte and '"/api"' in texte
+
+
+def test_bundle_ca_interne_lu_par_ssl_et_requests() -> None:
+    # smtplib (relais SMTP) lit SSL_CERT_FILE, requests lit REQUESTS_CA_BUNDLE (CA_BUNDLE_PATH).
+    assert "SSL_CERT_FILE: ${CA_BUNDLE_PATH:-" in COMPOSE_PROD
+    assert "REQUESTS_CA_BUNDLE: ${CA_BUNDLE_PATH:-}" in COMPOSE_PROD

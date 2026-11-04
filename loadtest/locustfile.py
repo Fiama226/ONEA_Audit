@@ -1,7 +1,8 @@
 """Test de charge de la plateforme ONEA (lot 9, tâche 26).
 
-Scénario : utilisateurs virtuels répartis sur les comptes `chargeNN` du realm de recette,
-jetons obtenus par le client `onea-charge` (accès direct par mot de passe, RECETTE SEULEMENT).
+Scénario : utilisateurs virtuels répartis sur les comptes `chargeNN` de la recette, connectés par
+session (GET /api/v1/auth/csrf/ puis POST /api/v1/auth/login/ avec `identifiant` + `mot_de_passe`,
+cookies conservés, en-tête X-CSRFToken sur les requêtes d'écriture). RECETTE SEULEMENT.
 
 Répartition des tâches (poids = pourcentage) :
   30  listes de missions        10  référentiel          5  génération de document
@@ -15,9 +16,9 @@ Chaque seuil se surcharge par variable d'environnement (voir `Config`), mais un 
 doit être consigné dans le compte rendu de mesure.
 
 Variables d'environnement :
-  CHARGE_TOKEN_URL     URL du point d'accès jeton Keycloak
-  CHARGE_CLIENT_ID     client OIDC (défaut onea-charge)
-  CHARGE_COMPTES       fichier « utilisateur<TAB>mot de passe<TAB>rôle » (défaut .recette/comptes.txt)
+  CHARGE_COMPTES       fichier de comptes, une ligne `identifiant:mot_de_passe` par compte (le mot de
+                       passe commence après le premier « : » ; défaut .recette/comptes.txt). Le rôle
+                       (RAI, AUDITEUR, AUDITE, DG) est lu dans le profil renvoyé par la connexion.
   CHARGE_PREFIXE       préfixe des comptes retenus (défaut « charge » ; vide = tous)
   CHARGE_RESOLVE       « hote1,hote2=ip » : résolution locale sans DNS (recette)
   CHARGE_RESULTATS     dossier du résumé JSON (défaut loadtest/resultats)
@@ -26,7 +27,6 @@ L'hôte de l'API se donne avec l'option --host de Locust.
 
 from __future__ import annotations
 
-import csv
 import json
 import os
 import random
@@ -51,10 +51,6 @@ class Config:
     p95_generation_ms: float = _flottant("SEUIL_P95_GENERATION_MS", 20000)
     taux_erreur_max: float = _flottant("SEUIL_TAUX_ERREUR", 0.01)
     attente_generation_s: float = _flottant("CHARGE_ATTENTE_GENERATION_S", 60)
-    client_id: str = os.environ.get("CHARGE_CLIENT_ID", "onea-charge")
-    token_url: str = os.environ.get(
-        "CHARGE_TOKEN_URL", "http://localhost:8180/realms/onea/protocol/openid-connect/token"
-    )
     prefixe: str = os.environ.get("CHARGE_PREFIXE", "charge")
     comptes: str = os.environ.get("CHARGE_COMPTES", ".recette/comptes.txt")
     resultats: str = os.environ.get("CHARGE_RESULTATS", "loadtest/resultats")
@@ -87,15 +83,15 @@ if _resolve:
     socket.getaddrinfo = _getaddrinfo_local  # type: ignore[assignment]
 
 
-def charger_comptes() -> list[tuple[str, str, str]]:
+def charger_comptes() -> list[tuple[str, str]]:
     chemin = Path(CFG.comptes)
     if not chemin.exists():
         raise SystemExit(f"Fichier de comptes introuvable : {chemin}")
     lignes = []
-    with chemin.open(newline="", encoding="utf-8") as f:
-        for ligne in csv.reader(f, delimiter="\t"):
-            if len(ligne) >= 3 and ligne[0].startswith(CFG.prefixe):
-                lignes.append((ligne[0], ligne[1], ligne[2]))
+    for ligne in chemin.read_text(encoding="utf-8").splitlines():
+        identifiant, separateur, mot_de_passe = ligne.partition(":")
+        if separateur and identifiant.startswith(CFG.prefixe):
+            lignes.append((identifiant, mot_de_passe))
     if not lignes:
         raise SystemExit(f"Aucun compte « {CFG.prefixe}* » dans {chemin}")
     return lignes
@@ -105,7 +101,7 @@ COMPTES = charger_comptes()
 _prochain = 0
 
 
-def _compte_suivant() -> tuple[str, str, str]:
+def _compte_suivant() -> tuple[str, str]:
     global _prochain  # noqa: PLW0603
     compte = COMPTES[_prochain % len(COMPTES)]
     _prochain += 1
@@ -125,9 +121,9 @@ class Utilisateur(HttpUser):
     # sont sans effet pour eux (leur part de poids n'émet aucune requête).
 
     def on_start(self) -> None:
-        self.login, self.mdp, self.role = _compte_suivant()
-        self.jeton = ""
-        self.jeton_expire = 0.0
+        self.login, self.mdp = _compte_suivant()
+        self.role = ""
+        self.csrf = ""
         self.missions: list[str] = []
         self.entretiens: list[str] = []
         self.fiches: list[str] = []
@@ -138,37 +134,30 @@ class Utilisateur(HttpUser):
         self._authentifier()
         self._decouvrir()
 
-    # ------------------------------------------------------------------ jeton
+    # ------------------------------------------------------------------ session
+    def _jeton_csrf(self) -> str:
+        reponse = self.client.get(f"{API}/auth/csrf/", name="[AUTH] csrf")
+        return str(reponse.json()["csrf_token"]) if reponse.status_code == 200 else ""  # noqa: PLR2004
+
     def _authentifier(self) -> None:
-        # Keycloak refuse parfois des connexions simultanées d'un MÊME compte (401 transitoire) :
-        # jusqu'à 3 essais espacés. Avec 40 comptes distincts (recette) cela n'arrive pas.
+        """Ouvre la session (cookies gardés par le client) ; le jeton CSRF est renouvelé à la connexion."""
         for essai in range(3):
+            jeton = self._jeton_csrf()
             reponse = self.client.post(
-                CFG.token_url,
-                data={
-                    "grant_type": "password",
-                    "client_id": CFG.client_id,
-                    "username": self.login,
-                    "password": self.mdp,
-                    "scope": "openid",
-                },
-                name="[AUTH] jeton",
+                f"{API}/auth/login/",
+                json={"identifiant": self.login, "mot_de_passe": self.mdp},
+                headers={"X-CSRFToken": jeton},
+                name="[AUTH] connexion",
             )
             if reponse.status_code == 200:  # noqa: PLR2004
-                break
+                self.role = str((reponse.json().get("me") or {}).get("role") or "").upper()
+                self.csrf = self._jeton_csrf()
+                return
             time.sleep(0.5 + random.random() * (essai + 1))  # noqa: S311
-        else:
-            self.jeton = ""
-            self.jeton_expire = time.time() + 5
-            return
-        corps = reponse.json()
-        self.jeton = corps["access_token"]
-        self.jeton_expire = time.time() + float(corps.get("expires_in", 60)) - 15
+        self.csrf = ""
 
-    def _entetes(self) -> dict[str, str]:
-        if time.time() >= self.jeton_expire:
-            self._authentifier()
-        return {"Authorization": f"Bearer {self.jeton}"}
+    def _entetes(self, ecriture: bool = False) -> dict[str, str]:
+        return {"X-CSRFToken": self.csrf} if ecriture and self.csrf else {}
 
     # ------------------------------------------------------------------ appels
     def lire(self, chemin: str, nom: str) -> Any:
@@ -192,7 +181,7 @@ class Utilisateur(HttpUser):
             methode,
             chemin,
             json=corps,
-            headers=self._entetes(),
+            headers=self._entetes(ecriture=True),
             name=f"[W] {nom}",
             catch_response=True,
         ) as r:

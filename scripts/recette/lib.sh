@@ -31,6 +31,35 @@ curl_recette() {
         --cacert "$RECETTE_DIR/certs/ca.pem" "$@"
 }
 
+# --- Connexion par session (plus de jetons Bearer) -----------------------------------------
+# Comptes de recette : fichier .recette/comptes.txt (ou $RECETTE_COMPTES), une ligne
+# `identifiant:mot_de_passe` par compte (le mot de passe commence apres le premier « : »).
+RECETTE_COMPTES=${RECETTE_COMPTES:-$RECETTE_DIR/comptes.txt}
+
+# mdp_compte <identifiant> : mot de passe du compte dans le fichier des comptes de recette.
+mdp_compte() {
+    awk -v u="$1" 'index($0, u ":") == 1 { print substr($0, length(u) + 2); exit }' "$RECETTE_COMPTES"
+}
+
+# jeton_csrf <jar> : GET /api/v1/auth/csrf/ (pose le cookie CSRF dans le jar) et affiche le jeton.
+jeton_csrf() {
+    curl_recette -fs -c "$1" -b "$1" "https://$PUBLIC_HOST/api/v1/auth/csrf/" |
+        python3 -c 'import json,sys; print(json.load(sys.stdin)["csrf_token"])'
+}
+
+# connexion_session <jar> <identifiant> : ouvre une session (csrf puis POST /auth/login/) et affiche
+# le jeton CSRF a joindre (en-tete X-CSRFToken) aux requetes d'ecriture. Code 1 si la connexion echoue.
+# Django renouvelle le jeton CSRF a la connexion : il est relu apres le login.
+connexion_session() {
+    _jar=$1
+    _id=$2
+    : > "$_jar"
+    _tok=$(jeton_csrf "$_jar") || return 1
+    _corps=$(python3 -c 'import json,sys; print(json.dumps({"identifiant": sys.argv[1], "mot_de_passe": sys.argv[2]}))'         "$_id" "$(mdp_compte "$_id")") || return 1
+    curl_recette -fs -o /dev/null -c "$_jar" -b "$_jar" -H "X-CSRFToken: $_tok"         -H "Referer: https://$PUBLIC_HOST/" -H "Content-Type: application/json"         -d "$_corps" "https://$PUBLIC_HOST/api/v1/auth/login/" || return 1
+    jeton_csrf "$_jar"
+}
+
 PASS=0
 FAIL=0
 # affirmer <description> <commande sh> : PASS si la commande retourne 0.

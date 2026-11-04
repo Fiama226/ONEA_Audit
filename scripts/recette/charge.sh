@@ -1,5 +1,7 @@
 #!/bin/sh
 # Test de charge de la recette (lot 9, T26) : 40 utilisateurs, montee 2/s, 20 min, seuils D10.
+# Comptes : $RECETTE_COMPTES (defaut .recette/comptes.txt), lignes `identifiant:mot_de_passe`, comptes chargeNN
+# connectes par session (voir loadtest/locustfile.py).
 # Usage : sh scripts/recette/charge.sh   (apres up.sh et peupler_demo --profil volumetrie)
 # Code de sortie : 0 si tous les seuils D10 sont tenus ET la file Celery est vide 2 min apres la fin.
 # Variables : CHARGE_USERS (40), CHARGE_RATE (2), CHARGE_DUREE (20m), CHARGE_ATTENTE_FILE (120 s),
@@ -16,7 +18,7 @@ OUT="$RECETTE_DIR/charge/$(date +%Y%m%d-%H%M%S)"
 VENV="$RECETTE_DIR/venv-charge"
 mkdir -p "$OUT"
 
-[ -f "$RECETTE_DIR/comptes.txt" ] || { echo "comptes.txt absent : comptes de charge (session) a provisionner, voir loadtest/locustfile.py" >&2; exit 2; }
+[ -f "$RECETTE_COMPTES" ] || { echo "$RECETTE_COMPTES absent : une ligne identifiant:mot_de_passe par compte de charge (charge01:..., voir loadtest/locustfile.py)" >&2; exit 2; }
 [ -f "$RECETTE_DIR/certs/ca.pem" ] || { echo "ca.pem absent : lancer certs.sh" >&2; exit 2; }
 
 # Locust (MIT) dans un environnement isole, installe avec empreintes (aucune dependance non verifiee).
@@ -41,7 +43,7 @@ trap 'kill $STATS_PID 2>/dev/null || true' EXIT INT TERM
 
 # Les noms d'hote de recette sont fictifs : resolution locale sans DNS ni /etc/hosts.
 set +e
-CHARGE_COMPTES="$RECETTE_DIR/comptes.txt" CHARGE_PREFIXE=charge \
+CHARGE_COMPTES="$RECETTE_COMPTES" CHARGE_PREFIXE=charge \
 CHARGE_RESOLVE="$PUBLIC_HOST=127.0.0.1" CHARGE_RESULTATS="$OUT" \
 REQUESTS_CA_BUNDLE="$RECETTE_DIR/certs/ca.pem" \
     "$VENV/bin/locust" -f "$REPO_ROOT/loadtest/locustfile.py" --headless \

@@ -83,8 +83,13 @@ x-backend-env: &backend-env
   ANTIVIRUS_CLAMD_PORT: "3310"
   # Host folder mounted on web and worker only (DOCUMENTS_HOST_DIR); see docs/stockage-fichiers.md.
   DOCUMENTS_ROOT: /var/lib/onea/documents
-  # Internal CA (e.g. for the SMTP relay): path (inside the container) of a PEM bundle under
-  # /etc/onea/ca, see docs/deploy.md. Empty = Python's default trust store.
+  # Internal CA: path (inside the container) of a PEM bundle under /etc/onea/ca, see
+  # docs/deploy.md. It REPLACES the default trust store, so the bundle must contain every CA needed.
+  # Two variables, because two libraries: SSL_CERT_FILE is read by OpenSSL/ssl (smtplib STARTTLS or
+  # SMTPS to the SMTP relay, urllib); REQUESTS_CA_BUNDLE is read by `requests`. When CA_BUNDLE_PATH is
+  # empty, SSL_CERT_FILE keeps Debian's default bundle (what Python uses anyway) and requests ignores
+  # the empty value.
+  SSL_CERT_FILE: ${CA_BUNDLE_PATH:-/usr/lib/ssl/cert.pem}
   REQUESTS_CA_BUNDLE: ${CA_BUNDLE_PATH:-}
 
 x-ca-volume: &ca-volume ../certs:/etc/onea/ca:ro
