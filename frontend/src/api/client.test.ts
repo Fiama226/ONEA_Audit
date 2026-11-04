@@ -1,12 +1,13 @@
 import { http, HttpResponse } from "msw";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fr } from "@/i18n/fr";
-import { API_URL, server } from "@/test/msw";
+import { API_URL, server, TEST_CSRF } from "@/test/msw";
 import {
   apiDownload,
   apiFetch,
   apiUpload,
-  setTokenProvider,
+  ensureCsrfToken,
+  resetCsrfToken,
   setUnauthorizedHandler,
 } from "./client";
 import { ApiError, isApiError } from "./errors";
@@ -30,24 +31,23 @@ describe("apiDownload filename sanitising", () => {
 });
 
 describe("apiUpload", () => {
-  it("sends FormData with a multipart boundary (no forced JSON type) and the Bearer token", async () => {
+  it("sends FormData with a multipart boundary (no forced JSON type) and the CSRF token", async () => {
     let contentType: string | null = null;
-    let auth: string | null = null;
+    let csrf: string | null = null;
     let file: FormDataEntryValue | null = null;
     server.use(
       http.post(`${API_URL}/api/v1/up/`, async ({ request }) => {
         contentType = request.headers.get("Content-Type");
-        auth = request.headers.get("Authorization");
+        csrf = request.headers.get("X-CSRFToken");
         file = (await request.formData()).get("fichier");
         return HttpResponse.json({ id: "1" }, { status: 201 });
       }),
     );
-    setTokenProvider(() => "tok");
     const body = new FormData();
     body.append("fichier", new File(["x"], "g.docx"));
     await expect(apiUpload("/api/v1/up/", body)).resolves.toEqual({ id: "1" });
     expect(contentType).toMatch(/^multipart\/form-data; boundary=/);
-    expect(auth).toBe("Bearer tok");
+    expect(csrf).toBe(TEST_CSRF);
     expect(file).not.toBeNull();
   });
 
@@ -84,14 +84,19 @@ describe("apiUpload", () => {
   });
 });
 
-afterEach(() => setTokenProvider(() => null));
+beforeEach(() => resetCsrfToken());
+
+/** `credentials` passé à fetch pour l'URL donnée (MSW ne le transmet pas au handler). */
+function credentialsOf(spy: { mock: { calls: unknown[][] } }, suffix: string) {
+  const call = spy.mock.calls.find(([url]) => String(url).endsWith(suffix));
+  return (call?.[1] as RequestInit | undefined)?.credentials;
+}
 
 describe("apiDownload", () => {
-  it("prefers filename*=UTF-8'' and sends the Bearer token", async () => {
-    let auth: string | null = null;
+  it("prefers filename*=UTF-8'' and sends the session cookie", async () => {
+    const spy = vi.spyOn(globalThis, "fetch");
     server.use(
-      http.get(`${API_URL}/api/v1/x/`, ({ request }) => {
-        auth = request.headers.get("Authorization");
+      http.get(`${API_URL}/api/v1/x/`, () => {
         return new HttpResponse("a;b", {
           headers: {
             "Content-Disposition":
@@ -100,10 +105,10 @@ describe("apiDownload", () => {
         });
       }),
     );
-    setTokenProvider(() => "tok");
     const { blob, filename } = await apiDownload("/api/v1/x/");
     expect(filename).toBe("cartographie-2026.csv");
-    expect(auth).toBe("Bearer tok");
+    expect(credentialsOf(spy, "/api/v1/x/")).toBe("include");
+    spy.mockRestore();
     expect(await blob.text()).toBe("a;b");
   });
 
@@ -174,17 +179,19 @@ describe("apiFetch", () => {
     expect(apiError.errors).toEqual({ titre: ["Ce champ est obligatoire."] });
   });
 
-  it("adds the Authorization header from the token provider", async () => {
-    let received: string | null = null;
+  it("sends the session cookie and never an Authorization header", async () => {
+    const spy = vi.spyOn(globalThis, "fetch");
+    let authorization: string | null = "unset";
     server.use(
       http.get(`${API_URL}/api/me/`, ({ request }) => {
-        received = request.headers.get("Authorization");
+        authorization = request.headers.get("Authorization");
         return HttpResponse.json({});
       }),
     );
-    setTokenProvider(() => "abc123");
     await apiFetch("/api/me/");
-    expect(received).toBe("Bearer abc123");
+    expect(credentialsOf(spy, "/api/me/")).toBe("include");
+    spy.mockRestore();
+    expect(authorization).toBeNull();
   });
 
   it("sends a JSON body with content type when json is provided", async () => {
@@ -205,18 +212,6 @@ describe("apiFetch", () => {
   it("returns undefined on 204", async () => {
     server.use(http.delete(`${API_URL}/api/x/1/`, () => new HttpResponse(null, { status: 204 })));
     await expect(apiFetch("/api/x/1/", { method: "DELETE" })).resolves.toBeUndefined();
-  });
-
-  it("sends no Authorization header without a token", async () => {
-    let received: string | null = "unset";
-    server.use(
-      http.get(`${API_URL}/api/me/`, ({ request }) => {
-        received = request.headers.get("Authorization");
-        return HttpResponse.json({});
-      }),
-    );
-    await apiFetch("/api/me/");
-    expect(received).toBeNull();
   });
 
   it("throws ApiError status 0 with the network message when fetch rejects", async () => {
@@ -276,23 +271,128 @@ describe("session expirée en cours d'utilisation (401)", () => {
     expect(calls).toBe(1);
   });
 
-  it("ne le déclenche pas pour la fin de session ni pour un 403", async () => {
+  it.each([
+    ["GET", "/api/v1/auth/session/"],
+    ["POST", "/api/v1/auth/login/"],
+    ["POST", "/api/v1/auth/login/otp/"],
+    ["POST", "/api/v1/auth/logout/"],
+    ["POST", "/api/v1/auth/password/forgot/"],
+    ["POST", "/api/v1/auth/password/reset/"],
+  ])("ne le déclenche pas pour %s %s (anonyme ou échec de connexion)", async (method, path) => {
+    let calls = 0;
+    setUnauthorizedHandler(() => {
+      calls += 1;
+    });
+    const reply = () => HttpResponse.json({ detail: "x", errors: {} }, { status: 401 });
+    server.use(
+      method === "GET"
+        ? http.get(`${API_URL}${path}`, reply)
+        : http.post(`${API_URL}${path}`, reply),
+    );
+    await expect(apiFetch(path, { method })).rejects.toBeInstanceOf(ApiError);
+    expect(calls).toBe(0);
+  });
+
+  it("le déclenche pour le changement de mot de passe (session requise)", async () => {
     let calls = 0;
     setUnauthorizedHandler(() => {
       calls += 1;
     });
     server.use(
-      http.post(`${API_URL}/api/v1/session/fin/`, () =>
+      http.post(`${API_URL}/api/v1/auth/password/change/`, () =>
         HttpResponse.json({ detail: "x", errors: {} }, { status: 401 }),
       ),
+    );
+    await expect(
+      apiFetch("/api/v1/auth/password/change/", { method: "POST", json: {} }),
+    ).rejects.toBeInstanceOf(ApiError);
+    expect(calls).toBe(1);
+  });
+
+  it("ne le déclenche pas pour un 403", async () => {
+    let calls = 0;
+    setUnauthorizedHandler(() => {
+      calls += 1;
+    });
+    server.use(
       http.get(`${API_URL}/api/v1/interdit/`, () =>
         HttpResponse.json({ detail: "x", errors: {} }, { status: 403 }),
       ),
     );
-    await expect(apiFetch("/api/v1/session/fin/", { method: "POST" })).rejects.toBeInstanceOf(
-      ApiError,
-    );
     await expect(apiFetch("/api/v1/interdit/")).rejects.toBeInstanceOf(ApiError);
     expect(calls).toBe(0);
+  });
+});
+
+describe("jeton CSRF", () => {
+  it("joint X-CSRFToken aux écritures, pas aux lectures, et le met en cache", async () => {
+    let emis = 0;
+    const spy = vi.spyOn(globalThis, "fetch");
+    const recus: (string | null)[] = [];
+    server.use(
+      http.get(`${API_URL}/api/v1/auth/csrf/`, () => {
+        emis += 1;
+        return HttpResponse.json({ csrf_token: `jeton-${emis}` });
+      }),
+      http.get(`${API_URL}/api/x/`, ({ request }) => {
+        recus.push(request.headers.get("X-CSRFToken"));
+        return HttpResponse.json({});
+      }),
+      http.post(`${API_URL}/api/x/`, ({ request }) => {
+        recus.push(request.headers.get("X-CSRFToken"));
+        return HttpResponse.json({});
+      }),
+      http.delete(`${API_URL}/api/x/`, ({ request }) => {
+        recus.push(request.headers.get("X-CSRFToken"));
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    await apiFetch("/api/x/");
+    await apiFetch("/api/x/", { method: "POST", json: {} });
+    await apiFetch("/api/x/", { method: "DELETE" });
+    expect(recus).toEqual([null, "jeton-1", "jeton-1"]);
+    expect(emis).toBe(1);
+    expect(credentialsOf(spy, "/api/v1/auth/csrf/")).toBe("include");
+    spy.mockRestore();
+  });
+
+  it("redemande le jeton après resetCsrfToken (rotation à la connexion)", async () => {
+    let emis = 0;
+    server.use(
+      http.get(`${API_URL}/api/v1/auth/csrf/`, () => {
+        emis += 1;
+        return HttpResponse.json({ csrf_token: `jeton-${emis}` });
+      }),
+    );
+    expect(await ensureCsrfToken()).toBe("jeton-1");
+    expect(await ensureCsrfToken()).toBe("jeton-1");
+    resetCsrfToken();
+    expect(await ensureCsrfToken()).toBe("jeton-2");
+  });
+
+  it("partage une seule demande entre écritures simultanées", async () => {
+    let emis = 0;
+    server.use(
+      http.get(`${API_URL}/api/v1/auth/csrf/`, () => {
+        emis += 1;
+        return HttpResponse.json({ csrf_token: "jeton" });
+      }),
+    );
+    await Promise.all([ensureCsrfToken(), ensureCsrfToken(), ensureCsrfToken()]);
+    expect(emis).toBe(1);
+  });
+
+  it("échec de la demande de jeton : ApiError réseau, sans envoyer l'écriture", async () => {
+    let ecritures = 0;
+    server.use(
+      http.get(`${API_URL}/api/v1/auth/csrf/`, () => HttpResponse.error()),
+      http.post(`${API_URL}/api/x/`, () => {
+        ecritures += 1;
+        return HttpResponse.json({});
+      }),
+    );
+    const error = await apiFetch("/api/x/", { method: "POST", json: {} }).catch((e: unknown) => e);
+    expect(isApiError(error) && error.status).toBe(0);
+    expect(ecritures).toBe(0);
   });
 });

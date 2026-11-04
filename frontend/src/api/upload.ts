@@ -1,5 +1,5 @@
 import { fr } from "@/i18n/fr";
-import { baseUrl, currentToken } from "./client";
+import { baseUrl, ensureCsrfToken } from "./client";
 import { ApiError } from "./errors";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -40,19 +40,22 @@ function toError(xhr: XMLHttpRequest): ApiError {
 /**
  * Envoi multipart avec progression (XHR : `fetch` n'expose pas la progression d'envoi).
  * `onProgress` reçoit un ratio entre 0 et 1 ; l'annulation par `signal` rejette en `AbortError`.
+ * Même session que `apiFetch` : cookie de session et en-tête X-CSRFToken.
  */
-export function uploadWithProgress<T>(
+export async function uploadWithProgress<T>(
   url: string,
   form: FormData,
   onProgress: (ratio: number) => void,
   signal?: AbortSignal,
 ): Promise<T> {
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+  const csrf = await ensureCsrfToken();
   return new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${baseUrl()}${url}`);
+    xhr.withCredentials = true;
     xhr.setRequestHeader("Accept", "application/json");
-    const token = currentToken();
-    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.setRequestHeader("X-CSRFToken", csrf);
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable && event.total > 0) onProgress(event.loaded / event.total);

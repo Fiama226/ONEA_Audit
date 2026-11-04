@@ -1,7 +1,11 @@
 import type { ReactNode } from "react";
 import { Link, Outlet, createBrowserRouter, type RouteObject } from "react-router-dom";
+import { ChangePasswordPage } from "@/auth/ChangePasswordPage";
+import { ForgotPasswordPage } from "@/auth/ForgotPasswordPage";
+import { LoginPage } from "@/auth/LoginPage";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
+import { ResetPasswordPage } from "@/auth/ResetPasswordPage";
 import { EmptyState } from "@/components/EmptyState";
 import { lazyRoute } from "@/components/lazyRoute";
 import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
@@ -15,9 +19,7 @@ import { administrationRoutes } from "@/features/utilisateurs/routes";
 import { fr } from "@/i18n/fr";
 import { AppShell } from "@/layouts/AppShell";
 import { rolesFor } from "@/layouts/navigation";
-import { CallbackPage } from "@/pages/CallbackPage";
 import { ErrorPage } from "@/pages/ErrorPage";
-import { LoginPage } from "@/pages/LoginPage";
 
 const rapportsList = () => import("@/features/communication/pages/RapportsDiffusesPage");
 const rapportDetail = () => import("@/features/communication/pages/RapportDiffusePage");
@@ -62,12 +64,16 @@ function NotFound() {
 }
 
 export const appRoutes: RouteObject[] = [
+  // Pages publiques : connexion et mot de passe oublié (chemins repris dans auth/paths.ts).
   { path: "/connexion", element: <LoginPage /> },
-  { path: "/callback", element: <CallbackPage /> },
+  { path: "/mot-de-passe-oublie", element: <ForgotPasswordPage /> },
+  { path: "/mot-de-passe/reinitialiser", element: <ResetPasswordPage /> },
   { path: "/erreur", element: <ErrorPage /> },
   {
     element: <RequireAuth />,
     children: [
+      // Hors du shell : seule page accessible tant qu'un mot de passe temporaire n'est pas changé.
+      { path: "/mot-de-passe/changer", element: <ChangePasswordPage /> },
       {
         element: <AppShell />,
         children: [

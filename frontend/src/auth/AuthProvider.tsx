@@ -1,166 +1,166 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { apiFetch, setTokenProvider, setUnauthorizedHandler } from "@/api/client";
+import { QueryClientContext } from "@tanstack/react-query";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { resetCsrfToken, setUnauthorizedHandler } from "@/api/client";
 import { isApiError } from "@/api/errors";
-import { createUserManager, type OidcClient, type OidcUser } from "./oidc";
-import { safeReturnPath } from "./safePath";
-import { toRole, type AuthStatus, type Me } from "./types";
+import { fetchSession, postLogin, postLoginOtp, postLogout, postPasswordChange } from "./api";
+import { toRole, type AuthStatus, type Etape, type EtatSession, type Me } from "./types";
 import { AuthContext, type AuthContextValue } from "./useAuth";
 
-const END_SESSION_TIMEOUT_MS = 2000;
+const LOGOUT_TIMEOUT_MS = 2000;
 
-type Props = { children: ReactNode; userManager?: OidcClient };
-
-function returnToOf(user: OidcUser): string {
-  const state = user.state;
-  if (typeof state === "object" && state !== null && "returnTo" in state) {
-    return safeReturnPath((state as { returnTo: unknown }).returnTo);
-  }
-  return "/";
-}
-
-export function AuthProvider({ children, userManager }: Props) {
-  const [oidc] = useState<OidcClient>(() => userManager ?? createUserManager());
+/**
+ * Session de l'application : cookie de session posé par l'API (/api/v1/auth/), sondé au
+ * démarrage par GET /api/v1/auth/session/ (401 : anonyme).
+ */
+export function AuthProvider({ children }: { children: ReactNode }) {
+  // Facultatif : certains tests montent le fournisseur sans client de requêtes.
+  const queryClient = useContext(QueryClientContext);
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [me, setMe] = useState<Me | undefined>(undefined);
+  const [etape, setEtape] = useState<Etape | undefined>(undefined);
   const [errorDetail, setErrorDetail] = useState<string | undefined>(undefined);
   const [sessionExpired, setSessionExpired] = useState(false);
-  const tokenRef = useRef<string | null>(null);
+  // Lu par le gestionnaire de 401, hors du cycle de rendu.
+  const statusRef = useRef<AuthStatus>("loading");
 
-  useEffect(() => {
-    setTokenProvider(() => tokenRef.current);
+  const changeStatus = useCallback((next: AuthStatus) => {
+    statusRef.current = next;
+    setStatus(next);
   }, []);
 
-  const goAnonymous = useCallback(async () => {
-    tokenRef.current = null;
+  const goAnonymous = useCallback(() => {
+    resetCsrfToken();
     setMe(undefined);
-    setStatus("anonymous");
-    try {
-      await oidc.removeUser();
-    } catch {
-      // le stockage local est déjà considéré comme vide
-    }
-  }, [oidc]);
+    setEtape(undefined);
+    changeStatus("anonymous");
+    // Les données de l'utilisateur précédent ne doivent pas rester en mémoire.
+    queryClient?.clear();
+  }, [changeStatus, queryClient]);
 
-  useEffect(() => {
-    // 401 en cours d'utilisation (session terminée ailleurs, jeton révoqué) : retour à la connexion.
-    setUnauthorizedHandler(() => {
-      if (tokenRef.current === null) return;
-      setSessionExpired(true);
-      void goAnonymous();
-    });
-    return () => setUnauthorizedHandler(null);
-  }, [goAnonymous]);
-
-  useEffect(() => {
-    const onLoaded = (user: OidcUser) => {
-      tokenRef.current = user.access_token;
-    };
-    const onExpired = () => {
-      setSessionExpired(true);
-      void goAnonymous();
-    };
-    oidc.events.addUserLoaded(onLoaded);
-    oidc.events.addAccessTokenExpired(onExpired);
-    oidc.events.addSilentRenewError(onExpired);
-    return () => {
-      oidc.events.removeUserLoaded(onLoaded);
-      oidc.events.removeAccessTokenExpired(onExpired);
-      oidc.events.removeSilentRenewError(onExpired);
-    };
-  }, [oidc, goAnonymous]);
-
-  /** Charge /me avec le jeton courant. */
-  const loadMe = useCallback(async () => {
-    try {
-      const data = await apiFetch<Me>("/api/v1/me/");
+  const openSession = useCallback(
+    (etat: EtatSession & { me: Me }) => {
+      setMe({ ...etat.me, role: toRole(etat.me.role) });
+      setEtape(etat.etape);
       setErrorDetail(undefined);
-      setMe({ ...data, role: toRole(data.role) });
-      setStatus("authenticated");
-    } catch (e) {
-      if (isApiError(e) && e.status === 401) {
-        await goAnonymous();
-      } else {
-        // 403 : compte désactivé. Ce n'est pas une session expirée, donc pas de retour vers la connexion.
-        setErrorDetail(isApiError(e) && e.status === 403 ? e.detail : undefined);
-        setMe(undefined);
-        setStatus("error");
-      }
-    }
-  }, [goAnonymous]);
+      setSessionExpired(false);
+      changeStatus("authenticated");
+    },
+    [changeStatus],
+  );
 
   const init = useCallback(async () => {
-    setStatus("loading");
+    changeStatus("loading");
     try {
-      const user = await oidc.getUser();
-      if (!user || user.expired) {
-        tokenRef.current = null;
-        setStatus("anonymous");
-        return;
+      const etat = await fetchSession();
+      if (etat.me && etat.etape !== "OTP") openSession({ ...etat, me: etat.me });
+      else goAnonymous();
+    } catch (e) {
+      if (isApiError(e) && e.status === 401) {
+        goAnonymous();
+      } else {
+        // 403 : refus explicite du serveur, affiché tel quel ; sinon panne technique.
+        setErrorDetail(isApiError(e) && e.status === 403 ? e.detail : undefined);
+        setMe(undefined);
+        setEtape(undefined);
+        changeStatus("error");
       }
-      tokenRef.current = user.access_token;
-    } catch {
-      setStatus("error");
-      return;
     }
-    await loadMe();
-  }, [oidc, loadMe]);
+  }, [changeStatus, goAnonymous, openSession]);
 
   useEffect(() => {
-    // Initialisation asynchrone au montage ; les setState surviennent après await.
+    // Sonde asynchrone au montage ; les setState surviennent après await.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void init();
   }, [init]);
 
-  const login = useCallback(
-    async (returnTo?: string) => {
-      setSessionExpired(false);
-      try {
-        await oidc.signinRedirect({ state: { returnTo: safeReturnPath(returnTo) } });
-      } catch {
-        setStatus("error");
-      }
+  useEffect(() => {
+    // 401 en cours d'utilisation (inactivité, durée maximale, session fermée ailleurs).
+    setUnauthorizedHandler(() => {
+      if (statusRef.current !== "authenticated") return;
+      setSessionExpired(true);
+      goAnonymous();
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [goAnonymous]);
+
+  /** Applique la réponse d'une étape de connexion (le serveur a renouvelé le jeton CSRF). */
+  const applyStep = useCallback(
+    async (etat: EtatSession): Promise<Etape> => {
+      resetCsrfToken();
+      if (etat.etape === "OTP") return "OTP";
+      if (etat.me) openSession({ ...etat, me: etat.me });
+      else await init();
+      return etat.etape;
     },
-    [oidc],
+    [init, openSession],
+  );
+
+  const login = useCallback(
+    async (identifiant: string, motDePasse: string) =>
+      applyStep(await postLogin(identifiant, motDePasse)),
+    [applyStep],
+  );
+
+  const verifyOtp = useCallback(
+    async (code: string) => applyStep(await postLoginOtp(code)),
+    [applyStep],
+  );
+
+  const changePassword = useCallback(
+    async (ancien: string, nouveau: string) => {
+      await applyStep(await postPasswordChange(ancien, nouveau));
+    },
+    [applyStep],
   );
 
   const logout = useCallback(async () => {
-    // Fin de session côté serveur (purge du cache userinfo), au plus 2 s ; un échec n'empêche
-    // jamais la déconnexion Keycloak.
+    // Fin de session côté serveur, au plus 2 s ; un échec n'empêche jamais la déconnexion locale.
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), END_SESSION_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), LOGOUT_TIMEOUT_MS);
     try {
-      await apiFetch<void>("/api/v1/session/fin/", { method: "POST", signal: controller.signal });
+      await postLogout(controller.signal);
     } catch {
       // ignoré : voir ci-dessus
     } finally {
       clearTimeout(timer);
     }
-    tokenRef.current = null;
-    setMe(undefined);
-    setStatus("anonymous");
-    try {
-      await oidc.signoutRedirect();
-    } catch {
-      await goAnonymous();
-    }
-  }, [oidc, goAnonymous]);
-
-  const completeLogin = useCallback(async () => {
-    let user: OidcUser;
-    try {
-      user = await oidc.signinRedirectCallback();
-    } catch {
-      setStatus("error");
-      return null;
-    }
-    tokenRef.current = user.access_token;
-    await loadMe();
-    return returnToOf(user);
-  }, [oidc, loadMe]);
+    setSessionExpired(false);
+    goAnonymous();
+  }, [goAnonymous]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, me, errorDetail, sessionExpired, login, logout, retry: init, completeLogin }),
-    [status, me, errorDetail, sessionExpired, login, logout, init, completeLogin],
+    () => ({
+      status,
+      me,
+      etape,
+      errorDetail,
+      sessionExpired,
+      login,
+      verifyOtp,
+      changePassword,
+      logout,
+      retry: init,
+    }),
+    [
+      status,
+      me,
+      etape,
+      errorDetail,
+      sessionExpired,
+      login,
+      verifyOtp,
+      changePassword,
+      logout,
+      init,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
