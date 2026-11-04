@@ -97,7 +97,8 @@ class RechercheView(APIView):
             "Renvoie au plus 20 résultats visibles de l'utilisateur, sans total (`plus` indique "
             "qu'il en reste). Le surlignage est porté par deux caractères de contrôle réservés "
             "(U+0002 début, U+0003 fin). Rôle ADMIN : 403 ; au-delà de 60 requêtes par minute : "
-            "429 ; moteur indisponible : 503."
+            "429. Moteur indisponible : repli sur les missions en base (`degrade` vrai), ou 503 si "
+            "la requête exclut les missions."
         ),
         parameters=[RechercheParametresSerializer],
         responses={
@@ -119,7 +120,11 @@ class RechercheView(APIView):
         )
         reponse = Response(
             ReponseRechercheSerializer(
-                {"resultats": construire_resultats(resultat.resultats), "plus": resultat.plus}
+                {
+                    "resultats": construire_resultats(resultat.resultats),
+                    "plus": resultat.plus,
+                    "degrade": resultat.degrade,
+                }
             ).data
         )
         reponse["Cache-Control"] = "no-store"

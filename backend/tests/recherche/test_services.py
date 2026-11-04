@@ -155,8 +155,21 @@ def test_moteur_indisponible_donne_503(rai: User, monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setattr("apps.recherche.services.moteur", lambda: Panne())
     with pytest.raises(RechercheIndisponibleError) as exc:
-        rechercher(rai, "Rapprochement")
+        rechercher(rai, "Rapprochement", types=["DOCUMENT"])
     assert exc.value.status_http == 503
+
+
+def test_moteur_indisponible_repli_sur_les_missions(
+    rai: User, mission_lancee: Mission, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class Panne:
+        def rechercher(self, *a: Any, **k: Any) -> list[Hit]:
+            raise RechercheIndisponibleError
+
+    monkeypatch.setattr("apps.recherche.services.moteur", lambda: Panne())
+    res = rechercher(rai, mission_lancee.titre[:8])
+    assert res.degrade is True
+    assert [h.objet_id for h in res.resultats] == [str(mission_lancee.pk)]
 
 
 # ---------------------------------------------------------------- missions, actions, DG

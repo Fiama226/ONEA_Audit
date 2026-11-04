@@ -11,12 +11,15 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
+from django.db.models import Q
 from rest_framework.exceptions import ValidationError
 
+from apps.missions.models import StatutMission
 from apps.users.models import User
 
 from .client import MARQUEUR_DEBUT, MARQUEUR_FIN, Hit, echapper_filtre, moteur
-from .sources import SOURCES
+from .exceptions import RechercheIndisponibleError
+from .sources import SOURCES, TYPE_MISSION, _perimetre_missions
 from .visibilite import filtre_pour
 
 logger = logging.getLogger(__name__)
@@ -31,6 +34,8 @@ LOT_REINDEXATION = 500
 class ResultatRecherche:
     resultats: list[Hit]
     plus: bool
+    # Vrai quand le moteur ne répond pas : seules les missions ont été cherchées, en base.
+    degrade: bool = False
 
 
 def nettoyer_requete(q: str) -> str:
@@ -103,6 +108,33 @@ def _reverifier(
     return confirmes, rejetes
 
 
+def _repli_missions(user: User, q: str, limite: int) -> ResultatRecherche:
+    """Moteur indisponible : recherche des missions visibles (référence, titre) directement en base.
+
+    Mode dégradé : mêmes droits que l'API (`_perimetre_missions`), brouillons exclus comme dans
+    l'index ; les autres types (constats, documents...) ne sont pas cherchés.
+    """
+    missions = (
+        _perimetre_missions(user)
+        .exclude(statut=StatutMission.BROUILLON)
+        .filter(Q(reference__icontains=q) | Q(titre__icontains=q))
+        .order_by("-updated_at", "pk")[: limite + 1]
+    )
+    hits = [
+        Hit(
+            id=f"{TYPE_MISSION}-{m.pk}",
+            type=TYPE_MISSION,
+            objet_id=str(m.pk),
+            mission_id=str(m.pk),
+            titre=m.titre,
+            sous_titre=m.reference,
+            extrait="",
+        )
+        for m in missions
+    ]
+    return ResultatRecherche(hits[:limite], len(hits) > limite, degrade=True)
+
+
 def rechercher(
     user: User, q: str, *, types: list[str] | None = None, limite: int = 20
 ) -> ResultatRecherche:
@@ -111,7 +143,12 @@ def rechercher(
     filtre = filtre_pour(user)
     if filtre is None:
         return ResultatRecherche([], False)
-    hits = moteur().rechercher(propre, filtre=_filtre_types(filtre, types), limite=limite + 1)
+    try:
+        hits = moteur().rechercher(propre, filtre=_filtre_types(filtre, types), limite=limite + 1)
+    except RechercheIndisponibleError:
+        if types is not None and TYPE_MISSION not in types:
+            raise
+        return _repli_missions(user, propre, limite)
     confirmes, rejetes = _reverifier(user, hits, types)
     if rejetes:
         _demander_reindexation(rejetes)
