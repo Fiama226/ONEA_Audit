@@ -56,9 +56,7 @@ describe("UserListPage", () => {
   });
 
   it("shows no provisional role nor any Keycloak notion", async () => {
-    mockList([
-      aListAccount({ en_attente_connexion: true, origine: "CSV", keycloak_sync_statut: "ECHEC" }),
-    ]);
+    mockList([aListAccount({ en_attente_connexion: true, origine: "CSV" })]);
     renderAdministration("/administration/utilisateurs");
     await findRow();
     expect(document.body).not.toHaveTextContent(/provisoire|keycloak|annuaire|synchronisation/i);

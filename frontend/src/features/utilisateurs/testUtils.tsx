@@ -28,8 +28,6 @@ export const ALL_ACTIONS: ActionsCompte = {
   modifier_profil: true,
   desactiver: true,
   reactiver: false,
-  resynchroniser_profil: false,
-  relancer_synchro_keycloak: false,
   reinitialiser_mot_de_passe: true,
   desactiver_otp: false,
   modifier_courriel: true,
@@ -42,8 +40,6 @@ export const NO_ACTIONS: ActionsCompte = {
   modifier_profil: false,
   desactiver: false,
   reactiver: false,
-  resynchroniser_profil: false,
-  relancer_synchro_keycloak: false,
   reinitialiser_mot_de_passe: false,
   desactiver_otp: false,
   modifier_courriel: false,
@@ -66,14 +62,10 @@ export function anAccount(overrides: Partial<CompteUtilisateur> = {}): CompteUti
     is_active: true,
     origine: "ADMINISTRATION",
     en_attente_connexion: true,
-    keycloak_sync_statut: "A_JOUR",
     date_joined: "2026-10-28T08:00:00Z",
     first_name: "Landry",
     last_name: "Kabore",
-    keycloak_lie: false,
-    role_provisoire: false,
     premiere_connexion_le: null,
-    profil_gere_localement: false,
     desactive_le: null,
     desactive_par: null,
     motif_desactivation: "",
@@ -81,13 +73,6 @@ export function anAccount(overrides: Partial<CompteUtilisateur> = {}): CompteUti
     mot_de_passe_expire_le: "2026-10-31T08:00:00Z",
     verrouille_jusqu_a: null,
     otp_connexion_actif: false,
-    keycloak_sync: {
-      statut: "A_JOUR",
-      erreur: "",
-      derniere_tentative_le: null,
-      tentatives: 0,
-      manuel: false,
-    },
     actions: ALL_ACTIONS,
     ...overrides,
   } satisfies S["CompteUtilisateur"];
@@ -111,7 +96,6 @@ export function aListAccount(
     is_active: true,
     origine: "CSV",
     en_attente_connexion: false,
-    keycloak_sync_statut: "A_JOUR",
     date_joined: "2026-10-28T08:00:00Z",
     ...overrides,
   } satisfies S["CompteUtilisateurListe"];
@@ -122,7 +106,6 @@ export function aReport(overrides: Partial<RapportImport> = {}): RapportImport {
   return {
     dry_run: true,
     crees: ["a.b"],
-    mis_a_jour: [],
     ignores: [
       {
         ligne: 3,

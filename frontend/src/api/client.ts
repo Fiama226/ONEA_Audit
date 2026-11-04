@@ -86,8 +86,9 @@ const SANS_REDIRECTION_401 = new Set([
   "/api/v1/auth/password/reset/",
 ]);
 
+// Same origin by default: the browser talks to the web server, which proxies /api.
 export function baseUrl(): string {
-  const url = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8000";
+  const url = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
   return url.replace(/\/+$/, "");
 }
 

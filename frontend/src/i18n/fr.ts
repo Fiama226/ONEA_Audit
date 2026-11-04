@@ -703,7 +703,7 @@ export const fr = {
         "Colonnes : identifiant (obligatoire), email, prenom, nom, role (obligatoire), direction, fonction, matricule.",
       csvFormat: "Séparateur « ; » ou « , », encodage UTF-8, 300 lignes au plus (1 Mo au plus).",
       csvAdmin:
-        "Le rôle ADMIN ne peut pas être attribué par fichier : une ligne qui le demande est ignorée.",
+        "Le rôle ADMIN ne peut pas être attribué par fichier : une ligne qui le demande est ignorée. Créez le compte, puis un administrateur change son rôle.",
       csvExample: "Exemple",
       csvExampleText:
         "identifiant;email;prenom;nom;role;direction;fonction;matricule\naudit.a;a@onea.bf;Awa;Ouedraogo;AUDITEUR;DAI;Auditrice;M-101\naudit.b;b@onea.bf;Boukary;Sawadogo;RAI;DAI;Responsable audit interne;M-102",
@@ -718,19 +718,16 @@ export const fr = {
       csvVerifying: "Vérification en cours",
       reportDryRunTitle: "Vérification — aucun compte n'a encore été créé",
       reportDoneTitle: "Import terminé",
-      updated: "mis à jour",
       createdOne: "compte créé",
       createdMany: "comptes créés",
       ignoredOne: "ligne ignorée",
       ignoredMany: "lignes ignorées",
       csvTooLarge: "Le fichier dépasse 1 Mo.",
       createdList: "Comptes créés",
-      updatedList: "Comptes mis à jour",
       ignoredCaption: "Lignes ignorées",
       colLine: "Ligne",
       colIdentifier: "Identifiant",
       colReason: "Motif",
-      noLine: "—",
       passwordsTitle: "Mots de passe temporaires à transmettre",
       passwordsText:
         "Certains mots de passe temporaires ne sont pas partis par courriel. Téléchargez le fichier maintenant : il ne peut être téléchargé qu'une seule fois, dans les 24 heures, puis il est détruit. Conservez-le en lieu sûr et supprimez-le après usage.",

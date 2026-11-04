@@ -6,6 +6,7 @@ import {
   apiDownload,
   apiFetch,
   apiUpload,
+  baseUrl,
   ensureCsrfToken,
   resetCsrfToken,
   setUnauthorizedHandler,
@@ -476,5 +477,21 @@ describe("jeton CSRF", () => {
     const error = await apiFetch("/api/x/", { method: "POST", json: {} }).catch((e: unknown) => e);
     expect(isApiError(error) && error.status).toBe(0);
     expect(ecritures).toBe(0);
+  });
+});
+
+describe("baseUrl", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("defaults to the same origin when VITE_API_URL is unset", () => {
+    vi.stubEnv("VITE_API_URL", undefined as unknown as string);
+    expect(baseUrl()).toBe("");
+  });
+
+  it("strips trailing slashes from VITE_API_URL", () => {
+    vi.stubEnv("VITE_API_URL", "https://audit.example.org//");
+    expect(baseUrl()).toBe("https://audit.example.org");
   });
 });
