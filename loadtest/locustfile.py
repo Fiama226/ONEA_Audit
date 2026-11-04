@@ -128,10 +128,16 @@ class Utilisateur(HttpUser):
         self.entretiens: list[str] = []
         self.fiches: list[str] = []
         self.versions: list[str] = []
+        # Behind HTTPS, Django's CSRF check requires a Referer (and checks Origin when present).
+        origine = self.host.rstrip("/") if self.host else ""
+        if origine:
+            self.client.headers.update({"Referer": origine + "/", "Origin": origine})
         ca = os.environ.get("REQUESTS_CA_BUNDLE")
         if ca:
             self.client.verify = ca
         self._authentifier()
+        if not self.role:
+            return
         self._decouvrir()
 
     # ------------------------------------------------------------------ session
@@ -150,7 +156,19 @@ class Utilisateur(HttpUser):
                 name="[AUTH] connexion",
             )
             if reponse.status_code == 200:  # noqa: PLR2004
-                self.role = str((reponse.json().get("me") or {}).get("role") or "").upper()
+                corps = reponse.json()
+                me = corps.get("me") or {}
+                role = str(me.get("role") or "").upper()
+                if corps.get("etape") != "OK" or role not in ROLE_TABLEAU:
+                    print(
+                        f"Compte {self.login} inutilisable pour la charge : etape="
+                        f"{corps.get('etape')!r}, role={role!r} (OTP ou mot de passe temporaire "
+                        "a changer, ou role inattendu)"
+                    )
+                    self.csrf = ""
+                    self.stop(force=True)
+                    return
+                self.role = role
                 self.csrf = self._jeton_csrf()
                 return
             time.sleep(0.5 + random.random() * (essai + 1))  # noqa: S311

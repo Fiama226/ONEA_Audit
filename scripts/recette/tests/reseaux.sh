@@ -30,7 +30,12 @@ JAR="$RECETTE_DIR/session-reseaux.jar"
 affirmer "adresse usurpee 6.6.6.6 absente du journal d'audit, adresse reelle presente" '
     tok=$(connexion_session "$JAR" "${RECETTE_COMPTE_ECRITURE:-admin}") && [ -n "$tok" ] &&
     code="Z$(date +%s | tail -c 6)" &&
-    curl_recette -fs -o /dev/null -b "$JAR" -H "X-CSRFToken: $tok" -H "Referer: $A/"         -H "X-Forwarded-For: 6.6.6.6" -H "X-Real-IP: 6.6.6.6" -H "Content-Type: application/json" -X POST         -d "{\"code\":\"$code\",\"libelle\":\"Recette reseau\",\"type\":\"DIRECTION\"}" "$A/api/v1/directions/" &&
+    curl_recette -fs -o /dev/null -b "$JAR" \
+        -H "X-CSRFToken: $tok" -H "Referer: $A/" \
+        -H "X-Forwarded-For: 6.6.6.6" -H "X-Real-IP: 6.6.6.6" \
+        -H "Content-Type: application/json" -X POST \
+        -d "{\"code\":\"$code\",\"libelle\":\"Recette reseau\",\"type\":\"DIRECTION\"}" \
+        "$A/api/v1/directions/" &&
     adr=$(compose_recette exec -T web python manage.py shell -c "
 from auditlog.models import LogEntry
 e = LogEntry.objects.filter(object_repr__contains=\"$code\").order_by(\"-pk\").first()

@@ -32,7 +32,10 @@ curl_recette() {
 }
 
 # --- Connexion par session (plus de jetons Bearer) -----------------------------------------
-# Comptes de recette : fichier .recette/comptes.txt (ou $RECETTE_COMPTES), une ligne
+# Comptes de recette : AUCUNE commande du depot ne les cree avec un mot de passe (peupler_demo et
+# l'import de comptes posent un mot de passe inutilisable) : l'administration des comptes de
+# l'application les cree, puis chaque compte change son mot de passe temporaire ; le fichier
+# .recette/comptes.txt (hors Git) est tenu a la main. Fichier .recette/comptes.txt (ou $RECETTE_COMPTES), une ligne
 # `identifiant:mot_de_passe` par compte (le mot de passe commence apres le premier « : »).
 RECETTE_COMPTES=${RECETTE_COMPTES:-$RECETTE_DIR/comptes.txt}
 
@@ -48,15 +51,34 @@ jeton_csrf() {
 }
 
 # connexion_session <jar> <identifiant> : ouvre une session (csrf puis POST /auth/login/) et affiche
-# le jeton CSRF a joindre (en-tete X-CSRFToken) aux requetes d'ecriture. Code 1 si la connexion echoue.
-# Django renouvelle le jeton CSRF a la connexion : il est relu apres le login.
+# le jeton CSRF a joindre (en-tete X-CSRFToken) aux requetes d'ecriture. Code 1 si la connexion echoue
+# ou si la reponse n'est pas l'etape « OK » (compte avec code OTP ou mot de passe temporaire a changer :
+# utiliser un compte de recette dont le mot de passe est definitif et sans OTP).
+# Le mot de passe ne passe ni par la ligne de commande de python3 (variable d'environnement du seul
+# processus) ni par celle de curl (corps JSON lu sur l'entree standard). Django renouvelle le jeton CSRF
+# a la connexion : il est relu apres le login. Le Referer est obligatoire en HTTPS (controle CSRF).
 connexion_session() {
     _jar=$1
     _id=$2
     : > "$_jar"
     _tok=$(jeton_csrf "$_jar") || return 1
-    _corps=$(python3 -c 'import json,sys; print(json.dumps({"identifiant": sys.argv[1], "mot_de_passe": sys.argv[2]}))'         "$_id" "$(mdp_compte "$_id")") || return 1
-    curl_recette -fs -o /dev/null -c "$_jar" -b "$_jar" -H "X-CSRFToken: $_tok"         -H "Referer: https://$PUBLIC_HOST/" -H "Content-Type: application/json"         -d "$_corps" "https://$PUBLIC_HOST/api/v1/auth/login/" || return 1
+    _rep=$(
+        ONEA_ID=$_id ONEA_MDP=$(mdp_compte "$_id") python3 -c '
+import json, os
+print(json.dumps({"identifiant": os.environ["ONEA_ID"], "mot_de_passe": os.environ["ONEA_MDP"]}))
+' |
+            curl_recette -fs -c "$_jar" -b "$_jar" \
+                -H "X-CSRFToken: $_tok" \
+                -H "Referer: https://$PUBLIC_HOST/" \
+                -H "Content-Type: application/json" \
+                --data-binary @- "https://$PUBLIC_HOST/api/v1/auth/login/"
+    ) || { echo "connexion_session : connexion refusee pour $_id" >&2; return 1; }
+    printf '%s' "$_rep" | python3 -c '
+import json, sys
+etape = json.load(sys.stdin).get("etape")
+if etape != "OK":
+    sys.exit("connexion_session : etape " + str(etape) + " au lieu de OK (compte avec OTP ou mot de passe temporaire a changer)")
+' || return 1
     jeton_csrf "$_jar"
 }
 

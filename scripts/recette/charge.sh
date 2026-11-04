@@ -1,7 +1,9 @@
 #!/bin/sh
 # Test de charge de la recette (lot 9, T26) : 40 utilisateurs, montee 2/s, 20 min, seuils D10.
 # Comptes : $RECETTE_COMPTES (defaut .recette/comptes.txt), lignes `identifiant:mot_de_passe`, comptes chargeNN
-# connectes par session (voir loadtest/locustfile.py).
+# connectes par session (voir loadtest/locustfile.py). Aucune commande du depot ne cree ces comptes avec
+# un mot de passe : l'administration des comptes de l'application les cree (mot de passe temporaire
+# change ensuite, sinon la connexion renvoie CHANGER_MOT_DE_PASSE) ; le fichier est tenu a la main.
 # Usage : sh scripts/recette/charge.sh   (apres up.sh et peupler_demo --profil volumetrie)
 # Code de sortie : 0 si tous les seuils D10 sont tenus ET la file Celery est vide 2 min apres la fin.
 # Variables : CHARGE_USERS (40), CHARGE_RATE (2), CHARGE_DUREE (20m), CHARGE_ATTENTE_FILE (120 s),
