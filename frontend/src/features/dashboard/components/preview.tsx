@@ -17,14 +17,24 @@ function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-export function PageHeader({ title, userRole }: { title: string; userRole: Role }) {
+export function PageHeader({
+  title,
+  userRole,
+  annee,
+}: {
+  title: string;
+  userRole: Role;
+  /** Année affichée en sous-titre ; par défaut l'année courante. */
+  annee?: number;
+}) {
   const now = new Date();
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
       <div>
         <h1 className="text-2xl font-semibold tracking-[-0.012em]">{title}</h1>
         <p className="mt-1 text-sm text-text-muted">
-          {fr.roles[userRole]} · {programmeLabel(now)}
+          {fr.roles[userRole]} ·{" "}
+          {annee === undefined ? programmeLabel(now) : `${fr.dashboard.programme} ${annee}`}
         </p>
       </div>
       <p className="flex items-center gap-2 text-xs text-text-muted">

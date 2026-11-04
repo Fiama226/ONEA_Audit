@@ -190,7 +190,7 @@ export function DashboardRAI() {
   const query = useDashboardRai(annee);
   return (
     <PrintLayout title={t.printTitleRai} orientation="paysage">
-      <PageHeader title={d.raiTitle} userRole="RAI" />
+      <PageHeader title={d.raiTitle} userRole="RAI" annee={annee} />
       <YearFilter value={annee} onChange={setAnnee} />
       {query.isPending ? (
         <LoadingRAI />

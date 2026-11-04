@@ -30,6 +30,39 @@ describe("DashboardDG", () => {
     expect(within(reports).getByText("MI-2026-001")).toBeInTheDocument();
   });
 
+  it("met en tête les points d'attention avec des liens directs", async () => {
+    serve({
+      ...tableauDgFixture,
+      taux: { ...tauxFixture, echues: 5, cloturees_echues: 2 },
+      risques_eleves: { ...tableauDgFixture.risques_eleves, non_couverts: 2 },
+    });
+    renderWithAuth(<DashboardDG />, "DG");
+    const region = await screen.findByRole("region", { name: t.attentionTitle });
+    expect(
+      within(region).getByRole("link", { name: /2 risques élevés non couverts/ }),
+    ).toHaveAttribute("href", "/referentiel/cartographies");
+    expect(
+      within(region).getByRole("link", { name: /3 actions échues non clôturées/ }),
+    ).toHaveAttribute("href", "/recommandations");
+  });
+
+  it("annonce qu'il n'y a rien à signaler", async () => {
+    serve({
+      ...tableauDgFixture,
+      taux: { ...tauxFixture, echues: 2, cloturees_echues: 2 },
+      risques_eleves: { ...tableauDgFixture.risques_eleves, non_couverts: 0 },
+    });
+    renderWithAuth(<DashboardDG />, "DG");
+    const region = await screen.findByRole("region", { name: t.attentionTitle });
+    expect(within(region).getByText(t.attentionNone)).toBeInTheDocument();
+  });
+
+  it("indique l'année choisie dans le sous-titre", async () => {
+    serve();
+    renderWithAuth(<DashboardDG />, "DG", "/?annee=2027");
+    expect(await screen.findByText(/Programme 2027/)).toBeInTheDocument();
+  });
+
   it("dit « — (aucune action) » quand le taux est null", async () => {
     serve({
       ...tableauDgFixture,

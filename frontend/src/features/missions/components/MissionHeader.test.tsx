@@ -52,4 +52,73 @@ describe("MissionHeader", () => {
     setup();
     expect(screen.queryByText(fr.missions.declarationBanner)).not.toBeInTheDocument();
   });
+
+  describe("next action", () => {
+    it("tells the RAI to plan a draft and offers the button", () => {
+      setup(
+        aMission({
+          reference: "",
+          statut: "BROUILLON",
+          phase: null,
+          etape_courante: null,
+          mes_droits: { ...allRights(false), planifier: true, modifier: true },
+        }),
+      );
+      expect(screen.getByRole("status", { name: fr.missions.nextActionLabel })).toHaveTextContent(
+        fr.missions.nextDraft,
+      );
+      expect(screen.getByRole("button", { name: fr.missionPilotage.actionPlan })).toBeEnabled();
+    });
+
+    it("tells the RAI to launch a planned mission", () => {
+      setup(
+        aMission({
+          statut: "PLANIFIEE",
+          phase: null,
+          mes_droits: { ...allRights(false), lancer: true },
+        }),
+      );
+      expect(screen.getByRole("status", { name: fr.missions.nextActionLabel })).toHaveTextContent(
+        fr.missions.nextPlanned,
+      );
+      expect(screen.getByRole("button", { name: fr.missionPilotage.actionLaunch })).toBeEnabled();
+    });
+
+    it("points to the order of mission, then to the current step", () => {
+      const { unmount } = setup(
+        aMission({
+          etape_courante: { numero: 1, romain: "I" },
+          mes_droits: { ...allRights(false), emettre_ordre: true, voir_travaux: true },
+        }),
+      );
+      expect(
+        screen.getByRole("link", { name: fr.missionPilotage.actionIssueOrder }),
+      ).toHaveAttribute("href", expect.stringMatching(/\/etapes\/1$/));
+      unmount();
+      setup(
+        aMission({
+          etape_courante: { numero: 4, romain: "IV" },
+          mes_droits: { ...allRights(false), voir_travaux: true },
+        }),
+      );
+      expect(screen.getByRole("link", { name: /Ouvrir l'étape IV/ })).toHaveAttribute(
+        "href",
+        expect.stringMatching(/\/etapes\/4$/),
+      );
+    });
+
+    it("shows nothing for a closed mission and names the phase honestly", () => {
+      setup(aMission({ statut: "CLOTUREE", phase: null, mes_droits: allRights(false) }));
+      expect(
+        screen.queryByRole("status", { name: fr.missions.nextActionLabel }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Hors phase")).not.toBeInTheDocument();
+      expect(screen.getByText(fr.missions.phaseDone)).toBeInTheDocument();
+    });
+
+    it("does not offer a button the server did not grant", () => {
+      setup(aMission({ statut: "PLANIFIEE", phase: null, mes_droits: allRights(false) }));
+      expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    });
+  });
 });

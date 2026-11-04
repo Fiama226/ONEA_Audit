@@ -28,11 +28,16 @@ type Props = {
   onConfirm: () => Promise<unknown>;
 };
 
-/** Message général puis messages par champ (ex. champs manquants), sans doublon. */
+/** Message général puis messages par champ (ex. champs manquants), sans doublon. Un champ connu
+ * est nommé (« Entités auditées : … ») : sinon des champs différents affichent le même texte. */
 function errorLines(e: ApiError): string[] {
   const lines = [e.detail];
-  for (const message of Object.values(e.errors).flat()) {
-    if (!lines.includes(message)) lines.push(message);
+  for (const [field, messages] of Object.entries(e.errors)) {
+    const label = (fr.missions.fieldLabels as Record<string, string>)[field];
+    for (const message of messages) {
+      const line = label ? `${label} : ${message}` : message;
+      if (!lines.includes(line)) lines.push(line);
+    }
   }
   return lines;
 }

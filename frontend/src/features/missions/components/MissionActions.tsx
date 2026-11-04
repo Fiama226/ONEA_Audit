@@ -47,6 +47,14 @@ const SIMPLE: Partial<Record<Dialog, { action: MissionAction; text: string; conf
   resume: { action: "resume", text: m.resumeText, confirm: m.confirmResume },
 };
 
+/** Action de cycle de vie proposée en bouton principal selon l'état de la mission. */
+function primaryRight(mission: Mission): keyof DroitsMission | null {
+  if (mission.statut === "BROUILLON" && mission.mes_droits.planifier) return "planifier";
+  if (mission.statut === "PLANIFIEE" && mission.mes_droits.lancer) return "lancer";
+  if (mission.statut === "SUSPENDUE" && mission.mes_droits.reprendre) return "reprendre";
+  return null;
+}
+
 /** Menu des actions de cycle de vie ; chaque entrée vient de `mes_droits` (jamais recalculée). */
 export function MissionActions({ mission }: { mission: Mission }) {
   const navigate = useNavigate();
@@ -55,6 +63,7 @@ export function MissionActions({ mission }: { mission: Mission }) {
   const [open, setOpen] = useState<Dialog | null>(null);
   const available = ACTIONS.filter((a) => mission.mes_droits[a.right]);
   if (available.length === 0) return null;
+  const primary = ACTIONS.find((a) => a.right === primaryRight(mission));
 
   const close = (next: boolean) => {
     if (!next) setOpen(null);
@@ -63,6 +72,11 @@ export function MissionActions({ mission }: { mission: Mission }) {
 
   return (
     <>
+      {primary?.kind === "dialog" && (
+        <Button type="button" size="sm" onClick={() => setOpen(primary.dialog)}>
+          {primary.label}
+        </Button>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button type="button" variant="outline" size="sm">

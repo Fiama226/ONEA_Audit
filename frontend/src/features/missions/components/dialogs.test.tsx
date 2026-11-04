@@ -78,8 +78,8 @@ describe("ConfirmActionDialog", () => {
       () =>
         Promise.reject(
           new ApiError(422, "Des informations obligatoires manquent.", {
-            objectifs: ["Les objectifs sont obligatoires."],
-            entites: ["Les objectifs sont obligatoires.", "Indiquez une entité."],
+            champ_a: ["Le champ A est obligatoire."],
+            champ_b: ["Le champ A est obligatoire.", "Indiquez une valeur."],
           }),
         ),
       false,
@@ -89,6 +89,23 @@ describe("ConfirmActionDialog", () => {
     expect(alert).toHaveTextContent("Des informations obligatoires manquent.");
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("names each missing field so the user knows what to fill in", async () => {
+    const message = "Ce champ est obligatoire pour planifier la mission.";
+    confirmDialog(
+      () =>
+        Promise.reject(
+          new ApiError(422, "Des informations obligatoires manquent.", {
+            entites: [message],
+            objectifs: [message],
+          }),
+        ),
+      false,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Valider" }));
+    const items = (await screen.findAllByRole("listitem")).map((li) => li.textContent);
+    expect(items).toEqual([`Entités auditées : ${message}`, `Objectifs : ${message}`]);
   });
 
   it("shows a generic message for a non-API failure", async () => {
