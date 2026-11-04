@@ -2,7 +2,7 @@
 
 Statut : **outillage livré, exécution navigateur en attente.** Aucune violation n'est consignée
 ci-dessous parce que le parcours axe et clavier n'a pas pu être exécuté dans cette session
-(Playwright MCP indisponible, pile e2e Keycloak + base peuplée non démarrée). Aucun constat n'est
+(Playwright MCP indisponible, pile e2e + base peuplée non démarrée). Aucun constat n'est
 inventé : les sections « Violations » et « Constats clavier » sont à remplir à partir des sorties
 décrites au paragraphe « Exécution ».
 
@@ -22,9 +22,9 @@ jonction vers le dépôt principal, à ne pas modifier) ; le verrou a été prod
 
 ## Exécution (à faire avec un navigateur)
 
-1. Pile e2e : `scripts/e2e.sh` (base jetable `onea_e2e_*`, Keycloak du compose de dev).
+1. Pile e2e : `scripts/e2e.sh` (base jetable `onea_e2e_*` ; elle crée les comptes de test par `creer_comptes_e2e`).
 2. Base peuplée : `python manage.py peupler_demo --profil formation` sur la base e2e, avec les
-   comptes `admin`, `rai`, `auditeur1`, `audite1`, `dg` (mot de passe `onea2026`) connus de Keycloak.
+   comptes e2e créés par `creer_comptes_e2e` (mot de passe `E2E_PASSWORD`, voir `scripts/e2e.sh`).
 3. `cd frontend && npm ci && npx playwright test e2e/a11y.spec.ts e2e/clavier.spec.ts` (le script
    e2e accepte ces arguments).
 4. Lire `test-results/a11y-violations.json` et les annotations `constat-clavier`, puis remplir les

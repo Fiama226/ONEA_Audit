@@ -10,25 +10,49 @@ or from the process environment:
 | Variable | Notes |
 |---|---|
 | `SECRET_KEY` | required in prod |
-| `ALLOWED_HOSTS` | comma-separated |
-| `CORS_ALLOWED_ORIGINS` | comma-separated |
+| `ALLOWED_HOSTS` | comma-separated; required in prod (`PUBLIC_HOST` in compose) |
+| `CSRF_TRUSTED_ORIGINS` | comma-separated origins; required in prod (`https://${PUBLIC_HOST}` in compose). The SPA and the API share one origin: no CORS setting exists |
+| `SESSION_COOKIE_SECURE` | required in prod and must be true (the prod settings refuse to start otherwise); cookies are then named `__Host-onea-session` and `__Host-onea-csrf`. Not set in dev/test (plain HTTP) |
 | `DATABASE_URL` | e.g. `postgres://onea:onea@localhost:5432/onea` (tests need PostgreSQL) |
-| `REDIS_URL` | e.g. `redis://localhost:6379/0` (Celery broker and result backend) |
-| `EMAIL_URL` | default `smtp://mailpit:1025` (compose network); `smtp://localhost:1025` on the host |
-| `OIDC_OP_BASE_URL` | Keycloak realm URL, default `http://localhost:8080/realms/onea`; auth/token/userinfo/JWKS endpoints derive from it |
-| `OIDC_RP_CLIENT_ID` | default `onea-backend` |
-| `OIDC_ALLOWED_AZP` | comma-separated Keycloak clients whose tokens are accepted (`azp`), default `onea-frontend` (`onea-dev-cli` added in dev/test) |
-| `OIDC_RP_CLIENT_SECRET` | unused by the Bearer path (userinfo + JWKS); only required because mozilla-django-oidc reads it at init (empty default in dev/test, mandatory in prod) |
-| `OIDC_VERIFY_SSL` | default `true`; prod refuses `false` |
+| `REDIS_URL` | e.g. `redis://localhost:6379/0` (Celery broker and result backend; cache and rate limits use database 1). Sessions live in PostgreSQL, not in Redis |
+| `EMAIL_URL` | dev default `smtp://mailpit:1025` (compose network), `smtp://localhost:1025` on the host; required in prod (`smtp+tls://` STARTTLS, `smtps://` implicit TLS). One-time codes and welcome emails go out through it. Password: `EMAIL_PASSWORD_FILE` (prod secret `email_password`). `EMAIL_TIMEOUT` is a setting, not a variable: 15 s in `base.py`, 10 s in `prod.py` |
+| `CA_BUNDLE_PATH` | compose variable (not read by Django): path inside the containers of a PEM bundle that becomes `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE`, for an SMTP relay signed by an internal CA. Empty = default trust store |
+| `THROTTLE_RATE_CONNEXION` | login, login code, forgotten-password and reset endpoints, per client IP; default `20/min` |
+| `THROTTLE_RATE_MOT_DE_PASSE_OUBLIE` | "forgotten password" requests, per typed identifier; default `5/hour` (plus a silent cap of 10 codes per account per 24 h) |
+| `THROTTLE_RATE_GESTION_COMPTES` | account creation, password reset, login-code removal, per acting user; default `30/hour` |
+| `PLATEFORME_URL` | base of the links in emails, default `http://localhost:5173`; must be `https://` in prod (`https://${PUBLIC_HOST}` in compose) |
 
-In prod, `OIDC_OP_BASE_URL` is required and must start with `https://`.
+Every `THROTTLE_RATE_<SCOPE>` (generation, apercu, televersement, import, export, anonyme,
+recherche, connexion, mot_de_passe_oublie, gestion_comptes) takes `N/sec|min|hour|day`; an invalid
+value stops the start-up.
 
-If Keycloak is unreachable or answers 5xx, protected endpoints answer 503 (not 401), so
-clients do not drop their session during an outage.
+## Authentication
 
-The API accepts `Authorization: Bearer <Keycloak access token>` (verified via the userinfo
-endpoint). The local role comes only from the `roles` claim (ADMIN > RAI > AUDITEUR > DG >
-AUDITE, default AUDITE) and is re-synced on every request.
+In-app authentication, no external identity service. Django sessions stored in the database
+(`SESSION_ENGINE = ...sessions.backends.db`): `HttpOnly`, `SameSite=Lax` cookie, CSRF protection on
+writes, absolute lifetime 8 h and 30 min of inactivity (`SessionLimiteeMiddleware`). Passwords are
+hashed with Argon2id (`argon2-cffi`), minimum 12 characters, Django validators (common, numeric,
+similarity). The API accepts no `Authorization: Bearer` header: it answers 401 without a session.
+
+Endpoints (`apps/users/auth_urls.py`, all under `/api/v1/`): `auth/login/`, `auth/login/otp/`,
+`auth/logout/`, `auth/session/`, `auth/csrf/`, `auth/password/forgot/`, `auth/password/reset/`,
+`auth/password/change/`, `auth/otp/enable/`, `auth/otp/disable/`. Account administration:
+`user-accounts/` (create, `reset-password`, `disable-otp`, `change-role`, `delegation`,
+`deactivate`, `reactivate`, `import-csv`, `import-passwords/<id>/`), restricted to the ADMIN role or
+to rights delegated by an administrator (`apps/users/delegation.py`).
+
+Commands (run `python manage.py <command> --help`):
+
+| Command | Use |
+|---|---|
+| `creer_administrateur --identifiant ID [--courriel ADRESSE] [--desactiver-otp]` | create the initial administrator, or give an existing one a new temporary password (printed once; 72 h; unlocks the account, closes its sessions) |
+| `donner_mots_de_passe_temporaires [--a-blanc]` | temporary password for every active account without a usable one (switch from the former identity provider); printed once as `identifiant<TAB>password` |
+| `import_accounts --csv FILE [--apply --by ADMIN] [--sans-courriel] [--fichier-mots-de-passe PATH]` | CSV account import (dry run without `--apply`) |
+| `creer_comptes_e2e` | e2e only: accounts with a known password; refuses outside `DEBUG`, outside `onea_e2e_<digits>` databases and on non-local hosts |
+
+Scheduled tasks (`CELERY_BEAT_SCHEDULE`): `users.purger_codes` (03:30, expired one-time codes and
+import password files past 24 h) and `users.purger_sessions` (03:45, `clearsessions`). Design and
+control map: `docs/securite/auth-interne-modele.md`.
 
 API schema and docs (`/api/schema/`, `/api/docs/`) are anonymous in dev/test and admin-only in prod.
 
@@ -51,8 +75,8 @@ python manage.py import_referentiel <fichier.csv> --user <login> [--dry-run]
 ```
 
 - `--user` (obligatoire) : identifiant d'un utilisateur actif de rôle RAI ou ADMIN ; il signe
-  la piste d'audit (`/api/v1/audit-log/`). Le compte doit déjà exister : il est créé à la
-  première connexion de la personne via Keycloak ; la commande ne crée aucun utilisateur.
+  la piste d'audit (`/api/v1/audit-log/`). Le compte doit déjà exister (créé par un
+  administrateur, ou par `creer_administrateur`) ; la commande ne crée aucun utilisateur.
 - `--dry-run` : valide le fichier et affiche ce qui serait créé ou mis à jour, sans rien écrire.
 - **Idempotente** : upsert par code, jamais de suppression. Une seconde exécution du même
   fichier ne change rien (tout est compté « inchangé »). **Tout ou rien** : à la moindre erreur
@@ -169,8 +193,8 @@ confirmation est conservée).
 `frontend/e2e/missions.spec.ts` rejoue le parcours complet contre la pile de dev. Il crée des
 missions dont le titre commence par « E2E — » et les supprime logiquement par SQL ; ce nettoyage
 est refusé sauf si `E2E_ALLOW_DB_CLEANUP=1`. Pour une seconde pile à côté de celle de dev :
-`WEB_PORT`, `E2E_API_URL`, `E2E_OIDC_AUTHORITY`, `E2E_DB_CONTAINER` et `POSTGRES_DB`
-(le client Keycloak de dev doit autoriser l'URI de redirection du port choisi).
+`WEB_PORT`, `E2E_API_URL`, `E2E_DB_CONTAINER` et `POSTGRES_DB`. Les specs se connectent par le
+formulaire de connexion avec les comptes de `creer_comptes_e2e` (mot de passe `E2E_PASSWORD`).
 
 
 ## Accomplissement (lot 6) : programme, fiches, pièces, constats

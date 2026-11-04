@@ -26,7 +26,7 @@ frontend/src/
 
 ## Données
 - `useQuery` / `useMutation` de TanStack Query, clés `['missions', id]`, invalidation ciblée.
-- Client API unique `api/client.ts` : base URL, token OIDC, gestion 401/403/422.
+- Client API unique `api/client.ts` : base URL, cookie de session et en-tête CSRF (pas de jeton), gestion 401/403/422.
 - Types générés : `npm run gen:api` (openapi-typescript sur `/api/schema/`).
 
 ## Formulaires

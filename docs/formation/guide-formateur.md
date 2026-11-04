@@ -5,8 +5,10 @@
 ### 1.1 Environnement
 Utiliser une pile de **recette** dédiée (jamais la base de développement `onea`, jamais la production) :
 
-1. Démarrer la pile et le realm : `scripts/recette/up.sh` puis `scripts/recette/realm.sh`
-   (voir `docs/exploitation/runbook.md` §10 « Banc de recette »).
+1. Démarrer la pile : `scripts/recette/up.sh` (voir `docs/exploitation/runbook.md` §10 « Banc de
+   recette »), puis créer l'administrateur par `creer_administrateur` et, depuis l'écran *Utilisateurs*,
+   les comptes des participants (`docs/recette.md`, section « Comptes »). Chacun choisit son mot de
+   passe définitif à sa première connexion : prévoir ce temps au début de la session.
 2. Peupler une base vide avec les données fictives de formation, depuis le conteneur web :
    `python manage.py peupler_demo --profil formation --recette`
    (la commande refuse la production et refuse une base qui contient déjà des objets métier).
@@ -58,7 +60,7 @@ Objectif : revenir à un état identique en moins de 15 minutes (cible du plan, 
 
 1. Exécuter `sh scripts/recette/down.sh` : il supprime conteneurs, volumes, dossier de documents
    et `.recette/` du projet `onea-recette` (lu dans le script).
-2. Relancer les étapes 1.1 (pile, realm, `peupler_demo`). La graine par défaut (2026) rend le jeu
+2. Relancer les étapes 1.1 (pile, comptes, `peupler_demo`). La graine par défaut (2026) rend le jeu
    de données reproductible.
 
 Ne jamais exécuter ces commandes sur la pile de développement ni sur la production.

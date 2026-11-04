@@ -31,7 +31,7 @@ Le dépôt peut se trouver dans OneDrive ou dans un chemin avec espaces : le ven
 
 ```
 pwsh scripts/dev-setup.ps1   # uv venv + uv sync --frozen dans $env:ONEA_VENV (défaut %LOCALAPPDATA%\oneaenv) + npm ci
-pwsh scripts/dev-up.ps1      # base, Valkey, Keycloak, API (8000), Vite (5173)
+pwsh scripts/dev-up.ps1      # base, Valkey, Mailpit, API (8000), Vite (5173)
 pwsh scripts/dev-down.ps1
 ```
 
@@ -45,7 +45,7 @@ Les parcours e2e (`frontend/e2e/`) tournent sur une **base PostgreSQL jetable** 
 `onea` de développement n'est jamais écrite (aucun SQL de nettoyage dans les specs).
 
 ```
-make up                        # pile de dev : au minimum db et keycloak
+make up                        # pile de dev : au minimum db
 make e2e                       # = sh scripts/e2e.sh   (Windows : pwsh scripts/e2e.ps1)
 sh scripts/e2e.sh e2e/login.spec.ts   # arguments transmis à Playwright
 ```
@@ -60,10 +60,13 @@ toute écriture. Les données de test portent l'identifiant d'exécution (`E2E_R
 La recherche (Meilisearch) et la file Celery de la pile de dev ne sont pas utilisées (URL
 inerte, base Redis 14).
 
-Prérequis Keycloak : le client `onea-frontend` doit autoriser `http://localhost:5174/*`
-(redirection, origine et déconnexion), ce que fait `docker/keycloak/realm-onea.json`. Le realm
-n'est importé qu'à la création du volume : sur une pile existante, ajouter ces URI dans la
-console Keycloak (client `onea-frontend`) ou recréer le volume Keycloak.
+Authentification en e2e : `scripts/e2e.sh` (et `e2e.ps1`) crée, après la migration, les comptes de
+test par `python manage.py creer_comptes_e2e` (admin, rai, dg, auditeur1, auditeur2, delegue1, audite1 ;
+mot de passe `E2E_PASSWORD`, par défaut celui du script, sans changement forcé). La commande refuse de
+s'exécuter hors `DEBUG`, sur une base qui n'est pas `onea_e2e_<nombre>` ou sur un hôte non local. Les
+specs se connectent par le formulaire de connexion. Limite de débit de connexion levée pour ces
+exécutions. Les specs Playwright ont été vérifiées par `tsc` mais **pas exécutées** à ce jour de
+rédaction (voir `docs/PRET-A-LIVRER.md`).
 
 Nettoyage unique du lot 3 : la base orpheline `onea_e2e3` est supprimée par le script si elle
 existe (à la main sinon : `docker compose exec db dropdb -U onea onea_e2e3`). Chargement
@@ -103,7 +106,7 @@ Permissions Claude Code suggérées : copier `docs/settings.suggested.json` vers
 ## Stack
 
 Django 5 + DRF, React 19 + TypeScript + shadcn/ui, PostgreSQL 16, Celery/Redis, docxtpl,
-Gotenberg, Meilisearch, Keycloak, Docker Compose. Détail et justification dans `CLAUDE.md`.
+Gotenberg, Meilisearch, authentification interne (sessions Django, Argon2id, code par courriel), Docker Compose. Détail et justification dans `CLAUDE.md`.
 
 ## Licence
 

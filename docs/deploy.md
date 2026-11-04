@@ -10,20 +10,16 @@ Réseaux Docker :
 | Réseau | Type | Services |
 |---|---|---|
 | `edge` | standard | nginx (ports 80/443) |
-| `web` | `internal`, sous-réseau fixe `ONEA_SUBNET_WEB` (défaut `172.30.10.0/28`) | nginx (adresse fixe `ONEA_NGINX_IP`, alias `${SSO_HOST}`), web, worker |
+| `web` | `internal`, sous-réseau fixe `ONEA_SUBNET_WEB` (défaut `172.30.10.0/28`) | nginx (adresse fixe `ONEA_NGINX_IP`), web |
 | `front` | `internal` | nginx, frontend |
-| `sso` | `internal` | nginx, keycloak |
-| `kc-out` | standard | keycloak seul (sortie LDAP) |
 | `mail-out` | standard | worker seul (sortie SMTP) |
 | `backend` | `internal` | web, worker, beat, migrate, db, redis, meilisearch, gotenberg |
 | `av` | `internal` | clamav, web, worker (clamd, port 3310, joignable de ces trois services seulement) |
 | `av-out` | standard | clamav seul (mise à jour des signatures par freshclam) |
-| `kc` | `internal` | keycloak, keycloak-db |
 
-`nginx` porte l'alias réseau `${SSO_HOST}` sur `web` : `web` et `worker` joignent le SSO à
-travers `nginx`, sans passer par l'adresse publique. Les ports 8080 et 9000 de Keycloak ne
-sont joignables que depuis `nginx` (réseau `sso`). `web` n'a aucune sortie : tout courriel
-part du `worker` (tâche Celery) via `mail-out`. `gotenberg` n'a aucune route sortante.
+L'authentification est celle de l'application elle-même (sessions Django) : il n'y a plus de
+serveur d'identité ni de second nom DNS. `web` n'a aucune sortie : tout courriel (code à usage
+unique, courriel de bienvenue) part du `worker` (tâche Celery) via `mail-out`. `gotenberg` n'a aucune route sortante.
 ClamAV (SEC-04) est un conteneur séparé : `web` et `worker` l'interrogent sur `av` (protocole
 INSTREAM) ; sa seule route sortante est la mise à jour des signatures (`av-out`, aucun autre
 service). Premier démarrage : téléchargement d'environ 300 Mo de signatures puis chargement en
@@ -49,19 +45,19 @@ Variables de la périphérie :
 ## 1. Prérequis
 
 - Serveur Linux avec Docker Engine 26+ et le plugin Compose v2 (`docker compose version`).
-- Deux noms DNS pointant vers le serveur, par exemple `audit.onea.bf` (application) et
-  `sso.onea.bf` (Keycloak).
-- Un certificat TLS couvrant les deux noms (SAN ou certificat générique), délivré par
-  l'autorité de l'ONEA ou une autorité publique.
-- 4 Go de RAM minimum (Keycloak, PostgreSQL x2, Meilisearch, Gotenberg), 20 Go de disque.
+- Un nom DNS pointant vers le serveur, par exemple `audit.onea.bf` : l'application et son API
+  (`/api/`) sont servies sous cette **seule origine**.
+- Un certificat TLS couvrant ce nom, délivré par l'autorité de l'ONEA ou une autorité publique.
+- Un relais SMTP pour les codes à usage unique et les courriels de bienvenue (§2.3). Sans lui,
+  l'application fonctionne en mode dégradé (voir §5).
+- 4 Go de RAM minimum (PostgreSQL, Meilisearch, Gotenberg, ClamAV), 20 Go de disque.
 - Ports 80 et 443 ouverts ; aucun autre port n'est nécessaire.
 
 ## 2. Certificats
 
 Deux voies, au choix de l'ONEA (décision U2). Dans les deux cas, `nginx` lit
 `fullchain.pem` (certificat + chaîne) et `privkey.pem` (clé privée) dans le répertoire
-`TLS_CERT_DIR`, monté en lecture seule. Le certificat doit couvrir `PUBLIC_HOST` **et**
-`SSO_HOST` (deux noms alternatifs ou un joker).
+`TLS_CERT_DIR`, monté en lecture seule. Le certificat doit couvrir `PUBLIC_HOST`.
 
 ```
 /etc/onea/certs/fullchain.pem   # certificat + chaîne intermédiaire (0644)
@@ -72,17 +68,17 @@ Deux voies, au choix de l'ONEA (décision U2). Dans les deux cas, `nginx` lit
 
 Aucun accès à Internet n'est requis (convient à un serveur sur site).
 
-1. Générer une clé et une demande de signature (CSR) avec les deux noms :
+1. Générer une clé et une demande de signature (CSR) avec le nom de l'application :
    ```
    openssl req -new -newkey rsa:3072 -nodes -keyout privkey.pem -out onea.csr \
      -subj "/CN=audit.onea.bf" \
-     -addext "subjectAltName=DNS:audit.onea.bf,DNS:sso.onea.bf"
+     -addext "subjectAltName=DNS:audit.onea.bf"
    ```
 2. Transmettre `onea.csr` à la DSI (l'AC signe ; la clé ne quitte jamais le serveur).
 3. Assembler la chaîne reçue : `cat certificat.pem intermediaire.pem > fullchain.pem`.
 4. Déposer les deux fichiers dans `TLS_CERT_DIR` (clé en 0600, propriétaire root).
 5. Faire confiance à l'AC côté backend (§ « Autorité de certification interne » plus bas :
-   `certs/ca-bundle.pem`, `SSO_CA_BUNDLE_PATH`), et distribuer l'AC aux postes de travail.
+   `certs/ca-bundle.pem`, `CA_BUNDLE_PATH`), et distribuer l'AC aux postes de travail.
 6. Démarrer ou recharger : `docker compose --env-file .env.prod -f docker/compose.prod.yml exec nginx nginx -s reload`.
 7. Renouvellement : refaire les étapes 2 à 4 (ou réutiliser le CSR) **avant l'échéance**, puis
    recharger comme à l'étape 6. Noter l'échéance dans le calendrier de la DSI.
@@ -90,7 +86,7 @@ Aucun accès à Internet n'est requis (convient à un serveur sur site).
 ### 2.2 Voie B : Let's Encrypt (défi ACME http-01)
 
 Prérequis, **tous obligatoires** :
-- les deux noms (`PUBLIC_HOST`, `SSO_HOST`) existent dans le DNS **public** et pointent vers ce serveur ;
+- le nom `PUBLIC_HOST` existe dans le DNS **public** et pointe vers ce serveur ;
 - le port **80** est joignable depuis Internet (pare-feu, NAT) : le défi passe par
   `http://<nom>/.well-known/acme-challenge/` ; `nginx` le sert avant la redirection vers HTTPS ;
 - l'hôte dispose de Docker (l'outil `certbot` s'exécute dans une image épinglée) ;
@@ -148,8 +144,7 @@ L'application refuse de démarrer sans `EMAIL_URL`. Renseigner dans `.env.prod` 
 
 ## 3. Secrets et fichier d'environnement
 
-Les secrets ne sont **jamais** des variables d'environnement (sauf les deux de Keycloak, voir
-plus bas) : ce sont des **fichiers** générés une fois sur le serveur, montés dans les conteneurs
+Les secrets ne sont **jamais** des variables d'environnement : ce sont des **fichiers** générés une fois sur le serveur, montés dans les conteneurs
 par les `secrets:` de Compose sous `/run/secrets/`. `docker inspect` n'en montre que les
 chemins.
 
@@ -177,18 +172,15 @@ fichiers `0600`), l'absence de fichier vide et de valeur `CHANGE_ME`.
 | `postgres_password` | db, migrate | mot de passe du propriétaire `POSTGRES_USER` |
 | `postgres_app_password` | db (création du rôle), web, worker, beat | mot de passe du rôle applicatif `POSTGRES_APP_USER` |
 | `redis_password` | redis, web, worker, beat, migrate | mot de passe Valkey |
-| `oidc_client_secret` | web, worker, beat, migrate | secret du client `onea-backend` (voir §5, étape 6) |
-| `keycloak_sync_secret` | web, worker, beat, migrate | secret du compte de service `onea-admin-sync` (§5, étape 7bis) ; lu par Django via `KEYCLOAK_ADMIN_API_CLIENT_SECRET_FILE` (variable `KEYCLOAK_ADMIN_API_CLIENT_SECRET` en développement) |
 | `meili_master_key` | meilisearch, web, worker, beat, migrate | clé maître Meilisearch |
 | `metrics_token` | web | jeton `Authorization: Bearer` de `/api/v1/metrics/` |
 | `email_password` | worker | mot de passe SMTP ; **vide** si le relais n'en exige pas (le mot de passe de `EMAIL_URL` s'applique alors, s'il y en a un) |
 
 **Installation existante (secrets jusqu'ici dans `.env.prod`).** Ne pas laisser le script
-inventer des valeurs que la base, Keycloak ou Meilisearch ne connaissent pas : **avant** de le
+inventer des valeurs que la base ou Meilisearch ne connaissent pas : **avant** de le
 lancer, écrire les valeurs actuelles dans les fichiers (`printf '%s\n' "$VALEUR" | sudo tee
 /etc/onea/secrets/postgres_password >/dev/null`, puis `chmod 0600` et `chown 10001:10001`) pour
-`secret_key`, `postgres_password`, `redis_password`, `oidc_client_secret`,
-`keycloak_sync_secret` et `meili_master_key` ; le script ne crée alors que les fichiers
+`secret_key`, `postgres_password`, `redis_password` et `meili_master_key` ; le script ne crée alors que les fichiers
 manquants (`postgres_app_password`, `metrics_token`…). Retirer ensuite ces variables de
 `.env.prod`, puis `docker compose … up -d`.
 
@@ -205,13 +197,9 @@ cp .env.prod.example .env.prod
 chmod 600 .env.prod
 ```
 
-Renseigner les noms DNS, `ONEA_SECRETS_DIR` (le dossier ci-dessus), `EMAIL_URL` **sans mot de
-passe** (`smtp+tls://compte@smtp.onea.bf:587` ; le mot de passe va dans `email_password`) et
-remplacer les deux `CHANGE_ME` restants (`KEYCLOAK_ADMIN_PASSWORD`, `KEYCLOAK_DB_PASSWORD` :
-valeurs aléatoires sans `@ : / ? # %`, par exemple `openssl rand -hex 32`) : **Keycloak ne lit
-pas de fichier de secret**, ces deux-là restent des variables, visibles de qui lit `.env.prod`
-ou fait `docker inspect keycloak keycloak-db`. `APP_VERSION` est l'étiquette des images (ex.
-`1.0.0`). Le fichier n'est jamais commité (`.gitignore`). Vérification :
+Renseigner le nom DNS (`PUBLIC_HOST`), `ONEA_SECRETS_DIR` (le dossier ci-dessus) et `EMAIL_URL`
+**sans mot de passe** (`smtp+tls://compte@smtp.onea.bf:587` ; le mot de passe va dans
+`email_password`). `APP_VERSION` est l'étiquette des images (ex. `1.0.0`). Le fichier n'est jamais commité (`.gitignore`). Vérification :
 
 ```
 docker compose --env-file .env.prod -f docker/compose.prod.yml config -q
@@ -242,8 +230,6 @@ secret n'est lu qu'au démarrage. Abréviation : `dc` =
 | Mot de passe du rôle applicatif | 1. `dc stop web worker beat`. 2. Écrire la nouvelle valeur dans `postgres_app_password`. 3. Appliquer avec l'encadré « ALTER ROLE » ci-dessous (la valeur est lue dans le conteneur, jamais passée en argument). 4. `dc up -d --force-recreate web worker beat`. | courte (web, worker, beat) |
 | Mot de passe du propriétaire | Idem avec `postgres_password` et `POSTGRES_USER` dans l'encadré, puis `dc up -d --force-recreate db migrate`. `POSTGRES_PASSWORD_FILE` n'agit qu'à l'initialisation du volume : l'`ALTER ROLE` est indispensable. Les sauvegardes passent par le socket du conteneur, sans mot de passe. | `migrate` seulement |
 | Redis (Valkey) | 1. Écrire la nouvelle valeur dans `redis_password`. 2. `dc up -d --force-recreate redis web worker beat migrate`. Les tâches en attente sont conservées (`appendonly`). | courte |
-| Secret client OIDC (`onea-backend`) | 1. Écrire la nouvelle valeur dans `oidc_client_secret`. 2. Dans Keycloak (console, realm `onea`, client `onea-backend`, *Credentials*) : *Regenerate*, puis copier la valeur affichée dans le fichier (voir « Secret d'un client Keycloak » plus bas). 3. `dc up -d --force-recreate web worker beat`. Ce secret ne sert pas à valider les jetons (userinfo + JWKS) : aucune connexion n'est coupée. | aucune |
-| Compte de service `onea-admin-sync` | Idem avec `keycloak_sync_secret` et le client `onea-admin-sync`. Tant que les deux valeurs diffèrent, la synchronisation des comptes échoue (reprise automatique, toutes les 15 min). | aucune pour les utilisateurs |
 | Meilisearch | 1. Écrire la nouvelle valeur dans `meili_master_key`. 2. `dc up -d --force-recreate meilisearch web worker beat migrate`. 3. `dc exec web python manage.py configurer_recherche` puis `dc exec web python manage.py reindexer`. | recherche indisponible quelques minutes |
 | Jeton de métriques | Écrire la nouvelle valeur dans `metrics_token`, `dc up -d --force-recreate web`, puis mettre à jour la supervision de l'ONEA (en-tête `Authorization: Bearer`). | aucune |
 | Mot de passe SMTP | Écrire la nouvelle valeur dans `email_password`, `dc up -d --force-recreate worker`. | aucune |
@@ -261,23 +247,9 @@ SELECT format('ALTER ROLE %I PASSWORD %L', :'role', :'pw') \gexec
 SQL
 ```
 
-**Secret d'un client Keycloak.** Voie recommandée : console d'administration, *Clients >
-`onea-backend` (ou `onea-admin-sync`) > Credentials > Regenerate*, puis copier la valeur affichée
-dans le fichier de secret (`printf '%s\n' '<valeur>' | sudo tee /etc/onea/secrets/oidc_client_secret
->/dev/null`) sans la consigner ailleurs, et recréer `web worker beat`. Contrôle : le journal de
-`worker` ne montre plus d'échec « Keycloak admin » après la synchronisation suivante.
-
-**Secrets propres à Keycloak** (variables de `.env.prod`) :
-
-- `KEYCLOAK_ADMIN_PASSWORD` n'est lu qu'à la création du compte d'amorçage : le changer dans la
-  console (le compte nominatif remplace l'amorçage, §5) puis mettre `.env.prod` en cohérence.
-- `KEYCLOAK_DB_PASSWORD` : saisir le nouveau mot de passe dans une session `psql` interactive
-  (`dc exec keycloak-db psql -U keycloak -d keycloak` puis `\password keycloak`), écrire la même
-  valeur dans `.env.prod`, enfin `dc up -d --force-recreate keycloak`.
-
 **Fuite avérée** (secret publié, poste perdu) : rotation immédiate de **tous** les secrets
-concernés, déconnexion de toutes les sessions Keycloak (*Sessions*), relecture du journal d'audit
-de la période.
+concernés, réinitialisation des mots de passe des comptes concernés (chaque réinitialisation
+ferme toutes les sessions du compte, §5), relecture du journal d'audit de la période.
 
 ### 3.4 Détection de fuite de secrets
 
@@ -297,13 +269,14 @@ retiré de l'historique si le dépôt a été publié.
 
 ### Autorité de certification interne (facultatif)
 
-Si le certificat du SSO est signé par une autorité interne, le backend doit lui faire
-confiance pour joindre Keycloak (validation des jetons). Créer un fichier
+Si le certificat du relais SMTP est signé par une autorité interne, le backend doit lui faire
+confiance pour joindre le relais en TLS (`smtp+tls://` ou `smtps://`). Créer un fichier
 `certs/ca-bundle.pem` à la racine du dépôt contenant **les autorités publiques de confiance
 puis l'autorité interne** (la variable remplace le magasin par défaut de Python), puis
-renseigner dans `.env.prod` : `SSO_CA_BUNDLE_PATH=/etc/onea/ca/ca-bundle.pem`. Le
+renseigner dans `.env.prod` : `CA_BUNDLE_PATH=/etc/onea/ca/ca-bundle.pem`. Le
 répertoire `certs/` est monté en lecture seule dans `web` et `worker`
-(`REQUESTS_CA_BUNDLE`). Laisser la variable vide pour un certificat d'autorité publique.
+(`SSL_CERT_FILE` pour le relais SMTP, `REQUESTS_CA_BUNDLE` pour les appels HTTPS sortants).
+Laisser la variable vide pour un certificat d'autorité publique ou un relais en clair.
 
 ## 4. Premier démarrage
 
@@ -316,9 +289,8 @@ Le service à usage unique `migrate` (`restart: "no"`) applique les migrations e
 les fichiers statiques dans le volume partagé avec `nginx` ; `web`, `worker` et `beat`
 attendent sa fin réussie (`service_completed_successfully`). Si `migrate` échoue, rien
 d'autre ne démarre : consulter `docker compose ... logs migrate`.
-`https://audit.onea.bf/api/v1/health/` doit répondre `{"status":"ok",...}`. Tant que le
-realm Keycloak n'existe pas (section suivante), la connexion à l'application n'est pas
-possible.
+`https://audit.onea.bf/api/v1/health/` doit répondre `{"status":"ok",...}`. Tant qu'aucun
+administrateur n'existe (section suivante), la connexion à l'application n'est pas possible.
 
 Les fichiers générés (documents Word et PDF) sont stockés sur le disque du serveur, dans
 le dossier `DOCUMENTS_HOST_DIR` monté dans `web` et `worker` : créer ce dossier avant le
@@ -339,109 +311,126 @@ docker compose --env-file .env.prod -f docker/compose.prod.yml exec web   python
 
 La commande est idempotente et tout ou rien ; format et options : `backend/README.md`.
 
-## 5. Amorçage de Keycloak
+## 5. Amorçage de l'authentification et gestion des comptes
 
-Keycloak démarre en mode production (`start`), **sans import de realm, sans realm de
-développement, sans utilisateur de test**. Le realm de développement
-`docker/keycloak/realm-onea.json` ne doit jamais être importé en production (il contient
-des mots de passe de test et un client à accès direct par mot de passe).
+L'application gère elle-même les identités : sessions Django (cookie `HttpOnly`, `SameSite=Lax`),
+mots de passe hachés en Argon2id, comptes créés par un administrateur, code à usage unique
+(OTP) envoyé par courriel. Il n'y a **aucun service d'identité à configurer** : ni realm, ni
+client, ni secret de synchronisation, ni second nom DNS. Les rôles (ADMIN, RAI, AUDITEUR, AUDITE,
+DG) sont attribués dans l'application.
 
-0. **Accès à la console d'administration.** `nginx` n'expose publiquement que les
-   endpoints OIDC (`/realms/<realm>/`, `/resources/`, `/js/`) ; la console (`/admin/`), le
-   realm `master`, `/metrics` et `/health` répondent **404** sauf depuis les adresses
-   listées dans `ADMIN_ALLOW_CIDR` (IP ou CIDR séparés par des virgules, par exemple
-   `10.20.0.0/16,192.0.2.7` ; vide = personne). Renseigner `ADMIN_ALLOW_CIDR` avec le
-   réseau d'administration puis recréer `nginx`
-   (`docker compose ... up -d nginx`). Alternative sans rien ouvrir : un tunnel SSH vers une
-   machine du réseau d'administration autorisé, qui présente l'adresse allouée.
-1. Se connecter à `https://sso.onea.bf/admin/` avec `KEYCLOAK_ADMIN` /
-   `KEYCLOAK_ADMIN_PASSWORD`. Créer immédiatement un compte administrateur nominatif
-   permanent, puis supprimer l'administrateur temporaire d'amorçage.
-2. **Créer le realm** `onea` : nom d'affichage « ONEA - Audit interne », langue par défaut
-   `fr`, *Login > User registration* désactivé, *SSL required* = `all`.
-3. **Rôles de realm** : `ADMIN`, `RAI`, `AUDITEUR`, `AUDITE`, `DG`.
-4. **Profil utilisateur** (*Realm settings > User profile*, éditeur JSON) : déclarer les
-   attributs `direction` et `fonction`, modifiables par l'administrateur uniquement
-   (l'utilisateur peut les voir mais pas les changer, sinon il pourrait s'attribuer une
-   direction) :
+### 5.1 Créer le premier administrateur
 
-   ```json
-   {
-     "name": "direction",
-     "displayName": "Direction",
-     "permissions": { "view": ["admin", "user"], "edit": ["admin"] }
-   }
+La base démarre sans compte. Une fois la pile démarrée (§4), créer l'administrateur initial
+depuis le serveur (`dc` = `docker compose --env-file .env.prod -f docker/compose.prod.yml`) :
+
+```
+dc exec web python manage.py creer_administrateur --identifiant <identifiant> --courriel <adresse>
+```
+
+- La commande affiche **une seule fois** un mot de passe temporaire (16 caractères, valable
+  72 h). Il n'est ni journalisé ni enregistré : le noter immédiatement, ne pas le rediriger vers
+  un fichier ni le coller dans une messagerie.
+- À la première connexion sur `https://<PUBLIC_HOST>/`, l'application impose le choix d'un nouveau
+  mot de passe (12 caractères au minimum, mots de passe courants et numériques refusés).
+- Relancée sur un administrateur **existant**, la même commande lui donne un nouveau mot de passe
+  temporaire, le déverrouille, supprime ses codes en attente et ferme toutes ses sessions. Elle
+  refuse un compte qui n'est pas ADMIN (elle ne change jamais un rôle), un compte désactivé
+  (le réactiver d'abord dans l'application) et un identifiant qui correspond à plusieurs comptes.
+- Créer ensuite un **second administrateur nominatif** (écran *Utilisateurs* > *Nouvel agent*,
+  puis changement de rôle) : c'est la voie de secours si le premier perd son accès. Pas de compte
+  partagé.
+- Contrôle : après connexion, `GET /api/v1/auth/session/` renvoie le rôle ; le journal d'audit
+  des comptes garde la trace de l'action (`amorcage_administrateur`).
+
+### 5.2 Créer les comptes des agents
+
+Trois voies, toutes tracées dans la piste d'audit :
+
+1. **Écran *Utilisateurs* > *Nouvel agent*** (administrateur ou délégué ayant le droit de créer
+   des comptes) : le rôle est obligatoire ; le compte reçoit un mot de passe temporaire (72 h,
+   changement obligatoire à la première connexion). Le **courriel de bienvenue** est envoyé par
+   défaut ; si l'envoi est décoché, impossible ou en échec, le mot de passe s'affiche **une seule
+   fois** à l'écran.
+2. **Import CSV** (écran *Utilisateurs* > *Importer un fichier CSV*, vérification à blanc puis
+   import) : colonnes `identifiant`, `email`, `prenom`, `nom`, `role`, `direction`, `fonction`,
+   `matricule` (`identifiant` et `role` obligatoires ; 300 lignes et 1 Mo au plus ; le rôle ADMIN
+   n'est jamais attribué par import). Les mots de passe qu'aucun courriel n'a portés sont réunis
+   dans un fichier (chiffré en base) que **l'importateur télécharge une seule fois**, dans les
+   24 h ; il est ensuite détruit (une tâche quotidienne purge aussi les fichiers non retirés).
+3. **Ligne de commande** (exploitation), équivalente à l'import CSV :
+
+   ```
+   dc exec web python manage.py import_accounts --csv /chemin/comptes.csv                       # vérification à blanc
+   dc exec web python manage.py import_accounts --csv /chemin/comptes.csv --apply --by <admin>  # import
    ```
 
-   (idem pour `fonction`). Garder `unmanagedAttributePolicy` à sa valeur par défaut
-   (désactivée) : aucun attribut non déclaré ne doit être éditable par l'utilisateur.
-5. **Client `onea-frontend`** : public, flux « Standard flow » uniquement (pas d'accès direct
-   par mot de passe), PKCE `S256` obligatoire (*Advanced > Proof Key for Code Exchange Code
-   Challenge Method*). URI de redirection **exactes** (sans joker) :
-   `https://audit.onea.bf/callback`, URI de redirection après déconnexion
-   `https://audit.onea.bf/`, *Web origins* `https://audit.onea.bf`.
-6. **Client `onea-backend`** : confidentiel (*Client authentication* activée), standard flow,
-   pas d'accès direct. Le fichier de secret `oidc_client_secret` (§3.1) existe déjà avec une valeur aléatoire : copier dedans le secret affiché par Keycloak (onglet *Credentials*, §3.3) puis `docker compose ... up -d --force-recreate web worker beat`. Le secret n'est pas utilisé pour valider les jetons (userinfo + JWKS) : il est exigé
-   uniquement car mozilla-django-oidc le lit à l'initialisation ; le client reste confidentiel
-   par prudence. Le backend ne vérifie que des jetons
-   porteurs émis pour `onea-frontend` (`OIDC_ALLOWED_AZP`).
-7. **Mappers** (identiques au realm de développement) sur **chacun** des deux clients, de
-   type *User Realm Role* / *User Attribute*, ajoutés à l'access token, l'ID token et
-   userinfo :
+   Options : `--sans-courriel` (aucun courriel de bienvenue) et `--fichier-mots-de-passe CHEMIN`
+   (écrit les mots de passe non envoyés dans un **nouveau** fichier local, droits 600, au lieu du
+   téléchargement unique). Le fichier CSV doit être lisible dans le conteneur `web`.
 
-   | Nom | Type | Source | Claim |
-   |---|---|---|---|
-   | `realm-roles` | User Realm Role (multivalué, String) | rôles de realm | `roles` |
-   | `direction` | User Attribute (String) | attribut `direction` | `direction` |
-   | `fonction` | User Attribute (String) | attribut `fonction` | `fonction` |
+### 5.3 Déléguer la gestion des comptes
 
-7bis. **Client de service `onea-admin-sync`** (synchronisation des comptes depuis la
-   plateforme : activation/désactivation, fermeture de session, recherche). Moindre privilège,
-   à ne pas élargir :
+L'administrateur peut confier à un agent, individuellement et de façon révocable à tout moment,
+quatre droits : créer des comptes, réinitialiser les mots de passe (et désactiver le code de
+connexion), changer les rôles et la direction, désactiver et réactiver des comptes (fiche de
+l'agent, section *Délégation de la gestion des comptes*). Les droits sont relus en base à chaque
+requête : un retrait est immédiat. Un délégué n'agit jamais sur un administrateur, sur un autre
+délégué ni sur son propre compte, ne peut pas attribuer le rôle Administrateur ni déléguer à un
+tiers. **Attention** : un délégué qui peut créer des comptes ou réinitialiser des mots de passe
+reçoit des mots de passe temporaires, donc peut prendre la main sur un compte non
+administrateur ; ne déléguer qu'à des agents de confiance.
 
-   - *Clients > Create client* : `onea-admin-sync`, *Client authentication* activée,
-     **Service accounts roles** activé, tous les flux décochés (*Standard flow*, *Direct
-     access grants*, *Implicit flow*).
-   - Onglet *Service accounts roles* > *Assign role* > filtrer sur les clients >
-     `realm-management` : **`view-users` et `manage-users` uniquement**. Aucun rôle de realm,
-     jamais `realm-admin`.
-   - Onglet *Client scopes* > `onea-admin-sync-dedicated` > *Scope* : désactiver
-     *Full scope allowed*, puis *Assign role* > `realm-management` > `view-users` et
-     `manage-users` (sans ce mapping de portée, Keycloak répond 403 à tous les appels).
-   - Ne **jamais** ajouter `onea-admin-sync` à `OIDC_ALLOWED_AZP` : ses jetons ne doivent pas
-     ouvrir de session applicative.
-   - Onglet *Credentials* : copier le secret (long et aléatoire) dans le fichier `keycloak_sync_secret` (§3.1, §3.3) ; le backend refuse de démarrer si la valeur est vide, l'espace réservé `CHANGE_ME_*` ou le secret de développement ; puis `docker compose ... up -d --force-recreate web worker beat`.
+### 5.4 Reprise depuis l'ancienne version (comptes existants sans mot de passe)
 
-8. **Protection contre la force brute** (*Realm settings > Security defenses > Brute force
-   detection*) : activée, verrouillage temporaire après 5 échecs, durée croissante - **sur
-   le realm `onea` et aussi sur le realm `master`** (celui des administrateurs).
-   Mêmes valeurs que `scripts/recette/realm.sh` : `failureFactor` 5, `waitIncrementSeconds` 60,
-   `maxFailureWaitSeconds` 900, pas de verrouillage permanent.
-   **Politique de mots de passe** (*Authentication > Policies > Password policy*), sur `onea`
-   et sur `master` : `length(12) and notUsername and passwordHistory(5)`. Pour refuser les
-   mots de passe compromis (ASVS 2.1.7), ajouter la règle *Not Recently Used* n'y suffit pas :
-   déposer une liste de mots interdits (un mot par ligne) dans le dossier
-   `data/password-blacklists/` du conteneur Keycloak et ajouter `passwordBlacklist(<fichier>)`.
-   La liste à retenir est **à décider par l'ONEA** (non livrée).
-   **Second facteur (OTP, décision D19)** : obligatoire pour les comptes qui ont le rôle `ADMIN`
-   du realm `onea` et pour tous les administrateurs du realm `master`. Pour chaque compte
-   concerné : *Users* > compte > *Required user actions* > **Configure OTP** ; au
-   premier passage, Keycloak impose l'enrôlement d'une application TOTP (RFC 6238, par exemple
-   FreeOTP ou Aegis, libres). *Authentication > Policies > OTP Policy* : `totp`, 6 chiffres,
-   30 s. Contrôle : se connecter avec le compte ADMIN, le code à usage unique est demandé. Les
-   comptes `ADMIN` créés plus tard reçoivent la même action requise à leur création. Perte
-   du téléphone : voir le runbook, « Compte verrouillé » (réinitialisation de l'OTP).
-9. **Annuaire AD/LDAP** (si l'ONEA fédère ses comptes) : *User federation > Add LDAP
-   provider*, mode lecture seule, import des utilisateurs, synchronisation périodique ;
-   mapper les groupes AD vers les rôles de realm ci-dessus et les attributs `direction` /
-   `fonction` vers les champs LDAP correspondants. À valider avec la DSI avant mise en
-   production (connexion LDAPS, compte de service en lecture seule).
-10. Créer les premiers utilisateurs (ou les importer depuis l'annuaire) et leur attribuer un
-    rôle. Contrôle : ouvrir `https://audit.onea.bf/`, se connecter, vérifier que
-    `GET /api/v1/me/` retourne le bon rôle.
+Les comptes qui s'authentifiaient auparavant par un serveur d'identité externe n'ont pas de mot de
+passe local. Après la mise à jour (§6), leur donner un mot de passe temporaire :
 
-Cette configuration est sauvegardée avec `keycloak-db` (voir §7) ; exporter aussi le realm
-(*Realm settings > Action > Partial export*) après chaque changement important.
+```
+dc exec web python manage.py donner_mots_de_passe_temporaires --a-blanc     # liste, sans rien modifier
+dc exec web python manage.py donner_mots_de_passe_temporaires               # donne et affiche une fois
+```
+
+La sortie standard est une liste `identifiant<TABULATION>mot de passe` (à transmettre par un
+canal sûr, puis à effacer) ; les mots de passe sont valables 72 h et à changer à la première
+connexion. Les comptes qui ont déjà un mot de passe ne sont pas touchés ; les comptes
+`is_staff` / `is_superuser` sont seulement signalés (sortie d'erreur) : leur donner un mot de
+passe avec `creer_administrateur` ou `changepassword`.
+
+### 5.5 Sans serveur SMTP, ou administrateur bloqué
+
+Tant que le relais SMTP n'est pas fourni ou que l'envoi échoue, tout fonctionne sans courriel :
+
+- *mot de passe oublié* : aucun code ne peut partir ; l'agent s'adresse à un administrateur ou
+  à un délégué qui **réinitialise** son mot de passe (nouveau mot de passe temporaire affiché une
+  fois, compte déverrouillé, sessions fermées) ;
+- le **code de connexion par courriel** ne peut être activé que si l'envoi est configuré ; si un
+  agent s'est trouvé bloqué après l'avoir activé, un administrateur (ou un délégué avec le droit
+  de réinitialiser les mots de passe) le **désactive** depuis la fiche du compte (action
+  journalisée) ; seul le titulaire peut le réactiver, depuis *Mon compte* ;
+- **administrateur bloqué** (code de connexion actif, SMTP en panne, mot de passe perdu) et aucun
+  autre administrateur disponible :
+
+  ```
+  dc exec web python manage.py creer_administrateur --identifiant <identifiant> --desactiver-otp
+  ```
+
+  Nouveau mot de passe temporaire affiché une fois ; le code de connexion est aussi désactivé
+  (d'office, même sans l'option, quand l'envoi de courriels n'est pas configuré). Vérifier
+  l'identité de la personne avant, et consigner la demande.
+
+### 5.6 Limites de sécurité en vigueur
+
+| Réglage | Valeur |
+|---|---|
+| Session | 8 h au plus (durée absolue), 30 min d'inactivité ; stockée en base ; à un changement de mot de passe les autres sessions du compte sont fermées, à une réinitialisation toutes |
+| Verrouillage d'un compte | 5 échecs consécutifs : 15 min ; réponse identique que le compte existe ou non ; levé par une réinitialisation du mot de passe |
+| Code à usage unique (OTP) | 6 chiffres, haché en base, 10 min, 5 essais, usage unique ; codes expirés purgés après 24 h |
+| Mot de passe temporaire | 16 caractères aléatoires, 72 h, changement obligatoire à la première connexion |
+| Limites de débit | `THROTTLE_RATE_CONNEXION`, `THROTTLE_RATE_MOT_DE_PASSE_OUBLIE`, `THROTTLE_RATE_GESTION_COMPTES` (§8) |
+| Cookies | `__Host-onea-session` et `__Host-onea-csrf`, `Secure` ; `SESSION_COOKIE_SECURE=true` exigé en production |
+
+Conception et correspondance contrôle / fichier : [`docs/securite/auth-interne-modele.md`](securite/auth-interne-modele.md).
 
 ## 6. Mises à jour
 
@@ -458,6 +447,22 @@ pour changer d'étiquette d'images). **Sauvegarder avant** toute mise à jour
 code, reconstruire, et restaurer la sauvegarde si une migration a modifié le schéma. Les
 images portent l'étiquette `APP_VERSION`.
 
+**Passage depuis une version qui utilisait Keycloak** (première mise à jour vers l'authentification
+interne) :
+
+1. Sauvegarder (`scripts/backup.sh`) : la migration `users.0008_suppression_champs_keycloak`
+   supprime les champs de rattachement à l'ancien serveur d'identité.
+2. Retirer de `.env.prod` les anciennes variables (`SSO_HOST`, `ADMIN_ALLOW_CIDR`, `KEYCLOAK_*`,
+   `OIDC_*`, `CORS_ALLOWED_ORIGINS`, `THROTTLE_RATE_ANNUAIRE`) et renommer `SSO_CA_BUNDLE_PATH` en
+   `CA_BUNDLE_PATH` ; supprimer les fichiers de secrets `oidc_client_secret` et
+   `keycloak_sync_secret`. Après `up -d --remove-orphans`, les conteneurs `keycloak` et
+   `keycloak-db` et leur volume peuvent être supprimés à la main une fois la sauvegarde vérifiée.
+3. Les tâches `users.synchroniser_comptes_keycloak` qui seraient encore dans la file Celery au moment
+   du déploiement n'existent plus dans le code : le `worker` les rejette (message « unregistered
+   task » dans son journal). C'est sans conséquence : elles sont abandonnées et il n'y a rien à
+   vider dans Redis.
+4. Donner un mot de passe temporaire aux comptes existants : §5.4.
+
 ## 7. Sauvegardes et restauration
 
 Objectifs (D8) : perte maximale **24 h** (RPO), remise en service **4 h** (RTO). L'exercice
@@ -471,10 +476,10 @@ horodatage `AAAAMMJJ-HHMMSS`, dans le dossier de sauvegarde (défaut `./backups`
 
 | Fichier | Contenu |
 |---|---|
-| `onea-<h>.dump`, `keycloak-<h>.dump` | `pg_dump --format=custom` de la base applicative et de celle de Keycloak |
+| `onea-<h>.dump` | `pg_dump --format=custom` de la base applicative (comptes, empreintes de mots de passe, sessions, journal d'audit) |
 | `fichiers-<h>.tar.gz` | volume Docker `onea-fichiers` (pièces justificatives du lot 6, `FICHIERS_RACINE`) |
 | `documents-<h>.tar.gz` | dossier `DOCUMENTS_HOST_DIR` (documents Word/PDF générés) |
-| `manifeste-<h>.sha256` | SHA-256 des quatre fichiers ci-dessus, écrit en dernier |
+| `manifeste-<h>.sha256` | SHA-256 des trois fichiers ci-dessus, écrit en dernier |
 
 Les bases sont sauvegardées **avant** les fichiers : tout fichier référencé par un dump est dans
 l'archive ; un fichier écrit entre les deux est un *orphelin* inoffensif (écriture unique), signalé
@@ -561,8 +566,8 @@ Sans `--oui`, rien n'est modifié. Depuis la copie hors serveur : `restic restor
 /srv/onea-restauration`, puis `--dossier /srv/onea-restauration/srv/onea-backups`. `restore.sh` :
 
 1. contrôle le manifeste et les empreintes (**refus au moindre écart**), la lisibilité des dumps et archives ;
-2. arrête `web`, `worker`, `beat`, `keycloak` ;
-3. restaure la base applicative puis celle de Keycloak (`pg_restore --clean --if-exists --single-transaction`) ;
+2. arrête `web`, `worker`, `beat` ;
+3. restaure la base applicative (`pg_restore --clean --if-exists --single-transaction`) ;
 4. **relance `installer_gardes_sql`** : les déclencheurs de gel et les droits de `onea_app` (§7bis) sont
    rétablis par le code, pas par confiance dans le dump ;
 5. déplace le dossier des documents en `<dossier>-avant-restauration-<horodatage>`, extrait l'archive,
@@ -575,7 +580,7 @@ Sans `--oui`, rien n'est modifié. Depuis la copie hors serveur : `restic restor
    (un orphelin seul est informatif ; une pièce absente ou altérée est une erreur).
 
 Sur un serveur neuf : installer la pile (§4 : secrets, `.env.prod`, images), créer le dossier des
-documents (§ `docs/stockage-fichiers.md`), puis lancer `restore.sh` (il démarre `db` et `keycloak-db`).
+documents (§ `docs/stockage-fichiers.md`), puis lancer `restore.sh` (il démarre `db`).
 L'ancien dossier des documents et les copies « avant-restauration » sont à supprimer à la main après
 contrôle. Restauration d'un seul document : extraire son fichier de `documents-<h>.tar.gz`
 (`tar -xzf … -C <dossier> chemin/du/fichier`), puis `verifier_documents`.
@@ -681,28 +686,24 @@ intercepté (ce droit n'est pas accordé au rôle applicatif).
 
 | Variable | Rôle |
 |---|---|
-| `PUBLIC_HOST` | nom DNS de l'application (ALLOWED_HOSTS, CORS, CSRF, redirections) |
-| `SSO_HOST` | nom DNS de Keycloak (`KC_HOSTNAME`, issuer OIDC) |
+| `PUBLIC_HOST` | nom DNS de l'application, **seule origine** (SPA et `/api/`) : `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` (`https://<PUBLIC_HOST>`), certificat TLS |
 | `TLS_CERT_DIR` | répertoire hôte contenant `fullchain.pem` et `privkey.pem` |
-| `ADMIN_ALLOW_CIDR` | adresses autorisées pour la console Keycloak (vide = aucune) |
-| `SSO_CA_BUNDLE_PATH` | bundle d'AC interne dans le conteneur (`/etc/onea/ca/ca-bundle.pem`), facultatif |
+| `CA_BUNDLE_PATH` | bundle d'AC interne dans le conteneur (`/etc/onea/ca/ca-bundle.pem`), facultatif : sert au relais SMTP en TLS (voir « Autorité de certification interne ») |
 | `APP_VERSION` | étiquette des images `onea-backend` / `onea-frontend` (obligatoire) |
 | `DJANGO_ADMIN_ENABLED` | `false` par défaut ; `true` expose `/admin/` |
 | `ONEA_SECRETS_DIR` | dossier des fichiers de secrets (root, 0700 ; voir §3.1) : obligatoire |
-| `EMAIL_URL` | relais SMTP **sans mot de passe**, ex. `smtp+tls://compte@smtp.onea.bf:587` (le mot de passe est le fichier `email_password`) |
+| `EMAIL_URL` | relais SMTP **sans mot de passe**, ex. `smtp+tls://compte@smtp.onea.bf:587` (le mot de passe est le fichier `email_password`) ; sert aux codes à usage unique et aux courriels de bienvenue ; délai d'attente de 10 s par envoi (`EMAIL_TIMEOUT`, fixé par `config/settings/prod.py`, non configurable par l'environnement) |
+| `SESSION_COOKIE_SECURE` | `true` : posé par `docker/compose.prod.yml` ; la production refuse de démarrer si la variable est absente ou fausse |
+| `CSRF_TRUSTED_ORIGINS` | posé par `docker/compose.prod.yml` à `https://${PUBLIC_HOST}` ; obligatoire pour le backend de production |
 | `POSTGRES_DB`, `POSTGRES_USER` | base applicative (mot de passe : fichier `postgres_password`) |
 | `POSTGRES_APP_USER` | rôle applicatif sans privilèges de web, worker, beat (voir §7bis) ; mot de passe : fichier `postgres_app_password` |
-| `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | administrateur d'amorçage Keycloak |
-| `KEYCLOAK_DB_PASSWORD` | mot de passe de la base Keycloak (instance dédiée) |
-| `KEYCLOAK_ADMIN_API_CLIENT_ID` | client de service `onea-admin-sync` (voir §5, étape 7bis) ; son secret est le fichier `keycloak_sync_secret` |
-| Fichiers de secrets | `secret_key`, `secret_key_fallbacks`, `redis_password`, `oidc_client_secret`, `keycloak_sync_secret`, `meili_master_key`, `metrics_token`, `email_password` : voir §3.1 (ils ne sont plus des variables) |
+| Fichiers de secrets | `secret_key`, `secret_key_fallbacks`, `redis_password`, `meili_master_key`, `metrics_token`, `email_password` : voir §3.1 (ils ne sont plus des variables) |
 | `DOCUMENTS_HOST_DIR` | dossier de l'hôte (absolu, hors dépôt) où sont stockés les documents ; monté en `/var/lib/onea/documents` dans `web` et `worker` |
 | `THROTTLE_RATE_GENERATION` | limite par utilisateur : génération de document (défaut `20/min`) |
 | `THROTTLE_RATE_APERCU` | aperçu de gabarit ou de numérotation (défaut `30/min`) |
 | `THROTTLE_RATE_TELEVERSEMENT` | dépôt de fichier (défaut `30/hour`) |
 | `THROTTLE_RATE_IMPORT` | import (défaut `10/hour`) |
 | `THROTTLE_RATE_EXPORT` | export CSV / Excel (défaut `30/min`) |
-| `THROTTLE_RATE_ANNUAIRE` | recherche dans l'annuaire Keycloak/LDAP (défaut `60/min`) |
 | `THROTTLE_RATE_ANONYME` | appelant non authentifié, par adresse client (défaut `30/min`) |
 | `THROTTLE_RATE_CONNEXION` | connexion, code de connexion, mot de passe oublié et réinitialisation, par adresse client (défaut `20/min`) ; le verrouillage du compte (5 échecs, 15 min) s'y ajoute |
 | `THROTTLE_RATE_MOT_DE_PASSE_OUBLIE` | demandes de code « mot de passe oublié », par identifiant saisi (défaut `5/hour`) ; en plus, au plus 10 codes par compte et par 24 h, sans effet visible sur la réponse |
@@ -714,12 +715,11 @@ intercepté (ce droit n'est pas accordé au rôle applicatif).
 | `COMPOSE_PROJECT_NAME`, `WEB_CONCURRENCY` | optionnels |
 
 Le backend en production refuse de démarrer si `SECRET_KEY` (ou `SECRET_KEY_FILE`), `DATABASE_URL`, `EMAIL_URL`,
-`ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` ou `OIDC_OP_BASE_URL`
-(en `https://`) manquent, ou si `OIDC_VERIFY_SSL=false` : aucune valeur par défaut de développement n'est utilisée.
+`ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` ou `SESSION_COOKIE_SECURE` manquent, ou si `SESSION_COOKIE_SECURE`
+n'est pas vrai : aucune valeur par défaut de développement n'est utilisée.
 
-`CORS_ALLOWED_ORIGINS` est **facultatif** (défaut : vide, aucune origine tierce autorisée) : la SPA
-et l'API partagent la même origine derrière `nginx`. Ne le renseigner que pour une SPA hébergée
-ailleurs. `CACHE_URL` (facultatif) désigne le cache partagé entre processus (défaut : `REDIS_URL`,
+La SPA et l'API partagent la **même origine** derrière `nginx` : il n'y a pas de CORS avec
+identifiants (aucune variable `CORS_*`). `CACHE_URL` (facultatif) désigne le cache partagé entre processus (défaut : `REDIS_URL`,
 base 1 ; la base 0 sert à Celery).
 
 Les `THROTTLE_RATE_*` s'écrivent `N/sec`, `N/min`, `N/hour` ou `N/day` ; une valeur invalide
@@ -739,27 +739,23 @@ antivirus. ». Aucun code GPL dans l'application : ClamAV n'est atteint que par 
 - TLS est terminé par `nginx` ; Django fait confiance à `X-Forwarded-Proto` uniquement parce
   que `nginx` écrase cet en-tête à chaque requête et que `web` ne publie aucun port. Ne
   jamais exposer gunicorn directement.
-- Keycloak écoute en HTTP sur les réseaux privés Docker (terminaison TLS à `nginx`,
-  `KC_PROXY_HEADERS=xforwarded`) ; il n'est joignable de l'extérieur qu'en HTTPS via
-  `nginx`, qui n'expose que les endpoints OIDC (voir étape 5.0).
 - Les en-têtes de sécurité (HSTS, CSP, X-Frame-Options, Referrer-Policy...) sont définis
   **uniquement par nginx** ; ceux émis par Django sont masqués. Django garde les réglages
   `SECURE_*` nécessaires à son bon fonctionnement (redirection HTTPS, en-tête proxy, cookies).
-- Authentification de l'API : jeton Bearer Keycloak uniquement. Un cookie de session Django
-  n'authentifie jamais `/api/v1/`. En production, `/api/docs/` et `/api/schema/` ne sont
-  accessibles que par une session `/admin/` d'un utilisateur staff (les utilisateurs OIDC ne
-  sont jamais staff) et exigent `DJANGO_ADMIN_ENABLED=true`.
+- Authentification de l'API : session ouverte par `POST /api/v1/auth/login/` (cookie de
+  session `HttpOnly`, protection CSRF sur les écritures) ; un en-tête `Authorization: Bearer`
+  n'authentifie rien. En production, `/api/docs/` et `/api/schema/` ne sont accessibles qu'à une
+  session ouverte de la même façon par un compte `is_staff` (les comptes créés par
+  l'application ne le sont pas).
 - Cookies : `__Host-onea-session` et `__Host-onea-csrf` (Secure, HttpOnly, `SameSite=Lax`,
-  chemin `/`, sans domaine) ; durée de session 8 h. Toute réponse `/api/` sans en-tête
+  chemin `/`, sans domaine) ; session de 8 h au plus et 30 min d'inactivité. Toute réponse `/api/` sans en-tête
   `Cache-Control` propre reçoit `no-store, private`.
-- Limitation de débit : 20 requêtes/s par adresse sur `/api/` (rafale 40), 5/s sur les
-  endpoints d'authentification Keycloak (réponse 429).
-- Cache de `userinfo` : la réponse de Keycloak est conservée par jeton (clé = SHA-256 du
-  jeton, jamais le jeton) pendant `min(OIDC_USERINFO_CACHE_SECONDES = 60 s, expiration du
-  jeton)` ; les réponses 401 et 5xx ne sont pas conservées. Un changement de rôle dans
-  Keycloak est donc pris en compte en **60 s au plus** ; la désactivation d'un compte local
-  est immédiate (`is_active`, 403). `POST /api/v1/session/fin/` (appelé par la SPA avant la
-  déconnexion Keycloak) purge l'entrée du jeton présenté.
+- Limitation de débit : 50 requêtes/s par adresse sur `/api/` (rafale 100, zone `onea_api` de
+  `docker/nginx/prod.conf`, réponse 429), puis, dans l'application, les `THROTTLE_RATE_*`
+  (connexion, mot de passe oublié, gestion des comptes) et le verrouillage des comptes (§5.6).
+- Rôle, désactivation et délégation d'un compte sont relus en base à **chaque requête** (aucun
+  cache d'identité) : une désactivation, un changement de rôle ou un retrait de délégation
+  prennent effet à la requête suivante.
 - Le code des images est en lecture seule pour l'utilisateur applicatif (non root) ;
   seul `/app/staticfiles` est inscriptible. Les conteneurs tournent avec
   `no-new-privileges` et sans capacités Linux superflues.
