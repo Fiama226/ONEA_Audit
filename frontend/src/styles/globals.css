@@ -112,3 +112,17 @@
     background-image: repeating-linear-gradient(45deg, transparent 0 3px, CanvasText 3px 5px);
   }
 }
+
+/* Indice de défilement horizontal des tableaux larges : une ombre apparaît du côté où il reste du
+   contenu (technique « scroll shadows » : les voiles `local` masquent l'ombre en bout de course). */
+[data-slot="table-container"] {
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent) left center / 40px 100% no-repeat
+      local,
+    linear-gradient(to left, var(--surface) 30%, transparent) right center / 40px 100% no-repeat
+      local,
+    radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 0.16), transparent) left center / 12px 100%
+      no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 0.16), transparent) right center / 12px
+      100% no-repeat scroll;
+}

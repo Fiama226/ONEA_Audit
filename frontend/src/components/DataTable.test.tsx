@@ -39,6 +39,12 @@ describe("DataTable", () => {
     expect(within(table).getAllByRole("row")).toHaveLength(3);
   });
 
+  it("can shrink inside a grid so a wide table scrolls instead of widening the page", () => {
+    setup();
+    const root = screen.getByRole("table").closest('[data-slot="table-container"]')?.parentElement;
+    expect(root).toHaveClass("min-w-0");
+  });
+
   it("paginates on the server", async () => {
     const props = setup({ page: 2 });
     expect(screen.getByText("Page 2 sur 3")).toBeInTheDocument();
