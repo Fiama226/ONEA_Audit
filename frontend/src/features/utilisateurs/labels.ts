@@ -17,9 +17,12 @@ export const ORIGINE_LABELS: Record<OrigineCompte, string> = {
   ADMINISTRATION: "Création par l'administration",
 };
 
-/** Rôles proposés dans un sélecteur : seul un administrateur attribue le rôle Administrateur. */
+/** Rôles qu'un délégué peut attribuer ; seul un administrateur attribue les autres (ADMIN, RAI, DG). */
+const DELEGATE_ROLES: readonly Role[] = ["AUDITEUR", "AUDITE"];
+
+/** Rôles proposés dans un sélecteur : un délégué donne AUDITEUR ou AUDITE seulement. */
 export function assignableRoles(isAdmin: boolean): Role[] {
-  return ROLES.filter((role) => isAdmin || role !== "ADMIN");
+  return ROLES.filter((role) => isAdmin || DELEGATE_ROLES.includes(role));
 }
 
 /** « DAI — Département Audit Interne » ; code absent du référentiel ; ou « Non renseignée ». */

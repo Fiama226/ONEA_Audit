@@ -76,18 +76,17 @@ describe("UserListActions — Nouvel agent", () => {
     expect(bodies).toHaveLength(0);
   });
 
-  it("checks the welcome email by default and never offers the ADMIN role to a delegate", async () => {
+  it("checks the welcome email by default and only offers AUDITEUR and AUDITE to a delegate", async () => {
     const user = userEvent.setup();
     renderActions("RAI", { gestion_comptes: rights({ creer: true }) });
     const dialog = await openForm(user);
     expect(
       within(dialog).getByRole("checkbox", { name: "Envoyer le courriel de bienvenue" }),
     ).toBeChecked();
-    const options = within(dialog)
+    const options = within(within(dialog).getByRole("combobox", { name: "Rôle" }))
       .getAllByRole("option")
       .map((o) => o.textContent);
-    expect(options).not.toContain("Administrateur");
-    expect(options).toContain("Auditeur");
+    expect(options).toEqual(["Choisir un rôle", "Auditeur", "Audité"]);
   });
 
   it("creates without email and shows the temporary password once", async () => {
@@ -155,7 +154,7 @@ describe("UserListActions — Nouvel agent", () => {
     expect(within(again).queryByText(PASSWORD)).toBeNull();
   });
 
-  it("says where the welcome email went and shows no password when it was sent", async () => {
+  it("says the welcome email was queued and shows no password when it was sent", async () => {
     serveCreate(aTemporaryPassword({ courriel_envoye: true, mot_de_passe_temporaire: null }));
     const user = userEvent.setup();
     renderActions();
@@ -168,7 +167,7 @@ describe("UserListActions — Nouvel agent", () => {
     await user.selectOptions(within(dialog).getByRole("combobox", { name: "Rôle" }), "AUDITEUR");
     await user.click(within(dialog).getByRole("button", { name: "Créer le compte" }));
     expect(
-      await within(dialog).findByText(/a été envoyé à l\.kabore@onea\.bf/),
+      await within(dialog).findByText(/a été mis en file d'envoi pour l\.kabore@onea\.bf/),
     ).toBeInTheDocument();
     expect(within(dialog).queryByText("Mot de passe temporaire")).toBeNull();
   });
@@ -184,7 +183,9 @@ describe("UserListActions — Nouvel agent", () => {
     await user.selectOptions(within(dialog).getByRole("combobox", { name: "Rôle" }), "DG");
     await user.click(within(dialog).getByRole("button", { name: "Créer le compte" }));
     expect(await within(dialog).findByText(PASSWORD)).toBeVisible();
-    expect(within(dialog).getByText(/Aucun courriel de bienvenue n'est parti/)).toBeVisible();
+    expect(
+      within(dialog).getByText(/Aucun courriel de bienvenue n'a été mis en file d'envoi/),
+    ).toBeVisible();
     expect(bodies[0]).toMatchObject({ envoyer_courriel: true, role: "DG" });
   });
 

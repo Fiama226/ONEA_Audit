@@ -35,6 +35,8 @@ export function OtpStep({ onBack }: { onBack: () => void }) {
     } catch (e) {
       if (isApiError(e) && (e.status === 400 || e.status === 401)) {
         setError("code", { type: "server", message: T.otpInvalid }, { shouldFocus: true });
+      } else if (isApiError(e) && e.status === 429) {
+        setFormError(T.loginTooMany);
       } else {
         setFormError(isApiError(e) ? e.detail : fr.errors.generic);
       }

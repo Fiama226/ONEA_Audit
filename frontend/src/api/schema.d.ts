@@ -597,6 +597,10 @@ export interface paths {
         /**
          * Connexion par identifiant (ou courriel) et mot de passe
          * @description DRF checks CSRF only for session-authenticated requests; here anonymous POSTs too.
+         *
+         *     Checked BEFORE the throttles count the request (AUTH-05): a cross-site page that posts
+         *     in a loop without the token must not spend the quota of the address it shares with the
+         *     whole site behind a NAT. ``enforce_csrf`` reads the cookie and the header only.
          */
         post: operations["v1_auth_login_create"];
         delete?: never;
@@ -617,6 +621,10 @@ export interface paths {
         /**
          * Connexion : vérification du code reçu par courriel
          * @description DRF checks CSRF only for session-authenticated requests; here anonymous POSTs too.
+         *
+         *     Checked BEFORE the throttles count the request (AUTH-05): a cross-site page that posts
+         *     in a loop without the token must not spend the quota of the address it shares with the
+         *     whole site behind a NAT. ``enforce_csrf`` reads the cookie and the header only.
          */
         post: operations["v1_auth_login_otp_create"];
         delete?: never;
@@ -637,6 +645,10 @@ export interface paths {
         /**
          * Déconnexion (fin de la session)
          * @description DRF checks CSRF only for session-authenticated requests; here anonymous POSTs too.
+         *
+         *     Checked BEFORE the throttles count the request (AUTH-05): a cross-site page that posts
+         *     in a loop without the token must not spend the quota of the address it shares with the
+         *     whole site behind a NAT. ``enforce_csrf`` reads the cookie and the header only.
          */
         post: operations["v1_auth_logout_create"];
         delete?: never;
@@ -743,6 +755,10 @@ export interface paths {
         /**
          * Mot de passe oublié : nouveau mot de passe avec le code reçu
          * @description DRF checks CSRF only for session-authenticated requests; here anonymous POSTs too.
+         *
+         *     Checked BEFORE the throttles count the request (AUTH-05): a cross-site page that posts
+         *     in a loop without the token must not spend the quota of the address it shares with the
+         *     whole site behind a NAT. ``enforce_csrf`` reads the cookie and the header only.
          */
         post: operations["v1_auth_password_reset_create"];
         delete?: never;
@@ -4249,7 +4265,7 @@ export interface paths {
         put?: never;
         /**
          * Créer un compte
-         * @description Crée un compte local avec un mot de passe temporaire (72 h, à changer à la première connexion). Le rôle est obligatoire. Le mot de passe n'est renvoyé qu'une fois, et seulement s'il n'a pas pu partir par courriel.
+         * @description Crée un compte local avec un mot de passe temporaire (72 h, à changer à la première connexion). Le rôle est obligatoire. Le mot de passe n'est renvoyé qu'une fois, et seulement s'il n'a pas pu être confié au service d'envoi des courriels.
          */
         post: operations["v1_user_accounts_create"];
         delete?: never;
@@ -4274,7 +4290,7 @@ export interface paths {
         head?: never;
         /**
          * Modifier le profil d'un compte
-         * @description Droit requis par champ modifié : nom, prénom, matricule et fonction = « créer des comptes » ; courriel = « réinitialiser les mots de passe » (il sert à la récupération du compte) ; direction = « changer les rôles ». Un champ renvoyé inchangé ne demande aucun droit. Un délégué ne modifie ni un administrateur, ni un autre délégué, ni son propre compte.
+         * @description Droit requis par champ modifié : nom, prénom, matricule et fonction = « créer des comptes » ; courriel = « réinitialiser les mots de passe » (il sert à la récupération du compte) ; direction = « changer les rôles ». Un champ renvoyé inchangé ne demande aucun droit. Un délégué ne modifie ni un administrateur, ni un RAI, ni la Direction générale, ni un autre délégué, ni son propre compte.
          */
         patch: operations["v1_user_accounts_partial_update"];
         trace?: never;
@@ -4290,7 +4306,7 @@ export interface paths {
         put?: never;
         /**
          * Changer le rôle d'un compte
-         * @description Seul un administrateur attribue le rôle Administrateur ; personne ne change son propre rôle ; le dernier administrateur actif garde le sien.
+         * @description Seul un administrateur attribue les rôles Administrateur, RAI et Direction générale (un délégué attribue Auditeur ou Audité) ; personne ne change son propre rôle ; le dernier administrateur actif garde le sien.
          */
         post: operations["v1_user_accounts_change_role_create"];
         delete?: never;
@@ -4926,7 +4942,7 @@ export interface components {
         };
         ChangementRoleRequest: {
             /**
-             * @description Seul un administrateur attribue le rôle Administrateur.
+             * @description Seul un administrateur attribue les rôles Administrateur, RAI et Direction générale.
              *
              *     * `ADMIN` - Administrateur
              *     * `RAI` - Responsable de l'audit interne
@@ -5223,7 +5239,7 @@ export interface components {
             /** @default  */
             fonction: string;
             /**
-             * @description Envoyer le courriel de bienvenue avec le mot de passe temporaire. Sinon (ou si l'envoi échoue), le mot de passe est renvoyé une seule fois dans la réponse.
+             * @description Confier au service d'envoi le courriel de bienvenue avec le mot de passe temporaire. Sinon (ou si l'envoi n'est pas configuré ou pas disponible), le mot de passe est renvoyé une seule fois dans la réponse.
              * @default true
              */
             envoyer_courriel: boolean;
@@ -6725,8 +6741,9 @@ export interface components {
         /** @description Résultat d'une création ou d'une réinitialisation (réponse `Cache-Control: no-store`). */
         MotDePasseTemporaire: {
             compte: components["schemas"]["CompteUtilisateur"];
+            /** @description Vrai : le courriel est confié au service d'envoi (il part en différé ; un échec d'envoi est journalisé et demande une nouvelle réinitialisation). */
             courriel_envoye: boolean;
-            /** @description Affiché une seule fois, jamais relisible ensuite ; null quand il est parti par courriel. */
+            /** @description Affiché une seule fois, jamais relisible ensuite ; null quand il part par courriel. */
             mot_de_passe_temporaire: string | null;
         };
         MotifDesactivationRequest: {
@@ -8562,7 +8579,7 @@ export interface components {
         };
         ReinitialisationCompteRequest: {
             /**
-             * @description Envoyer le nouveau mot de passe temporaire par courriel. Sinon (ou si l'envoi échoue), il est renvoyé une seule fois dans la réponse.
+             * @description Confier au service d'envoi le courriel du nouveau mot de passe temporaire. Sinon (ou si l'envoi n'est pas configuré ou pas disponible), il est renvoyé une seule fois dans la réponse.
              * @default true
              */
             envoyer_courriel: boolean;

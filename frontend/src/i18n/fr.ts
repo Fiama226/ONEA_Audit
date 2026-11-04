@@ -561,16 +561,18 @@ export const fr = {
       role: "Rôle",
       rolePlaceholder: "Choisir un rôle",
       roleRequired: "Choisissez le rôle de l'agent.",
-      roleAdminOnly: "Seul un administrateur peut attribuer le rôle Administrateur.",
+      roleAdminOnly:
+        "Vous pouvez attribuer les rôles Auditeur et Audité ; les autres rôles sont réservés à un administrateur.",
       sendEmail: "Envoyer le courriel de bienvenue",
       sendEmailHelp:
-        "Le courriel contient l'identifiant et le mot de passe temporaire. Sans envoi (ou s'il échoue), le mot de passe temporaire s'affiche une seule fois à l'écran.",
+        "Le courriel contient l'identifiant et le mot de passe temporaire. Sans envoi (ou si l'envoi n'est pas disponible), le mot de passe temporaire s'affiche une seule fois à l'écran.",
       submit: "Créer le compte",
       submitting: "Création en cours",
       createdTitle: "Compte créé",
-      emailedTo: "Le courriel de bienvenue, avec le mot de passe temporaire, a été envoyé à ",
+      emailedTo:
+        "Le courriel de bienvenue, avec le mot de passe temporaire, a été mis en file d'envoi pour ",
       notEmailed:
-        "Aucun courriel de bienvenue n'est parti : transmettez vous-même le mot de passe à l'agent.",
+        "Aucun courriel de bienvenue n'a été mis en file d'envoi : transmettez vous-même le mot de passe à l'agent.",
       openRecord: "Ouvrir la fiche de l'agent",
     },
     motDePasse: {
@@ -663,7 +665,8 @@ export const fr = {
       resetConfirm: "Réinitialiser",
       resetting: "Réinitialisation en cours",
       resetDone: "Mot de passe réinitialisé.",
-      resetEmailed: "Le nouveau mot de passe temporaire a été envoyé par courriel à ",
+      resetEmailed:
+        "Le nouveau mot de passe temporaire a été mis en file d'envoi par courriel pour ",
       disableOtp: "Désactiver le code de connexion",
       disableOtpTitle: "Désactiver le code de connexion de ",
       disableOtpText:
@@ -684,7 +687,7 @@ export const fr = {
       warning:
         "Attention : un délégué qui peut « créer des comptes » ou « réinitialiser les mots de passe » reçoit des mots de passe temporaires ; il peut ainsi obtenir l'accès à n'importe quel compte non administrateur.",
       limits:
-        "Un délégué n'agit jamais sur un administrateur, sur un autre délégué ni sur son propre compte, et ne peut pas attribuer le rôle Administrateur.",
+        "Un délégué gère uniquement les comptes AUDITEUR et AUDITE : il n'agit jamais sur un administrateur, un RAI, une Direction générale, un autre délégué ni sur son propre compte, et ne peut attribuer que les rôles AUDITEUR et AUDITE.",
       inactive: "Compte désactivé : aucun droit ne peut lui être délégué.",
       save: "Enregistrer la délégation",
       saving: "Enregistrement en cours",
@@ -710,7 +713,7 @@ export const fr = {
       csvFile: "Fichier CSV",
       csvSendEmail: "Envoyer le courriel de bienvenue à chaque compte créé",
       csvSendEmailHelp:
-        "Chaque compte créé reçoit un mot de passe temporaire. Ceux qui ne partent pas par courriel sont réunis dans un fichier à télécharger une seule fois.",
+        "Chaque compte créé reçoit un mot de passe temporaire. Ceux dont le courriel n'est pas mis en file d'envoi sont réunis dans un fichier à télécharger une seule fois.",
       csvVerify: "Vérifier le fichier",
       csvImport: "Importer",
       csvVerifyFirst:
@@ -730,7 +733,7 @@ export const fr = {
       colReason: "Motif",
       passwordsTitle: "Mots de passe temporaires à transmettre",
       passwordsText:
-        "Certains mots de passe temporaires ne sont pas partis par courriel. Téléchargez le fichier maintenant : il ne peut être téléchargé qu'une seule fois, dans les 24 heures, puis il est détruit. Conservez-le en lieu sûr et supprimez-le après usage.",
+        "Certains mots de passe temporaires n'ont pas été mis en file d'envoi par courriel. Téléchargez le fichier maintenant : il ne peut être téléchargé qu'une seule fois, dans les 24 heures, puis il est détruit. Conservez-le en lieu sûr et supprimez-le après usage.",
       passwordsDownload: "Télécharger le fichier des mots de passe",
       passwordsDownloading: "Téléchargement en cours",
       passwordsDownloaded:
@@ -851,6 +854,8 @@ export const fr = {
     passwordRequired: "Saisissez votre mot de passe.",
     // Message unique : ne révèle jamais si le compte existe, est désactivé ou verrouillé.
     loginFailed: "Identifiant ou mot de passe incorrect.",
+    // 429 : message calme et unique, sans détail du serveur (aucune indication sur le compte).
+    loginTooMany: "Trop de tentatives, réessayez dans quelques minutes.",
     forgotLink: "Mot de passe oublié ?",
     passwordResetDone:
       "Votre mot de passe a été modifié. Connectez-vous avec votre nouveau mot de passe.",

@@ -37,11 +37,14 @@ export function useNotifications(params: NotificationParams = {}) {
   });
 }
 
-/** Compteur de la cloche : actualisé toutes les minutes et au retour sur l'onglet. */
+/**
+ * Compteur de la cloche : actualisé toutes les minutes et au retour sur l'onglet, toujours en
+ * arrière-plan (il ne prolonge pas la session).
+ */
 export function useUnreadCount() {
   return useQuery({
     queryKey: notificationKeys.unread,
-    queryFn: () => apiFetch<S["Compte"]>(`${BASE}/unread-count/`),
+    queryFn: () => apiFetch<S["Compte"]>(`${BASE}/unread-count/`, { background: true }),
     refetchInterval: unreadRefetchInterval,
     refetchOnWindowFocus: true,
   });

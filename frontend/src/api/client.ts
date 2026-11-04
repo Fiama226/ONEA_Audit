@@ -92,7 +92,14 @@ export function baseUrl(): string {
   return url.replace(/\/+$/, "");
 }
 
-export type ApiInit = RequestInit & { json?: unknown };
+/**
+ * `background: true` marque une requête d'arrière-plan (interrogation automatique, compteur) :
+ * le serveur ne la compte pas comme une activité de l'agent et ne repousse donc pas le délai
+ * d'inactivité de la session. Les requêtes déclenchées par l'utilisateur ne l'envoient jamais.
+ */
+export const BACKGROUND_HEADER = "X-Onea-Arriere-Plan";
+
+export type ApiInit = RequestInit & { json?: unknown; background?: boolean };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -155,10 +162,11 @@ async function send(
   accept: string,
   csrfRetried = false,
 ): Promise<Response> {
-  const { json, headers: initHeaders, ...rest } = init;
+  const { json, background, headers: initHeaders, ...rest } = init;
   const headers = new Headers(initHeaders);
   headers.set("Accept", accept);
   if (json !== undefined) headers.set("Content-Type", "application/json");
+  if (background) headers.set(BACKGROUND_HEADER, "1");
   const method = (rest.method ?? "GET").toUpperCase();
   if (!SAFE_METHODS.has(method)) headers.set(CSRF_HEADER, await ensureCsrfToken());
 

@@ -5,7 +5,7 @@ import {
   type QueryClient,
   type QueryKey,
 } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { fetchAllPages } from "@/api/allPages";
 import { apiDownload, apiFetch, apiUpload } from "@/api/client";
 import { ApiError } from "@/api/errors";
@@ -181,7 +181,7 @@ function usePollBudget(signature: string, stoppedRef: RefObject<boolean>) {
       setExpired(null);
     };
   }, [key]);
-  return { timedOut, restart: () => setEpoch((n) => n + 1) };
+  return { timedOut, restart: useCallback(() => setEpoch((n) => n + 1), []) };
 }
 
 function timeoutError(timedOut: boolean): ApiError | null {
@@ -199,27 +199,59 @@ function pendingSignature(items: DocumentDisponible[] | undefined): string {
     .join("|");
 }
 
+/**
+ * Une relecture est « d'arrière-plan » quand elle poursuit l'interrogation d'un traitement déjà
+ * affiché comme en cours ; le premier chargement et la relance manuelle viennent de l'agent
+ * (`user` : relance manuelle en attente).
+ */
+const isBackgroundPoll = (inProgress: boolean, user: boolean): boolean => inProgress && !user;
+
+/** Relance manuelle en attente : `mark()` la signale, `take()` la lit puis l'efface. */
+function useManualRefetch(): { mark: () => void; take: () => boolean } {
+  const flagRef = useRef(false);
+  const [api] = useState(() => ({
+    mark: () => {
+      flagRef.current = true;
+    },
+    take: () => {
+      const value = flagRef.current;
+      flagRef.current = false;
+      return value;
+    },
+  }));
+  return api;
+}
+
 export function useAvailableDocuments(missionId: string | undefined) {
   const stoppedRef = useRef(false);
+  const manualRefetch = useManualRefetch();
+  const client = useQueryClient();
   const query = useQuery({
     queryKey: documentKeys.available(missionId),
-    queryFn: () =>
-      apiFetch<DocumentDisponible[]>(
+    queryFn: () => {
+      const manual = manualRefetch.take();
+      const previous = client.getQueryData<DocumentDisponible[]>(documentKeys.available(missionId));
+      return apiFetch<DocumentDisponible[]>(
         `${BASE}/documents/available/${toQuery({ mission: missionId })}`,
-      ),
+        { background: isBackgroundPoll(pendingSignature(previous) !== "", manual) },
+      );
+    },
     enabled: missionId !== undefined,
     // Génération Word ou PDF en cours : le statut est relu toutes les 2 s, pendant 3 minutes au plus.
     refetchInterval: (q) =>
       pendingSignature(q.state.data) !== "" && !stoppedRef.current ? POLL_INTERVAL_MS : false,
   });
   const { timedOut, restart } = usePollBudget(pendingSignature(query.data), stoppedRef);
+  const { refetch } = query;
+  const restartPolling = useCallback(() => {
+    restart();
+    manualRefetch.mark();
+    void refetch();
+  }, [restart, refetch, manualRefetch]);
   return Object.assign(query, {
     timeoutError: timeoutError(timedOut),
     /** Relance l'interrogation pour un nouveau budget de 3 minutes. */
-    restartPolling: () => {
-      restart();
-      void query.refetch();
-    },
+    restartPolling,
   });
 }
 
@@ -249,9 +281,17 @@ export function useGenerateDocument() {
  */
 export function useVersion(id: string | undefined) {
   const stoppedRef = useRef(false);
+  const manualRefetch = useManualRefetch();
+  const client = useQueryClient();
   const query = useQuery({
     queryKey: documentKeys.version(id),
-    queryFn: () => apiFetch<DocumentVersion>(`${BASE}/document-versions/${id}/`),
+    queryFn: () => {
+      const manual = manualRefetch.take();
+      const previous = client.getQueryData<DocumentVersion>(documentKeys.version(id));
+      return apiFetch<DocumentVersion>(`${BASE}/document-versions/${id}/`, {
+        background: isBackgroundPoll(previous !== undefined && isInProgress(previous), manual),
+      });
+    },
     enabled: id !== undefined,
     refetchInterval: (q) => {
       const data = q.state.data;
@@ -262,13 +302,16 @@ export function useVersion(id: string | undefined) {
   const signature =
     data && isInProgress(data) ? `${data.id}:${data.statut}:${data.statut_pdf}` : "";
   const { timedOut, restart } = usePollBudget(signature, stoppedRef);
+  const { refetch } = query;
+  const restartPolling = useCallback(() => {
+    restart();
+    manualRefetch.mark();
+    void refetch();
+  }, [restart, refetch, manualRefetch]);
   return Object.assign(query, {
     timeoutError: timeoutError(timedOut),
     /** Relance l'interrogation pour un nouveau budget de 3 minutes. */
-    restartPolling: () => {
-      restart();
-      void query.refetch();
-    },
+    restartPolling,
   });
 }
 

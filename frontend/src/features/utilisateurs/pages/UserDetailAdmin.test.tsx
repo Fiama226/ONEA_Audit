@@ -104,6 +104,9 @@ describe("UserDetailPage — délégation", () => {
     expect(
       screen.getByText(/peut ainsi obtenir l'accès à n'importe quel compte non administrateur/),
     ).toBeVisible();
+    expect(
+      screen.getByText(/Un délégué gère uniquement les comptes AUDITEUR et AUDITE/),
+    ).toBeVisible();
 
     await user.click(box("Désactiver et réactiver des comptes"));
     await user.click(screen.getByRole("button", { name: "Enregistrer la délégation" }));
@@ -183,7 +186,9 @@ describe("UserDetailPage — mot de passe et code de connexion", () => {
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Réinitialiser" }));
     expect(
-      await within(dialog).findByText(/a été envoyé par courriel à l\.kabore@onea\.bf/),
+      await within(dialog).findByText(
+        /a été mis en file d'envoi par courriel pour l\.kabore@onea\.bf/,
+      ),
     ).toBeVisible();
     expect(within(dialog).queryByText("Mot de passe temporaire")).toBeNull();
     expect(state.sent[0]?.body).toEqual({ envoyer_courriel: true });
@@ -233,12 +238,12 @@ describe("UserDetailPage — rôle et profil", () => {
     expect(screen.queryByRole("button", { name: "Changer le rôle" })).toBeNull();
   });
 
-  it("changes the role; a delegate cannot pick Administrateur", async () => {
+  it("changes the role; a delegate only picks AUDITEUR or AUDITE", async () => {
     const { state, record } = serve(anAccount());
     server.use(
       http.post(`${ACCOUNT_URL}change-role/`, async ({ request }) => {
         await record(request);
-        state.account = anAccount({ role: "RAI" });
+        state.account = anAccount({ role: "AUDITE" });
         return HttpResponse.json(state.account);
       }),
     );
@@ -248,22 +253,23 @@ describe("UserDetailPage — rôle et profil", () => {
     const options = within(select)
       .getAllByRole("option")
       .map((o) => o.textContent);
-    expect(options).not.toContain("Administrateur");
+    // Le rôle actuel (Auditeur) n'est pas reproposé ; ni Administrateur, ni RAI, ni DG.
+    expect(options).toEqual(["Choisir un rôle", "Audité"]);
     expect(screen.getByRole("button", { name: "Changer le rôle" })).toBeDisabled();
-    await user.selectOptions(select, "RAI");
+    await user.selectOptions(select, "AUDITE");
     await user.click(screen.getByRole("button", { name: "Changer le rôle" }));
     // Confirmation explicite avant d'appliquer.
     const confirm = await screen.findByRole("alertdialog", {
       name: "Changer le rôle de Landry Kabore ?",
     });
-    expect(confirm).toHaveTextContent(/passe de « Auditeur » à « Responsable de l'audit interne »/);
+    expect(confirm).toHaveTextContent(/passe de « Auditeur » à « Audité »/);
     expect(within(confirm).queryByText(/donne tous les droits/)).toBeNull();
     expect(state.sent).toHaveLength(0);
     await user.click(within(confirm).getByRole("button", { name: "Confirmer le changement" }));
     expect(await screen.findByText("Rôle modifié.")).toBeVisible();
     expect(select).toHaveFocus();
     expect(state.sent).toEqual([
-      { method: "POST", url: "/api/v1/user-accounts/7/change-role/", body: { role: "RAI" } },
+      { method: "POST", url: "/api/v1/user-accounts/7/change-role/", body: { role: "AUDITE" } },
     ]);
   });
 

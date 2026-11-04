@@ -21,6 +21,8 @@ function loginErrorOf(e: unknown): { credentials: boolean; message: string } {
   if (isApiError(e) && (e.status === 400 || e.status === 401)) {
     return { credentials: true, message: T.loginFailed };
   }
+  // Limitation de débit : message calme et fixe, sans le détail du serveur.
+  if (isApiError(e) && e.status === 429) return { credentials: false, message: T.loginTooMany };
   return { credentials: false, message: isApiError(e) ? e.detail : fr.errors.generic };
 }
 

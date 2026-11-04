@@ -96,6 +96,24 @@ describe("LoginPage", () => {
     expect(screen.queryByText(/verrouillé|désactivé|Trop long/)).not.toBeInTheDocument();
   });
 
+  it("429 : message calme et fixe, sans le détail du serveur", async () => {
+    server.use(
+      http.post(`${AUTH_URL}/login/`, () =>
+        HttpResponse.json(
+          { detail: "Compte rai verrouillé : réessayez dans 42 secondes.", errors: {} },
+          { status: 429, headers: { "Retry-After": "42" } },
+        ),
+      ),
+    );
+    renderApp("/connexion");
+    await fill("rai", "mauvais");
+    expect(
+      await screen.findByText("Trop de tentatives, réessayez dans quelques minutes."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/verrouillé|42/)).not.toBeInTheDocument();
+    expect(screen.queryByText(T.loginFailed)).not.toBeInTheDocument();
+  });
+
   it("champs vides : erreur liée au premier champ, qui reçoit le focus", async () => {
     renderApp("/connexion");
     await fill("", "");

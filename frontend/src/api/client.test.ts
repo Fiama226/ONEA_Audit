@@ -13,6 +13,32 @@ import {
 } from "./client";
 import { ApiError, isApiError } from "./errors";
 
+describe("en-tête d'arrière-plan", () => {
+  it("n'est envoyé que sur demande explicite", async () => {
+    const recus: (string | null)[] = [];
+    server.use(
+      http.get(`${API_URL}/api/v1/bg/`, ({ request }) => {
+        recus.push(request.headers.get("X-Onea-Arriere-Plan"));
+        return HttpResponse.json({});
+      }),
+    );
+    await apiFetch("/api/v1/bg/");
+    await apiFetch("/api/v1/bg/", { background: true });
+    await apiFetch("/api/v1/bg/", { background: false });
+    expect(recus).toEqual([null, "1", null]);
+  });
+
+  it("ne transmet pas l'option à fetch et reste présent au rejeu CSRF", async () => {
+    const spy = vi.spyOn(globalThis, "fetch");
+    server.use(http.get(`${API_URL}/api/v1/bg2/`, () => HttpResponse.json({})));
+    await apiFetch("/api/v1/bg2/", { background: true });
+    const init = spy.mock.calls.find(([url]) => String(url).includes("/bg2/"))?.[1];
+    expect(init).toBeDefined();
+    expect(init).not.toHaveProperty("background");
+    spy.mockRestore();
+  });
+});
+
 describe("apiDownload filename sanitising", () => {
   it("strips path segments and control characters", async () => {
     server.use(
