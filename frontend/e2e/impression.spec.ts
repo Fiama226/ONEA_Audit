@@ -1,9 +1,21 @@
 import { expect, test, type Page } from "@playwright/test";
 import { logIn } from "./session";
 
-// Impression A4 des écrans de document (gabarit PrintLayout) sur les données présentes dans la base jetable. Chaque écran est rendu en média « print » puis exporté en PDF : au moins une
+// Impression A4 des écrans de document (gabarit PrintLayout) sur les données présentes dans la
+// base jetable. Chaque écran est rendu en média « print » puis exporté en PDF : au moins une
 // page, titre et référence visibles, en-tête ONEA, aucune action d'écran. Les PDF sont joints au
-// rapport Playwright (artefacts). Pile de dev requise (voir login.spec.ts).
+// rapport Playwright (artefacts). Ces écrans demandent des données de démonstration
+// (cartographie, programme annuel, mission) : sans elles, chaque test est sauté avec la raison.
+
+/** Premier lien de la liste affichée, ou null quand la liste est vide (données absentes). */
+async function firstLink(page: Page, name: RegExp) {
+  await page.waitForLoadState("networkidle");
+  const link = page.getByRole("link", { name }).first();
+  return (await link.count()) > 0 ? link : null;
+}
+
+const SANS_DONNEES =
+  "Données de démonstration absentes de cette base (aucun élément à imprimer) : test sauté.";
 
 function pageCount(pdf: Buffer): number {
   return (pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length;
@@ -37,10 +49,9 @@ test.describe("impression A4 des écrans de document", () => {
   test("cartographie des risques", async ({ page }, testInfo) => {
     await logIn(page, "rai");
     await page.goto("/referentiel/cartographies");
-    await page
-      .getByRole("link", { name: /Cartographie.*\d{4}|\d{4}/ })
-      .first()
-      .click();
+    const link = await firstLink(page, /Cartographie.*\d{4}|\d{4}/);
+    test.skip(link === null, SANS_DONNEES);
+    await link?.click();
     await expect(
       page.getByRole("heading", { name: /Cartographie des risques \d{4}/ }),
     ).toBeVisible();
@@ -52,10 +63,9 @@ test.describe("impression A4 des écrans de document", () => {
   }, testInfo) => {
     await logIn(page, "rai");
     await page.goto("/programme-annuel");
-    await page
-      .getByRole("link", { name: /Programme annuel \d{4}|\d{4}/ })
-      .first()
-      .click();
+    const link = await firstLink(page, /Programme annuel \d{4}|\d{4}/);
+    test.skip(link === null, SANS_DONNEES);
+    await link?.click();
     await expect(page.getByRole("heading", { name: /Programme annuel \d{4}/ })).toBeVisible();
     await printCheck(page, testInfo, "programme", /Programme annuel \d{4}/, true);
     // Lignes et cartes insécables : règle appliquée à tout tableau imprimé.
@@ -74,10 +84,10 @@ test.describe("impression A4 des écrans de document", () => {
     test(`mission : ${name}`, async ({ page }, testInfo) => {
       await logIn(page, "rai");
       await page.goto("/missions");
-      await page
-        .getByRole("link", { name: /MI-\d{4}-\d+/ })
-        .first()
-        .click();
+      // Mission référencée (DAI/AAAA/Mnn, ancien format MI-AAAA-n) : pas un brouillon.
+      const link = await firstLink(page, /[A-Z]+\/\d{4}\/M\d+|MI-\d{4}-\d+/);
+      test.skip(link === null, SANS_DONNEES);
+      await link?.click();
       await page.waitForURL(/\/missions\/[0-9a-f-]{36}/);
       const missionUrl = page.url().replace(/\/(etapes|suivi|entretiens).*$/, "");
       await page.goto(`${missionUrl}/${segment}`);

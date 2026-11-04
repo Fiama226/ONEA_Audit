@@ -93,11 +93,20 @@ test("a signed-in user can log out and is asked to sign in again", async ({ page
   await logIn(page, "rai");
   // Cookies de la session courante (dont le cookie HttpOnly), pour prouver qu'ils sont invalidés.
   const cookies = await page.context().cookies();
+  // Une page protégée de plus dans l'historique : « Précédent » y reviendra après la déconnexion.
+  await page.goto("/missions");
+  await expect(page.getByRole("navigation", { name: "Menu principal" })).toBeVisible();
   await page.getByRole("button", { name: /Menu utilisateur/ }).click();
   await page.getByRole("menuitem", { name: "Se déconnecter" }).click();
   // (1) page de connexion affichée
   await expect(page).toHaveURL(/\/connexion$/);
   await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
+  // (4) le bouton Précédent revient sur une page protégée vue connecté (le tableau de bord,
+  // avant /missions) : aucun contenu protégé, retour à la connexion
+  await page.goBack();
+  await expect(page).toHaveURL(/\/connexion$/);
+  await expect(page.getByRole("heading", { name: "Pilotage de l'audit interne" })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Menu principal" })).toHaveCount(0);
   // (2) une page protégée renvoie vers la connexion
   await page.goto("/missions");
   await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
@@ -108,8 +117,4 @@ test("a signed-in user can log out and is asked to sign in again", async ({ page
   });
   expect((await ancienne.get("/api/v1/me/")).status()).toBe(401);
   await ancienne.dispose();
-  // (4) le bouton Précédent n'affiche aucun contenu protégé
-  await page.goBack();
-  await expect(page.getByRole("heading", { name: "Pilotage de l'audit interne" })).toHaveCount(0);
-  await expect(page.getByRole("navigation", { name: "Menu principal" })).toHaveCount(0);
 });

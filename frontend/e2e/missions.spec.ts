@@ -90,7 +90,7 @@ test("RAI creates the mission, staffs it, plans it, launches it and issues the o
     await page.getByRole("button", { name: "Affecter une personne" }).click();
     let dialog = page.getByRole("alertdialog");
     await dialog.getByLabel("Rôle dans la mission").selectOption({ label: "Chef de mission" });
-    await dialog.getByRole("radio", { name: /Auditeur Un/ }).check();
+    await dialog.getByRole("radio", { name: /Auditeur1 E2E/ }).check();
     await dialog.getByRole("button", { name: "Affecter", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByRole("cell", { name: "Chef de mission", exact: true })).toBeVisible();
@@ -99,7 +99,7 @@ test("RAI creates the mission, staffs it, plans it, launches it and issues the o
     dialog = page.getByRole("alertdialog");
     await dialog.getByLabel("Rôle dans la mission").selectOption({ label: "Audité" });
     // The auditees of the mission's entity (direction DEX) are proposed and pre-checked.
-    await expect(dialog.getByRole("checkbox", { name: /Audite Un/ })).toBeChecked();
+    await expect(dialog.getByRole("checkbox", { name: /Audite1 E2E/ })).toBeChecked();
     await dialog.getByRole("button", { name: "Affecter", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByRole("cell", { name: "Audité", exact: true })).toBeVisible();
@@ -180,7 +180,7 @@ test("auditeur1 confirms the declaration, then completes steps II and IV", async
     dialog = page.getByRole("dialog");
     await dialog.getByLabel("Objet").fill("Entretien avec le directeur des achats");
     await dialog.getByLabel("Date et heure").fill("2026-11-06T10:00");
-    await dialog.getByRole("checkbox", { name: /Auditeur Un/ }).click();
+    await dialog.getByRole("checkbox", { name: /Auditeur1 E2E/ }).click();
     await dialog.getByRole("button", { name: "Enregistrer" }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByText("Entretien avec le directeur des achats")).toBeVisible();
