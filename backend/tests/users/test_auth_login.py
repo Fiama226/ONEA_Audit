@@ -369,7 +369,8 @@ def test_login_is_throttled_per_ip(agent: User) -> None:
 
 def test_login_rate_is_configured() -> None:
     assert re.fullmatch(
-        r"\d+/(sec|min|hour|day)", settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["connexion"]
+        r"\d+/\d*(sec|min|hour|day)",
+        settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["connexion"],
     )
 
 

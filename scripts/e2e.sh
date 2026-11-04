@@ -125,8 +125,14 @@ export REDIS_URL="redis://localhost:${REDIS_HOST_PORT}/14"
 (cd "$ROOT/backend" && "$PY" manage.py migrate --noinput) || { STATUS=1; exit 1; }
 
 # Limites de débit relevées : la suite se connecte des dizaines de fois par minute depuis la même
-# IP (seau « connexion », 20/min par défaut). Environnement e2e jetable uniquement.
+# IP (seaux de l'authentification, backend/apps/users/auth_throttles.py). E2e jetable uniquement.
 export THROTTLE_RATE_CONNEXION="10000/min"
+export THROTTLE_RATE_CONNEXION_CODE="10000/min"
+export THROTTLE_RATE_MOT_DE_PASSE_OUBLIE_IP="10000/min"
+export THROTTLE_RATE_REINITIALISATION="10000/min"
+export THROTTLE_RATE_ECHECS_CONNEXION="10000/min"
+export THROTTLE_RATE_ECHECS_REINITIALISATION="10000/min"
+export THROTTLE_RATE_CHANGEMENT_MOT_DE_PASSE="10000/min"
 export THROTTLE_RATE_MOT_DE_PASSE_OUBLIE="10000/hour"
 
 # Comptes de test avec un mot de passe connu (e2e uniquement : la commande refuse tout hors

@@ -237,10 +237,29 @@ STORAGES = {
 DJANGO_ADMIN_ENABLED: bool = env.bool("DJANGO_ADMIN_ENABLED", default=True)
 
 
+# Scopes of `apps.users.auth_throttles`: their period may carry a multiplier ("30/15min").
+_PORTEES_AUTHENTIFICATION = frozenset(
+    {
+        "connexion",
+        "connexion_code",
+        "mot_de_passe_oublie",
+        "mot_de_passe_oublie_ip",
+        "reinitialisation",
+        "changement_mot_de_passe",
+        "echecs_connexion",
+        "echecs_reinitialisation",
+    }
+)
+
+
 def _taux_debit(portee: str, defaut: str) -> str:
-    """Taux « N/min|hour|day » d'une portée, surchargeable par THROTTLE_RATE_<PORTEE>."""
+    """Taux « N/min|hour|day » d'une portée, surchargeable par THROTTLE_RATE_<PORTEE>.
+
+    Les portées de l'authentification acceptent aussi un multiple de la période (« 30/15min »).
+    """
     valeur: str = env(f"THROTTLE_RATE_{portee.upper()}", default=defaut).strip()
-    if not re.fullmatch(r"[1-9]\d*/(sec|min|hour|day)", valeur):
+    multiple = r"([1-9]\d*)?" if portee in _PORTEES_AUTHENTIFICATION else ""
+    if not re.fullmatch(rf"[1-9]\d*/{multiple}(sec|min|hour|day)", valeur):
         raise ImproperlyConfigured(
             f"THROTTLE_RATE_{portee.upper()} doit avoir la forme « 20/min » (sec, min, hour, day)."
         )
@@ -276,9 +295,20 @@ REST_FRAMEWORK = {
             "export": "30/min",
             "anonyme": "30/min",
             "recherche": "60/min",
-            # per client IP on the login endpoints (the per-account limit is the lockout)
-            "connexion": "20/min",
-            # per typed identifier on "forgotten password" (+ a silent per-account quota)
+            # Authentication (apps.users.auth_throttles, AUTH-04/05): one bucket per endpoint,
+            # per client IP (IPv6: per /64). Sized for a head office behind one NAT address;
+            # the per-account lockout (5 failures, 15 min) is the brute-force defence. Each
+            # one is overridable by THROTTLE_RATE_<SCOPE>, e.g. THROTTLE_RATE_CONNEXION=120/min.
+            "connexion": "60/min",
+            "connexion_code": "30/min",
+            "mot_de_passe_oublie_ip": "20/min",
+            "reinitialisation": "20/min",
+            # failures only, across accounts: one address cannot keep many accounts locked
+            "echecs_connexion": "30/15min",
+            "echecs_reinitialisation": "30/hour",
+            # per user: change of password, removal of the login code (password re-checked)
+            "changement_mot_de_passe": "10/min",
+            # per typed identifier on "forgotten password" (+ a per-account quota in the DB)
             "mot_de_passe_oublie": "5/hour",
             # per user: account creation, password reset, login-code removal (emails sent)
             "gestion_comptes": "30/hour",

@@ -40,7 +40,16 @@ from .auth_serializers import (
     ReinitialisationSerializer,
 )
 from .auth_services import CLE_OTP_COMPTE, Etape, Resultat
-from .auth_throttles import ConnexionParIpThrottle, MotDePasseOublieParIdentifiantThrottle
+from .auth_throttles import (
+    ChangementMotDePasseParUtilisateurThrottle,
+    CodeConnexionParIpThrottle,
+    ConnexionParIpThrottle,
+    EchecsConnexionParIpThrottle,
+    EchecsReinitialisationParIpThrottle,
+    MotDePasseOublieParIdentifiantThrottle,
+    MotDePasseOublieParIpThrottle,
+    ReinitialisationParIpThrottle,
+)
 from .authentication import SessionAuthentication401
 from .models import User
 from .serializers import MeSerializer
@@ -76,16 +85,21 @@ def _ouvrir_session(request: Request, user: User) -> None:
 
 
 class _CsrfObligatoireMixin:
-    """DRF checks CSRF only for session-authenticated requests; here anonymous POSTs too."""
+    """DRF checks CSRF only for session-authenticated requests; here anonymous POSTs too.
+
+    Checked BEFORE the throttles count the request (AUTH-05): a cross-site page that posts
+    in a loop without the token must not spend the quota of the address it shares with the
+    whole site behind a NAT. ``enforce_csrf`` reads the cookie and the header only.
+    """
 
     def initial(self, request: Request, *args: Any, **kwargs: Any) -> None:
-        super().initial(request, *args, **kwargs)  # type: ignore[misc]
         SessionAuthentication401().enforce_csrf(request)  # no-op on safe methods
+        super().initial(request, *args, **kwargs)  # type: ignore[misc]
 
 
 class ConnexionView(_CsrfObligatoireMixin, APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [ConnexionParIpThrottle]
+    throttle_classes = [ConnexionParIpThrottle, EchecsConnexionParIpThrottle]
 
     @extend_schema(
         tags=["Authentification"],
@@ -102,6 +116,7 @@ class ConnexionView(_CsrfObligatoireMixin, APIView):
             adresse=adresse_client(request),
         )
         if resultat.etape is None or resultat.user is None:
+            EchecsConnexionParIpThrottle().enregistrer_echec(request)
             raise AuthenticationFailed(ECHEC_CONNEXION)
         user = resultat.user
         if resultat.etape is Etape.OTP:
@@ -125,7 +140,7 @@ class ConnexionView(_CsrfObligatoireMixin, APIView):
 
 class ConnexionCodeView(_CsrfObligatoireMixin, APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [ConnexionParIpThrottle]
+    throttle_classes = [CodeConnexionParIpThrottle, EchecsConnexionParIpThrottle]
 
     @extend_schema(
         tags=["Authentification"],
@@ -148,6 +163,7 @@ class ConnexionCodeView(_CsrfObligatoireMixin, APIView):
             compte_id, serializer.validated_data["code"], adresse=adresse_client(request)
         )
         if resultat.etape is None or resultat.user is None:
+            EchecsConnexionParIpThrottle().enregistrer_echec(request)
             raise AuthenticationFailed(CODE_INVALIDE)
         _ouvrir_session(request, resultat.user)
         return Response(_etat(resultat.etape, resultat.user))
@@ -214,7 +230,7 @@ class MotDePasseOublieView(_CsrfObligatoireMixin, APIView):
     """
 
     permission_classes = [AllowAny]
-    throttle_classes = [ConnexionParIpThrottle, MotDePasseOublieParIdentifiantThrottle]
+    throttle_classes = [MotDePasseOublieParIpThrottle, MotDePasseOublieParIdentifiantThrottle]
 
     @extend_schema(
         tags=["Authentification"],
@@ -241,7 +257,7 @@ class MotDePasseOublieView(_CsrfObligatoireMixin, APIView):
 
 class ReinitialisationView(_CsrfObligatoireMixin, APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [ConnexionParIpThrottle]
+    throttle_classes = [ReinitialisationParIpThrottle, EchecsReinitialisationParIpThrottle]
 
     @extend_schema(
         tags=["Authentification"],
@@ -263,6 +279,7 @@ class ReinitialisationView(_CsrfObligatoireMixin, APIView):
         except DjangoValidationError as exc:
             raise _erreurs_mot_de_passe("nouveau_mot_de_passe", exc) from None
         if compte is None:
+            EchecsReinitialisationParIpThrottle().enregistrer_echec(request)
             raise CodeRefuse
         return Response(status=204)
 
@@ -275,7 +292,7 @@ class ChangementMotDePasseView(APIView):
     """
 
     permission_classes = [IsAuthenticated]
-    throttle_classes = [ConnexionParIpThrottle]
+    throttle_classes = [ChangementMotDePasseParUtilisateurThrottle]
 
     @extend_schema(
         tags=["Authentification"],
@@ -324,7 +341,7 @@ class DesactivationOtpView(APIView):
     """Own account only, on the current password (a wrong one counts as a login failure)."""
 
     permission_classes = [IsAuthenticated]
-    throttle_classes = [ConnexionParIpThrottle]
+    throttle_classes = [ChangementMotDePasseParUtilisateurThrottle]
 
     @extend_schema(
         tags=["Authentification"],

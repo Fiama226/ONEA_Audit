@@ -110,8 +110,14 @@ try {
   if ($migrated) { throw 'migrate a échoué' }
 
   # Limites de débit relevées : la suite se connecte des dizaines de fois par minute depuis la même
-  # IP (seau « connexion », 20/min par défaut). Environnement e2e jetable uniquement.
+  # IP (seaux de l'authentification, backend/apps/users/auth_throttles.py). E2e jetable uniquement.
   $env:THROTTLE_RATE_CONNEXION = '10000/min'
+  $env:THROTTLE_RATE_CONNEXION_CODE = '10000/min'
+  $env:THROTTLE_RATE_MOT_DE_PASSE_OUBLIE_IP = '10000/min'
+  $env:THROTTLE_RATE_REINITIALISATION = '10000/min'
+  $env:THROTTLE_RATE_ECHECS_CONNEXION = '10000/min'
+  $env:THROTTLE_RATE_ECHECS_REINITIALISATION = '10000/min'
+  $env:THROTTLE_RATE_CHANGEMENT_MOT_DE_PASSE = '10000/min'
   $env:THROTTLE_RATE_MOT_DE_PASSE_OUBLIE = '10000/hour'
 
   # Comptes de test avec un mot de passe connu (e2e uniquement : la commande refuse tout hors

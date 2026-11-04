@@ -207,7 +207,7 @@ def test_forgot_is_throttled_per_identifier_without_storing_it(agent: User) -> N
 
 
 def test_forgot_is_throttled_per_ip(agent: User) -> None:
-    with _taux(connexion="2/min"):
+    with _taux(mot_de_passe_oublie_ip="2/min"):
         assert _forgot("a1").status_code == 202
         assert _forgot("a2").status_code == 202
         assert _forgot("a3").status_code == 429
@@ -215,7 +215,7 @@ def test_forgot_is_throttled_per_ip(agent: User) -> None:
 
 
 def test_forgot_caps_codes_per_account_silently(agent: User) -> None:
-    with _taux(mot_de_passe_oublie="100/hour", connexion="100/min"):
+    with _taux(mot_de_passe_oublie="100/hour", mot_de_passe_oublie_ip="100/min"):
         for _ in range(auth_services.CODES_REINITIALISATION_MAX + 2):
             assert _forgot("awa.ouedraogo").status_code == 202
     assert len(mail.outbox) == auth_services.CODES_REINITIALISATION_MAX
@@ -379,7 +379,7 @@ def test_reset_cancels_a_pending_login_code(agent: User) -> None:
 
 
 def test_reset_is_throttled_per_ip(agent: User) -> None:
-    with _taux(connexion="2/min"):
+    with _taux(reinitialisation="2/min"):
         assert _reset("x", "123456").status_code == 400
         assert _reset("x", "123456").status_code == 400
         assert _reset("x", "123456").status_code == 429
