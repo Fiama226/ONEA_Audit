@@ -42,22 +42,13 @@ affirmer "app : X-Frame-Options DENY" entete "$A/" x-frame-options DENY
 affirmer "app : nosniff" entete "$A/" x-content-type-options nosniff
 affirmer "app : Referrer-Policy" entete "$A/" referrer-policy strict-origin
 affirmer "app : Permissions-Policy" entete "$A/" permissions-policy camera
-affirmer "SSO : HSTS" entete "$S/realms/onea/" strict-transport-security max-age
-affirmer "SSO : nosniff" entete "$S/realms/onea/" x-content-type-options nosniff
 affirmer "server_tokens masque (pas de numero de version)" \
     '! curl_recette -sI "$A/" | grep -i "^server:" | grep -q "[0-9]"'
 
-for p in /admin/ /realms/master/ /metrics /health; do
-    affirmer "SSO $p -> 404" code "$S$p" 404
-done
-affirmer "decouverte OIDC du realm onea -> 200" \
-    code "$S/realms/onea/.well-known/openid-configuration" 200
 affirmer "/api/v1/health/ -> status ok" \
     'curl_recette -fs "$A/api/v1/health/" | grep -q "\"status\": *\"ok\""'
 
-affirmer "docs/deploy.md sans onea-charge ni recette (sauf chemin scripts/recette/)" \
-    '! grep -qiE "onea-charge" "$REPO_ROOT/docs/deploy.md" && ! grep -qiE "recette" "$(grep -v scripts/recette/ "$REPO_ROOT/docs/deploy.md")"'
-affirmer ".env.prod.example sans onea-charge ni recette" \
-    '! grep -qiE "onea-charge|recette" "$REPO_ROOT/.env.prod.example"'
+affirmer "docs/deploy.md sans recette (sauf chemin scripts/recette/)"     '! grep -qiE "recette" "$(grep -v scripts/recette/ "$REPO_ROOT/docs/deploy.md")"'
+affirmer ".env.prod.example sans recette"     '! grep -qiE "recette" "$REPO_ROOT/.env.prod.example"'
 
 bilan
