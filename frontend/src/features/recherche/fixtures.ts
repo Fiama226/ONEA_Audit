@@ -18,4 +18,5 @@ export const resultatFixture = {
 export const reponseRechercheFixture = {
   resultats: [resultatFixture],
   plus: false,
+  degrade: false,
 } satisfies S["ReponseRecherche"];

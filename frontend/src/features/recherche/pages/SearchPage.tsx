@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { isApiError } from "@/api/errors";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fr } from "@/i18n/fr";
 import { MIN_QUERY_LENGTH, useSearch, type TypeResultat } from "../api";
@@ -94,9 +95,14 @@ export function SearchPage() {
     );
   } else if (search.isError) {
     body = (
-      <p role="alert" className="text-sm text-destructive">
-        {errorMessage(search.error)}
-      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <p role="alert" className="text-sm text-destructive">
+          {errorMessage(search.error)}
+        </p>
+        <Button type="button" variant="outline" size="sm" onClick={() => void search.refetch()}>
+          {fr.suivi.searchRetry}
+        </Button>
+      </div>
     );
   } else if (search.isPending) {
     body = (
@@ -105,7 +111,19 @@ export function SearchPage() {
       </p>
     );
   } else {
-    body = <SearchResults response={search.data} />;
+    body = (
+      <>
+        {search.data.degrade && (
+          <p
+            role="status"
+            className="mb-4 rounded-md border border-border bg-surface-subtle px-3 py-2 text-sm"
+          >
+            {fr.suivi.searchDegraded}
+          </p>
+        )}
+        <SearchResults response={search.data} />
+      </>
+    );
   }
 
   return (

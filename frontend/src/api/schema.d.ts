@@ -3886,7 +3886,7 @@ export interface paths {
         };
         /**
          * Recherche globale filtrée par droits
-         * @description Renvoie au plus 20 résultats visibles de l'utilisateur, sans total (`plus` indique qu'il en reste). Le surlignage est porté par deux caractères de contrôle réservés (U+0002 début, U+0003 fin). Rôle ADMIN : 403 ; au-delà de 60 requêtes par minute : 429 ; moteur indisponible : 503.
+         * @description Renvoie au plus 20 résultats visibles de l'utilisateur, sans total (`plus` indique qu'il en reste). Le surlignage est porté par deux caractères de contrôle réservés (U+0002 début, U+0003 fin). Rôle ADMIN : 403 ; au-delà de 60 requêtes par minute : 429. Moteur indisponible : repli sur les missions en base (`degrade` vrai), ou 503 si la requête exclut les missions.
          */
         get: operations["v1_search_retrieve"];
         put?: never;
@@ -8668,6 +8668,8 @@ export interface components {
         ReponseRecherche: {
             resultats: components["schemas"]["ResultatRecherche"][];
             plus: boolean;
+            /** @description Vrai quand le moteur est indisponible : seules les missions sont cherchées. */
+            degrade: boolean;
         };
         ReponseRequestRequest: {
             /** Format: uuid */

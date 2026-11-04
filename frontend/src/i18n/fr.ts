@@ -2640,6 +2640,9 @@ export const fr = {
     searchNone: "Aucun résultat.",
     searchUnavailable: "La recherche est momentanément indisponible. Réessayez plus tard.",
     searchRateLimited: "Trop de recherches en peu de temps : patientez une minute.",
+    searchDegraded:
+      "Le moteur de recherche est indisponible : seules les missions sont cherchées (référence et titre). Les constats, actions et documents reviendront dès son rétablissement.",
+    searchRetry: "Réessayer",
     searchMore: "D'autres résultats existent : précisez la recherche.",
     // Pièces et exports
     evidenceAltered:

@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import { API_URL, server } from "@/test/msw";
 import { renderRoutes } from "@/test/shell";
@@ -60,6 +60,23 @@ describe("SearchPage", () => {
   it("aucun résultat", async () => {
     setup("/recherche?q=zzzz", () => HttpResponse.json({ resultats: [], plus: false }));
     expect(await screen.findByText("Aucun résultat.")).toBeVisible();
+  });
+
+  it("signale le mode dégradé quand le moteur est indisponible", async () => {
+    setup("/recherche?q=audit", () =>
+      HttpResponse.json({ ...reponseRechercheFixture, degrade: true }),
+    );
+    expect(
+      await screen.findByText(/Le moteur de recherche est indisponible : seules les missions/),
+    ).toBeVisible();
+  });
+
+  it("propose de réessayer quand la recherche est indisponible", async () => {
+    const user = userEvent.setup();
+    const { urls } = setup("/recherche?q=abc", () => HttpResponse.json({}, { status: 503 }));
+    await screen.findByRole("alert");
+    await user.click(screen.getByRole("button", { name: "Réessayer" }));
+    await vi.waitFor(() => expect(urls.length).toBeGreaterThan(1));
   });
 
   it("traduit 503 et 429", async () => {
