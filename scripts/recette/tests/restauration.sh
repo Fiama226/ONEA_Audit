@@ -2,13 +2,13 @@
 # Exercice de restauration complet (lot 9, T18) sur la pile de RECETTE : peuplement, sauvegarde,
 # destruction totale (down -v, dossiers supprimés), restauration sur pile vide, comparaison.
 # DESTRUCTIF pour la recette : toutes ses données sont supprimées puis restaurées.
-# Usage : sh scripts/recette/up.sh && sh scripts/recette/realm.sh && sudo bash scripts/recette/tests/restauration.sh
+# Usage : sh scripts/recette/up.sh && sudo bash scripts/recette/tests/restauration.sh
 # (bash : lib.sh retrouve son dossier par BASH_SOURCE ; le script se relance seul sous bash si besoin.)
 # Doit être lancé en root (sudo) : backup.sh et restore.sh le sont.
-# Vérifie : mêmes comptes par table, mêmes SHA-256 de 10 documents téléchargés par l'API, volume
+# Vérifie : mêmes comptes par table, mêmes SHA-256 de 10 documents lus dans le stockage, volume
 # onea-fichiers identique (empreinte de l'arborescence), fichier ajouté entre le dump et l'archive
-# signalé comme orphelin (et seulement lui), gel en base rétabli, connexion de `rai` (Keycloak
-# restauré), manifeste altéré refusé, --hors-serveur refusé sans configuration, copie restic
+# signalé comme orphelin (et seulement lui), gel en base rétabli, API prête après restauration,
+# manifeste altéré refusé, --hors-serveur refusé sans configuration, copie restic
 # restaurable (si restic est installé), durée de remise en service < 30 min.
 [ -n "${BASH_VERSION:-}" ] || exec bash "$0" "$@"
 . "$(dirname "$0")/../lib.sh"
@@ -43,30 +43,28 @@ releve_volume() {
         'cd /var/lib/onea/fichiers && find . -type f | sort | xargs -r sha256sum | sha256sum' | tr -d '\r'
 }
 
-# jeton_rai : jeton d'accès de `rai` (client onea-charge). Avec scope=openid : sans lui, userinfo répond 403
-# et l'API 401 (scripts/recette/token.sh ne le demande pas).
-jeton_rai() {
-    mdp=$(awk -F '\t' '$1 == "rai" { print $2 }' "$RECETTE_DIR/comptes.txt")
-    curl_recette -fs "https://$SSO_HOST/realms/onea/protocol/openid-connect/token" \
-        -d grant_type=password -d client_id=onea-charge -d scope=openid -d username=rai \
-        --data-urlencode "password=$mdp" |
-        python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])'
-}
-
-# empreintes_api <max> : « sha256 id » des versions de document que `rai` peut télécharger par l'API,
-# parmi les candidates de versions.txt (les versions remplacées ou hors de sa portée répondent 404).
+# empreintes_api <max> : « sha256 id » des versions de document de versions.txt, lues dans le stockage
+# des documents par le conteneur web (les fichiers absents ou vides sont ignorés).
 empreintes_api() {
-    jeton=$(jeton_rai)
     n=0
     for id in $(cat "$TMP/versions.txt"); do
         [ "$n" -lt "$1" ] || break
-        sum=$(curl_recette -fs -H "Authorization: Bearer $jeton" \
-            "https://$PUBLIC_HOST/api/v1/document-versions/$id/download/" 2>/dev/null | sha256sum | cut -d' ' -f1)
-        case "$sum" in e3b0c44298fc1c14*) continue ;; esac  # corps vide : refus de l'API
+        sum=$(web_shell "
+import hashlib
+from apps.documents.models import DocumentVersion
+v = DocumentVersion.all_objects.get(pk=$id)
+try:
+    with v.fichier_docx.open('rb') as f:
+        print(hashlib.sha256(f.read()).hexdigest())
+except Exception:
+    print('')
+" | tail -n 1 | tr -d '\r')
+        case "$sum" in ''|e3b0c44298fc1c14*) continue ;; esac  # absent ou vide
         printf '%s %s\n' "$sum" "$id"
         n=$((n + 1))
     done
 }
+
 echo "== Peuplement (peupler_demo --profil formation, documents Word générés) =="
 compose_recette stop beat worker >/dev/null 2>&1 || true
 # Faute de module de réglages « recette » (le garde de peupler_demo refuse les réglages prod), la
@@ -90,7 +88,7 @@ liste_orphelins() {
         sed -n '/^Orphelins :/,$p' | grep -v -e '^Orphelins :' -e 'orphelin(s) :' | sort
 }
 liste_orphelins > "$TMP/orphelins-avant.txt"
-affirmer "au moins 3 documents téléchargés par l'API (10 visés), empreintes non vides" '[ "$(wc -l <"$TMP/api-avant.txt")" -ge 3 ]'
+affirmer "au moins 3 documents lus dans le stockage (10 visés), empreintes non vides" '[ "$(wc -l <"$TMP/api-avant.txt")" -ge 3 ]'
 affirmer "relevé des comptes non vide" '[ "$(wc -l <"$TMP/comptes-avant.txt")" -gt 20 ]'
 
 echo "== Refus de --hors-serveur sans configuration =="
@@ -106,10 +104,10 @@ EOF
 mkdir -p "$SAUV"
 ONEA_SAUVEGARDE_PAUSE="$TMP/pause.sh" sh "$REPO_ROOT/scripts/backup.sh" "$SAUV"
 STAMP=$(ls "$SAUV" | sed -n 's/^manifeste-\(.*\)\.sha256$/\1/p' | tail -n 1)
-affirmer "jeu de sauvegarde complet (4 fichiers + manifeste)" \
-    '[ -n "$STAMP" ] && [ -f "$SAUV/onea-$STAMP.dump" ] && [ -f "$SAUV/keycloak-$STAMP.dump" ] &&
+affirmer "jeu de sauvegarde complet (3 fichiers + manifeste)" \
+    '[ -n "$STAMP" ] && [ -f "$SAUV/onea-$STAMP.dump" ] &&
      [ -f "$SAUV/fichiers-$STAMP.tar.gz" ] && [ -f "$SAUV/documents-$STAMP.tar.gz" ] &&
-     [ "$(wc -l <"$SAUV/manifeste-$STAMP.sha256")" -eq 4 ]'
+     [ "$(wc -l <"$SAUV/manifeste-$STAMP.sha256")" -eq 3 ]'
 affirmer "manifeste SHA-256 conforme" '(cd "$SAUV" && sha256sum -c "manifeste-$STAMP.sha256")'
 
 echo "== Altération détectée avant toute modification =="
@@ -183,7 +181,7 @@ affirmer "volume onea-fichiers : même arborescence et mêmes empreintes" \
 # Mêmes versions qu'avant la destruction (liste figée dans api-avant.txt).
 cut -d' ' -f2 "$TMP/api-avant.txt" > "$TMP/versions.txt"
 empreintes_api 10 > "$TMP/api-apres.txt"
-affirmer "mêmes SHA-256 pour les documents téléchargés par l'API" 'diff "$TMP/api-avant.txt" "$TMP/api-apres.txt"'
+affirmer "mêmes SHA-256 pour les documents lus dans le stockage" 'diff "$TMP/api-avant.txt" "$TMP/api-apres.txt"'
 web_manage verifier_documents --orphelins > "$TMP/docs.txt" 2>&1
 affirmer "verifier_documents : 0 anomalie, 0 manquant" 'grep -q " 0 anomalie" "$TMP/docs.txt"'
 { cat "$TMP/orphelins-avant.txt"; echo orphelin-t18.txt; } | sort > "$TMP/orphelins-attendus.txt"
@@ -209,8 +207,7 @@ except Exception as e:
 }
 affirmer "DELETE refusé en base pour le rôle applicatif (gel actif)" \
     'tenter_suppression | grep -qE "^REFUS .*(permission denied|ERREUR ONEA)"'
-affirmer "connexion de rai (Keycloak restauré) et appel API" \
-    'jeton=$(jeton_rai) && [ -n "$jeton" ] &&
-     [ "$(curl_recette -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $jeton" "https://$PUBLIC_HOST/api/v1/missions/")" = 200 ]'
+affirmer "API prête après restauration (/api/v1/health/ready/)" \
+    'curl_recette -fs "https://$PUBLIC_HOST/api/v1/health/ready/"'
 
 bilan

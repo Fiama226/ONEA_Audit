@@ -1,7 +1,7 @@
-# Starts the ONEA dev stack on Windows: Postgres + Valkey + Keycloak (docker), Django, Vite.
+# Starts the ONEA dev stack on Windows: Postgres + Valkey + Mailpit (docker), Django, Vite.
 # Needs a repo-root .env (copy .env.example), frontend/.env and $env:ONEA_VENV or backend\.venv (create it with scripts/dev-setup.ps1).
 # Logs and pids go to .dev/ (git-ignored). Idempotent: already-listening ports are skipped.
-# Ports: API_PORT (8000), WEB_PORT (5173); Keycloak/DB/Redis ports come from .env (KEYCLOAK_PORT...).
+# Ports: API_PORT (8000), WEB_PORT (5173); DB/Redis/Mailpit ports come from .env.
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 $Dev = Join-Path $Root '.dev'
@@ -38,11 +38,8 @@ function Start-Detached($name, $file, $argList, $workdir, $port) {
 }
 
 $compose = @('compose', '--env-file', (Join-Path $Root '.env'), '-f', (Join-Path $Root 'docker\compose.yml'), '-f', (Join-Path $Root 'docker\compose.dev.yml'))
-& docker @compose up -d db redis keycloak
+& docker @compose up -d db redis mailpit
 if ($LASTEXITCODE) { throw 'docker compose up failed' }
-$kc = (Select-String -Path (Join-Path $Root '.env') -Pattern '^KEYCLOAK_PORT=(\d+)').Matches.Groups[1].Value
-if (-not $kc) { $kc = 8080 }
-Wait-Http "http://127.0.0.1:$kc/realms/onea/.well-known/openid-configuration" 180
 
 $env:DJANGO_SETTINGS_MODULE = 'config.settings.dev'
 Push-Location (Join-Path $Root 'backend')
@@ -53,8 +50,11 @@ Start-Detached 'api' $Py @('manage.py', 'runserver', "127.0.0.1:$ApiPort") (Join
 Wait-Http "http://127.0.0.1:$ApiPort/api/v1/health/" 60
 
 $Front = Join-Path $Root 'frontend'
+# One origin: the browser only talks to Vite, which proxies /api to Django.
+$env:VITE_API_URL = "http://localhost:$WebPort"
+$env:ONEA_API_URL = "http://127.0.0.1:$ApiPort"
 Start-Detached 'web' 'node' @('node_modules\vite\bin\vite.js', '--host', 'localhost', '--port', $WebPort) $Front $WebPort
 Wait-Http "http://localhost:$WebPort/" 60
 Write-Host "Frontend  http://localhost:$WebPort"
 Write-Host "API       http://127.0.0.1:$ApiPort/api/v1/health/"
-Write-Host "Keycloak  http://127.0.0.1:$kc  (admin console: /admin)"
+Write-Host "Mailpit   http://127.0.0.1:8025"

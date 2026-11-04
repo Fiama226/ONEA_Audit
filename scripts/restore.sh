@@ -7,9 +7,8 @@
 # <horodatage> : AAAAMMJJ-HHMMSS (nom des fichiers de backup.sh). Sans --oui, rien n'est modifié.
 # Copie hors serveur : `restic restore latest --target /srv/onea-restauration`, puis
 #   --dossier /srv/onea-restauration/<dossier de sauvegarde d'origine>.
-# Déroulement : contrôle du manifeste SHA-256 (refus au moindre écart) ; arrêt de web, worker, beat et
-# keycloak ; restauration de la base applicative puis de celle de Keycloak (pg_restore --clean
-# --if-exists --single-transaction) ; ré-installation des déclencheurs de gel et des droits
+# Déroulement : contrôle du manifeste SHA-256 (refus au moindre écart) ; arrêt de web, worker et beat ;
+# restauration de la base applicative (pg_restore --clean --if-exists --single-transaction) ; ré-installation des déclencheurs de gel et des droits
 # (installer_gardes_sql, que pg_restore ne rétablit pas de façon sûre) ; dossier des documents
 # déplacé en <dossier>-avant-restauration-<horodatage> puis archive extraite (10001:10001, 0750) ;
 # volume onea-fichiers sauvegardé dans <dossier de sauvegarde>/avant-restauration-fichiers-<horodatage>.tar.gz
@@ -46,7 +45,7 @@ case "$STAMP" in
   *) echo "Usage : sh scripts/restore.sh <AAAAMMJJ-HHMMSS> --oui|--verifier [--dossier DIR]" >&2; exit 2 ;;
 esac
 if [ "$OUI" -eq 0 ] && [ "$VERIFIER" -eq 0 ]; then
-  echo "REFUS : la restauration remplace la base, Keycloak et les fichiers. Ajouter --oui pour confirmer" >&2
+  echo "REFUS : la restauration remplace la base et les fichiers. Ajouter --oui pour confirmer" >&2
   echo "        (ou --verifier pour contrôler le jeu $STAMP sans rien modifier)." >&2
   exit 2
 fi
@@ -60,7 +59,7 @@ MANIFESTE="$DEST/manifeste-$STAMP.sha256"
 [ -f "$MANIFESTE" ] || {
   echo "ERREUR : $MANIFESTE absent : jeu incomplet ou antérieur au manifeste, restauration refusée." >&2
   exit 1; }
-for f in "onea-$STAMP.dump" "keycloak-$STAMP.dump" "fichiers-$STAMP.tar.gz" "documents-$STAMP.tar.gz"; do
+for f in "onea-$STAMP.dump" "fichiers-$STAMP.tar.gz" "documents-$STAMP.tar.gz"; do
   grep -q "  $f\$" "$MANIFESTE" || { echo "ERREUR : $f absent du manifeste." >&2; exit 1; }
 done
 ( cd "$DEST" && sha256sum -c "manifeste-$STAMP.sha256" ) || {
@@ -69,10 +68,9 @@ done
 for f in "documents-$STAMP.tar.gz" "fichiers-$STAMP.tar.gz"; do
   tar -tzf "$DEST/$f" >/dev/null 2>&1 || { echo "ERREUR : $f illisible (tar -tzf)." >&2; exit 1; }
 done
-compose up -d --no-deps --wait db keycloak-db
+compose up -d --no-deps --wait db
 attendre_postgres db
-attendre_postgres keycloak-db
-for pair in "db:onea" "keycloak-db:keycloak"; do
+for pair in "db:onea"; do
   compose exec -T "${pair%%:*}" pg_restore --list < "$DEST/${pair##*:}-$STAMP.dump" >/dev/null \
     || { echo "ERREUR : dump ${pair##*:} illisible (pg_restore --list)." >&2; exit 1; }
 done
@@ -85,8 +83,8 @@ DOCS_AVANT="$DOCS_REAL-avant-restauration-$STAMP"
 [ ! -e "$DOCS_AVANT" ] || { echo "ERREUR : $DOCS_AVANT existe déjà." >&2; exit 1; }
 
 # --- 2. Arrêt des services qui écrivent -------------------------------------------------------------
-echo "Arrêt de web, worker, beat, keycloak..."
-compose stop web worker beat keycloak
+echo "Arrêt de web, worker, beat..."
+compose stop web worker beat
 
 # --- 3. Bases PostgreSQL ----------------------------------------------------------------------------
 restaurer_base() { # <service> <préfixe>
@@ -99,7 +97,6 @@ restaurer_base db onea || {
   echo "ERREUR : restauration de la base applicative échouée (rôle applicatif absent ? voir docs/deploy.md, §7bis)." >&2
   exit 1
 }
-restaurer_base keycloak-db keycloak
 
 # Déclencheurs de gel et droits de onea_app : rétablis par le code (jamais par confiance dans le dump).
 compose run --rm --no-deps -T migrate python manage.py installer_gardes_sql

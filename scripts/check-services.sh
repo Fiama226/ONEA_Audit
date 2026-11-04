@@ -24,7 +24,6 @@ fi
 
 COMPOSE=(docker compose "${ENV_ARGS[@]}" -f "$ROOT/docker/compose.yml" -f "$ROOT/docker/compose.dev.yml")
 
-KC_PORT="${KEYCLOAK_PORT:-8080}"
 MEILI="${MEILI_PORT:-7700}"
 GOTENBERG="${GOTENBERG_PORT:-3000}"
 MAILPIT_UI="${MAILPIT_HTTP_PORT:-8025}"
@@ -37,7 +36,6 @@ check() { # name, command...
 
 check db "${COMPOSE[@]}" exec -T db pg_isready -U "${POSTGRES_USER:-onea}" -d "${POSTGRES_DB:-onea}"
 check redis "${COMPOSE[@]}" exec -T redis valkey-cli ping
-check keycloak curl -fsS "http://localhost:${KC_PORT}/realms/onea"
 check meilisearch curl -fsS "http://localhost:${MEILI}/health"
 check gotenberg curl -fsS "http://localhost:${GOTENBERG}/health"
 check mailpit curl -fsS "http://localhost:${MAILPIT_UI}/livez"

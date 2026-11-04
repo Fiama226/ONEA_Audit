@@ -48,7 +48,7 @@ affirmer "redis : repond avec le mot de passe du fichier" \
 affirmer "meilisearch : refuse sans cle" \
     '[ "$(compose_recette exec -T meilisearch curl -s -o /dev/null -w "%{http_code}" http://localhost:7700/keys)" = 401 ]'
 
-# L'application fonctionne avec les secrets en fichiers (base, Redis, Meilisearch, Keycloak).
+# L'application fonctionne avec les secrets en fichiers (base, Redis, Meilisearch).
 affirmer "API prete (/api/v1/health/ready/)" \
     'curl_recette -fs "https://$PUBLIC_HOST/api/v1/health/ready/"'
 

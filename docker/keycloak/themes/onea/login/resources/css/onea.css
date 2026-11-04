@@ -1,8 +1,0 @@
-/* Official ONEA logo (img/logo-onea.png, derived from LOGO.jpg, white background) above the form title. */
-#kc-header-wrapper {
-  height: 140px;
-  padding: 0;
-  background: url("../img/logo-onea.png") center / contain no-repeat;
-  font-size: 0;
-  color: transparent;
-}

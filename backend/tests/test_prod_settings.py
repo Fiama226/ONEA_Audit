@@ -17,7 +17,8 @@ PROD_ENV = {
     "ALLOWED_HOSTS": "audit.onea.bf,.audit.onea.bf",
     "CORS_ALLOWED_ORIGINS": "https://audit.onea.bf",
     "CSRF_TRUSTED_ORIGINS": "https://audit.onea.bf",
-    "OIDC_OP_BASE_URL": "https://sso.onea.bf/realms/onea",
+    "SESSION_COOKIE_SECURE": "true",
+    # Legacy Python OIDC setting (removed with the OIDC code in Task 11); no longer required.
     "KEYCLOAK_ADMIN_API_CLIENT_SECRET": "prod-sync-secret",
     "DOCUMENTS_ROOT": "/var/lib/onea/documents",
     "MEILI_MASTER_KEY": "prod-meili-key",
@@ -166,12 +167,6 @@ def test_prod_email_transport_security_and_timeout(url: str, ssl: bool, tls: boo
     assert data["email_timeout"] == 10
 
 
-def test_prod_refuses_http_oidc_base_url() -> None:
-    result = load_prod({**PROD_ENV, "OIDC_OP_BASE_URL": "http://sso.onea.bf/realms/onea"})
-    assert result.returncode != 0
-    assert "https" in result.stderr
-
-
 @pytest.mark.parametrize(
     "url",
     [
@@ -195,12 +190,6 @@ def test_prod_plateforme_url_sans_barre_finale() -> None:
     assert result.stdout.strip().splitlines()[-1] == "https://audit.onea.bf"
 
 
-def test_prod_refuses_disabled_oidc_ssl_verification() -> None:
-    result = load_prod({**PROD_ENV, "OIDC_VERIFY_SSL": "false"})
-    assert result.returncode != 0
-    assert "OIDC_VERIFY_SSL" in result.stderr
-
-
 def test_prod_admin_can_be_enabled_explicitly() -> None:
     assert probe({**PROD_ENV, "DJANGO_ADMIN_ENABLED": "true"})["admin"] is True
 
@@ -213,7 +202,7 @@ def test_prod_admin_can_be_enabled_explicitly() -> None:
         "EMAIL_URL",
         "ALLOWED_HOSTS",
         "CSRF_TRUSTED_ORIGINS",
-        "OIDC_OP_BASE_URL",
+        "SESSION_COOKIE_SECURE",
         "PLATEFORME_URL",
     ],
 )
@@ -224,9 +213,7 @@ def test_prod_settings_refuse_to_start_without_required_variable(missing: str) -
     assert missing in result.stderr
 
 
-@pytest.mark.parametrize(
-    "flag", ["SESSION_COOKIE_SECURE", "CSRF_COOKIE_SECURE", "SECURE_SSL_REDIRECT"]
-)
+@pytest.mark.parametrize("flag", ["CSRF_COOKIE_SECURE", "SECURE_SSL_REDIRECT"])
 def test_prod_security_flags_cannot_be_weakened_by_env(flag: str) -> None:
     data = probe({**PROD_ENV, flag: "false"})
     assert data["session_secure"] is True
@@ -296,3 +283,10 @@ def test_prod_refuse_antivirus_aucun_sans_accord_explicite() -> None:
     assert result.returncode != 0
     assert "ANTIVIRUS_MOTEUR" in result.stderr
     assert probe({**PROD_ENV, "ANTIVIRUS_MOTEUR": "aucun", "ANTIVIRUS_AUTORISER_AUCUN": "true"})
+
+
+@pytest.mark.parametrize("valeur", ["false", "0", ""])
+def test_prod_refuse_session_cookie_secure_desactive(valeur: str) -> None:
+    result = load_prod({**PROD_ENV, "SESSION_COOKIE_SECURE": valeur})
+    assert result.returncode != 0
+    assert "SESSION_COOKIE_SECURE" in result.stderr

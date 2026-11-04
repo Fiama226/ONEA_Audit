@@ -147,8 +147,7 @@ jobs:
       - name: Build frontend
         run: >-
           docker build -f docker/frontend.Dockerfile -t onea-frontend:ci
-          --build-arg VITE_API_URL=https://audit.example.org
-          --build-arg VITE_OIDC_AUTHORITY=https://sso.example.org/realms/onea .
+          --build-arg VITE_API_URL=https://audit.example.org .
       - name: SBOM CycloneDX
         run: |
           mkdir -p build/sbom
@@ -200,16 +199,10 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Start the dev stack (db, redis, keycloak with the dev realm)
+      - name: Start the dev stack (db, redis, mailpit)
         run: |
           cp .env.example .env
-          docker compose --env-file .env -f docker/compose.yml -f docker/compose.dev.yml up -d db redis keycloak
-          for i in $(seq 1 60); do
-            curl -fsS http://localhost:8080/realms/onea >/dev/null 2>&1 && exit 0
-            sleep 5
-          done
-          docker compose -f docker/compose.yml -f docker/compose.dev.yml logs keycloak
-          exit 1
+          docker compose --env-file .env -f docker/compose.yml -f docker/compose.dev.yml up -d --wait db redis mailpit
       - run: uv sync --frozen
         working-directory: backend
       - run: npm ci --no-audit --no-fund
@@ -301,7 +294,6 @@ jobs:
       - name: Pile de recette
         run: |
           sh scripts/recette/up.sh
-          sh scripts/recette/realm.sh
       - name: Peripherie (nginx)
         run: sh scripts/recette/tests/edge.sh
       - name: Cloisonnement reseau
@@ -331,7 +323,6 @@ jobs:
       - name: Pile de recette
         run: |
           sh scripts/recette/up.sh
-          sh scripts/recette/realm.sh
       - name: Exercice de restauration
         run: sudo bash scripts/recette/tests/restauration.sh
       - name: Arret

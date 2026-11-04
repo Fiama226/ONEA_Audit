@@ -6,7 +6,18 @@ import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
-  server: { port: 5173, strictPort: true },
+  // Same origin in dev: the browser only talks to Vite, which relays the API (and Django's
+  // /media, /static) to Django. Target overridable with ONEA_API_URL (scripts/dev-up, e2e).
+  server: {
+    port: 5173,
+    strictPort: true,
+    proxy: Object.fromEntries(
+      ["/api", "/media", "/static"].map((prefix) => [
+        prefix,
+        { target: process.env.ONEA_API_URL ?? "http://127.0.0.1:8000", changeOrigin: false },
+      ]),
+    ),
+  },
   build: {
     // dist/.vite/manifest.json : lu par scripts/verifier-budget-frontend.mjs (« npm run budget »).
     manifest: true,

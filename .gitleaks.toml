@@ -26,10 +26,8 @@ regexTarget = "line"
 regexes = [
   # PASSWORD: ${VARIABLE:?message} ou ${VARIABLE}
   '''(?i)(password|secret|key|token)\w*\s*[:=]\s*\$\{[A-Z_]+(:[-?][^}]*)?\}\s*$''',
-  # KEYCLOAK_..._SECRET_FILE: /run/secrets/nom
+  # VARIABLE_SECRET_FILE: /run/secrets/nom
   '''(?i)_file\s*[:=]\s*/run/secrets/[a-z_]+\s*$''',
-  # URL JDBC de Keycloak (nom d'hôte du service, sans identifiants)
-  '''KC_DB_URL\s*[:=]\s*jdbc:postgresql://keycloak-db:5432/keycloak\s*$''',
   # Test de traversée de chemin : "/etc/passwd" n'est pas un mot de passe
   '''"/etc/passwd"''',
 ]
