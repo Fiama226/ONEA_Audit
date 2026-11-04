@@ -120,6 +120,9 @@ class CodeOtp(models.Model):
             )
         ]
 
+    def __str__(self) -> str:
+        return f"{self.objet} #{self.user_id}"
+
 
 class DelegationGestionComptes(models.Model):
     """Account-management rights delegated by an admin to a non-admin user."""
@@ -135,3 +138,6 @@ class DelegationGestionComptes(models.Model):
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+"
     )
     accorde_le = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"Délégation #{self.user_id}"
