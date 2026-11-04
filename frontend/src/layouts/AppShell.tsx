@@ -5,10 +5,12 @@ import { fr } from "@/i18n/fr";
 import { TutorielProvider } from "@/features/tutoriel/TutorielProvider";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
+import { useDocumentTitle } from "./useDocumentTitle";
 import { useSidebarCollapsed } from "./useSidebarCollapsed";
 
 /** Coque applicative : barre latérale (≥ 1024 px) ou tiroir, en-tête, zone principale. */
 export function AppShell() {
+  useDocumentTitle();
   const [collapsed, toggle] = useSidebarCollapsed();
   const location = useLocation();
   const passwordChanged = stateField(location.state, "notice") === PASSWORD_CHANGED_NOTICE;

@@ -34,6 +34,7 @@ export const fr = {
     DG: "DG",
   },
   shell: {
+    appTitle: "ONEA Audit interne",
     skipToContent: "Aller au contenu principal",
     searchPlaceholder: "Rechercher dans la plateforme…",
     searchLabel: "Recherche globale",
