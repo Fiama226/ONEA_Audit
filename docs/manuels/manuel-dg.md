@@ -47,7 +47,7 @@ réinitialisation à l'administrateur.
 **Connexion refusée.** Le message « Identifiant ou mot de passe incorrect. » est le même quelle que soit la cause
 (mot de passe erroné, compte inconnu, désactivé ou verrouillé). Après cinq échecs consécutifs, la connexion est
 bloquée pendant 15 minutes ; l'administrateur peut la rétablir plus tôt en réinitialisant votre mot de passe. Le
-message « Trop de requêtes… » signifie que trop de tentatives sont venues de votre
+message « Trop de tentatives, réessayez dans quelques minutes. » signifie que trop d'essais sont venus de votre
 réseau (par exemple de tout votre site) : patientez le temps indiqué, au plus 15 minutes, puis réessayez.
 
 **Durée de la session.** Votre session se ferme après 8 heures, ou après 30 minutes sans activité : « Votre

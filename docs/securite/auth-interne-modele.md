@@ -112,9 +112,11 @@ Chemins relatifs à `backend/apps/users/` sauf mention contraire.
   ne l'impose ; deux créations simultanées `jdoe` / `JDoe` peuvent passer. Effet : déni de service
   sur la connexion par adresse (adresse ambiguë refusée), pas de prise de contrôle. Les
   contraintes demandent d'abord un contrôle des doublons existants.
-- **Rafraîchissement en arrière-plan (AUTH-08)** : l'exclusion de l'activité n'agit que lorsque
-  le frontend envoie l'en-tête `X-Onea-Arriere-Plan: 1` sur ses requêtes automatiques ; sans lui,
-  un onglet laissé ouvert garde la session jusqu'à 8 h.
+- **Rafraîchissement en arrière-plan (AUTH-08)** : le frontend envoie l'en-tête
+  `X-Onea-Arriere-Plan: 1` sur ses interrogations automatiques (compteur de la cloche, suivi de
+  l'état des documents : `apiFetch(..., { background: true })`, commit `8addfca`). Toute nouvelle
+  interrogation automatique doit faire de même ; sinon un onglet laissé ouvert garde la session
+  jusqu'à 8 h.
 - **TLS vers le relais SMTP non exigé (AUTH-18)** : `smtp://` reste accepté pour un relais
   interne ; codes et mots de passe temporaires passeraient alors en clair sur le réseau.
 - **Sessions en base** : les données de session sont signées par `SECRET_KEY` ; une rotation de la

@@ -4,7 +4,7 @@
 
 | Date | Version relue | Objet |
 |---|---|---|
-| 2026-11-04 | branche `feat/auth-interne`, commit `ccd12f8` | **Rejeu sur l'authentification interne** (Keycloak retiré) : chapitres V2, V3, V4 et V7 rejoués exigence par exigence ; lignes touchées de V1, V5, V8, V9, V10, V13 et V14 mises à jour ; constats AUTH-01 à AUTH-20 de la revue statique de l'authentification et état de leurs corrections (§2.2) ; SEC-03, SEC-05 et SEC-06 rendus sans objet. Revue **statique** : aucune pile lancée pour ce rejeu (voir §1.1). |
+| 2026-11-04 | branche `feat/auth-interne`, commits `ccd12f8` (serveur) et `8addfca` (suites du frontend) | **Rejeu sur l'authentification interne** (Keycloak retiré) : chapitres V2, V3, V4 et V7 rejoués exigence par exigence ; lignes touchées de V1, V5, V8, V9, V10, V13 et V14 mises à jour ; constats AUTH-01 à AUTH-20 de la revue statique de l'authentification et état de leurs corrections (§2.2) ; SEC-03, SEC-05 et SEC-06 rendus sans objet. Revue **statique** : aucune pile lancée pour ce rejeu (voir §1.1). |
 | 2026-11-01 | branche `develop`, commit `d99a03f` (lot 9, tâche 27) | Revue initiale, authentification déléguée à Keycloak, avec banc dynamique jetable. Ses conclusions propres à Keycloak sont résumées au §0 et ne s'appliquent plus. |
 
 ## 0. Historique : la revue du 2026-11-01 portait sur Keycloak
@@ -93,7 +93,7 @@ réelle n'est pas vérifié (§1.1).
 | AUTH-05 | Moyen | Quota de connexion partagé derrière le NAT et consommé avant le contrôle CSRF | **Corrigé** (`91222a0`) : CSRF vérifié avant les limites ; un compteur par point d'entrée ; connexion portée à 60/min par adresse ; changement de mot de passe limité par utilisateur | `users/auth_views.py:87-97`, `users/auth_throttles.py:107-133`, `config/settings/base.py:298-312` ; `tests/users/test_auth_limites.py::test_csrf_checked_before_the_throttle_on_every_anonymous_endpoint`, `::test_each_endpoint_has_its_own_bucket` |
 | AUTH-06 | Moyen (si `/admin/` activé) | `/admin/login/` sans limite applicative | **Corrigé** (`91222a0`) : mêmes limites que la connexion de l'API, avant tout hachage | `users/admin_login.py:23-39`, `users/auth_throttles.py:223-227` ; `tests/users/test_auth_limites.py::test_admin_login_form_goes_through_the_address_limits` |
 | AUTH-07 | Faible | La production acceptait un backend courriel console, fichier ou mémoire | **Corrigé** (`ccd12f8`) : seuls SMTP et `dummymail://` (mode « sans courriel ») sont acceptés au démarrage | `config/settings/prod.py:23-41` ; `tests/test_prod_settings.py::test_prod_refuse_un_backend_qui_ecrit_les_courriels_hors_smtp`, `::test_prod_accepte_dummymail_pour_fonctionner_sans_courriel` |
-| AUTH-08 | Faible | Le délai d'inactivité de 30 min était contourné par le rafraîchissement automatique des notifications | **Corrigé côté serveur** (`ccd12f8`) : une requête portant `X-Onea-Arriere-Plan: 1` ne compte pas comme activité. **Effectif seulement quand le frontend envoie l'en-tête** (modification en cours, non commitée au moment de ce rejeu) | `core/middleware.py:25,83-84` ; `tests/users/test_auth_durcissements.py::test_background_polling_does_not_keep_the_session_alive` |
+| AUTH-08 | Faible | Le délai d'inactivité de 30 min était contourné par le rafraîchissement automatique des notifications | **Corrigé** : serveur (`ccd12f8`), une requête portant `X-Onea-Arriere-Plan: 1` ne compte pas comme activité ; frontend (`8addfca`), l'en-tête est envoyé par les interrogations automatiques (compteur de la cloche, suivi de l'état des documents), jamais par une action de l'utilisateur | `core/middleware.py:25,83-84`, `frontend/src/api/client.ts` (`background`) ; `tests/users/test_auth_durcissements.py::test_background_polling_does_not_keep_the_session_alive`, `frontend/src/api/client.test.ts`, `frontend/src/features/notifications/api.test.tsx`, `frontend/src/features/documents/api.test.tsx` |
 | AUTH-09 | Faible (si `/admin/` activé) | Session admin sans délai d'inactivité ; `/admin/password_change/` sans comptage des échecs | **Partiel** (`ccd12f8`) : `/admin/password_change/` répond 404 ; **délai d'inactivité des sessions admin non appliqué** (arbitrage : admin désactivé par défaut en production, sessions bornées à 8 h) | `config/urls.py:47-58` ; `tests/users/test_auth_durcissements.py::test_admin_password_change_page_is_closed` |
 | AUTH-10 | Faible | Aucune notification au titulaire des événements sensibles (réinitialisation, changement de courriel, désactivation du code) | **Non corrigé (arbitrage)** : modèles de courriels, destinataires (ancienne adresse) et 6 points d'appel à décider ; la voie d'envoi par le `worker` (`envois`, `tasks`) servira de base | — |
 | AUTH-11 | Faible | Identifiants sosies (Unicode) ; unicité insensible à la casse non garantie par la base | **Partiel** (`ccd12f8`) : identifiants ASCII imposés à la création et à l'import ; **contraintes d'unicité en base non posées** (une migration échouerait sur une base contenant déjà des doublons de casse ; contrôle `iexact` dans les services ; la course restante ne permet qu'un déni de service) | `users/account_serializers.py:139-140`, `users/provisioning.py:89-90` ; `tests/users/test_auth_durcissements.py::test_new_usernames_are_ascii_only` |
@@ -107,9 +107,10 @@ réelle n'est pas vérifié (§1.1).
 | AUTH-19 | Info | Codes hachés en Argon2 à chaque vérification (coût) | Non corrigé | — |
 | AUTH-20 | Info | Code de connexion devinable à raison de 5 essais par 15 min une fois le mot de passe connu | Atténué : les codes de connexion faux comptent aussi dans le plafond par adresse | `tests/users/test_auth_limites.py::test_wrong_login_codes_count_too` |
 
-Bilan : 3 élevés et 3 moyens corrigés ; faibles : AUTH-07 et AUTH-12 corrigés, AUTH-08 corrigé
-côté serveur (frontend à terminer), AUTH-09 et AUTH-11 partiels, AUTH-10 et AUTH-13 non faits
-(arbitrage) ; aucun constat d'information traité (AUTH-20 atténué).
+Bilan : 3 élevés et 3 moyens corrigés ; faibles : AUTH-07, AUTH-08 et AUTH-12 corrigés, AUTH-09 et
+AUTH-11 partiels, AUTH-10 et AUTH-13 non faits (arbitrage) ; aucun constat d'information traité
+(AUTH-20 atténué). Les suites du frontend (rôles proposés à un délégué, en-tête d'arrière-plan,
+libellé « mis en file d'envoi », message 429 de la connexion) sont dans le commit `8addfca`.
 
 ## 3. Constats détaillés
 
@@ -418,7 +419,7 @@ Statuts :
 | 3.2.3 Stockage sûr dans le navigateur | Conforme | cookie `HttpOnly`, `Secure`, préfixe `__Host-` (`config/settings/prod.py:112-123`) ; `tests/test_prod_settings.py::test_prod_cookies_are_host_prefixed_secure_httponly` | Plus de jeton dans `sessionStorage` |
 | 3.2.4 Jetons générés par un algorithme approuvé | Conforme | générateur `secrets` de Django | — |
 | 3.3.1 Déconnexion et expiration invalident la session côté serveur | Conforme | `logout()` supprime la ligne de session (`users/auth_views.py:172-183`) ; `SessionLimiteeMiddleware` fait de même à l'expiration (`core/middleware.py:77-82`) ; `tests/users/test_auth_login.py::test_logout_ends_session` | — |
-| 3.3.2 Réauthentification périodique (L2 : 12 h, ou 30 min d'inactivité) | Partiel | sessions de l'API : 8 h absolues et 30 min d'inactivité (`config/settings/base.py:488-489`, `core/middleware.py:51-86`) ; `test_auth_login.py::test_idle_30_minutes_expires_session`, `::test_absolute_8_hours_even_when_active` ; requêtes d'arrière-plan exclues de l'activité (AUTH-08, `test_auth_durcissements.py::test_background_polling_does_not_keep_the_session_alive`) | Conforme pour l'API. Restes : sessions de `/admin/` sans délai d'inactivité (AUTH-09, admin désactivé par défaut) ; l'exclusion du rafraîchissement automatique n'agit qu'une fois l'en-tête envoyé par le frontend (en cours) |
+| 3.3.2 Réauthentification périodique (L2 : 12 h, ou 30 min d'inactivité) | Partiel | sessions de l'API : 8 h absolues et 30 min d'inactivité (`config/settings/base.py:488-489`, `core/middleware.py:51-86`) ; `test_auth_login.py::test_idle_30_minutes_expires_session`, `::test_absolute_8_hours_even_when_active` ; requêtes d'arrière-plan exclues de l'activité (AUTH-08, `test_auth_durcissements.py::test_background_polling_does_not_keep_the_session_alive`) | Conforme pour l'API. Reste : sessions de `/admin/` sans délai d'inactivité (AUTH-09, admin désactivé par défaut). Toute nouvelle interrogation automatique du frontend doit passer `background: true` |
 | 3.3.3 Fermeture des autres sessions après changement de mot de passe | Conforme | `terminer_sessions(..., sauf=...)` (`users/auth_views.py:319`, `users/auth_services.py:358-382`) ; toutes les sessions à une réinitialisation ou une désactivation ; `tests/users/test_auth_password.py::test_change_keeps_current_session_and_ends_the_others`, `::test_reset_with_code_changes_password_and_kills_sessions` | Automatique, sans option |
 | 3.3.4 Voir et fermer ses sessions actives | Non conforme | aucun écran ni point d'API | AUTH-15 non corrigé |
 | 3.4.1 Attribut `Secure` | Conforme | `SESSION_COOKIE_SECURE` exigé vrai, `CSRF_COOKIE_SECURE` (`config/settings/prod.py:114-117`) ; `tests/test_prod_settings.py::test_prod_refuse_session_cookie_secure_desactive` | — |
@@ -540,7 +541,7 @@ Statuts :
 | Exigence | Statut | Preuve | Notes |
 |---|---|---|---|
 | 14.1.x Construction reproductible (repris) | Conforme | images épinglées (`scripts/verifier-epinglage.sh`), `uv sync --frozen` | — |
-| 14.1.3 Configuration durcie du cadriciel (rejoué) | Partiel | production : `DEBUG=False`, `SESSION_COOKIE_SECURE` exigé, backends courriel restreints à SMTP et `dummymail://` (AUTH-07), `/admin/` désactivé par défaut, `/admin/password_change/` en 404 (`config/settings/prod.py`, `config/urls.py:47-58`) | Restes : `smtp://` en clair accepté (AUTH-18) ; `AUTH_REINITIALISATION_ECHECS_MAX` n'est pas transmis par `docker/compose.prod.yml` (la valeur par défaut 15 s'applique en production, le réglage par `.env.prod` est sans effet) |
+| 14.1.3 Configuration durcie du cadriciel (rejoué) | Partiel | production : `DEBUG=False`, `SESSION_COOKIE_SECURE` exigé, backends courriel restreints à SMTP et `dummymail://` (AUTH-07), `/admin/` désactivé par défaut, `/admin/password_change/` en 404 (`config/settings/prod.py`, `config/urls.py:47-58`) | Restes : `smtp://` en clair accepté (AUTH-18) ; au commit `ccd12f8`, `AUTH_REINITIALISATION_ECHECS_MAX` n'est pas transmis par `docker/compose.prod.yml` (la valeur par défaut 15 s'applique en production, le réglage par `.env.prod` est sans effet ; correction en cours, non commitée à la date de ce rejeu) |
 | 14.2.1 Dépendances à jour (repris) | Conforme (produit) | voir V10 | SEC-10 |
 | 14.3.2 Mode débogage désactivé (rejoué) | Conforme | `DEBUG = False` (`config/settings/prod.py:17`) ; `tests/test_prod_settings.py` | — |
 | 14.3.3 Pas de bannière de version (repris) | Conforme | `server_tokens off` ; banc du 01/11 : `Server: nginx` | — |
@@ -606,8 +607,7 @@ relues par une revue de code ; aucune relecture contradictoire indépendante n'e
 - **Authentification interne, à décider** : AUTH-10 (notifications au titulaire), AUTH-13
   (liste de mots de passe compromis), second facteur obligatoire pour les comptes à privilèges
   (D19, 4.3.1), codes à 8 chiffres au lieu de 6 (2.2.1, 2.5.6).
-- **Authentification interne, à terminer** : AUTH-08 (en-tête `X-Onea-Arriere-Plan` à envoyer
-  par le frontend), AUTH-09 (délai d'inactivité des sessions admin), AUTH-11 (contraintes
+- **Authentification interne, à terminer** : AUTH-09 (délai d'inactivité des sessions admin), AUTH-11 (contraintes
   d'unicité insensibles à la casse en base, après contrôle des données), AUTH-18 (exiger TLS
   vers le relais SMTP), transmission de `AUTH_REINITIALISATION_ECHECS_MAX` par
   `docker/compose.prod.yml`, AUTH-14 à AUTH-17 et AUTH-19 (information).

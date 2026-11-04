@@ -57,10 +57,11 @@ par point d'entrée de l'authentification (connexion 60/min par adresse), plafon
 (`dummymail://` = sans courriel) ; en-tête `X-Onea-Arriere-Plan: 1` pour les requêtes d'arrière-plan ;
 `/admin/password_change/` en 404 ; identifiants ASCII. Audit ASVS L2 **rejoué en statique** sur cette
 authentification : `docs/securite/asvs-l2.md` (décompte et non-conformités restantes dans `docs/PRET-A-LIVRER.md`
-B1 et B8). Restent ouverts : en-tête d'arrière-plan à envoyer par le frontend (AUTH-08, en cours), délai
-d'inactivité des sessions admin (AUTH-09), contraintes d'unicité insensibles à la casse (AUTH-11),
+B1 et B8). Suites du frontend : commit `8addfca` (rôles d'un délégué, en-tête d'arrière-plan, libellés, message
+429). Restent ouverts : délai d'inactivité des sessions admin (AUTH-09), contraintes d'unicité insensibles à la casse (AUTH-11),
 notifications au titulaire (AUTH-10) et liste de mots de passe compromis (AUTH-13) à arbitrer, TLS vers le
-relais non exigé (AUTH-18), `AUTH_REINITIALISATION_ECHECS_MAX` à transmettre dans `docker/compose.prod.yml`,
+relais non exigé (AUTH-18), `AUTH_REINITIALISATION_ECHECS_MAX` à transmettre dans `docker/compose.prod.yml` (second
+tour de corrections en cours au moment de cette mise à jour, non commité),
 analyse dynamique (ZAP) à rejouer.
 
 ## 3. Décisions déjà prises (ne plus les redemander)
@@ -69,8 +70,7 @@ analyse dynamique (ZAP) à rejouer.
 - Hypothèses métier des lots : toutes confirmées (2026-10-29) ; gabarits Word vierges provisoires acceptés.
 
 ## 4. Ce qui reste à faire (équipe projet)
-0. **Authentification interne** : constats de sécurité encore ouverts (voir §2bis : AUTH-08 côté frontend,
-   AUTH-09, AUTH-11, AUTH-18, transmission de `AUTH_REINITIALISATION_ECHECS_MAX` par la composition de
+0. **Authentification interne** : constats de sécurité encore ouverts (voir §2bis : AUTH-09, AUTH-11, AUTH-18, transmission de `AUTH_REINITIALISATION_ECHECS_MAX` par la composition de
    production ; AUTH-10 et AUTH-13 à arbitrer), suites complètes, e2e Playwright à exécuter, parcours manuel sur
    le site de test (scénarios S4-29 à S4-41 : création, première connexion, oubli et plafond des codes, code de
    connexion, délégation et comptes RAI/DG, réponses 429, `worker` arrêté), analyse dynamique ZAP, puis fusion

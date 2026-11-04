@@ -319,7 +319,7 @@ Les cartographies, risques et objets auditables sont en lecture seule pour vous.
 
 **L'agent ne reçoit pas son mot de passe temporaire par courriel.** « Mis en file d'envoi » ne garantit pas la réception (service d'envoi arrêté, relais en panne, adresse erronée) : réinitialisez son mot de passe en décochant l'envoi (2.6) et relevez le mot de passe affiché une fois à l'écran. Signalez-le à l'exploitant, qui contrôle le service d'envoi.
 
-**Plusieurs agents d'un même site reçoivent « Trop de requêtes » à la connexion.** Les limites de connexion comptent par adresse réseau ; derrière une même adresse, de nombreuses erreurs de mot de passe bloquent les connexions de ce site jusqu'à 15 minutes. Attendez, puis signalez-le à l'exploitant si cela se répète.
+**Plusieurs agents d'un même site reçoivent « Trop de tentatives, réessayez dans quelques minutes. » à la connexion.** Les limites de connexion comptent par adresse réseau ; derrière une même adresse, de nombreuses erreurs de mot de passe bloquent les connexions de ce site jusqu'à 15 minutes. Attendez, puis signalez-le à l'exploitant si cela se répète.
 
 **Je ne trouve pas le rôle à modifier.** Ouvrez la fiche du compte, bloc « Rôle » (2.3).
 
@@ -337,7 +337,7 @@ Les cartographies, risques et objets auditables sont en lecture seule pour vous.
 - Emplacement exact de « Mode de signature » dans la page « Administration » (la route `/administration/signatures` existe ; le libellé du lien reste à relever à l'écran).
 - Procédures de ce manuel (création, réinitialisation, import, délégation) non encore rejouées sur l'application en fonctionnement.
 - Envoi des courriels (bienvenue, code de connexion, mot de passe oublié) : dépend du relais SMTP de l'ONEA, non encore fourni, et du service d'envoi de la plateforme ; sans eux, appliquer les replis décrits en 2.2 et 2.6.
-- Libellés exacts des écrans de délégation et de création après la restriction des délégués aux comptes auditeur et audité (interface en cours de mise à jour).
+- Libellés exacts des écrans de délégation et de création après la restriction des délégués aux comptes auditeur et audité : à relever à l'écran.
 
 ## 10. Glossaire
 

@@ -1483,7 +1483,7 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 4. Attendre 15 minutes, ou faire réinitialiser le mot de passe de `auditeur2` par `admin` (S4-36), puis se connecter.
 5. Environnement de recette seulement : lancer plus de 60 tentatives de connexion en une minute depuis la même adresse (outil de test).
 
-**Résultat attendu** : le message reste « Identifiant ou mot de passe incorrect. » à toutes les étapes (aucune mention du verrouillage) ; à l'étape 2 le bon mot de passe est **refusé** tant que le verrouillage dure (15 minutes) ; le verrouillage cesse à l'échéance ou à la réinitialisation du mot de passe par l'administrateur ; à l'étape 5 la limite par adresse (`THROTTLE_RATE_CONNEXION`, 60 par minute par défaut) répond « Trop de requêtes : réessayez dans… » (429 avec `Retry-After`) ; la connexion d'un autre compte n'est pas affectée par le verrouillage de `auditeur2`. Le plafond d'**échecs** par adresse (30 par 15 minutes, tous comptes confondus) est testé en S4-40.
+**Résultat attendu** : le message reste « Identifiant ou mot de passe incorrect. » à toutes les étapes (aucune mention du verrouillage) ; à l'étape 2 le bon mot de passe est **refusé** tant que le verrouillage dure (15 minutes) ; le verrouillage cesse à l'échéance ou à la réinitialisation du mot de passe par l'administrateur ; à l'étape 5 la limite par adresse (`THROTTLE_RATE_CONNEXION`, 60 par minute par défaut) répond 429 avec `Retry-After`, affiché « Trop de tentatives, réessayez dans quelques minutes. » ; la connexion d'un autre compte n'est pas affectée par le verrouillage de `auditeur2`. Le plafond d'**échecs** par adresse (30 par 15 minutes, tous comptes confondus) est testé en S4-40.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1519,7 +1519,7 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 3. Fermer le navigateur sans se déconnecter, le rouvrir et ouvrir l'application dans les 30 minutes.
 4. Se reconnecter, ouvrir le tableau de bord (la cloche des notifications se rafraîchit seule toutes les minutes) et laisser l'onglet **au premier plan**, sans rien toucher, plus de 30 minutes ; puis cliquer sur une page.
 
-**Résultat attendu** : étapes 1 et 2 redirection vers « Connexion » avec « Votre session a expiré. Veuillez vous reconnecter. » (30 minutes d'inactivité, ou 8 heures au plus depuis la connexion, même en activité continue) ; aucune écriture partielle ; étape 3 la session est encore valable (cookie de session, dans la limite de 8 h / 30 min) ; étape 4 la session a expiré comme à l'étape 1 : le rafraîchissement automatique (requêtes marquées `X-Onea-Arriere-Plan: 1`) ne compte pas comme une activité. L'étape 4 suppose que le frontend envoie cet en-tête (modification en cours au 2026-11-04) : si la session reste ouverte, noter l'anomalie.
+**Résultat attendu** : étapes 1 et 2 redirection vers « Connexion » avec « Votre session a expiré. Veuillez vous reconnecter. » (30 minutes d'inactivité, ou 8 heures au plus depuis la connexion, même en activité continue) ; aucune écriture partielle ; étape 3 la session est encore valable (cookie de session, dans la limite de 8 h / 30 min) ; étape 4 la session a expiré comme à l'étape 1 : le rafraîchissement automatique (requêtes marquées `X-Onea-Arriere-Plan: 1`) ne compte pas comme une activité (si la session reste ouverte, noter l'anomalie : une interrogation automatique n'envoie pas l'en-tête).
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1609,7 +1609,7 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 6. Exploitant : chercher dans les journaux de `web` « Plafond d'échecs atteint pour une adresse : portee=echecs_connexion adresse=… ».
 7. Attendre la fin de la fenêtre (15 minutes, voir `Retry-After`) et se reconnecter depuis A.
 
-**Résultat attendu** : étape 1 chaque requête répond 403 « Jeton CSRF absent ou invalide : rechargez la page. », et la connexion normale qui suit **réussit** (les requêtes sans jeton n'ont pas consommé le quota de l'adresse) ; étape 2 les 30 premières répondent 401 « Identifiant ou mot de passe incorrect. », la 31e **429** avec `Retry-After` ; étape 3 **429** aussi, avant tout contrôle du mot de passe (le bon mot de passe ne passe pas tant que dure la fenêtre), mais le compte n'est **pas** verrouillé ; étape 4 connexion réussie (autre adresse) ; étape 5 la demande de code fonctionne (compteur distinct de celui de la connexion) ; étape 6 la ligne existe ; étape 7 connexion réussie. En IPv6, toutes les adresses d'un même /64 comptent comme une seule.
+**Résultat attendu** : étape 1 chaque requête répond 403 « Jeton CSRF absent ou invalide : rechargez la page. », et la connexion normale qui suit **réussit** (les requêtes sans jeton n'ont pas consommé le quota de l'adresse) ; étape 2 les 30 premières répondent 401 « Identifiant ou mot de passe incorrect. », la 31e **429** avec `Retry-After` (dans le navigateur : « Trop de tentatives, réessayez dans quelques minutes. ») ; étape 3 **429** aussi, avant tout contrôle du mot de passe (le bon mot de passe ne passe pas tant que dure la fenêtre), mais le compte n'est **pas** verrouillé ; étape 4 connexion réussie (autre adresse) ; étape 5 la demande de code fonctionne (compteur distinct de celui de la connexion) ; étape 6 la ligne existe ; étape 7 connexion réussie. En IPv6, toutes les adresses d'un même /64 comptent comme une seule.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1742,7 +1742,7 @@ traitement par intelligence artificielle (exclu du produit par règle du projet)
 | V-16 | Messages exacts affichés pour un dépassement de débit (HTTP 429) dans chaque écran | S4-25 |
 | V-17 | Disponibilité du conteneur ClamAV en recette | S4-13 |
 | V-18 | Contenu exact des documents générés (étape, numéro, rendu) tant que les gabarits officiels manquent | S2-29 |
-| V-19 | Le frontend envoie-t-il l'en-tête `X-Onea-Arriere-Plan: 1` sur ses rafraîchissements automatiques (cloche des notifications) ? Sans lui, un onglet ouvert garde la session jusqu'à 8 h | S4-33 étape 4 |
+| V-19 | Toutes les interrogations automatiques du frontend envoient-elles l'en-tête `X-Onea-Arriere-Plan: 1` (cloche des notifications et suivi des documents le font depuis le commit `8addfca`) ? Une interrogation sans l'en-tête garde la session jusqu'à 8 h | S4-33 étape 4 |
 | V-20 | Libellés exacts des écrans après les corrections de sécurité du 2026-11-04 (rôles proposés à un délégué, « mis en file d'envoi », message 429 de la connexion) | S4-39, S4-40, S4-41 |
 
 Récapitulatif : **20 points « à vérifier »**.
