@@ -33,6 +33,13 @@ const PAGES_PUBLIQUES = [
 ];
 
 /**
+ * Pages où la proposition attend : « Mon compte » porte l'interrupteur du code de connexion,
+ * que la fenêtre de bienvenue masquerait. Rien n'est mémorisé : la visite est proposée à la
+ * page suivante.
+ */
+const PAGES_SANS_PROPOSITION = [...PAGES_PUBLIQUES, "/mon-compte"];
+
+/**
  * Propose la visite guidée au premier passage (version courante non vue) et expose
  * `relancer()` (page « Mon compte », menu utilisateur). Ne bloque jamais l'utilisateur :
  * toute erreur d'enregistrement est ignorée, et la session mémorise le choix pour ne pas
@@ -49,7 +56,7 @@ export function TutorielProvider({ children }: { children: ReactNode }) {
   const role = me?.role;
   const etat = me?.tutoriel;
   const vue = etat ? etat.version_vue !== null && etat.version_vue >= TUTORIEL_VERSION : true;
-  const publique = PAGES_PUBLIQUES.includes(pathname);
+  const publique = PAGES_SANS_PROPOSITION.includes(pathname);
 
   useEffect(() => {
     if (propose.current || userId === undefined || !etat || vue || publique) return;

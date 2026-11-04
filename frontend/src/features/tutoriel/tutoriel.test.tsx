@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { configure, render, screen, waitFor } from "@testing-library/react";
+import { act, configure, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
@@ -65,6 +65,14 @@ describe("Tutoriel : affichage", () => {
     expect(await screen.findByRole("dialog", { name: T.welcomeTitle })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: T.start })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: T.later })).toBeInTheDocument();
+  });
+
+  it("ne masque pas « Mon compte » au premier passage, puis la propose ailleurs", async () => {
+    const { router } = renderAt("/mon-compte", "RAI", JAMAIS);
+    await screen.findByRole("heading", { name: T.accountTitle });
+    expect(bienvenue()).not.toBeInTheDocument();
+    await act(() => router.navigate("/"));
+    expect(await screen.findByRole("dialog", { name: T.welcomeTitle })).toBeInTheDocument();
   });
 
   it("la reproposer si la version vue est antérieure", async () => {
