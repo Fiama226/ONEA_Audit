@@ -174,13 +174,38 @@ def test_resync_leve_le_drapeau(admin: User, user: User) -> None:
 
 
 @pytest.mark.parametrize(
-    ("self_target", "active", "linked", "statut", "local", "expected"),
+    ("self_target", "active", "linked", "statut", "local", "otp", "expected"),
     [
-        (False, True, True, "A_JOUR", False, (True, True, False, False, False)),
-        (True, True, False, "A_JOUR", False, (True, False, False, False, False)),
-        (False, False, True, "ECHEC", True, (True, False, True, True, True)),
-        (False, False, True, "EN_ATTENTE", False, (True, False, True, False, True)),
-        (False, False, False, "EN_ATTENTE", False, (True, False, True, False, False)),
+        (False, True, True, "A_JOUR", False, False, (True, True, False, False, False, True, False)),
+        (
+            True,
+            True,
+            False,
+            "A_JOUR",
+            False,
+            True,
+            (True, False, False, False, False, False, False),
+        ),
+        (False, False, True, "ECHEC", True, False, (True, False, True, True, True, False, False)),
+        (
+            False,
+            False,
+            True,
+            "EN_ATTENTE",
+            False,
+            True,
+            (True, False, True, False, True, False, True),
+        ),
+        (
+            False,
+            False,
+            False,
+            "EN_ATTENTE",
+            False,
+            False,
+            (True, False, True, False, False, False, False),
+        ),
+        (False, True, False, "A_JOUR", False, True, (True, True, False, False, False, True, True)),
     ],
 )
 def test_actions_compte(
@@ -191,9 +216,11 @@ def test_actions_compte(
     linked: bool,
     statut: str,
     local: bool,
+    otp: bool,
     expected: tuple[bool, ...],
 ) -> None:
     target = admin if self_target else user
+    target.otp_connexion_actif = otp
     target.is_active = active
     target.keycloak_id = uuid.uuid4() if linked else None
     target.keycloak_sync_statut = statut
@@ -206,6 +233,8 @@ def test_actions_compte(
         "reactiver",
         "resynchroniser_profil",
         "relancer_synchro_keycloak",
+        "reinitialiser_mot_de_passe",
+        "desactiver_otp",
     ]
 
 

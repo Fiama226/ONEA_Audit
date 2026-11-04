@@ -22,6 +22,7 @@ class OrigineCompte(models.TextChoices):
     CONNEXION = "CONNEXION", "Première connexion"
     ANNUAIRE = "ANNUAIRE", "Import annuaire"
     CSV = "CSV", "Import CSV"
+    ADMINISTRATION = "ADMINISTRATION", "Création par l'administration"
 
 
 class KeycloakSyncStatut(models.TextChoices):
@@ -90,6 +91,14 @@ class User(AbstractUser):
 
     def has_role(self, *roles: str) -> bool:
         return self.role in roles
+
+    # Business action carried by the next save into its audit entry (``additional_data``).
+    # Set by the account services only, never a secret. Not a database field.
+    action_audit: str | None = None
+
+    def get_additional_data(self) -> dict[str, str] | None:
+        """Called by auditlog when it writes the entry of a save."""
+        return {"action": self.action_audit} if self.action_audit else None
 
 
 class ObjetOtp(models.TextChoices):

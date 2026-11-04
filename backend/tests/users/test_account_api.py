@@ -42,6 +42,9 @@ def _routes(cible: int) -> list[tuple[str, str, dict[str, Any], str]]:
         ("post", f"{BASE}{cible}/reactivate/", {}, "json"),
         ("post", f"{BASE}{cible}/resync-profile/", {}, "json"),
         ("post", f"{BASE}{cible}/retry-keycloak-sync/", {}, "json"),
+        ("post", BASE, {"username": "nouvel.agent", "role": "AUDITEUR"}, "json"),
+        ("post", f"{BASE}{cible}/reset-password/", {}, "json"),
+        ("post", f"{BASE}{cible}/disable-otp/", {}, "json"),
         ("get", BASE + "directory-search/?q=aud", {}, "json"),
         ("post", BASE + "import-directory/", {"keycloak_ids": [str(uuid.uuid4())]}, "json"),
         ("post", BASE + "import-csv/", {}, "multipart"),
@@ -251,6 +254,8 @@ def test_actions_dans_le_detail(api_client: APIClient, admin: User) -> None:
         "reactiver": False,
         "resynchroniser_profil": False,
         "relancer_synchro_keycloak": False,
+        "reinitialiser_mot_de_passe": False,
+        "desactiver_otp": False,
     }
     assert r["keycloak_lie"] is False
 
@@ -261,9 +266,13 @@ def test_id_inconnu_404_et_non_numerique_404(api_client: APIClient, admin: User)
     assert api_client.get(f"{BASE}abc/").status_code == 404
 
 
-def test_creation_et_suppression_405(api_client: APIClient, admin: User, user: User) -> None:
+def test_creation_vide_400_et_suppression_405(
+    api_client: APIClient, admin: User, user: User
+) -> None:
     api_client.force_authenticate(admin)
-    assert api_client.post(BASE, {}, format="json").status_code == 405
+    r = api_client.post(BASE, {}, format="json")
+    assert r.status_code == 400
+    assert {"username", "role"} <= set(r.json()["errors"])
     assert api_client.delete(f"{BASE}{user.id}/").status_code == 405
     assert api_client.put(f"{BASE}{user.id}/", {}, format="json").status_code == 405
 
