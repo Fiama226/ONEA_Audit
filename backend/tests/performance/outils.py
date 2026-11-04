@@ -15,6 +15,8 @@ ROLES = {
     "/api/v1/dashboards/dg/": "dg",
     "/api/v1/user-accounts/": "admin",
     "/api/v1/user-accounts/{id}/": "admin",
+    "/api/v1/user-accounts/{id}/delegation/": "admin",
+    "/api/v1/user-accounts/import-passwords/{fichier_id}/": "admin",
 }
 DEFAUT = "rai"
 
