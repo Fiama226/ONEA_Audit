@@ -55,7 +55,10 @@ message « Trop de tentatives, réessayez dans quelques minutes. » signifie que
 réseau (par exemple de tout votre site) : patientez le temps indiqué, au plus 15 minutes, puis réessayez.
 
 **Durée de la session.** Votre session se ferme après 8 heures, ou après 30 minutes sans activité : « Votre
-session a expiré. Veuillez vous reconnecter. »
+session a expiré. Veuillez vous reconnecter. » Tant que vous tapez ou cliquez dans un onglet visible de la
+plateforme, la session reste ouverte, même pendant une longue saisie sans enregistrement. **Enregistrez avant de
+vous absenter** : après plus de 30 minutes sans frappe ni clic, une saisie non enregistrée est perdue. Pour la
+déconnexion et l'usage de plusieurs onglets, voir [Session, déconnexion et onglets](README.md#session-déconnexion-et-onglets).
 
 [Capture à insérer : CAP-COM-01 — Page de connexion]
 [Capture à insérer : CAP-RAI-01 — Tableau de bord du RAI]

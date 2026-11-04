@@ -63,3 +63,29 @@ rôle, la direction, la fonction et le matricule sont renseignés par l'administ
 comptes Auditeur interne et Audité seulement ; les comptes Administrateur, RAI et DG ne sont gérés que par un
 administrateur) : ils ne sont pas modifiables par l'agent. Les comptes sont gérés dans la plateforme, sans
 annuaire externe.
+
+## Session, déconnexion et onglets
+
+Ces règles valent pour tous les rôles.
+
+- **Session maintenue pendant le travail.** La session se ferme après 30 minutes sans activité et, dans tous
+  les cas, 8 heures après la connexion. Une frappe au clavier ou un clic dans un onglet visible de la
+  plateforme compte comme une activité, même si rien n'est enregistré : la rédaction d'un long texte ne fait
+  donc pas expirer la session. Le simple défilement, le survol et les mises à jour automatiques (cloche des
+  notifications, état des documents) ne comptent pas.
+- **Limite connue : saisie perdue après une longue absence.** Si vous laissez un formulaire ouvert sans taper
+  ni cliquer pendant plus de 30 minutes (réunion, pause), la session expire : la page « Connexion » affiche
+  « Votre session a expiré. Veuillez vous reconnecter. », et ce qui n'était pas enregistré est perdu. Après la
+  reconnexion, vous revenez sur la page quittée, vide. Enregistrez avant de vous absenter.
+- **Déconnexion.** « Se déconnecter » ferme la session sur le serveur. Si le réseau ne permet pas de le
+  confirmer, la page « Connexion » affiche « La déconnexion n'a pas pu être confirmée par le serveur : fermez le
+  navigateur si vous quittez le poste. » La plateforme garde alors dans le navigateur une simple marque
+  « déconnexion en attente » (une valeur aléatoire, sans mot de passe ni autre secret) et renvoie la demande de
+  déconnexion à la prochaine ouverture de la plateforme sur ce poste, avant toute autre chose. Sur un poste
+  partagé, fermez quand même le navigateur dans ce cas.
+- **Plusieurs onglets.** Une connexion ou une déconnexion faite dans un onglet est transmise aux autres onglets
+  de la plateforme ouverts dans le même navigateur : après « Se déconnecter », tous les onglets reviennent à la
+  page « Connexion ». Si un **autre agent** se connecte dans un autre onglet du même navigateur (poste
+  partagé), les onglets ouverts au nom du précédent ne montrent plus ses données : ils affichent « Un autre
+  agent s'est connecté dans un autre onglet de ce navigateur : reconnectez-vous pour continuer. Une action en
+  cours dans cet onglet n'a pas été enregistrée. »

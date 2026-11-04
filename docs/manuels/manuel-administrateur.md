@@ -44,7 +44,9 @@ courriel, un autre administrateur réinitialise votre mot de passe (2.6) ; à d�
 
 **Connexion refusée.** « Identifiant ou mot de passe incorrect. » est le message unique, quelle qu'en soit la
 cause. Après cinq échecs consécutifs, le compte est bloqué 15 minutes. La session se ferme après 8 heures, ou
-30 minutes sans activité.
+30 minutes sans activité ; elle reste ouverte tant que vous tapez ou cliquez dans un onglet visible. Après plus de
+30 minutes sans frappe ni clic, une saisie non enregistrée est perdue : enregistrez avant de vous absenter. Voir
+aussi [Session, déconnexion et onglets](README.md#session-déconnexion-et-onglets).
 
 [Capture à insérer : CAP-COM-01 — Page de connexion]
 [Capture à insérer : CAP-ADM-01 — Écran d'accueil de l'administrateur]
@@ -127,7 +129,13 @@ courriel.
    qu'avec prudence.
 5. Votre propre rôle ne se modifie pas (« Vous ne pouvez pas modifier votre propre rôle. »), et le dernier
    administrateur actif ne peut être ni désactivé ni rétrogradé.
-6. L'« Historique du compte » liste chaque modification (date, auteur, changements).
+6. L'« Historique du compte » liste chaque modification (date, auteur, action, changements). La colonne
+   « Action » nomme l'opération quand elle est connue : « Création du compte », « Réinitialisation du mot de
+   passe par l'administration », « Changement de rôle », « Activation » ou « Désactivation du code de connexion
+   par courriel », et, pour les actions de l'agent lui-même, « Changement du mot de passe par l'agent »,
+   « Remplacement du mot de passe temporaire par l'agent » ou « Réinitialisation du mot de passe par code (mot
+   de passe oublié) » (l'auteur est alors l'agent). Ces dernières lignes indiquent « Aucun champ modifié à
+   afficher » : le mot de passe n'est jamais journalisé.
 
 La direction d'un audité est déterminante : elle décide des constats auxquels il peut répondre. Elle doit
 être celle de l'entité auditée ou sa direction de rattachement.

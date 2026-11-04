@@ -45,6 +45,13 @@ rubrique logistique, **à renseigner par l'ONEA**. Prévoir un navigateur récen
 réseau à la pile de recette, et une répartition des participants par compte (un compte par binôme au
 plus, pour que les exercices à plusieurs rôles se déroulent sans conflit).
 
+**Message à faire passer pendant la formation** (détails : [manuels/README.md](../manuels/README.md#session-déconnexion-et-onglets)) :
+la session reste ouverte tant que l'agent tape ou clique, mais une saisie non enregistrée est perdue après plus de
+30 minutes sans frappe ni clic (pause, réunion) : enregistrer avant de s'absenter. Sur un poste partagé, toujours
+« Se déconnecter » ; si l'écran annonce que la déconnexion n'a pas pu être confirmée, fermer le navigateur. Une
+connexion ou une déconnexion s'applique à tous les onglets du même navigateur : on ne travaille pas sous deux
+comptes dans deux onglets d'un même navigateur (prendre un autre navigateur ou une fenêtre de navigation privée).
+
 ### 1.3 Matériel
 Imprimer ou diffuser : le manuel du rôle, la fiche d'exercices du rôle, le glossaire. Le questionnaire
 [evaluation.md](evaluation.md) se distribue en fin de session ; le corrigé reste chez le formateur.

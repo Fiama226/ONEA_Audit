@@ -132,6 +132,24 @@ Chemins relatifs à `backend/apps/users/` sauf mention contraire.
   l'état des documents : `apiFetch(..., { background: true })`, commit `8addfca`). Toute nouvelle
   interrogation automatique doit faire de même ; sinon un onglet laissé ouvert garde la session
   jusqu'à 8 h.
+- **Maintien de session, déconnexion et onglets (frontend, vague finale)** :
+  - une frappe ou un clic dans un onglet visible déclenche au plus toutes les 10 minutes un
+    `GET /auth/session/` **sans** `X-Onea-Arriere-Plan` (`useActivityKeepAlive`) : le délai
+    d'inactivité de 30 minutes court donc depuis la dernière activité réelle de l'agent (au plus
+    10 minutes de plus), la limite de 8 heures est inchangée ;
+  - **accepté** : après plus de 30 minutes sans frappe ni clic, une saisie non enregistrée est
+    perdue (l'écran est démonté sur le 401 pour ne pas laisser les données d'un agent à l'écran
+    d'un poste partagé ; une reconnexion sur place n'est pas prévue). Documenté dans les manuels ;
+  - une déconnexion non confirmée par le serveur (réseau, délai de 2 s) laisse la session ouverte
+    côté serveur jusqu'au rejeu : une marque `onea-deconnexion-en-attente` (valeur aléatoire,
+    **aucun secret**) est gardée dans `localStorage` (et non `sessionStorage`, pour qu'un nouvel
+    onglet la voie) et `/auth/logout/` est rejoué au prochain démarrage, avant toute sonde de
+    session. **Accepté** : si le navigateur n'est jamais rouvert, la session expire d'elle-même
+    (30 minutes d'inactivité) ; l'agent est invité à fermer le navigateur ;
+  - connexions et déconnexions sont annoncées aux autres onglets (`BroadcastChannel` `onea-auth`,
+    repli sur l'événement `storage`, type et identifiant d'onglet seulement) ; un onglet qui
+    découvre un autre agent passe en anonyme et vide son cache, et une écriture en attente n'est
+    pas rejouée sous l'autre identité (`prepareCsrfReplay`, contrôle de `me.id`).
 - **TLS vers le relais SMTP non exigé (AUTH-18)** : `smtp://` reste accepté pour un relais
   interne ; codes et mots de passe temporaires passeraient alors en clair sur le réseau.
 - **Sessions en base** : les données de session sont signées par `SECRET_KEY` ; une rotation de la
