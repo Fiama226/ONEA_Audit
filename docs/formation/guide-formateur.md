@@ -12,19 +12,28 @@ Utiliser une pile de **recette** dédiée (jamais la base de développement `one
 2. Peupler une base vide avec les données fictives de formation, depuis le conteneur web :
    `python manage.py peupler_demo --profil formation --recette`
    (la commande refuse la production et refuse une base qui contient déjà des objets métier).
-3. Vérifier la connexion de chaque compte du tableau ci-dessous.
+3. Donner un mot de passe aux comptes de formation. La commande `peupler_demo` crée des comptes locaux à mot de
+   passe temporaire (72 h, à changer à la première connexion). Avec le profil `volumetrie`, elle affiche **une seule
+   fois** le mot de passe temporaire de `admin`, `rai`, `auditeur1`, `auditeur2`, `audite1` et `dg` : le noter
+   aussitôt. Les autres comptes (profil `formation` : `formation.rai`, `formation.auditeur1`…) n'en reçoivent
+   aucun visible : l'administrateur réinitialise leur mot de passe depuis l'écran *Utilisateurs* (manuel de
+   l'administrateur §2.6) et le remet à chaque participant. Si le mot de passe d'un compte `admin` est perdu ou
+   expiré, relancer `python manage.py creer_administrateur --identifiant admin`.
+4. Vérifier la connexion de chaque compte du tableau ci-dessous (chacun choisit son mot de passe définitif à la
+   première connexion).
 
 | Compte | Rôle | Mot de passe |
 |---|---|---|
-| `admin` | Administrateur | `onea2026` |
-| `rai` | RAI | `onea2026` |
-| `auditeur1` | Auditeur (chef de mission dans les exercices) | `onea2026` |
-| `auditeur2` | Auditeur | `onea2026` |
-| `audite1` | Audité | `onea2026` |
-| `dg` | Direction générale | `onea2026` |
+| `admin` | Administrateur | temporaire, affiché une fois (voir ci-dessus) |
+| `rai` | RAI | temporaire, affiché une fois |
+| `auditeur1` | Auditeur (chef de mission dans les exercices) | temporaire, affiché une fois |
+| `auditeur2` | Auditeur | temporaire, affiché une fois |
+| `audite1` | Audité | temporaire, affiché une fois |
+| `dg` | Direction générale | temporaire, affiché une fois |
 
-Le mot de passe `onea2026` est celui des comptes de **développement et de recette** (voir
-`docs/HANDOFF.md`). Il ne doit jamais exister en production.
+Les mots de passe temporaires sont propres à l'environnement de formation (jamais ceux de la production) et
+valables 72 heures : créer ou réinitialiser les comptes la veille ou le matin de la session. Le courrier de la
+recette (codes de connexion, « Mot de passe oublié ») se lit dans Mailpit (`docs/recette.md`).
 
 ### 1.2 Salle et participants
 Postes, salle, nombre de participants : voir [programme-demi-journee.md](programme-demi-journee.md),

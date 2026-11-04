@@ -57,6 +57,7 @@ Interne (DAI) de l'ONEA. Il couvre les tâches 30, 32, 33 et 34 du lot 9.
 ## Prise en main commune à tous les rôles
 
 La connexion, la navigation et la déconnexion sont identiques pour tous les rôles ; chaque manuel les
-rappelle en section 1. Aucune page « Mon profil » modifiable n'existe : le nom, l'adresse
-électronique et le rôle affichés dans le menu utilisateur viennent de l'annuaire d'entreprise ; la
-direction, la fonction et le matricule sont renseignés par l'administrateur.
+rappelle en section 1. Le menu utilisateur propose « Mon compte »
+(changement du mot de passe, code de connexion facultatif par courriel) ; le nom, l'adresse électronique, le
+rôle, la direction, la fonction et le matricule sont renseignés par l'administrateur (ou un délégué) : ils ne
+sont pas modifiables par l'agent. Les comptes sont gérés dans la plateforme, sans annuaire externe.

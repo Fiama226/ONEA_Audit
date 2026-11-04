@@ -1,4 +1,4 @@
-# Fiche d'exercices — Audité (compte `audite1`, mot de passe `onea2026`)
+# Fiche d'exercices — Audité (compte `audite1`, mot de passe fourni par le formateur)
 
 Manuel de référence : [manuel-audite.md](../manuels/manuel-audite.md). Durée indicative : 2 h.
 Prérequis : la direction de `audite1` correspond à l'entité auditée de la mission utilisée ; sinon

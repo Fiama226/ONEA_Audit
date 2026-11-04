@@ -1,7 +1,7 @@
 # Fiche d'exercices — Auditeur et chef de mission (comptes `auditeur1` chef de mission, `auditeur2`)
 
 Manuel de référence : [manuel-auditeur.md](../manuels/manuel-auditeur.md). Durée indicative : 3 h.
-Mot de passe des deux comptes : `onea2026`. Travailler sur une mission où `auditeur1` est chef de mission.
+Mots de passe des deux comptes : fournis par le formateur (mots de passe temporaires, à changer à la première connexion). Travailler sur une mission où `auditeur1` est chef de mission.
 
 ## Exercice 1 — Indépendance (manuel §2)
 1. Se connecter en `auditeur2`, ouvrir la mission, confirmer la déclaration d'indépendance.

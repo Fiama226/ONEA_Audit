@@ -1,4 +1,4 @@
-# Fiche d'exercices — Direction générale (compte `dg`, mot de passe `onea2026`)
+# Fiche d'exercices — Direction générale (compte `dg`, mot de passe fourni par le formateur)
 
 Manuel de référence : [manuel-dg.md](../manuels/manuel-dg.md). Durée indicative : 1 h. Rôle de consultation.
 

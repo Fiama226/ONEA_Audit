@@ -3,7 +3,7 @@
 Document de recette manuelle. Il sert à deux usages :
 
 1. **la démonstration** de la plateforme (section 2, déroulé guidé de 25 minutes) ;
-2. **le test par les collègues** (sections 3 à 6 : 104 scénarios classés du plus simple au plus complexe).
+2. **le test par les collègues** (sections 3 à 6 : 113 scénarios classés du plus simple au plus complexe).
 
 Il a été rédigé à partir du code de la branche `develop` (backend `backend/apps/*`, frontend
 `frontend/src/features/*`, libellés de `frontend/src/i18n/fr.ts`, plans de lot, revue ASVS
@@ -36,16 +36,16 @@ D'après `docs/HANDOFF.md` §4 (à adapter à votre poste) :
 
 | Élément | Attendu |
 |---|---|
-| Docker Desktop lancé | conteneurs PostgreSQL, Keycloak et Redis démarrés |
+| Docker Desktop lancé | conteneurs PostgreSQL et Redis démarrés (plus Mailpit pour lire les codes envoyés par courriel) |
 | API Django | `runserver 127.0.0.1:8000` avec `DATABASE_URL` pointant sur **la base de recette** (voir 1.3) |
 | Interface | `cd frontend && npm run dev`, puis http://localhost:5173 (utiliser `localhost`, pas `127.0.0.1`) |
-| Keycloak | http://127.0.0.1:8180 (administration : `admin` / `admin-dev-password`), realm `onea` |
+| Mailpit | http://127.0.0.1:8025 : boîte de réception de développement (codes de connexion, « Mot de passe oublié », courriels de bienvenue) |
 | Navigateur | Chrome ou Edge récent ; fenêtre d'au moins 1280 px de large ; une fenêtre de navigation privée par compte pour les scénarios à deux utilisateurs |
 
 Services **facultatifs** selon les scénarios. La pile de développement du dépôt
 (`make up`, soit `docker compose -f docker/compose.yml -f docker/compose.dev.yml`) définit en plus
 Meilisearch, Gotenberg, Mailpit (interface http://127.0.0.1:8025), un worker et un beat Celery ;
-la passation ne mentionne que PostgreSQL, Keycloak et Redis : **vérifier avec `docker ps` ce qui
+la passation ne mentionne que PostgreSQL et Redis : **vérifier avec `docker ps` ce qui
 tourne réellement** (V-05). Leur absence n'est pas une anomalie (voir section 8) :
 
 | Service | Nécessaire pour | Sans lui |
@@ -60,8 +60,13 @@ Avant la campagne, noter dans le tableau de la section 9 la version testée
 
 ### 1.2 Comptes
 
-Mot de passe commun en développement : `onea2026`. Connexion par le bouton « Se connecter »
-(redirection vers Keycloak, puis retour sur l'application).
+Il n'y a plus de mot de passe commun : chaque compte a un mot de passe **temporaire** (72 heures) à changer à
+la première connexion. `peupler_demo --profil volumetrie` affiche une seule fois celui de `admin`, `rai`,
+`auditeur1`, `auditeur2`, `audite1` et `dg` ; sur une base existante dont les comptes n'ont pas de mot de passe,
+`python manage.py donner_mots_de_passe_temporaires` en donne un à chacun (affiché une fois) ; l'administrateur
+initial se crée par `python manage.py creer_administrateur --identifiant admin --courriel admin@example.org`. Noter
+les mots de passe définitifs choisis, ils servent à tous les scénarios. Connexion par la page « Connexion »
+(identifiant ou courriel, mot de passe, bouton « Se connecter »).
 
 | Compte | Rôle plateforme | Rôle tenu dans la mission de recette (S3-01) |
 |---|---|---|
@@ -76,7 +81,6 @@ Condition pour tout le niveau 3 : la **direction** du compte `audite1` doit êtr
 direction de rattachement) de l'entité auditée de la mission, sinon l'audité ne peut ni répondre
 aux constats ni proposer d'actions (« Ce constat concerne une autre entité que votre direction. » ou
 « Votre direction n'est pas renseignée sur votre profil »). Se règle en S2-12 (compte `admin`).
-Que Keycloak fournisse l'attribut `direction` pour `audite1` est **à vérifier** (V-02).
 
 ### 1.3 Jeu de données
 
@@ -108,11 +112,11 @@ Règles vérifiées dans le code :
   (`demo`, `admin`, `rai`, `dg`, `auditeur1`, `audite1`) ; relancée sur une base déjà peuplée, elle ne
   fait rien et ne crée pas de doublon ;
 - profil **volumétrie** : crée les comptes `rai`, `dg`, `auditeur1` à `auditeur10`, `audite1` à
-  `audite7`, `admin` (plus `charge01`…), **sans mot de passe** : ils se relient au compte Keycloak
-  de même identifiant à la première connexion. Ce profil convient donc aux comptes du tableau 1.2 ;
+  `audite7`, `admin`, avec un mot de passe temporaire (72 h) dont seuls ceux des six comptes de test sont affichés
+  (une fois). Ce profil convient donc aux comptes du tableau 1.2 ;
 - profil **formation** : crée `formation.rai`, `formation.auditeur1` à `3`, `formation.audite1` et
-  `2`, `formation.dg`. Ces identifiants n'existent pas dans Keycloak : il faut les y créer pour s'y
-  connecter (V-01) ;
+  `2`, `formation.dg`, avec un mot de passe temporaire non affiché : l'administrateur le réinitialise depuis
+  l'écran *Utilisateurs* pour s'y connecter (S4-36) ;
 - les missions de démonstration s'arrêtent à l'**étape VIII** au plus (profil formation : un brouillon,
   une planifiée, des missions aux étapes 1, 4, 7 et 8) ; les étapes IX à XVIII, constats,
   recommandations, rapports et suivi ne sont **pas** peuplés (fichiers `demo.py` des lots 6 à 8 : « aucune
@@ -223,11 +227,10 @@ préparées.
 ### S1-01 — Connexion du RAI
 **Rôle** : `rai` · **Préconditions** : navigateur sans session ouverte.
 1. Ouvrir http://localhost:5173.
-2. Observer la page de connexion : titre « Audit interne ONEA », texte « Connectez-vous avec votre compte ONEA… ».
-3. Cliquer « Se connecter ».
-4. Sur Keycloak, saisir `rai` / `onea2026`.
+2. Observer la page « Connexion » : champs « Identifiant ou courriel professionnel » et « Mot de passe », lien « Mot de passe oublié ? ».
+3. Saisir l'identifiant `rai` et son mot de passe (temporaire à la toute première fois : l'écran « Changer le mot de passe » s'impose, voir S4-34), puis cliquer « Se connecter ».
 
-**Résultat attendu** : retour sur l'application, tableau de bord du RAI (« Missions par phase » ou « Pilotage… »), nom et rôle visibles dans le menu utilisateur (« RAI »), aucune erreur.
+**Résultat attendu** : tableau de bord du RAI, tableau de bord du RAI (« Missions par phase » ou « Pilotage… »), nom et rôle visibles dans le menu utilisateur (« RAI »), aucune erreur.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -252,10 +255,10 @@ préparées.
 
 ### S1-04 — Identifiants erronés
 **Rôle** : aucun · **Préconditions** : déconnecté.
-1. « Se connecter », saisir `rai` avec un mauvais mot de passe.
+1. Sur la page « Connexion », saisir `rai` avec un mauvais mot de passe, « Se connecter ».
 2. Recommencer 2 fois.
 
-**Résultat attendu** : Keycloak refuse chaque tentative avec un message d'erreur ; aucun accès à l'application. (Le verrouillage après 5 échecs est une consigne de production, `docs/exploitation/mise-en-production.md`, non garantie en développement : noter ce qui se passe.)
+**Résultat attendu** : chaque tentative est refusée avec le message unique « Identifiant ou mot de passe incorrect. » ; aucun accès à l'application. Le verrouillage après 5 échecs consécutifs est vérifié en S4-30.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -477,7 +480,7 @@ préparées.
 **Rôle** : `admin` · **Préconditions** : plusieurs comptes.
 1. Administration › Utilisateurs.
 2. Rechercher par nom, identifiant ou matricule.
-3. Filtrer par rôle, direction, statut (Actifs, Désactivés, En attente de première connexion), synchronisation Keycloak.
+3. Filtrer par rôle, direction, statut (Actifs, Désactivés, En attente de première connexion).
 4. « Effacer les filtres ».
 
 **Résultat attendu** : filtres cumulables ; message « Aucun utilisateur ne correspond aux filtres » si vide.
@@ -487,12 +490,12 @@ préparées.
 ### S2-12 — Fiche utilisateur et profil (direction)
 **Rôle** : `admin` · **Préconditions** : compte `audite1` connu.
 1. Ouvrir la fiche de `audite1`.
-2. Relever identité, origine, première connexion, rôle (texte « Le rôle est attribué dans l'annuaire… »).
+2. Relever identité, origine, première connexion, rôle (bloc « Rôle » : « Changer le rôle »).
 3. Renseigner **Direction** (celle de l'entité auditée de la recette), Fonction, Matricule (> 32 caractères pour tester l'erreur).
 4. « Enregistrer le profil ».
 5. Consulter l'« Historique du compte ».
 
-**Résultat attendu** : le rôle n'est pas modifiable ici ; message « Profil enregistré. » ; la mention précise que direction et fonction sont désormais figées dans la plateforme avec le bouton « Rétablir la synchronisation » ; l'historique liste la modification (date, auteur, changements).
+**Résultat attendu** : message « Profil enregistré. » ; matricule > 32 caractères refusé (« Le matricule ne peut pas dépasser 32 caractères. ») ; l'historique liste la modification (date, auteur, changements) ; le changement de rôle demande une confirmation (« Confirmer le changement ») et l'historique le trace.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -502,7 +505,7 @@ préparées.
 2. Avec ce compte, tenter de se connecter.
 3. Revenir, « Réactiver le compte ».
 
-**Résultat attendu** : motif obligatoire (« Le motif est obligatoire. ») ; compte désactivé = écran « Compte indisponible » à la connexion ; état de synchronisation Keycloak affiché (« sessions fermées » ou échec avec « Relancer la synchronisation ») ; réactivation rétablit l'accès.
+**Résultat attendu** : motif obligatoire (« Le motif est obligatoire. ») ; le compte désactivé ne peut plus se connecter (message unique « Identifiant ou mot de passe incorrect. ») ni réinitialiser son mot de passe ; ses sessions ouvertes sont fermées ; la réactivation rétablit l'accès ; on ne peut pas désactiver son propre compte ni le dernier administrateur actif.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -518,13 +521,15 @@ préparées.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
-### S2-15 — Import depuis l'annuaire (Keycloak)
-**Rôle** : `admin` · **Préconditions** : Keycloak joignable avec le client de synchronisation (V-01).
-1. « Importer depuis l'annuaire », chercher avec 1 caractère, puis 2 caractères.
-2. Sélectionner des comptes (limite de 50), « Importer la sélection ».
-3. Rechercher un compte déjà présent.
+### S2-15 — Créer un agent, mot de passe temporaire et fichier des mots de passe
+**Rôle** : `admin` · **Préconditions** : liste des utilisateurs ouverte.
+1. « Nouvel agent » : identifiant `test.agent1`, rôle laissé vide, « Créer le compte ».
+2. Choisir un rôle (`AUDITE`), décocher « Envoyer le courriel de bienvenue », « Créer le compte ».
+3. Relever la fenêtre « Compte créé » : « Mot de passe temporaire ». Cliquer « Copier le mot de passe », puis « J'ai noté le mot de passe, fermer ».
+4. Rouvrir la fiche du compte : le mot de passe n'est plus visible. Bloc « Connexion et mot de passe » : « Mot de passe temporaire : à changer à la prochaine connexion. » et sa date d'expiration.
+5. Créer un second agent en laissant cochée « Envoyer le courriel de bienvenue » (Mailpit actif, adresse en `@example.org`).
 
-**Résultat attendu** : « Saisissez au moins 2 caractères. » ; comptes déjà présents marqués « Déjà présent » ; si l'annuaire est injoignable : « L'annuaire (Keycloak) est momentanément indisponible. »
+**Résultat attendu** : étape 1 « Choisissez le rôle de l'agent. » ; étape 3 le mot de passe (16 caractères) s'affiche une seule fois avec l'avertissement « il ne sera plus jamais affiché » ; étape 5 aucun mot de passe affiché, le courriel de bienvenue (identifiant et mot de passe temporaire) arrive dans Mailpit.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1300,11 +1305,11 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 
 ### S4-15 — Session expirée
 **Rôle** : `rai` · **Préconditions** : connecté, un formulaire rempli mais non enregistré.
-1. Dans la console Keycloak (realm `onea` › Sessions), « Se déconnecter » la session de `rai` (ou attendre l'expiration du jeton).
+1. Fermer la session de `rai` côté serveur : `admin` réinitialise son mot de passe (S4-36), ou rester 31 minutes sans aucune action (voir S4-33 pour les durées).
 2. Dans l'application, cliquer « Enregistrer » ou changer de page.
 3. Se reconnecter.
 
-**Résultat attendu** : redirection vers l'écran de connexion avec « Votre session a expiré. Veuillez vous reconnecter. » ; aucune donnée perdue silencieusement, aucune écriture partielle ; après reconnexion on revient sur l'application. Durée de vie réelle des jetons et saisie non enregistrée : à vérifier (V-10).
+**Résultat attendu** : redirection vers l'écran de connexion avec « Votre session a expiré. Veuillez vous reconnecter. » ; aucune donnée perdue silencieusement, aucune écriture partielle ; après reconnexion on revient sur l'application. Devenir d'une saisie non enregistrée à l'expiration : à vérifier (V-10).
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1341,7 +1346,7 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 2. Dans la fenêtre d'`audite1`, naviguer ou actualiser.
 3. `admin` réactive le compte ; `audite1` se reconnecte.
 
-**Résultat attendu** : accès coupé avec l'écran « Compte indisponible » (ou retour à la connexion) ; aucune donnée métier n'est servie après la désactivation (les jetons déjà émis ne suffisent pas, le compte est contrôlé côté serveur ; délai de cache d'informations utilisateur ≤ 60 s). Note : le délai exact est à observer (V-10).
+**Résultat attendu** : accès coupé dès la requête suivante (retour à l'écran de connexion, la session est fermée) ; aucune donnée métier n'est servie après la désactivation (le compte et ses droits sont relus en base à chaque requête, sans cache). Le message exact affiché dans la fenêtre d'`audite1` est à observer (V-10).
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1420,7 +1425,7 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 1. Lancer plus de 60 recherches en une minute (global search), plus de 30 téléversements en une heure, plus de 20 générations de document en une minute.
 2. Observer la réponse.
 
-**Résultat attendu** : au-delà du seuil : « Trop de requêtes : réessayez dans quelques instants. » (recherche : « Trop de recherches en peu de temps : patientez une minute. ») ; le service reprend ensuite. Seuils par défaut : génération 20/min, aperçu 30/min, téléversement 30/h, import 10/h, export 30/min, annuaire 60/min, recherche 60/min (réglables). Scénario optionnel, souvent N/A en test manuel.
+**Résultat attendu** : au-delà du seuil : « Trop de requêtes : réessayez dans quelques instants. » (recherche : « Trop de recherches en peu de temps : patientez une minute. ») ; le service reprend ensuite. Seuils par défaut : génération 20/min, aperçu 30/min, téléversement 30/h, import 10/h, export 30/min, recherche 60/min, connexion 20/min par adresse, mot de passe oublié 5/h par identifiant, gestion des comptes 30/h (réglables ; voir S4-30). Scénario optionnel, souvent N/A en test manuel.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1441,10 +1446,10 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 2. Sans worker : demander une génération.
 3. Sans Meilisearch : recherche globale.
 4. Sans SMTP : déclencher une relance (`envoyer_relances`) et une diffusion.
-5. Sans Keycloak (arrêt court) : actualiser l'application ; essayer l'import depuis l'annuaire.
+5. Sans SMTP (Mailpit arrêté) : demander un code « Mot de passe oublié » (le message reste identique), puis appliquer le repli de S4-36.
 6. Remettre chaque service et vérifier la reprise (« Relancer le PDF »).
 
-**Résultat attendu** : messages clairs et non techniques (« Le PDF n'est pas encore disponible », « La recherche est momentanément indisponible », « Le serveur ou le service d'authentification est injoignable. Veuillez réessayer dans quelques instants. », « L'annuaire (Keycloak) est momentanément indisponible. ») ; les opérations métier internes (saisie, validation) ne sont pas bloquées ; la diffusion refuse tant que le PDF n'est pas prêt ; un échec d'envoi d'e-mail est visible côté RAI sans perdre l'action.
+**Résultat attendu** : messages clairs et non techniques (« Le PDF n'est pas encore disponible », « La recherche est momentanément indisponible », « Le serveur ou le service d'authentification est injoignable. Veuillez réessayer dans quelques instants. ») ; les opérations métier internes (saisie, validation) ne sont pas bloquées ; la diffusion refuse tant que le PDF n'est pas prêt ; un échec d'envoi d'e-mail est visible côté RAI sans perdre l'action.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1456,6 +1461,114 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 4. `--a-blanc` : lire le plan sans écriture.
 
 **Résultat attendu** : étape 1 « Données de démonstration déjà présentes : rien à faire (aucun doublon créé). » ; étape 2 « Interdit en production. » ; étape 3 « la base contient déjà des objets métier ou des comptes réservés : le peuplement exige une base vide » ; étape 4 affiche volumes et profil, n'écrit rien.
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S4-29 — Énumération de comptes
+**Rôle** : aucun, puis `admin` · **Préconditions** : un compte actif `audite1`, un compte désactivé `test.off` (S2-13), Mailpit ouvert.
+1. Sur la page « Connexion », tenter `audite1` avec un mauvais mot de passe, puis un identifiant inexistant (`nobody.xyz`) avec n'importe quel mot de passe, puis `test.off` avec son bon mot de passe.
+2. Comparer les trois messages, le code de réponse (outils du navigateur, onglet Réseau) et l'ordre de grandeur du temps de réponse.
+3. « Mot de passe oublié ? » : saisir `audite1`, puis `nobody.xyz`, puis `test.off`. Comparer les messages ; consulter Mailpit.
+4. Saisir l'adresse de courriel d'un compte existant, puis celle d'une personne inconnue.
+
+**Résultat attendu** : les trois échecs de connexion affichent le même message « Identifiant ou mot de passe incorrect. » avec le même code de réponse et des délais comparables ; à l'étape 3 le message est toujours « Si un compte correspond, un code vous a été envoyé. » ; un code n'arrive dans Mailpit que pour le compte existant et actif (aucun pour `nobody.xyz` ni pour `test.off`) ; rien ne distingue, côté écran, un compte existant d'un compte inconnu.
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S4-30 — Force brute, verrouillage et limite de débit
+**Rôle** : aucun, puis `admin` · **Préconditions** : compte `auditeur2` actif ; heure notée.
+1. Saisir 5 fois de suite un mauvais mot de passe pour `auditeur2`.
+2. À la 6e tentative, saisir le **bon** mot de passe.
+3. Essayer le même identifiant avec un mauvais mot de passe : le message est-il différent ?
+4. Attendre 15 minutes, ou faire réinitialiser le mot de passe de `auditeur2` par `admin` (S4-36), puis se connecter.
+5. Environnement de recette seulement : lancer plus de 20 tentatives de connexion en une minute depuis la même adresse (outil de test).
+
+**Résultat attendu** : le message reste « Identifiant ou mot de passe incorrect. » à toutes les étapes (aucune mention du verrouillage) ; à l'étape 2 le bon mot de passe est **refusé** tant que le verrouillage dure (15 minutes) ; le verrouillage cesse à l'échéance ou à la réinitialisation du mot de passe par l'administrateur ; à l'étape 5 la limite par adresse (`THROTTLE_RATE_CONNEXION`, 20 par minute par défaut) répond « Trop de requêtes : réessayez dans… » (429 avec `Retry-After`) ; la connexion d'un autre compte n'est pas affectée par le verrouillage de `auditeur2`.
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S4-31 — Code à usage unique : rejeu, essais et expiration
+**Rôle** : `audite1` (et un compte avec le code de connexion activé, S4-37) · **Préconditions** : Mailpit actif ; adresse de courriel renseignée sur le compte.
+1. « Mot de passe oublié ? » pour `audite1`, lire le code dans Mailpit. Le saisir avec un nouveau mot de passe, « Enregistrer le mot de passe » : réussite.
+2. Redemander un code ; saisir 5 codes faux de suite, puis le **bon** code.
+3. Redemander un code et le laisser plus de 10 minutes ; le saisir ensuite.
+4. Demander deux codes à la suite ; saisir le **premier**, puis le second.
+5. Réutiliser le code utilisé à l'étape 1 (et, pour la connexion avec code, le code d'une connexion précédente).
+
+**Résultat attendu** : étape 1 réussie, retour à la connexion avec « Votre mot de passe a été modifié… » ; étape 2 le bon code est refusé après 5 essais ; étape 3 « Code invalide ou expiré. » ; étape 4 seul le dernier code émis est accepté ; étape 5 un code déjà utilisé n'est jamais accepté de nouveau. Le message d'erreur est le même quelle que soit la cause. Au plus 10 codes de réinitialisation par compte et par 24 heures (sans effet visible sur la réponse).
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S4-32 — Élévation de privilèges d'un délégué
+**Rôle** : `admin`, puis `delegue1` (compte AUDITEUR avec des droits délégués) · **Préconditions** : `admin` a délégué à `delegue1` « Créer des comptes » et « Réinitialiser les mots de passe » seulement ; un second administrateur `admin2` et un second délégué `delegue2` existent.
+1. Avec `delegue1`, ouvrir la fiche de `admin` et tenter « Réinitialiser le mot de passe », puis « Désactiver le compte ».
+2. Idem sur `delegue2` (autre délégué) et sur son propre compte.
+3. Créer un agent avec le rôle Administrateur ; tenter ensuite de changer le rôle d'un agent (droit non délégué), puis de modifier la direction d'un agent.
+4. Tenter d'ouvrir la délégation de n'importe quel agent (y compris la sienne) et d'ouvrir « Importer un fichier CSV ».
+5. `admin` retire les droits de `delegue1` ; sans se déconnecter, `delegue1` actualise la liste et tente de créer un compte.
+6. Contrôle direct de l'API (outils du navigateur ou outil de test) : refaire les appels des étapes 1 à 4 sur `/api/v1/user-accounts/` avec la session de `delegue1`.
+
+**Résultat attendu** : toutes les tentatives des étapes 1 à 4 sont refusées (403, message « Vous n'avez pas le droit d'effectuer cette action sur ce compte. » ou équivalent) ; « Seul un administrateur peut attribuer le rôle Administrateur. » ; la délégation et l'import CSV restent inaccessibles à un délégué ; après retrait (étape 5) le refus est immédiat, sans reconnexion ; l'API répond comme l'écran. Limite connue et assumée : avec « créer des comptes » ou « réinitialiser les mots de passe », un délégué peut prendre la main sur un compte **non administrateur** (avertissement affiché dans le bloc de délégation).
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S4-33 — Expiration de session
+**Rôle** : `rai` · **Préconditions** : connecté ; heure notée.
+1. Ne faire aucune action pendant plus de 30 minutes, puis cliquer sur une page.
+2. Se reconnecter ; travailler sans interruption (une action au moins toutes les 20 minutes) jusqu'à dépasser 8 heures depuis la connexion, puis cliquer sur une page. (Si la durée est impraticable, noter « non attendu » et faire fermer la session par l'exploitant en supprimant la ligne correspondante de `django_session` : l'effet côté écran est le même.)
+3. Fermer le navigateur sans se déconnecter, le rouvrir et ouvrir l'application dans les 30 minutes.
+
+**Résultat attendu** : étapes 1 et 2 redirection vers « Connexion » avec « Votre session a expiré. Veuillez vous reconnecter. » (30 minutes d'inactivité, ou 8 heures au plus depuis la connexion, même en activité continue) ; aucune écriture partielle ; étape 3 la session est encore valable (cookie de session, dans la limite de 8 h / 30 min).
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S4-34 — Changement de mot de passe obligatoire
+**Rôle** : compte créé en S2-15 (`test.agent1`) · **Préconditions** : mot de passe temporaire noté.
+1. Se connecter avec le mot de passe temporaire.
+2. Sur l'écran « Changer le mot de passe », avant de saisir quoi que ce soit, ouvrir directement `/missions`, `/mon-compte` puis une adresse de l'API (`/api/v1/me/`).
+3. Saisir comme nouveau mot de passe le mot de passe temporaire lui-même ; puis un mot de passe de 8 caractères ; puis `123456789012` (chiffres seulement) ; puis une valeur contenant l'identifiant.
+4. Choisir un mot de passe valable (12 caractères au moins), « Changer le mot de passe ».
+5. Environnement de recette : avec un autre compte jamais connecté, attendre 72 heures (ou faire avancer l'échéance) puis tenter la première connexion.
+
+**Résultat attendu** : étape 2 retour systématique à « Changer le mot de passe » (les pages métier ramènent à cet écran ; l'API répond 403 « Vous devez changer votre mot de passe avant de continuer. » tant que le mot de passe n'est pas changé) ; étape 3 refus avec des messages clairs (« Le nouveau mot de passe doit être différent de l'actuel. », « Le mot de passe doit comporter au moins 12 caractères. », mot de passe numérique seul, courant ou proche de l'identifiant refusé) ; étape 4 accès à la plateforme, et le mot de passe temporaire ne fonctionne plus ; étape 5 le mot de passe temporaire expiré est refusé avec le message unique « Identifiant ou mot de passe incorrect. » : l'administrateur doit réinitialiser le compte (S4-36).
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S4-35 — Fichier des mots de passe d'un import : téléchargement unique
+**Rôle** : `admin`, puis un second administrateur `admin2` · **Préconditions** : fichier CSV de 3 comptes fictifs (S2-14), envoi de courriel désactivé ou case « Envoyer le courriel de bienvenue à chaque compte créé » décochée.
+1. « Vérifier le fichier » puis « Importer ». Lire la zone « Mots de passe temporaires à transmettre ».
+2. « Télécharger le fichier des mots de passe » : ouvrir le fichier (un mot de passe par compte).
+3. Cliquer de nouveau sur le bouton, ou rouvrir l'adresse du téléchargement.
+4. Refaire un import et tenter le téléchargement avec `admin2` (ou l'adresse copiée depuis le navigateur de `admin`).
+5. Refaire un import et attendre plus de 24 heures sans télécharger (recette), puis tenter.
+6. Se connecter avec l'un des comptes importés avec son mot de passe du fichier.
+
+**Résultat attendu** : étape 2 un fichier CSV de mots de passe temporaires ; étape 3 « Ce fichier n'est plus disponible : il a déjà été téléchargé ou a expiré. » (404) ; étape 4 refus (« Seul l'auteur de l'import peut télécharger ce fichier. ») ; étape 5 fichier détruit (404) ; étape 6 connexion puis changement de mot de passe obligatoire. Aucun mot de passe n'est lisible ailleurs (journal d'audit, historique du compte, courriel d'un compte sans envoi).
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S4-36 — Réinitialisation par l'administrateur et sessions fermées
+**Rôle** : `admin` (ou un délégué), puis `auditeur2` · **Préconditions** : `auditeur2` connecté dans deux navigateurs (A et B).
+1. Dans A, ouvrir « Mon compte » › « Changer mon mot de passe » et le changer.
+2. Dans B, actualiser une page.
+3. Se reconnecter dans A. `admin` ouvre la fiche de `auditeur2` › « Réinitialiser le mot de passe » (courriel coché si Mailpit est actif, sinon relever le mot de passe affiché).
+4. Dans A, actualiser une page ; se reconnecter avec le mot de passe temporaire ; changer le mot de passe.
+5. Tenter de réinitialiser son propre compte avec `admin` ; puis un compte désactivé.
+
+**Résultat attendu** : étape 2 B est ramenée à « Connexion » (changement de mot de passe : « Vos autres sessions ouvertes seront fermées ») ; étape 3 « Mot de passe réinitialisé. » ; étape 4 toutes les sessions de `auditeur2` sont fermées, le compte est déverrouillé (même après un verrouillage, S4-30) et le changement du mot de passe temporaire est obligatoire ; étape 5 refus (« Pour votre propre compte, utilisez « Changer mon mot de passe ». ») ; l'action figure dans l'« Historique du compte ». Repli sans SMTP : tout se fait sans courriel, le mot de passe s'affichant une seule fois à l'écran.
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S4-37 — Code de connexion par courriel (facultatif) et repli sans SMTP
+**Rôle** : `auditeur1`, puis `admin` · **Préconditions** : Mailpit actif ; adresse de courriel sur le compte.
+1. `auditeur1` ouvre « Mon compte », bloc « Code de connexion par courriel », active « Demander un code par courriel à chaque connexion ».
+2. Se déconnecter, puis se connecter : à « Vérification en deux étapes », saisir le code lu dans Mailpit, « Valider le code ».
+3. `admin` ouvre la fiche de `auditeur1` : tenter d'**activer** le code à sa place (impossible), puis « Désactiver le code de connexion ».
+4. `auditeur1` se reconnecte avec son seul mot de passe, puis désactive lui-même le code (confirmation avec le mot de passe actuel) après l'avoir réactivé.
+5. Arrêter Mailpit (ou configurer un envoi inexistant) : `auditeur2` tente d'activer le code.
+6. Opérateur : sur une base de recette, `creer_administrateur --identifiant admin --desactiver-otp` sur un administrateur dont le code est actif, SMTP arrêté.
+
+**Résultat attendu** : étape 2 connexion après le code ; seul le titulaire peut activer ; étape 3 « Code de connexion désactivé. » et journalisation dans l'historique ; étape 5 « L'envoi de courriels n'est pas configuré sur la plateforme : le code de connexion ne peut pas être activé pour le moment. » ; étape 6 nouveau mot de passe temporaire affiché une seule fois, code désactivé, sessions fermées.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1471,7 +1584,7 @@ Légende : **L** lecture seule ; **E** lecture et écriture/action ; **—** ref
 | Programme annuel | L | E (créer, modifier, valider, supprimer brouillon, exporter) | L | — | L |
 | Référentiel : cartographies, risques, objets auditables | L | E | L | — | L |
 | Référentiel : directions et processus | E | E | L | — | L |
-| Administration › utilisateurs, import CSV/annuaire, désactivation | E | — | — | — | — |
+| Administration › utilisateurs : création, réinitialisation de mot de passe, rôle, désactivation, import CSV, délégation | E | — | — (c : droits délégués par l'administrateur, hors administrateurs, autres délégués et soi-même) | — (c : idem) | — (c : idem) |
 | Gabarits de documents, numérotation | E | L | — | — | — |
 | Mode de signature | E | L | — | — | — |
 | Missions : liste | — | toutes | siennes, hors brouillon | celles de son entité, ordre émis | — |
@@ -1524,7 +1637,7 @@ Remarques de lecture :
 
 | Limite | Source | Conséquence pour les tests |
 |---|---|---|
-| **Courrier sortant** : l'adresse par défaut est `smtp://mailpit:1025`. La pile de développement (`docker/compose.dev.yml`) fournit Mailpit (interface http://127.0.0.1:8025) mais la passation (`HANDOFF.md` §4) ne liste que PostgreSQL, Keycloak et Redis. Sans SMTP, aucun e-mail ne part | `base.py`, `compose.dev.yml` | relances et diffusion : notifications internes seules ; échec visible dans « Relances en échec » |
+| **Courrier sortant** : l'adresse par défaut est `smtp://mailpit:1025`. La pile de développement (`docker/compose.dev.yml`) fournit Mailpit (interface http://127.0.0.1:8025) mais la passation (`HANDOFF.md` §4) ne liste que PostgreSQL et Redis. Sans SMTP, aucun e-mail ne part (ni code de connexion, ni code « Mot de passe oublié », ni courriel de bienvenue : repli administrateur, S4-36 et S4-37) | `base.py`, `compose.dev.yml` | relances et diffusion : notifications internes seules ; échec visible dans « Relances en échec » |
 | **Recherche Meilisearch** : service fourni par `make up`, absent de la passation locale ; sans lui, recherche indisponible. L'ADMIN n'a jamais accès à la recherche | `compose.dev.yml`, `recherche/visibilite.py` | S1-10, S4-24 en N/A |
 | **Worker Celery + Gotenberg** : la génération Word/PDF et la conversion se font en tâche de fond ; sans eux le PDF n'est jamais prêt et la diffusion du rapport est refusée | `documents/services/generation.py`, `communication/services/diffusion.py` | S2-29, S3-22 dégradés |
 | **Signature électronique PAdES (lot 7 bis) non installée** : seuls les modes « Confirmation horodatée » sont utilisables ; les modes électroniques sont refusés | `signatures/electronique.py`, `parametres.py` | S4-23 |
@@ -1532,7 +1645,7 @@ Remarques de lecture :
 | **Gabarits Word provisoires** : les 22 gabarits officiels ONEA restent à récupérer ; les documents générés utilisent des modèles vierges provisoires | `docs/HANDOFF.md`, `docs/documents/gabarits-manquants.md` | ne pas juger la mise en page des documents Word |
 | **Tests de bout en bout (Playwright) jamais exécutés** ; audit d'accessibilité automatisé « outillage livré, exécution en attente » ; bancs réseau du lot 9 non lancés ; suites de tests complètes non relancées | `docs/HANDOFF.md`, `docs/qualite/audit-accessibilite.md` | la présente recette manuelle est la première vérification navigateur réelle |
 | **Antivirus** : `ANTIVIRUS_MOTEUR=aucun` par défaut, ClamAV (conteneur séparé) non livré en développement ; les formats OLE (`doc`, `xls`, `msg`) ne sont pas inspectés pour les macros | `core/antivirus.py`, ASVS SEC-04 | S4-13 étape 4 N/A sans ClamAV |
-| **OTP des comptes à privilèges** et politique de mots de passe : non appliqués en développement | ASVS SEC-03 | S1-04 : pas de verrouillage garanti |
+| **Authentification interne** : sessions Django (8 h / 30 min), mots de passe Argon2id, code de connexion facultatif ; l'obligation du code pour certains rôles (D19) n'est pas décidée | `docs/securite/auth-interne-modele.md` | S4-29 à S4-37 ; l'audit ASVS L2 doit être rejoué sur la nouvelle authentification |
 | **Piste d'audit sans écran** : API seule ; lecture du contenu des missions possible par l'ADMIN | ASVS SEC-02, `core/views.py` | S4-22 |
 | **Conflits d'intérêts lisibles par toute l'équipe** | ASVS SEC-08 | constat connu à ne pas rouvrir (SEC-09, compte rendu d'une réunion non tenue, est corrigé) |
 | ~~File de décisions du RAI : liens vers le registre non filtré~~ : corrigé, les liens mènent aux écrans `/recommandations/reports` et `/recommandations/relances` filtrés | `docs/HANDOFF.md` §2ter | S4-21 (clos) |
@@ -1540,7 +1653,7 @@ Remarques de lecture :
 | **Tableau de bord ADMIN** : écran d'attente | `DashboardAdmin.tsx` | S1-02 |
 | **Revues visuelles « ui-designer » et revues de sécurité des plans non faites** | `docs/HANDOFF.md` | remarques d'ergonomie attendues |
 | **Données de démonstration** limitées à l'étape VIII ; aucune donnée fictive pour constats, rapports, recommandations, suivi | `*/demo.py` | niveaux 3 et 4 saisis à la main |
-| **Mots de passe de démonstration** : comptes `peupler_demo` sans mot de passe utilisable (liaison Keycloak) | `users/demo.py` | cas B de 1.3 |
+| **Mots de passe de démonstration** : comptes `peupler_demo` à mot de passe temporaire (72 h) ; seuls ceux des six comptes de test (profil `volumetrie`) sont affichés, une fois | `users/demo.py` | cas B de 1.3 |
 
 ### 8.2 Hors périmètre de cette recette
 
@@ -1555,8 +1668,8 @@ traitement par intelligence artificielle (exclu du produit par règle du projet)
 
 | Réf. | Point | Où |
 |---|---|---|
-| V-01 | Les comptes du profil `formation` (`formation.rai`, etc.) n'existent pas dans Keycloak : procédure de rattachement à confirmer | 1.3 |
-| V-02 | Keycloak fournit-il l'attribut `direction` des comptes de test (`audite1`) ? Sinon le renseigner en S2-12 | 1.2, S3-19 |
+| V-01 | ~~Rattachement des comptes `formation` à Keycloak~~ : sans objet (comptes locaux à mot de passe temporaire ; l'administrateur réinitialise le mot de passe de chacun) | 1.3 |
+| V-02 | ~~Attribut `direction` fourni par Keycloak~~ : sans objet, la direction est saisie en S2-12 | 1.2, S3-19 |
 | V-03 | Comportement exact de deux modifications simultanées d'un même enregistrement (aucun verrou optimiste repéré) | S4-01 |
 | V-04 | Aucun écran pour la piste d'audit globale ; l'entrée « Consulter la piste d'audit » du tableau de bord ADMIN est annoncée pour un lot ultérieur | S4-22 |
 | V-05 | Le worker Celery, Gotenberg et les gabarits provisoires sont-ils démarrés/chargés (`gabarits_provisoires`) dans l'environnement de recette ? | 1.1, S2-26, S2-29 |
@@ -1564,7 +1677,7 @@ traitement par intelligence artificielle (exclu du produit par règle du projet)
 | V-07 | Filtres manquants de la file de décisions du RAI | S4-21 |
 | V-08 | Tableau de bord ADMIN : écran d'attente (« Administration de la plateforme ») | S1-02 |
 | V-09 | Pied du menu : « Version 0.5 · lot 5 » semble obsolète (texte de version) | S1-09 |
-| V-10 | Durée de vie des jetons Keycloak, délai de prise en compte d'une désactivation, devenir d'un formulaire non enregistré à l'expiration | S4-15, S4-18 |
+| V-10 | Devenir d'un formulaire non enregistré à l'expiration de la session ; message exact vu par un compte désactivé en cours de session | S4-15, S4-18 |
 | V-11 | Textes résiduels de lots antérieurs (« sera généré au lot 4 », « Disponible dans un prochain lot », « sera complétée dans la suite du lot 3 ») : lesquels s'affichent encore ? À éviter en démonstration | 2.1, S3-04, S3-05 |
 | V-12 | Plusieurs rôles dans une même mission pour une même personne (affectation unique ?) | S3-01, S4-26 |
 | V-13 | Index de recherche : délai d'indexation d'un nouvel objet et nécessité de `reindexer` | S1-10, S4-24 |
@@ -1594,8 +1707,8 @@ Récapitulatif : **18 points « à vérifier »**.
 | 1 — simples (S1-01 à S1-13) | 13 | | | |
 | 2 — courants (S2-01 à S2-30) | 30 | | | |
 | 3 — métier (S3-01 à S3-33) | 33 | | | |
-| 4 — complexes (S4-01 à S4-28) | 28 | | | |
-| **Total** | **104** | | | |
+| 4 — complexes (S4-01 à S4-37) | 37 | | | |
+| **Total** | **113** | | | |
 
 Anomalies ouvertes : bloquantes ___ · majeures ___ · mineures ___ · cosmétiques ___ · sécurité ___.
 

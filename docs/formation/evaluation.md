@@ -24,9 +24,9 @@ a) Oui, pour rédiger les constats  b) Non, aucune  c) Oui, pour la recherche
 ## 2. Questions par rôle
 
 ### Administrateur
-**Q6.** Où est attribué le rôle d'un utilisateur ? a) dans la plateforme, par l'administrateur  b) dans l'annuaire (Keycloak)  c) par le RAI
+**Q6.** Que se passe-t-il à la première connexion d'un compte créé par l'administrateur ? a) la plateforme demande d'abord de choisir un nouveau mot de passe  b) l'agent garde le mot de passe temporaire pendant un an  c) l'agent doit s'inscrire lui-même
 
-**Q7.** Que renseigne l'administrateur sur un utilisateur ? a) direction, fonction, matricule  b) mot de passe  c) rôle
+**Q7.** Un administrateur peut-il consulter le mot de passe d'un agent ? a) oui, dans sa fiche  b) non : il ne voit un mot de passe temporaire qu'une seule fois, à la création ou à la réinitialisation  c) oui, par le journal
 
 **Q8.** Que faire pour retirer l'accès d'une personne qui quitte l'ONEA ? a) supprimer le compte  b) désactiver le compte  c) changer son nom
 
@@ -93,7 +93,7 @@ a) Oui, pour rédiger les constats  b) Non, aucune  c) Oui, pour la recherche
 
 | Rôle | Q6 | Q7 | Q8 | Q9 | Q10 |
 |---|---|---|---|---|---|
-| Administrateur | b | a | b | b | b |
+| Administrateur | a | b | b | b | b |
 | RAI | b | c | a | b | a |
 | Auditeur | a | b | b | a | b |
 | Audité | b | b | a | a | b |

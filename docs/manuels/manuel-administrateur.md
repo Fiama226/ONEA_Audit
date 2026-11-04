@@ -1,8 +1,8 @@
 # Manuel de l'administrateur fonctionnel
 
 Plateforme d'audit interne ONEA — Département Audit Interne (DAI).
-Ce manuel s'adresse au compte au rôle « Administrateur ». L'administrateur gère les comptes
-utilisateurs, les gabarits de documents, leur numérotation, le mode de signature et, avec le RAI, la structure
+Ce manuel s'adresse au compte au rôle « Administrateur ». L'administrateur crée et gère les comptes
+utilisateurs (mots de passe temporaires, rôles, activation, délégation), les gabarits de documents, leur numérotation, le mode de signature et, avec le RAI, la structure
 du référentiel (directions et processus). Il n'accède à aucune mission.
 
 ## Sommaire
@@ -24,9 +24,27 @@ du référentiel (directions et processus). Il n'accède à aucune mission.
 
 ### 1.1 Se connecter
 
-1. Ouvrez la plateforme ; cliquez sur « Se connecter ».
-2. Saisissez votre identifiant et votre mot de passe sur la page d'authentification de l'ONEA.
+1. Ouvrez la plateforme : la page « Connexion » s'affiche.
+2. Saisissez votre « Identifiant ou courriel professionnel » et votre « Mot de passe », puis cliquez sur
+   « Se connecter ».
 3. Vous arrivez sur l'écran « Administration de la plateforme ».
+
+**Première connexion.** Le premier administrateur est créé par l'exploitant (commande `creer_administrateur`),
+qui lui remet un mot de passe temporaire valable 72 heures. À la première connexion, la plateforme affiche
+« Changer le mot de passe » : saisissez le mot de passe temporaire dans « Mot de passe actuel », choisissez un
+nouveau mot de passe d'au moins 12 caractères (évitez un mot de passe courant ou proche de votre identifiant),
+confirmez-le, puis « Changer le mot de passe ». Il est recommandé de disposer d'au moins **deux** administrateurs
+nominatifs, afin que l'un puisse réinitialiser le mot de passe de l'autre.
+
+**Mot de passe oublié.** « Mot de passe oublié ? » sur la page « Connexion », puis « Recevoir un code » : un code à
+6 chiffres, valable 10 minutes, est envoyé par courriel (le message affiché est le même que le compte existe ou
+non), puis « Saisir le code reçu », le code et un nouveau mot de passe, « Enregistrer le mot de passe ». Sans
+courriel, un autre administrateur réinitialise votre mot de passe (2.6) ; à défaut, l'exploitant relance
+`creer_administrateur` sur votre identifiant.
+
+**Connexion refusée.** « Identifiant ou mot de passe incorrect. » est le message unique, quelle qu'en soit la
+cause. Après cinq échecs consécutifs, le compte est bloqué 15 minutes. La session se ferme après 8 heures, ou
+30 minutes sans activité.
 
 [Capture à insérer : CAP-COM-01 — Page de connexion]
 [Capture à insérer : CAP-ADM-01 — Écran d'accueil de l'administrateur]
@@ -51,68 +69,122 @@ recherche globale n'est pas disponible pour votre profil.
 ### 1.3 Profil, aide, déconnexion
 
 Le menu utilisateur (en haut à droite) affiche votre nom, votre adresse et votre rôle « Administrateur » ;
-il propose « Se déconnecter ». Il n'existe pas d'entrée « Aide » à ce jour (voir « À confirmer »).
+il propose « Mon compte », « Changer mon mot de passe », « Visite guidée de la plateforme » et « Se déconnecter ».
+Dans « Mon compte », le réglage facultatif « Demander un code par courriel à chaque connexion » (désactivé par
+défaut) ajoute, après le mot de passe, l'étape « Vérification en deux étapes » (code à 6 chiffres reçu par courriel,
+valable 10 minutes). Vous seul pouvez l'activer, et seulement si l'envoi de courriels est configuré. Il n'existe pas
+d'entrée « Aide » à ce jour (voir « À confirmer »).
 
 ---
 
 ## 2. Gérer les utilisateurs
 
-Les comptes sont créés dans l'annuaire de l'ONEA (Keycloak). La plateforme les relie à la première
-connexion. Le **rôle** est attribué dans l'annuaire : il n'est pas modifiable dans la plateforme. Vous gérez
-la direction, la fonction et le matricule, l'activation et les imports.
+Les comptes sont créés et administrés dans la plateforme : il n'y a pas d'annuaire externe. Vous créez le compte
+d'un agent avec son **rôle** (obligatoire), un mot de passe temporaire lui est attribué, et vous gérez ensuite son
+profil (direction, fonction, matricule), son rôle, son activation, la réinitialisation de son mot de passe et les
+droits que vous lui déléguez. Ces actions sont tracées dans l'« Historique du compte ».
 
 ### 2.1 Consulter et filtrer la liste
 
 1. « Administration », puis « Utilisateurs » (adresse `/administration/utilisateurs`).
 2. Recherchez par nom, identifiant ou matricule.
-3. Filtrez par rôle, direction, statut (« Actifs », « Désactivés », « En attente de première connexion ») et
-   synchronisation Keycloak. « Effacer les filtres » réinitialise.
+3. Filtrez par rôle, direction et statut (« Actifs », « Désactivés », « En attente de première connexion »).
+   « Effacer les filtres » réinitialise.
 
 [Capture à insérer : CAP-ADM-03 — Liste des utilisateurs avec filtres]
 
-### 2.2 Renseigner le profil d'un utilisateur
+### 2.2 Créer un agent
+
+1. « Nouvel agent ». Saisissez l'« Identifiant » (lettres, chiffres et caractères @ . + - _ ; 150 caractères au plus)
+   et choisissez le « Rôle » (obligatoire). Le courriel professionnel, le nom, le prénom, le matricule, la direction
+   et la fonction peuvent être renseignés dès la création ou plus tard.
+2. Laissez cochée « Envoyer le courriel de bienvenue » pour que l'agent reçoive son identifiant et son mot de passe
+   temporaire par courriel (il faut alors une adresse de courriel et un envoi configuré).
+3. « Créer le compte ». La fenêtre « Compte créé » indique si le courriel est parti. **Sinon** (case décochée, envoi
+   impossible ou en échec), le « Mot de passe temporaire » s'affiche **une seule fois** : copiez-le (« Copier le mot
+   de passe ») ou notez-le et transmettez-le à l'agent par un moyen sûr, puis « J'ai noté le mot de passe, fermer ».
+   Il ne sera plus jamais affiché.
+4. Le mot de passe temporaire est valable 72 heures et doit être changé à la première connexion. Passé ce délai, il
+   faut le réinitialiser (2.6).
+
+Seul un administrateur peut attribuer le rôle « Administrateur » (« Seul un administrateur peut attribuer le rôle
+Administrateur. »).
+
+### 2.3 Renseigner le profil et changer le rôle
 
 1. Ouvrez la fiche : identité, origine, première connexion, rôle.
-2. Renseignez **Direction**, **Fonction** et **Matricule** (32 caractères au plus).
+2. Renseignez **Direction**, **Fonction** et **Matricule** (32 caractères au plus) ; le courriel professionnel se
+   corrige ici aussi, il sert à la récupération du compte.
 3. « Enregistrer le profil » : « Profil enregistré. »
-4. L'« Historique du compte » liste chaque modification (date, auteur, changements).
+4. Pour changer le rôle : bloc « Rôle », « Nouveau rôle », « Changer le rôle », puis « Confirmer le changement ». Les
+   accès de l'agent changent dès sa prochaine action. Le rôle Administrateur donne tous les droits : n'y recourez
+   qu'avec prudence.
+5. Votre propre rôle ne se modifie pas (« Vous ne pouvez pas modifier votre propre rôle. »), et le dernier
+   administrateur actif ne peut être ni désactivé ni rétrogradé.
+6. L'« Historique du compte » liste chaque modification (date, auteur, changements).
 
 La direction d'un audité est déterminante : elle décide des constats auxquels il peut répondre. Elle doit
 être celle de l'entité auditée ou sa direction de rattachement.
 
-Une fois saisis dans la plateforme, direction et fonction ne suivent plus l'annuaire ; « Rétablir la
-synchronisation » les rend de nouveau synchronisés.
-
 [Capture à insérer : CAP-ADM-04 — Fiche utilisateur, profil et historique]
 
-### 2.3 Désactiver et réactiver un compte
+### 2.4 Désactiver et réactiver un compte
 
 1. Fiche utilisateur, « Désactiver le compte ». Saisissez le motif (« Le motif est obligatoire. »), puis
    « Désactiver ».
-2. La plateforme indique l'état de la synchronisation avec l'annuaire (sessions fermées, ou échec avec
-   « Relancer la synchronisation »).
-3. L'utilisateur voit l'écran « Compte indisponible » à sa prochaine connexion.
-4. « Réactiver le compte » rétablit l'accès. Ne désactivez pas votre propre compte (comportement du serveur dans ce cas : à confirmer).
+2. L'utilisateur ne peut plus se connecter ni réinitialiser son mot de passe, et ses sessions ouvertes sont
+   fermées. Ses affectations et ses travaux sont conservés.
+3. « Réactiver le compte » rétablit l'accès. Vous ne pouvez pas désactiver votre propre compte, ni le dernier administrateur actif.
 
 [Capture à insérer : CAP-ADM-05 — Dialogue de désactivation d'un compte]
 
-### 2.4 Importer des comptes depuis un fichier CSV
+### 2.5 Importer des comptes depuis un fichier CSV
 
 1. « Importer un fichier CSV ». Le fichier est en UTF-8 avec les colonnes
-   `identifiant;email;prenom;nom;role;direction;fonction;matricule` ; taille maximale 1 Mo.
+   `identifiant;email;prenom;nom;role;direction;fonction;matricule` (`identifiant` et `role` obligatoires) ; séparateur
+   « ; » ou « , » ; 300 lignes et 1 Mo au plus.
 2. « Vérifier le fichier » : le rapport indique ce qui serait fait ; aucun compte n'est encore créé.
-3. « Importer » (le bouton n'est actif qu'après vérification) : « Import terminé », avec les comptes créés, mis à
-   jour et les lignes ignorées et leur motif.
-4. Le rôle « ADMIN » n'est jamais attribué par fichier : la ligne est ignorée.
+3. Laissez cochée « Envoyer le courriel de bienvenue à chaque compte créé » si l'envoi de courriels est configuré.
+4. « Importer » (le bouton n'est actif qu'après vérification) : « Import terminé », avec les comptes créés et les
+   lignes ignorées et leur motif. Chaque compte créé reçoit un mot de passe temporaire (72 heures).
+5. **Fichier des mots de passe.** Les mots de passe qu'aucun courriel n'a portés sont réunis dans un fichier :
+   « Télécharger le fichier des mots de passe ». Il ne peut être téléchargé qu'**une seule fois**, par vous qui avez
+   lancé l'import, dans les 24 heures ; il est ensuite détruit (« Ce fichier n'est plus disponible : il a déjà été
+   téléchargé ou a expiré »). Conservez-le en lieu sûr, transmettez chaque mot de passe à son titulaire par un moyen
+   sûr, puis supprimez le fichier. En cas de perte, réinitialisez les comptes concernés (2.6).
+6. Le rôle « ADMIN » n'est jamais attribué par fichier : la ligne est ignorée ; créez le compte, puis changez son rôle
+   (2.3).
 
 [Capture à insérer : CAP-ADM-06 — Import CSV, rapport de vérification]
 
-### 2.5 Importer depuis l'annuaire
+### 2.6 Réinitialiser un mot de passe ou désactiver le code de connexion
 
-1. « Importer depuis l'annuaire » ; saisissez au moins deux caractères (« Saisissez au moins 2 caractères. »).
-2. Cochez les comptes (jusqu'à 50) puis « Importer la sélection ». Les comptes déjà présents sont marqués
-   « Déjà présent ».
-3. Si l'annuaire est arrêté : « L'annuaire (Keycloak) est momentanément indisponible. »
+Agent qui a oublié son mot de passe sans pouvoir recevoir de courriel, compte bloqué, mot de passe temporaire
+expiré : après avoir vérifié l'identité de la personne,
+
+1. Ouvrez la fiche, bloc « Connexion et mot de passe », « Réinitialiser le mot de passe ».
+2. Laissez cochée « Envoyer le nouveau mot de passe par courriel » si l'agent a une adresse et si l'envoi est
+   configuré ; sinon le mot de passe temporaire s'affiche une seule fois à l'écran (voir 2.2).
+3. Le nouveau mot de passe temporaire (72 heures) remplace l'actuel, le compte est débloqué et **toutes ses sessions
+   sont fermées** ; l'agent choisira son mot de passe à la connexion suivante. Un compte désactivé ne peut pas être réinitialisé ; pour votre
+   propre compte, utilisez « Changer mon mot de passe ».
+4. Si l'agent a activé le code de connexion par courriel et ne le reçoit plus : « Désactiver le code de connexion ».
+   L'agent se connecte alors avec son seul mot de passe. Seul lui pourra le réactiver, dans « Mon compte ».
+   L'action est journalisée.
+
+### 2.7 Déléguer la gestion des comptes
+
+Depuis la fiche d'un agent, le bloc « Délégation de la gestion des comptes » vous permet de lui confier, par case à
+cocher, tout ou partie de quatre droits : « Créer des comptes », « Réinitialiser les mots de passe et désactiver le
+code de connexion », « Changer les rôles et la direction », « Désactiver et réactiver des comptes » ; puis
+« Enregistrer la délégation ». Les droits prennent effet immédiatement et se retirent à tout moment de la même façon.
+
+Limites : un délégué n'agit jamais sur un administrateur, sur un autre délégué ni sur son propre compte, ne peut pas
+attribuer le rôle Administrateur ni déléguer à un tiers ; l'import CSV et la gestion des délégations restent
+réservés aux administrateurs. **Attention** : un délégué qui peut « créer des comptes » ou « réinitialiser les mots
+de passe » reçoit des mots de passe temporaires et peut ainsi prendre la main sur n'importe quel compte non
+administrateur. Ne déléguez qu'à des agents de confiance, pour le besoin strict, et retirez le droit dès qu'il n'est
+plus utile.
 
 ---
 
@@ -193,11 +265,17 @@ Les cartographies, risques et objets auditables sont en lecture seule pour vous.
 ## 6. Règles à connaître
 
 - **Aucun accès aux missions** : vous ne voyez ni missions, ni constats, ni rapports, ni recommandations.
-- **Rôle et annuaire** : le rôle se règle dans l'annuaire ; la plateforme ne l'affecte pas.
+- **Mots de passe** : jamais visibles après coup. Un mot de passe temporaire ne s'affiche qu'une fois (création,
+  réinitialisation) ; le fichier d'un import ne se télécharge qu'une fois, sous 24 heures. Transmettez-les par un
+  moyen sûr, jamais par un canal partagé.
+- **Rôle** : attribué à la création, modifiable dans la fiche du compte ; seul un administrateur donne le rôle
+  Administrateur.
+- **Code de connexion par courriel** : seul le titulaire l'active ; vous (ou un délégué autorisé) pouvez le
+  désactiver s'il bloque l'agent.
 - **Motif obligatoire** pour désactiver un compte.
 - **Traçabilité** : chaque modification de compte est consignée dans l'« Historique du compte » ; rien n'est supprimé physiquement.
 - **Gabarits** : seule la version activée sert aux nouveaux documents ; les documents existants gardent leur version.
-- **Limites de débit** : les imports et la recherche d'annuaire sont limités ; au-delà : « Trop de requêtes : réessayez dans quelques instants. »
+- **Limites de débit** : les imports, les créations de comptes et les réinitialisations de mot de passe sont limités ; au-delà : « Trop de requêtes : réessayez dans quelques instants. »
 - **Journal d'audit global** : accessible par l'interface de programmation seulement (aucun écran) ; il est réservé au RAI et à l'administrateur.
 
 ---
@@ -210,8 +288,11 @@ Les cartographies, risques et objets auditables sont en lecture seule pour vous.
 | « Le motif est obligatoire. » | Motif de désactivation manquant. |
 | « Vérifiez d'abord le fichier » | L'import CSV exige la vérification préalable. |
 | « Le fichier dépasse 1 Mo. » | Fichier CSV trop gros. |
-| « Compte indisponible » | Ce que voit un utilisateur désactivé. |
-| « L'annuaire (Keycloak) est momentanément indisponible. » | Panne de l'annuaire ; réessayez plus tard. |
+| « Identifiant ou mot de passe incorrect. » | Message unique de la page de connexion (mot de passe erroné, compte inconnu, désactivé ou verrouillé) : réinitialisez le mot de passe de l'agent (2.6). |
+| « Si un compte correspond, un code vous a été envoyé. » | Réponse de « Mot de passe oublié », identique que le compte existe ou non. |
+| « Seul un administrateur peut attribuer le rôle Administrateur. » | Action réservée aux administrateurs. |
+| « Trop de demandes, réessayez plus tard. » / « Trop de requêtes : réessayez dans… » | Limite de débit atteinte. |
+| « Ce fichier n'est plus disponible… » | Fichier des mots de passe déjà téléchargé ou expiré (2.5). |
 | « La signature électronique n'est pas encore disponible sur cette plateforme. » | Mode électronique non installé. |
 
 ---
@@ -220,7 +301,11 @@ Les cartographies, risques et objets auditables sont en lecture seule pour vous.
 
 **Un audité ne peut pas répondre à un constat.** Vérifiez sa direction dans sa fiche (2.2) : elle doit correspondre à l'entité du constat.
 
-**Je ne trouve pas le rôle à modifier.** Il se règle dans l'annuaire, pas dans la plateforme.
+**Un agent n'arrive plus à se connecter.** Réinitialisez son mot de passe (2.6) ; s'il avait activé le code de connexion par courriel et ne le reçoit pas, désactivez-le aussi.
+
+**Je ne reçois pas le mot de passe temporaire d'un agent par courriel.** L'envoi est peut-être désactivé ou non configuré : décochez « Envoyer le courriel de bienvenue » et relevez le mot de passe affiché une fois à l'écran.
+
+**Je ne trouve pas le rôle à modifier.** Ouvrez la fiche du compte, bloc « Rôle » (2.3).
 
 **Puis-je supprimer un compte ?** Non : on le désactive (réversible).
 
@@ -230,14 +315,12 @@ Les cartographies, risques et objets auditables sont en lecture seule pour vous.
 
 ## 9. À confirmer
 
-- V-01 : rattachement dans l'annuaire des comptes de formation (`formation.rai`, etc.), qui n'y existent pas.
-- V-02 : l'annuaire fournit-il l'attribut « direction » ? Sinon, il faut le saisir (2.2).
 - V-04 : piste d'audit globale sans écran ; l'entrée « Consulter la piste d'audit » est annoncée pour plus tard.
 - V-08 : écran d'accueil d'attente.
-- V-10 : délai exact de prise en compte d'une désactivation sur une session ouverte.
 - V-15 : accès direct à l'interface de programmation du référentiel par un rôle sans droit d'écriture.
 - Emplacement exact de « Mode de signature » dans la page « Administration » (la route `/administration/signatures` existe ; le libellé du lien reste à relever à l'écran).
-- Procédure de création d'un compte dans l'annuaire : non décrite ici, elle relève de l'exploitation.
+- Procédures de ce manuel (création, réinitialisation, import, délégation) non encore rejouées sur l'application en fonctionnement.
+- Envoi des courriels (bienvenue, code de connexion, mot de passe oublié) : dépend du relais SMTP de l'ONEA, non encore fourni ; sans lui, appliquer les replis décrits en 2.2 et 2.6.
 
 ## 10. Glossaire
 
