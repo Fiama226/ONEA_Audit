@@ -26,6 +26,11 @@ class TypeNotification(models.TextChoices):
     MISSION_A_CLOTURER = "MISSION_A_CLOTURER", "Mission à clôturer"
     MISSION_CLOTUREE = "MISSION_CLOTUREE", "Mission clôturée"
     ACTION_IGNOREE = "ACTION_IGNOREE", "Action ignorée"
+    AFFECTATION_MISSION = "AFFECTATION_MISSION", "Affectation à une mission"
+    ORDRE_MISSION_EMIS = "ORDRE_MISSION_EMIS", "Ordre de mission émis"
+    REUNION_CONVOQUEE = "REUNION_CONVOQUEE", "Réunion convoquée"
+    REFERENTIEL_A_VALIDER = "REFERENTIEL_A_VALIDER", "Référentiel à valider"
+    CONSTAT_SOUMIS = "CONSTAT_SOUMIS", "Constat soumis"
 
 
 class Notification(BaseModel):

@@ -2635,6 +2635,11 @@ export const fr = {
     notifMISSION_A_CLOTURER: "Mission à clôturer",
     notifMISSION_CLOTUREE: "Mission clôturée",
     notifACTION_IGNOREE: "Action ignorée",
+    notifAFFECTATION_MISSION: "Affectation à une mission",
+    notifORDRE_MISSION_EMIS: "Ordre de mission émis",
+    notifREUNION_CONVOQUEE: "Réunion convoquée",
+    notifREFERENTIEL_A_VALIDER: "Référentiel à valider",
+    notifCONSTAT_SOUMIS: "Constat à traiter",
     // Types de résultat de recherche
     searchMISSION: "Missions",
     searchCONSTAT: "Constats",

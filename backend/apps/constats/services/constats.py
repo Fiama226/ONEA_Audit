@@ -18,6 +18,9 @@ from apps.core.exceptions import RegleMetierError
 from apps.core.services import appliquer, enregistrer, refuser, relire
 from apps.missions.acces import est_chef, peut_contribuer, peut_valider_travaux
 from apps.missions.models import Mission, RisqueMission
+from apps.missions.notifications import audites
+from apps.notifications.models import TypeNotification
+from apps.notifications.services import notifier
 from apps.signatures.services import empreinte, normaliser
 from apps.users.models import Role, User
 
@@ -390,6 +393,29 @@ def _evenement(constat: Constat, type_: str, by: User, avant: str, motif: str = 
         EvenementConstat.journaliser(constat, type_, par=by, motif=motif, statut_avant=avant)
 
 
+def _notifier_audites(constat: Constat, by: User) -> None:
+    """Prévient les audités de la direction concernée qu'un constat attend leur réponse."""
+    entite = constat.entite
+    if entite is None:
+        return
+    codes = {entite.code, getattr(entite.parent, "code", None)}
+    concernes = [
+        u
+        for u in audites(constat.mission)
+        if u.direction_code and u.direction_code in codes and u.pk != by.pk
+    ]
+    for user in concernes:
+        notifier(
+            [user],
+            type=TypeNotification.CONSTAT_SOUMIS,
+            titre="Un constat attend votre réponse",
+            message=f"{constat.mission.reference} : {constat.reference} — {constat.titre[:200]}.",
+            lien=f"/missions/{constat.mission_id}/constats/{constat.pk}",
+            objet=constat,
+            cle=f"CONSTAT_SOUMIS:{constat.pk}:{constat.cycle}:{user.pk}",
+        )
+
+
 @transaction.atomic
 def soumettre_constat(constat: Constat, *, by: User) -> Constat:
     _exiger_soumetteur(by, constat.mission)
@@ -411,6 +437,7 @@ def soumettre_constat(constat: Constat, *, by: User) -> Constat:
     )
     enregistrer(constat, by=by)
     _evenement(constat, TypeEvenementConstat.SOUMIS, by, avant)
+    _notifier_audites(constat, by)
     return constat
 
 

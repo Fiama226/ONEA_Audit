@@ -29,6 +29,7 @@ from ..models import (
     StatutMission,
     TypeEvenementEtape,
 )
+from ..notifications import notifier_ordre_emis
 from . import LOCK_REFERENCE_MISSION, aujourd_hui
 from .declarations import nom_complet
 
@@ -312,6 +313,7 @@ def emettre_ordre_mission(
     enregistrer(etape, by=by)
     with actor_scope(by):
         EvenementEtape.journaliser(etape, TypeEvenementEtape.TERMINEE, par=by, statut_avant=avant)
+    notifier_ordre_emis(mission, by=by)
     return confirmation
 
 

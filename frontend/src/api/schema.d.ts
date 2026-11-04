@@ -9496,9 +9496,14 @@ export interface components {
          *     * `MISSION_A_CLOTURER` - Mission à clôturer
          *     * `MISSION_CLOTUREE` - Mission clôturée
          *     * `ACTION_IGNOREE` - Action ignorée
+         *     * `AFFECTATION_MISSION` - Affectation à une mission
+         *     * `ORDRE_MISSION_EMIS` - Ordre de mission émis
+         *     * `REUNION_CONVOQUEE` - Réunion convoquée
+         *     * `REFERENTIEL_A_VALIDER` - Référentiel à valider
+         *     * `CONSTAT_SOUMIS` - Constat soumis
          * @enum {string}
          */
-        TypeNotificationEnum: "SUIVI_OUVERT" | "ACTION_DECLAREE" | "ACTION_VERIFIEE" | "ACTION_REJETEE" | "ACTION_CLOTUREE" | "ABANDON_PROPOSE" | "ABANDON_DECIDE" | "REPORT_DEMANDE" | "REPORT_DECIDE" | "RESPONSABLE_CHANGE" | "RELANCE" | "MISSION_A_CLOTURER" | "MISSION_CLOTUREE" | "ACTION_IGNOREE";
+        TypeNotificationEnum: "SUIVI_OUVERT" | "ACTION_DECLAREE" | "ACTION_VERIFIEE" | "ACTION_REJETEE" | "ACTION_CLOTUREE" | "ABANDON_PROPOSE" | "ABANDON_DECIDE" | "REPORT_DEMANDE" | "REPORT_DECIDE" | "RESPONSABLE_CHANGE" | "RELANCE" | "MISSION_A_CLOTURER" | "MISSION_CLOTUREE" | "ACTION_IGNOREE" | "AFFECTATION_MISSION" | "ORDRE_MISSION_EMIS" | "REUNION_CONVOQUEE" | "REFERENTIEL_A_VALIDER" | "CONSTAT_SOUMIS";
         /**
          * @description * `PRISE_CONNAISSANCE` - Questionnaire de prise de connaissance
          *     * `QCI` - Questionnaire de contrôle interne

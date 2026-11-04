@@ -415,3 +415,36 @@ def test_transitions_historisees_avec_motif(rai: User, cartographie_validee: Car
     assert any(c.get("motif_annulation", [None, None])[1] == "Abandon" for c in changements)
     assert any(c.get("statut", [None, None])[1] == StatutMission.SUSPENDUE for c in changements)
     assert rai in {e.actor for e in entrees}
+
+
+def _types_recus(user: User) -> list[str]:
+    from apps.notifications.models import Notification
+
+    return list(Notification.objects.filter(destinataire=user).values_list("type", flat=True))
+
+
+def test_emettre_ordre_notifie_l_equipe_et_les_audites(rai: User, mission_a_ordre: Mission):
+    audite = make_user(Role.AUDITE)
+    auditeur = make_user(Role.AUDITEUR)
+    affecter(mission_a_ordre, utilisateur=audite, role_mission="AUDITE", by=rai)
+    affecter(mission_a_ordre, utilisateur=auditeur, role_mission="AUDITEUR", by=rai)
+    # L'audité n'est pas encore concerné : la mission lui est invisible tant que l'ordre n'est
+    # pas émis, alors que l'auditeur est prévenu dès son affectation.
+    assert _types_recus(audite) == []
+    assert _types_recus(auditeur) == ["AFFECTATION_MISSION"]
+    emettre_ordre_mission(mission_a_ordre, by=rai)
+    assert _types_recus(audite) == ["ORDRE_MISSION_EMIS"]
+    assert "ORDRE_MISSION_EMIS" in _types_recus(auditeur)
+    assert "ORDRE_MISSION_EMIS" not in _types_recus(rai)  # l'émetteur n'est pas notifié
+    from apps.notifications.models import Notification
+
+    notification = Notification.objects.get(destinataire=audite)
+    assert notification.lien == f"/missions/{mission_a_ordre.pk}"
+    assert mission_a_ordre.reference in notification.message
+
+
+def test_affecter_un_audite_apres_l_ordre_le_notifie_aussitot(rai: User, mission_a_ordre: Mission):
+    emettre_ordre_mission(mission_a_ordre, by=rai)
+    audite = make_user(Role.AUDITE)
+    affecter(mission_a_ordre, utilisateur=audite, role_mission="AUDITE", by=rai)
+    assert _types_recus(audite) == ["ORDRE_MISSION_EMIS"]

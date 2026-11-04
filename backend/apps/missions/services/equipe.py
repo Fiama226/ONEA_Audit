@@ -15,6 +15,7 @@ from ..models import (
     RoleMission,
     StatutMission,
 )
+from ..notifications import notifier_affectation
 
 MSG_INTERVENANT = "Un intervenant doit avoir le rôle Auditeur interne."
 MSG_AUDITE = "Un audité doit avoir le rôle Audité."
@@ -120,6 +121,7 @@ def affecter(
     enregistrer(affectation, by=by, creation=True)
     if role_mission in ROLES_INTERVENANTS:
         _creer_declaration(affectation, by)
+    notifier_affectation(affectation, by=by)
     return affectation
 
 

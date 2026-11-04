@@ -36,8 +36,10 @@ from ..models import (
     TypeEvenementEtape,
     TypeMission,
 )
+from ..notifications import notifier_referentiel_a_valider
 from .livrables import declarations_en_attente, livrables_manquants
 
+ETAPE_REFERENTIEL = 6  # « Valider le référentiel d'audit » : l'avis des audités est attendu
 MSG_MOTIF = "Le motif est obligatoire."
 MSG_DECLARATION = "Confirmez votre déclaration d'indépendance avant de contribuer à la mission."
 MSG_DROIT = "Vous n'avez pas le droit d'effectuer cette action."
@@ -329,6 +331,8 @@ def demarrer_etape(etape: EtapeMission, *, by: User, derogation: str = "") -> Et
         etape.date_debut_reelle = _aujourd_hui()
     enregistrer(etape, by=by)
     _journaliser(etape, TypeEvenementEtape.DEMARREE, by=by, motif=motif_derogation, avant=avant)
+    if etape.numero == ETAPE_REFERENTIEL:
+        notifier_referentiel_a_valider(mission, by=by)
     return etape
 
 

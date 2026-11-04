@@ -19,7 +19,8 @@ from apps.constats.services.constats import (
 )
 from apps.core.exceptions import RegleMetierError
 from apps.missions.exceptions import EtapeCloseError, MissionFigeeError
-from apps.missions.models import Mission, StatutEtape, StatutMission
+from apps.missions.models import Mission, RoleMission, StatutEtape, StatutMission
+from apps.notifications.models import Notification
 from apps.signatures.services import empreinte, normaliser
 from apps.users.models import Role, User
 from tests.constats.factories import fiche_anomalie
@@ -333,3 +334,19 @@ def test_droits_contribuer(
 ) -> None:
     with pytest.raises(PermissionDenied):
         creer_constat(mission_en_xiv, titre="T", by=audite_affecte, **champs)
+
+
+def test_soumettre_notifie_les_audites_de_l_entite(
+    mission_en_xiv: Mission, chef: User, champs: dict[str, object]
+) -> None:
+    entite = champs["entite"]
+    concerne = make_user(Role.AUDITE, direction_code=entite.code)  # type: ignore[attr-defined]
+    autre = make_user(Role.AUDITE, direction_code="ZZZ")
+    affecter(mission_en_xiv, concerne, RoleMission.AUDITE)
+    affecter(mission_en_xiv, autre, RoleMission.AUDITE)
+    c = _complet(mission_en_xiv, chef, champs)
+    soumettre_constat(c, by=chef)
+    recues = Notification.objects.filter(destinataire=concerne, type="CONSTAT_SOUMIS")
+    assert recues.count() == 1
+    assert recues[0].lien == f"/missions/{mission_en_xiv.pk}/constats/{c.pk}"
+    assert not Notification.objects.filter(destinataire=autre).exists()
