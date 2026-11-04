@@ -127,6 +127,8 @@ def test_tableau_audite_constats_a_repondre_cycle_courant(
         (bientot.pk, False, None),
     ]
     assert [d["demande_id"] for d in tableau["mes_demandes_report"]] == [demande.pk]
+    # La ligne nomme l'action, pas seulement la mission (deux demandes d'une mission se distinguent).
+    assert tableau["mes_demandes_report"][0]["libelle"] == bientot.action.libelle
 
 
 def test_tableau_audite_refuse_les_autres_roles(db: None) -> None:

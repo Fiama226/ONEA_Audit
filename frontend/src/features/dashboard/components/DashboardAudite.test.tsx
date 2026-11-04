@@ -39,6 +39,7 @@ const full = {
       demande_id: "d1",
       suivi_id: S,
       reference: "MI-2026-001",
+      libelle: "Diffuser la procédure",
       echeance_actuelle: "2026-10-27",
       nouvelle_echeance: "2026-11-30",
       statut: "EN_ATTENTE",
@@ -47,6 +48,14 @@ const full = {
 };
 
 describe("DashboardAudite", () => {
+  it("nomme l'action de chaque demande de report, avec sa mission", async () => {
+    server.use(http.get(URL_, () => HttpResponse.json(full)));
+    renderWithAuth(<DashboardAudite />, "AUDITE");
+    const link = await screen.findByRole("link", { name: /Diffuser la procédure/ });
+    expect(link).toHaveAttribute("href", `/recommandations/actions/${S}`);
+    expect(link).toHaveTextContent("MI-2026-001");
+  });
+
   it("affiche constats, actions triées par échéance et retard en texte", async () => {
     server.use(http.get(URL_, () => HttpResponse.json(full)));
     const { container } = renderWithAuth(<DashboardAudite />, "AUDITE");

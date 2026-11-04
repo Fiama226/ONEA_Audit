@@ -308,6 +308,7 @@ def mes_demandes_report(user: User) -> list[dict[str, Any]]:
         .values(
             "pk",
             "suivi_id",
+            "suivi__action__libelle",
             "mission__reference",
             "echeance_actuelle",
             "nouvelle_echeance",
@@ -319,6 +320,7 @@ def mes_demandes_report(user: User) -> list[dict[str, Any]]:
             "demande_id": ligne["pk"],
             "suivi_id": ligne["suivi_id"],
             "reference": ligne["mission__reference"],
+            "libelle": ligne["suivi__action__libelle"],
             "echeance_actuelle": ligne["echeance_actuelle"],
             "nouvelle_echeance": ligne["nouvelle_echeance"],
             "statut": ligne["statut"],

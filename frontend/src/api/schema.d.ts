@@ -6487,6 +6487,7 @@ export interface components {
             /** Format: uuid */
             suivi_id: string;
             reference: string;
+            libelle: string;
             /** Format: date */
             echeance_actuelle: string;
             /** Format: date */

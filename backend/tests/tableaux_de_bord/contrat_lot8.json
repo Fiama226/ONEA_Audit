@@ -102,6 +102,7 @@
       {
         "demande_id": "str",
         "echeance_actuelle": "str",
+        "libelle": "str",
         "nouvelle_echeance": "str",
         "reference": "str",
         "statut": "str",
@@ -223,6 +224,7 @@
     "MaDemandeReportSerializer": [
       "demande_id",
       "echeance_actuelle",
+      "libelle",
       "nouvelle_echeance",
       "reference",
       "statut",

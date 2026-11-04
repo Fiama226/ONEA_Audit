@@ -101,7 +101,8 @@ export function DashboardAudite() {
               key: r.demande_id,
               cells: [
                 <Link key="a" className={LINK} to={`/recommandations/actions/${r.suivi_id}`}>
-                  {r.reference}
+                  {r.libelle}
+                  <span className="block text-xs text-text-muted">{r.reference}</span>
                 </Link>,
                 <DueDateCell key="c" echeance={r.echeance_actuelle} />,
                 <DueDateCell key="n" echeance={r.nouvelle_echeance} />,
