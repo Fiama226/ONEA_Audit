@@ -1,15 +1,19 @@
 import type { ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { isApiError } from "@/api/errors";
+import { useAccountRights } from "@/auth/useAccountRights";
+import { useRole } from "@/auth/useRole";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fr } from "@/i18n/fr";
-import { formatDateTime } from "@/lib/dates";
+import { formatDate, formatDateTime } from "@/lib/dates";
 import { useUserAccount } from "../api";
 import { AccountStatusCard } from "../components/AccountStatusCard";
+import { DelegationCard } from "../components/DelegationCard";
 import { ProfileForm } from "../components/ProfileForm";
 import { RoleCard } from "../components/RoleCard";
+import { SecurityCard } from "../components/SecurityCard";
 import { UserHistory } from "../components/UserHistory";
 import { UserStatusBadge } from "../components/UserStatusBadge";
 import { ORIGINE_LABELS } from "../labels";
@@ -23,6 +27,9 @@ export function UserDetailPage() {
   const params = useParams();
   const id = Number(params.id);
   const query = useUserAccount(id);
+  const { isAdmin } = useAccountRights();
+  // Le journal d'audit est lisible par l'administrateur et le RAI seulement (403 sinon).
+  const canReadHistory = useRole().is("ADMIN", "RAI");
 
   if (query.isPending) {
     return (
@@ -68,8 +75,11 @@ export function UserDetailPage() {
       <IdentityCard account={account} />
       <RoleCard account={account} />
       <ProfileForm account={account} />
+      <SecurityCard account={account} />
       <AccountStatusCard account={account} />
-      <UserHistory key={account.id} userId={account.id} />
+      {/* Délégation : administrateur seulement, jamais sur un compte administrateur. */}
+      {isAdmin && account.role !== "ADMIN" && <DelegationCard key={account.id} account={account} />}
+      {canReadHistory && <UserHistory key={account.id} userId={account.id} />}
     </div>
   );
 }
@@ -82,13 +92,9 @@ function IdentityCard({ account }: { account: CompteUtilisateur }) {
       </CardHeader>
       <CardContent>
         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-          <Item label={t.firstName}>{account.first_name}</Item>
-          <Item label={t.lastName}>{account.last_name}</Item>
-          <Item label={t.email}>{account.email}</Item>
-          <Item label={t.directory}>
-            {account.keycloak_lie ? t.directoryLinked : t.directoryNotLinked}
-          </Item>
+          <Item label={t.username}>{account.username}</Item>
           <Item label={t.origin}>{ORIGINE_LABELS[account.origine]}</Item>
+          <Item label={t.created}>{formatDate(account.date_joined)}</Item>
           <Item label={t.firstLogin}>
             {account.premiere_connexion_le
               ? `${t.firstLoginAt}${formatDateTime(account.premiere_connexion_le)}`

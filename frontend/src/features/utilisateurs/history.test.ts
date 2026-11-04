@@ -50,7 +50,7 @@ describe("describeChanges", () => {
 
   it("translates roles", () => {
     expect(describeChanges(entry({ role: ["AUDITE", "AUDITEUR"] }))).toEqual([
-      { field: "role", label: "Rôle (annuaire)", before: "Audité", after: "Auditeur" },
+      { field: "role", label: "Rôle", before: "Audité", after: "Auditeur" },
     ]);
   });
 

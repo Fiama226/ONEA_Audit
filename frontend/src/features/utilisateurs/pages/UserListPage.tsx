@@ -1,4 +1,3 @@
-import { TriangleAlert } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
@@ -6,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { fr } from "@/i18n/fr";
 import { formatDate } from "@/lib/dates";
 import { useDirectionOptions, useUserAccounts, type UserAccountParams } from "../api";
-import { ImportActions } from "../components/ImportActions";
+import { UserListActions } from "../components/UserListActions";
 import { SEARCH_MAX_LENGTH, UserFilters, type UserFilterValues } from "../components/UserFilters";
 import { UserStatusBadge } from "../components/UserStatusBadge";
 import { directionLabel, ROLE_LABELS } from "../labels";
-import type { CompteUtilisateurListe, KeycloakSyncStatut, Role } from "../types";
+import type { CompteUtilisateurListe, Role } from "../types";
 
 const PAGE_SIZE = 25;
 const DEFAULT_ORDERING = "last_name";
@@ -18,7 +17,6 @@ const t = fr.utilisateurs.liste;
 
 const ROLES = Object.keys(ROLE_LABELS);
 const STATUSES = ["actif", "inactif", "attente"];
-const SYNCS = ["ECHEC", "EN_ATTENTE"];
 const SORTABLE = ["last_name", "role", "direction_code", "is_active", "date_joined"];
 
 /** Valeur d'URL retenue si elle appartient à la liste, sinon vide (jamais envoyée à l'API). */
@@ -26,7 +24,7 @@ function oneOf(value: string | null, allowed: string[]): string {
   return value !== null && allowed.includes(value) ? value : "";
 }
 
-const FILTER_KEYS = ["q", "role", "statut", "direction", "sync"] as const;
+const FILTER_KEYS = ["q", "role", "statut", "direction"] as const;
 
 const columns: DataTableColumn<CompteUtilisateurListe>[] = [
   {
@@ -47,11 +45,7 @@ const columns: DataTableColumn<CompteUtilisateurListe>[] = [
   {
     id: "role",
     header: t.colRole,
-    cell: ({ row }) => {
-      const { role, origine, en_attente_connexion } = row.original;
-      const provisional = origine === "CSV" && en_attente_connexion;
-      return `${ROLE_LABELS[role]}${provisional ? ` ${t.provisional}` : ""}`;
-    },
+    cell: ({ row }) => ROLE_LABELS[row.original.role],
   },
   {
     id: "direction_code",
@@ -68,18 +62,10 @@ const columns: DataTableColumn<CompteUtilisateurListe>[] = [
     id: "is_active",
     header: t.colStatus,
     cell: ({ row }) => (
-      <div className="flex flex-wrap items-center gap-2">
-        <UserStatusBadge
-          active={row.original.is_active}
-          pendingFirstLogin={row.original.en_attente_connexion}
-        />
-        {row.original.keycloak_sync_statut === "ECHEC" && (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
-            <TriangleAlert className="size-3.5" aria-hidden />
-            {t.syncFailedBadge}
-          </span>
-        )}
-      </div>
+      <UserStatusBadge
+        active={row.original.is_active}
+        pendingFirstLogin={row.original.en_attente_connexion}
+      />
     ),
   },
   {
@@ -98,7 +84,6 @@ function toApiParams(f: UserFilterValues, page: number, ordering: string): UserA
   if (f.statut === "inactif") params.is_active = false;
   if (f.statut === "attente") params.en_attente_connexion = true;
   if (f.direction) params.direction_code = f.direction;
-  if (f.sync) params.keycloak_sync = f.sync as KeycloakSyncStatut;
   return params;
 }
 
@@ -109,7 +94,6 @@ export function UserListPage() {
     role: oneOf(search.get("role"), ROLES),
     statut: oneOf(search.get("statut"), STATUSES),
     direction: search.get("direction") ?? "",
-    sync: oneOf(search.get("sync"), SYNCS),
   };
   const rawPage = Number(search.get("page"));
   const page = Number.isInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
@@ -198,7 +182,7 @@ export function UserListPage() {
           </p>
         </div>
         <div className="print:hidden">
-          <ImportActions />
+          <UserListActions />
         </div>
       </div>
       <UserFilters

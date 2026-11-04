@@ -123,6 +123,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applyStep],
   );
 
+  const updateMe = useCallback((changes: Partial<Me>) => {
+    setMe((current) => (current ? { ...current, ...changes, role: current.role } : current));
+  }, []);
+
   const logout = useCallback(async () => {
     // Fin de session côté serveur, attendue au plus 2 s en tout (jeton CSRF compris) ; un échec
     // ou une lenteur n'empêche jamais la déconnexion locale. Après le délai, la requête est
@@ -158,8 +162,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       changePassword,
       logout,
       retry: init,
+      updateMe,
     }),
     [
+      updateMe,
       status,
       me,
       etape,

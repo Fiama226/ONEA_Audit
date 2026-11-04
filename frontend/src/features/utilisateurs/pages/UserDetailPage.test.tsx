@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import { axe } from "vitest-axe";
 import { API_URL, server } from "@/test/msw";
-import { anAccount, renderAdministration } from "../testUtils";
+import { ALL_ACTIONS, anAccount, renderAdministration } from "../testUtils";
 import type { CompteUtilisateur } from "../types";
 
 const NO_CONTRAST = { rules: { "color-contrast": { enabled: false } } };
@@ -39,6 +39,16 @@ function serve(initial: CompteUtilisateur) {
   };
   server.use(
     http.get(ACCOUNT_URL, () => HttpResponse.json(state.account)),
+    http.get(`${ACCOUNT_URL}delegation/`, () =>
+      HttpResponse.json({
+        creer: false,
+        reinitialiser: false,
+        roles: false,
+        desactiver: false,
+        accorde_par: null,
+        accorde_le: null,
+      }),
+    ),
     http.get(`${API_URL}/api/v1/audit-log/`, () => HttpResponse.json(paged([]))),
     http.get(`${API_URL}/api/v1/directions/`, () => HttpResponse.json(paged([DAI]))),
   );
@@ -49,32 +59,35 @@ function open(path = "/administration/utilisateurs/7") {
   return renderAdministration(path);
 }
 
-describe("UserDetailPage", () => {
-  it("shows identity, read-only role and a provisional role notice", async () => {
-    serve(anAccount({ premiere_connexion_le: null }));
-    open();
-    expect(await screen.findByRole("heading", { name: "Landry Kabore" })).toBeInTheDocument();
-    expect(screen.getByText("Lié à l'annuaire")).toBeInTheDocument();
-    expect(screen.getByText("Import CSV")).toBeInTheDocument();
-    expect(screen.getByText("Jamais connecté")).toBeInTheDocument();
-    expect(screen.getByText(/Rôle provisoire saisi à l'import/)).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: "Rôle" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("textbox", { name: "Rôle" })).not.toBeInTheDocument();
+const ACTIVE = () => anAccount();
+const DEACTIVATED = (extra: Partial<CompteUtilisateur> = {}) =>
+  anAccount({
+    is_active: false,
+    desactive_le: "2026-10-28T08:00:00Z",
+    desactive_par: { id: 1, username: "admin", nom_complet: "Admin Plateforme" },
+    motif_desactivation: "Départ",
+    actions: {
+      ...ALL_ACTIONS,
+      desactiver: false,
+      reactiver: true,
+      reinitialiser_mot_de_passe: false,
+    },
+    ...extra,
   });
 
-  it("shows the first login date and not-linked state", async () => {
-    serve(
-      anAccount({
-        keycloak_lie: false,
-        role_provisoire: false,
-        premiere_connexion_le: "2026-10-28T08:00:00Z",
-      }),
-    );
+describe("UserDetailPage", () => {
+  it("shows identity, origin and first login", async () => {
+    serve(anAccount({ origine: "CSV", premiere_connexion_le: null }));
     open();
-    expect(await screen.findByText("Pas encore lié à l'annuaire")).toBeInTheDocument();
-    expect(screen.getByText("Première connexion : 28/10/2026 08:00")).toBeInTheDocument();
-    expect(screen.queryByText(/Rôle provisoire saisi/)).not.toBeInTheDocument();
-    expect(screen.getByText(/rien à synchroniser dans Keycloak/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Landry Kabore" })).toBeInTheDocument();
+    expect(screen.getByText("Import CSV")).toBeInTheDocument();
+    expect(screen.getByText("Jamais connecté")).toBeInTheDocument();
+  });
+
+  it("shows the first login date", async () => {
+    serve(anAccount({ premiere_connexion_le: "2026-10-28T08:00:00Z" }));
+    open();
+    expect(await screen.findByText("Première connexion : 28/10/2026 08:00")).toBeInTheDocument();
   });
 
   it("shows a not found message with a link back to the list", async () => {
@@ -151,62 +164,12 @@ describe("UserDetailPage", () => {
     expect(matricule).toHaveAccessibleDescription("Matricule déjà utilisé.");
   });
 
-  it("offers to restore directory sync only for a locally managed profile", async () => {
-    serve(anAccount({ profil_gere_localement: false }));
-    open();
-    expect(await screen.findByText(/proviennent de l'annuaire/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Rétablir la synchronisation" })).toBeNull();
-  });
-
-  it("restores directory sync with a POST", async () => {
-    const { state, record } = serve(anAccount());
-    server.use(
-      http.post(`${ACCOUNT_URL}resync-profile/`, async ({ request }) => {
-        await record(request);
-        state.account = anAccount({ profil_gere_localement: false });
-        return HttpResponse.json(state.account);
-      }),
-    );
-    const user = userEvent.setup();
-    open();
-    expect(await screen.findByText(/ne sont plus mises à jour depuis l'annuaire/)).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Rétablir la synchronisation" }));
-    expect(await screen.findByText(/proviennent de l'annuaire/)).toBeInTheDocument();
-    expect(state.requests[0]?.url).toBe("/api/v1/user-accounts/7/resync-profile/");
-  });
-
   it("hides the deactivate button when the action is not allowed", async () => {
-    serve(anAccount({ is_active: true, actions: { ...anAccount().actions, desactiver: false } }));
+    serve(anAccount({ actions: { ...ALL_ACTIONS, desactiver: false } }));
     open();
     await screen.findByRole("heading", { name: "Landry Kabore" });
     expect(screen.queryByRole("button", { name: "Désactiver le compte" })).not.toBeInTheDocument();
   });
-
-  const ACTIVE = () =>
-    anAccount({
-      is_active: true,
-      desactive_le: null,
-      desactive_par: null,
-      motif_desactivation: "",
-      keycloak_sync: { ...anAccount().keycloak_sync, statut: "A_JOUR", erreur: "", manuel: false },
-      keycloak_sync_statut: "A_JOUR",
-      actions: { ...anAccount().actions, desactiver: true, reactiver: false },
-    });
-  const DEACTIVATED = (statut: "A_JOUR" | "ECHEC" | "EN_ATTENTE", extra = {}) =>
-    anAccount({
-      is_active: false,
-      keycloak_sync: {
-        ...anAccount().keycloak_sync,
-        statut,
-        erreur: statut === "ECHEC" ? "Keycloak a refusé l'opération (HTTP 403)." : "",
-        manuel: statut === "ECHEC",
-      },
-      keycloak_sync_statut: statut,
-      desactive_le: "2026-10-28T08:00:00Z",
-      desactive_par: { id: 1, username: "admin", nom_complet: "Admin Plateforme" },
-      motif_desactivation: "Départ",
-      ...extra,
-    });
 
   it("requires a reason before deactivating", async () => {
     const { state, record } = serve(ACTIVE());
@@ -256,7 +219,7 @@ describe("UserDetailPage", () => {
     server.use(
       http.post(`${ACCOUNT_URL}deactivate/`, async ({ request }) => {
         await record(request);
-        state.account = DEACTIVATED("A_JOUR");
+        state.account = DEACTIVATED();
         return HttpResponse.json(state.account);
       }),
     );
@@ -267,55 +230,14 @@ describe("UserDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "Désactiver" }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
     expect(state.requests[0]?.body).toEqual({ motif: "Départ" });
-    expect(await screen.findByText("Compte désactivé dans la plateforme.")).toBeInTheDocument();
+    expect(await screen.findByText("Compte désactivé.")).toBeInTheDocument();
     expect(
       screen.getByText("Désactivé le 28/10/2026 08:00 par Admin Plateforme — Motif : Départ"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Keycloak : compte désactivé, sessions fermées")).toBeInTheDocument();
-  });
-
-  it("shows the Keycloak failure after deactivation and retries manually", async () => {
-    const { state, record } = serve(ACTIVE());
-    server.use(
-      http.post(`${ACCOUNT_URL}deactivate/`, () => {
-        state.account = DEACTIVATED("ECHEC");
-        return HttpResponse.json(state.account);
-      }),
-      http.post(`${ACCOUNT_URL}retry-keycloak-sync/`, async ({ request }) => {
-        await record(request);
-        state.account = DEACTIVATED("A_JOUR");
-        return HttpResponse.json(state.account);
-      }),
-    );
-    const user = userEvent.setup();
-    open();
-    await user.click(await screen.findByRole("button", { name: "Désactiver le compte" }));
-    await user.type(await screen.findByRole("textbox", { name: "Motif" }), "Départ");
-    await user.click(screen.getByRole("button", { name: "Désactiver" }));
-    const alert = await screen.findByText(/La synchronisation avec Keycloak a échoué/);
-    expect(alert).toHaveTextContent("Keycloak a refusé l'opération (HTTP 403).");
-    expect(alert).toHaveTextContent("L'accès à la plateforme est néanmoins coupé.");
-    expect(screen.getByText(/relancez la synchronisation manuellement/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Relancer la synchronisation" }));
-    expect(
-      await screen.findByText("Keycloak : compte désactivé, sessions fermées"),
-    ).toBeInTheDocument();
-    expect(state.requests[0]?.url).toBe("/api/v1/user-accounts/7/retry-keycloak-sync/");
-  });
-
-  it("shows a pending sync without a retry button when not allowed", async () => {
-    serve(
-      DEACTIVATED("EN_ATTENTE", {
-        actions: { ...anAccount().actions, relancer_synchro_keycloak: false },
-      }),
-    );
-    open();
-    expect(await screen.findByText(/Synchronisation avec Keycloak en attente/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Relancer la synchronisation" })).toBeNull();
   });
 
   it("reactivates an account", async () => {
-    const { state, record } = serve(DEACTIVATED("A_JOUR"));
+    const { state, record } = serve(DEACTIVATED());
     server.use(
       http.post(`${ACCOUNT_URL}reactivate/`, async ({ request }) => {
         await record(request);
@@ -328,30 +250,35 @@ describe("UserDetailPage", () => {
     await user.click(await screen.findByRole("button", { name: "Réactiver le compte" }));
     await screen.findByRole("alertdialog", { name: "Réactiver le compte de Landry Kabore ?" });
     await user.click(screen.getByRole("button", { name: "Réactiver" }));
-    expect(await screen.findByText("Compte réactivé dans la plateforme.")).toBeInTheDocument();
+    expect(await screen.findByText("Compte réactivé.")).toBeInTheDocument();
     expect(screen.getByText("Compte actif")).toBeInTheDocument();
     expect(state.requests).toHaveLength(1);
   });
 
   it("marks every action button as hidden when printing", async () => {
-    serve(anAccount());
+    serve(
+      anAccount({ otp_connexion_actif: true, actions: { ...ALL_ACTIONS, desactiver_otp: true } }),
+    );
     open();
     await screen.findByRole("heading", { name: "Landry Kabore" });
     for (const name of [
       "Enregistrer le profil",
-      "Rétablir la synchronisation",
-      "Relancer la synchronisation",
-      "Réactiver le compte",
+      "Changer le rôle",
+      "Réinitialiser le mot de passe",
+      "Désactiver le code de connexion",
+      "Désactiver le compte",
+      "Enregistrer la délégation",
     ]) {
-      expect(screen.getByRole("button", { name }).closest(".print\\:hidden")).not.toBeNull();
+      const button = await screen.findByRole("button", { name });
+      expect(button.closest(".print\\:hidden"), name).not.toBeNull();
     }
   });
 
-  it("has no accessibility violation, dialog and alert included", async () => {
-    serve(DEACTIVATED("ECHEC", { actions: { ...anAccount().actions, desactiver: true } }));
+  it("has no accessibility violation, dialog included", async () => {
+    serve(DEACTIVATED({ actions: { ...ALL_ACTIONS, desactiver: true } }));
     const user = userEvent.setup();
     const { container } = open();
-    await screen.findByRole("alert");
+    await screen.findByRole("group", { name: "Droits délégués" });
     const page = await axe(container, NO_CONTRAST);
     expect(page.violations).toEqual([]);
     await user.click(screen.getByRole("button", { name: "Désactiver le compte" }));
@@ -359,19 +286,12 @@ describe("UserDetailPage", () => {
     const modal = await axe(dialog, NO_CONTRAST);
     expect(modal.violations).toEqual([]);
   });
+
   it("selects a direction that is in the referential once the options arrive", async () => {
     serve(anAccount({ direction_code: "DAI", direction_libelle: null }));
     open();
     await screen.findByRole("option", { name: "DAI — Département Audit Interne" });
     expect(screen.getByRole("combobox", { name: "Direction" })).toHaveValue("DAI");
-  });
-
-  it("offers the manual retry on a pending sync when allowed", async () => {
-    serve(DEACTIVATED("EN_ATTENTE"));
-    open();
-    expect(
-      await screen.findByRole("button", { name: "Relancer la synchronisation" }),
-    ).toBeVisible();
   });
 
   it("shows a 400 motif error under the field", async () => {
@@ -395,7 +315,7 @@ describe("UserDetailPage", () => {
   });
 
   it("shows a reactivation error and clears it when the dialog is reopened", async () => {
-    serve(DEACTIVATED("A_JOUR"));
+    serve(DEACTIVATED());
     server.use(
       http.post(`${ACCOUNT_URL}reactivate/`, () =>
         HttpResponse.json({ detail: "Réactivation impossible." }, { status: 422 }),
@@ -414,7 +334,7 @@ describe("UserDetailPage", () => {
   });
 
   it("has no dangling phrase without a reason or author", async () => {
-    serve(DEACTIVATED("A_JOUR", { motif_desactivation: "", desactive_par: null }));
+    serve(DEACTIVATED({ motif_desactivation: "", desactive_par: null }));
     open();
     expect(await screen.findByText("Désactivé le 28/10/2026 08:00")).toBeInTheDocument();
   });
@@ -423,7 +343,7 @@ describe("UserDetailPage", () => {
     const { state } = serve(ACTIVE());
     server.use(
       http.post(`${ACCOUNT_URL}deactivate/`, () => {
-        state.account = DEACTIVATED("A_JOUR");
+        state.account = DEACTIVATED();
         return HttpResponse.json(state.account);
       }),
     );
@@ -432,7 +352,7 @@ describe("UserDetailPage", () => {
     await user.click(await screen.findByRole("button", { name: "Désactiver le compte" }));
     await user.type(await screen.findByRole("textbox", { name: "Motif" }), "Départ");
     await user.click(screen.getByRole("button", { name: "Désactiver" }));
-    const notice = await screen.findByText("Compte désactivé dans la plateforme.");
+    const notice = await screen.findByText("Compte désactivé.");
     await waitFor(() => expect(notice).toHaveFocus());
   });
 });

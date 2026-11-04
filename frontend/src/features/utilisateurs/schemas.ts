@@ -1,11 +1,26 @@
 import { z } from "zod";
+import { ROLES } from "@/auth/types";
 import { fr } from "@/i18n/fr";
 
 const t = fr.utilisateurs.fiche;
+const c = fr.utilisateurs.creation;
+
+/** Bornes de backend/apps/users/account_serializers.py. */
+const name = z.string().trim().max(150, t.nameMax);
+const email = z
+  .string()
+  .trim()
+  .max(254, t.emailMax)
+  .refine((v) => v === "" || z.email().safeParse(v).success, t.emailInvalid);
+const matricule = z.string().trim().max(32, t.matriculeMax);
+const fonction = z.string().trim().max(128, t.fonctionMax);
 
 export const profileSchema = z.object({
-  matricule: z.string().trim().max(32, t.matriculeMax),
-  fonction: z.string().trim().max(128, t.fonctionMax),
+  first_name: name,
+  last_name: name,
+  email,
+  matricule,
+  fonction,
   direction_code: z.string().trim(),
 });
 
@@ -16,3 +31,30 @@ export const deactivateSchema = z.object({
 });
 
 export type DeactivateFormValues = z.infer<typeof deactivateSchema>;
+
+/** Même règle que le UnicodeUsernameValidator de Django. */
+const USERNAME = /^[\p{L}\p{N}@.+\-_]+$/u;
+
+/** « Nouvel agent » : rôle obligatoire, sans valeur par défaut (chaîne vide = non choisi). */
+export const newAccountSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(1, c.usernameRequired)
+    .max(150, c.usernameMax)
+    .regex(USERNAME, c.usernameInvalid),
+  first_name: name,
+  last_name: name,
+  email,
+  role: z
+    .string()
+    .refine((v): v is (typeof ROLES)[number] => (ROLES as readonly string[]).includes(v), {
+      message: c.roleRequired,
+    }),
+  matricule,
+  direction_code: z.string().trim(),
+  fonction,
+  envoyer_courriel: z.boolean(),
+});
+
+export type NewAccountFormValues = z.input<typeof newAccountSchema>;

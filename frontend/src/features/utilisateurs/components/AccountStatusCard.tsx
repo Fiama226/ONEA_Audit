@@ -5,7 +5,6 @@ import { fr } from "@/i18n/fr";
 import { formatDateTime } from "@/lib/dates";
 import type { CompteUtilisateur } from "../types";
 import { DeactivateDialog } from "./DeactivateDialog";
-import { KeycloakSyncNotice } from "./KeycloakSyncNotice";
 import { ReactivateDialog } from "./ReactivateDialog";
 
 const t = fr.utilisateurs.fiche;
@@ -20,7 +19,7 @@ function statusText(account: CompteUtilisateur): string {
   return `${t.deactivatedOn}${formatDateTime(account.desactive_le)}${by}${reason}`;
 }
 
-/** Statut d'accès du compte, synchronisation Keycloak, désactivation et réactivation. */
+/** Statut d'accès du compte, désactivation et réactivation. */
 export function AccountStatusCard({ account }: { account: CompteUtilisateur }) {
   const [dialog, setDialog] = useState<"deactivate" | "reactivate" | null>(null);
   const [notice, setNotice] = useState("");
@@ -56,10 +55,6 @@ export function AccountStatusCard({ account }: { account: CompteUtilisateur }) {
         <p ref={noticeRef} tabIndex={-1} role="status" className="text-success-text outline-none">
           {notice}
         </p>
-        <KeycloakSyncNotice
-          key={`${account.keycloak_sync.statut}-${account.is_active}`}
-          account={account}
-        />
         <div className="flex flex-wrap gap-2 print:hidden">
           {account.actions.desactiver && (
             <Button type="button" variant="destructive" onClick={() => open("deactivate")}>

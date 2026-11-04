@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAccountRights } from "@/auth/useAccountRights";
 import { useRole } from "@/auth/useRole";
 import { fr } from "@/i18n/fr";
 import { cn } from "@/lib/utils";
@@ -17,7 +18,8 @@ export function SidebarNav({
   onNavigate?: () => void;
 }) {
   const { role } = useRole();
-  const groups = navFor(role);
+  const { canManage } = useAccountRights();
+  const groups = navFor(role, canManage);
 
   return (
     <nav

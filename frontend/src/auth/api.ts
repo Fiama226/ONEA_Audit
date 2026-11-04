@@ -39,3 +39,17 @@ export function postPasswordForgot(identifiant: string): Promise<S["Message"]> {
 export function postPasswordReset(data: S["ReinitialisationRequest"]): Promise<void> {
   return apiFetch<void>(`${AUTH}/password/reset/`, { method: "POST", json: data });
 }
+
+/** Turns the login code on for one's own account (409 when no email can reach it). */
+export function postOtpEnable(): Promise<S["EtatOtp"]> {
+  return apiFetch<S["EtatOtp"]>(`${AUTH}/otp/enable/`, { method: "POST" });
+}
+
+/** Turns the login code off for one's own account, on the current password. */
+export function postOtpDisable(motDePasse: string): Promise<S["EtatOtp"]> {
+  const json: S["ConfirmationMotDePasseRequest"] = { mot_de_passe: motDePasse };
+  return apiFetch<S["EtatOtp"]>(`${AUTH}/otp/disable/`, { method: "POST", json });
+}
+
+/** Server message of the 409 answered when sending emails is not configured. */
+export const ENVOI_COURRIEL_NON_CONFIGURE = "Envoi de courriels non configuré";

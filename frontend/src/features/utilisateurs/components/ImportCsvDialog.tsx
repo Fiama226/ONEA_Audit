@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { Download } from "lucide-react";
+import { useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isApiError } from "@/api/errors";
 import { fr } from "@/i18n/fr";
-import { useImportCsv } from "../api";
+import { downloadImportPasswords, useImportCsv } from "../api";
 import type { RapportImport } from "../types";
 import { ImportReport } from "./ImportReport";
 import { ScrollRegion } from "@/components/ui/scroll-region";
@@ -46,6 +47,8 @@ function CsvImport({ onClose }: { onClose: () => void }) {
   const [verified, setVerified] = useState<File | null>(null);
   const [report, setReport] = useState<RapportImport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sendEmail, setSendEmail] = useState(true);
+  const sendEmailHelp = useId();
   const mutation = useImportCsv();
 
   const busy = useRef(false);
@@ -67,7 +70,7 @@ function CsvImport({ onClose }: { onClose: () => void }) {
     busy.current = true;
     setError(null);
     try {
-      const result = await mutation.mutateAsync({ file, dryRun });
+      const result = await mutation.mutateAsync({ file, dryRun, sendEmail });
       setReport(result);
       setVerified(dryRun ? file : null);
     } catch (e) {
@@ -110,6 +113,24 @@ function CsvImport({ onClose }: { onClose: () => void }) {
           />
         </div>
       )}
+      {!done && (
+        <div className="grid gap-1">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              className="size-4 accent-primary"
+              checked={sendEmail}
+              disabled={mutation.isPending}
+              aria-describedby={sendEmailHelp}
+              onChange={(e) => setSendEmail(e.target.checked)}
+            />
+            {t.csvSendEmail}
+          </label>
+          <p id={sendEmailHelp} className="text-xs text-text-muted">
+            {t.csvSendEmailHelp}
+          </p>
+        </div>
+      )}
       {error && (
         <p role="alert" className={ALERT_CLASS}>
           {error}
@@ -121,6 +142,9 @@ function CsvImport({ onClose }: { onClose: () => void }) {
         </p>
       )}
       {report && <ImportReport report={report} />}
+      {report?.fichier_mots_de_passe_id && (
+        <PasswordFile fileId={report.fichier_mots_de_passe_id} />
+      )}
       {!done && !canImport && <p className="text-xs text-text-muted">{t.csvVerifyFirst}</p>}
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onClose}>
@@ -143,5 +167,63 @@ function CsvImport({ onClose }: { onClose: () => void }) {
         )}
       </DialogFooter>
     </>
+  );
+}
+
+/**
+ * Fichier des mots de passe temporaires non partis par courriel : téléchargeable une seule
+ * fois (le serveur le détruit aussitôt, 404 ensuite). Le bouton disparaît après le succès.
+ */
+function PasswordFile({ fileId }: { fileId: string }) {
+  const [state, setState] = useState<"ready" | "busy" | "done" | "gone" | "error">("ready");
+  const [error, setError] = useState<string | null>(null);
+
+  async function download() {
+    setState("busy");
+    setError(null);
+    try {
+      await downloadImportPasswords(fileId);
+      setState("done");
+    } catch (e) {
+      if (isApiError(e) && e.status === 404) {
+        setState("gone");
+      } else {
+        setState("error");
+        setError(isApiError(e) ? e.detail : fr.errors.generic);
+      }
+    }
+  }
+
+  return (
+    <section
+      aria-labelledby={`mots-de-passe-${fileId}`}
+      className="grid gap-2 rounded-md border border-warning/50 p-3 text-sm"
+    >
+      <h4 id={`mots-de-passe-${fileId}`} className="font-semibold">
+        {t.passwordsTitle}
+      </h4>
+      <p>{t.passwordsText}</p>
+      {(state === "ready" || state === "busy" || state === "error") && (
+        <div>
+          <Button type="button" disabled={state === "busy"} onClick={() => void download()}>
+            <Download aria-hidden />
+            {state === "busy" ? t.passwordsDownloading : t.passwordsDownload}
+          </Button>
+        </div>
+      )}
+      <p role="status" className="text-success-text">
+        {state === "done" ? t.passwordsDownloaded : ""}
+      </p>
+      {state === "gone" && (
+        <p role="alert" className={ALERT_CLASS}>
+          {t.passwordsGone}
+        </p>
+      )}
+      {state === "error" && error && (
+        <p role="alert" className={ALERT_CLASS}>
+          {error}
+        </p>
+      )}
+    </section>
   );
 }
