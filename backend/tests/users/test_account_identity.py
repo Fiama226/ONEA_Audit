@@ -133,6 +133,35 @@ def test_email_change_drops_pending_codes(admin: User) -> None:
     assert not CodeOtp.objects.filter(user=cible, utilise_le__isnull=True).exists()
 
 
+def test_legacy_mixed_case_email_resent_unchanged_is_not_a_change(admin: User) -> None:
+    """A legacy address stored with an uppercase domain, sent back as is: no right needed
+    for the email, no write, pending codes kept."""
+    createur = make_user(Role.RAI)
+    services.definir_delegation(
+        createur,
+        droits={"creer": True, "reinitialiser": False, "roles": False, "desactiver": False},
+        par=admin,
+    )
+    cible = make_user(Role.AUDITEUR, email="Awa.Kabore@ONEA.BF")
+    CodeOtp.objects.create(
+        user=cible,
+        objet=ObjetOtp.RESET,
+        code_hash="x",
+        expire_le=timezone.now() + timedelta(minutes=10),
+    )
+    r = _client(createur).patch(
+        f"{BASE}{cible.id}/",
+        {"email": "Awa.Kabore@ONEA.BF", "fonction": "Comptable"},
+        format="json",
+    )
+    assert r.status_code == 200
+    cible.refresh_from_db()
+    assert cible.email == "Awa.Kabore@ONEA.BF" and cible.fonction == "Comptable"
+    assert CodeOtp.objects.filter(user=cible, utilise_le__isnull=True).count() == 1
+    entree = LogEntry.objects.get_for_object(cible).order_by("pk").last()
+    assert entree is not None and "email" not in entree.changes_dict
+
+
 def test_email_cannot_be_cleared_while_login_code_on(admin: User) -> None:
     cible = make_user(Role.AUDITEUR, otp_connexion_actif=True)
     r = _client(admin).patch(f"{BASE}{cible.id}/", {"email": ""}, format="json")

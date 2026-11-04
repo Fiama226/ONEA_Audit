@@ -100,6 +100,7 @@ PROPRE_ROLE = "Vous ne pouvez pas modifier votre propre rôle."
 DERNIER_ADMIN_ROLE = (
     "Impossible de retirer le rôle Administrateur au dernier administrateur actif de la plateforme."
 )
+DELEGATION_INACTIF = "Ce compte est désactivé : réactivez-le avant de lui déléguer des droits."
 DELEGATION_ADMIN = (
     "Un administrateur dispose déjà de tous les droits : aucune délégation ne lui est accordée."
 )
@@ -150,6 +151,32 @@ def direction_existe(code: str) -> bool:
 
 def _lock(compte: User) -> User:
     return User.objects.select_for_update().get(pk=compte.pk)
+
+
+def _verrouiller(
+    compte: User, acteur: User, *, admins_actifs: bool = False
+) -> tuple[User, list[User]]:
+    """Lock the target and the actor (plus every active admin when asked), in pk order.
+
+    Locking the actor's row makes a concurrent revocation, deactivation or demotion of the
+    actor (which locks that same row) either finish first, and then be seen by the rights
+    check that follows, or wait for this action. One statement in pk order: no deadlock
+    between two crossed actions.
+    """
+    filtre = Q(pk__in=[pk for pk in (compte.pk, acteur.pk) if pk is not None])
+    if admins_actifs:
+        filtre |= Q(role=Role.ADMIN, is_active=True)
+    locked = list(User.objects.select_for_update().filter(filtre).order_by("pk"))
+    return next(u for u in locked if u.pk == compte.pk), locked
+
+
+def _valeur_comparable(user: User, champ: str) -> str:
+    """Stored value as it would be submitted: a legacy address with an uppercase domain
+    re-sent unchanged is not a change."""
+    valeur = str(getattr(user, champ))
+    if champ == "email" and valeur:
+        return BaseUserManager.normalize_email(valeur.strip())
+    return valeur
 
 
 def _mark_pending(user: User, fields: list[str]) -> None:
@@ -206,8 +233,8 @@ def modifier_profil(compte: User, *, changes: Mapping[str, str], by: User) -> Us
     """
     values = _valeurs_profil(changes)
     with transaction.atomic(), actor_scope(by):
-        user = _lock(compte)
-        modifies = {f: v for f, v in values.items() if getattr(user, f) != v}
+        user, _ = _verrouiller(compte, by)
+        modifies = {f: v for f, v in values.items() if _valeur_comparable(user, f) != v}
         droits = droits_sur(by, user)
         if modifies:
             autorise = all(droits[DROIT_PAR_CHAMP[f]] for f in modifies)
@@ -250,14 +277,9 @@ def modifier_profil(compte: User, *, changes: Mapping[str, str], by: User) -> Us
 
 def desactiver(compte: User, *, motif: str, by: User) -> User:
     with transaction.atomic(), actor_scope(by):
-        # Lock every active admin plus the target, in pk order, so that two crossed
-        # deactivations serialize instead of both succeeding.
-        locked = list(
-            User.objects.select_for_update()
-            .filter(Q(role=Role.ADMIN, is_active=True) | Q(pk=compte.pk))
-            .order_by("pk")
-        )
-        user = next(u for u in locked if u.pk == compte.pk)
+        # Lock every active admin plus the target and the actor, in pk order, so that two
+        # crossed deactivations serialize instead of both succeeding.
+        user, locked = _verrouiller(compte, by, admins_actifs=True)
         exiger(by, "desactiver", user)
         if user.pk == by.pk:
             raise RegleMetierError(COMPTE_PERSONNEL)
@@ -274,12 +296,14 @@ def desactiver(compte: User, *, motif: str, by: User) -> User:
         fields = ["is_active", "desactive_le", "desactive_par", "motif_desactivation"]
         _mark_pending(user, fields)
         user.save(update_fields=fields)
+        # A disabled account keeps no delegated right: a reactivation restores none.
+        _revoquer_delegation(user, by)
         return user
 
 
 def reactiver(compte: User, *, by: User) -> User:
     with transaction.atomic(), actor_scope(by):
-        user = _lock(compte)
+        user, _ = _verrouiller(compte, by)
         exiger(by, "desactiver", user)
         if user.is_active:
             raise RegleMetierError(DEJA_ACTIF)
@@ -385,6 +409,10 @@ def creer_compte(
     exiger_attribution_role(par, valeurs["role"])
     mot_de_passe = generer_mot_de_passe_temporaire()
     with transaction.atomic(), actor_scope(par):
+        # Re-checked under the actor's lock: a revocation committed meanwhile is respected.
+        list(User.objects.select_for_update().filter(pk=par.pk))
+        exiger(par, "creer")
+        exiger_attribution_role(par, valeurs["role"])
         _verifier_disponibilite(valeurs)
         user = User(**valeurs, origine=OrigineCompte.ADMINISTRATION, is_active=True)
         _poser_mot_de_passe_temporaire(user, mot_de_passe, timezone.now())
@@ -420,7 +448,7 @@ def reinitialiser_mot_de_passe(
         raise RegleMetierError(PROPRE_MOT_DE_PASSE)
     mot_de_passe = generer_mot_de_passe_temporaire()
     with transaction.atomic(), actor_scope(par):
-        user = _lock(compte)
+        user, _ = _verrouiller(compte, par)
         exiger(par, "reinitialiser", user)
         if not user.is_active:
             raise RegleMetierError(REINITIALISATION_DESACTIVE)
@@ -450,7 +478,7 @@ def desactiver_otp(compte: User, *, par: User) -> User:
     if compte.pk == par.pk:
         raise RegleMetierError(PROPRE_OTP)
     with transaction.atomic(), actor_scope(par):
-        user = _lock(compte)
+        user, _ = _verrouiller(compte, par)
         exiger(par, "reinitialiser", user)
         if not user.otp_connexion_actif:
             raise RegleMetierError(OTP_DEJA_DESACTIVE)
@@ -487,13 +515,9 @@ def changer_role(compte: User, *, role: str, par: User) -> User:
         raise RegleMetierError(DONNEES_INVALIDES, {"role": [ROLE_INVALIDE]})
     exiger_attribution_role(par, role)
     with transaction.atomic(), actor_scope(par):
-        # Same lock order as `desactiver`: every active admin plus the target, by pk.
-        locked = list(
-            User.objects.select_for_update()
-            .filter(Q(role=Role.ADMIN, is_active=True) | Q(pk=compte.pk))
-            .order_by("pk")
-        )
-        user = next(u for u in locked if u.pk == compte.pk)
+        # Same lock order as `desactiver`: every active admin, the target and the actor.
+        user, locked = _verrouiller(compte, par, admins_actifs=True)
+        exiger_attribution_role(par, role)
         exiger(par, "roles", user)
         if user.pk == par.pk:
             raise RegleMetierError(PROPRE_ROLE)
@@ -543,9 +567,12 @@ def definir_delegation(
     exiger_administrateur(par)
     valeurs = {action: bool(droits[action]) for action in ACTIONS}
     with transaction.atomic(), actor_scope(par):
-        user = _lock(compte)
+        user, _ = _verrouiller(compte, par)
+        exiger_administrateur(par)
         if user.role == Role.ADMIN:
             raise RegleMetierError(DELEGATION_ADMIN)
+        if not user.is_active and any(valeurs.values()):
+            raise RegleMetierError(DELEGATION_INACTIF)
         delegation = DelegationGestionComptes.objects.select_for_update().filter(user=user).first()
         if delegation is None:
             delegation = DelegationGestionComptes(user=user)

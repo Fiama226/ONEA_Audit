@@ -6,19 +6,21 @@ services too (they are called from commands), and every right is re-read on each
 """
 
 from collections.abc import Callable
-from typing import Any
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, NamedTuple
 
 import pytest
 from auditlog.models import LogEntry
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
+from django.db import close_old_connections
 from django.test import override_settings
 from rest_framework.test import APIClient
 
 from apps.core.exceptions import RegleMetierError
 from apps.referentiel.models import Direction, TypeEntite
 from apps.users import services
-from apps.users.delegation import ACTIONS, droits_effectifs, peut
+from apps.users.delegation import ACTIONS, acteur_systeme, droits_effectifs, peut
 from apps.users.models import DelegationGestionComptes, Role, User
 
 from ..factories import make_user
@@ -46,59 +48,78 @@ def _delegue(admin: User, **droits: bool) -> User:
     return delegue
 
 
-# Each entry: right needed, then a call building its own fresh target -> status code.
-Appel = Callable[[APIClient, User], int]
+class Resultat(NamedTuple):
+    statut: int
+    change: bool  # whether the target (or the account list) was modified
 
 
-def _creer(client: APIClient, admin: User) -> int:
+# Each entry: right needed, then a call building its own fresh target -> Resultat.
+Appel = Callable[[APIClient, User], Resultat]
+
+
+def _etat(cible: User) -> dict[str, Any]:
+    return dict(User.objects.values().get(pk=cible.pk))
+
+
+def _sur_cible(cible: User, appel: Callable[[], Any]) -> Resultat:
+    avant = _etat(cible)
+    statut = appel().status_code
+    return Resultat(statut, _etat(cible) != avant)
+
+
+def _creer(client: APIClient, admin: User) -> Resultat:
     n = User.objects.count()
     corps = {"username": f"nouveau{n}", "role": "AUDITEUR", "envoyer_courriel": False}
-    return client.post(BASE, corps, format="json").status_code
+    statut = client.post(BASE, corps, format="json").status_code
+    return Resultat(statut, User.objects.filter(username=f"nouveau{n}").exists())
 
 
-def _reinitialiser(client: APIClient, admin: User) -> int:
+def _reinitialiser(client: APIClient, admin: User) -> Resultat:
     cible = make_user(Role.AUDITEUR)
     url = f"{BASE}{cible.id}/reset-password/"
-    return client.post(url, {"envoyer_courriel": False}, format="json").status_code
+    return _sur_cible(cible, lambda: client.post(url, {"envoyer_courriel": False}, format="json"))
 
 
-def _desactiver_otp(client: APIClient, admin: User) -> int:
+def _desactiver_otp(client: APIClient, admin: User) -> Resultat:
     cible = make_user(Role.AUDITEUR, otp_connexion_actif=True)
-    return client.post(f"{BASE}{cible.id}/disable-otp/").status_code
+    return _sur_cible(cible, lambda: client.post(f"{BASE}{cible.id}/disable-otp/"))
 
 
-def _changer_role(client: APIClient, admin: User) -> int:
+def _changer_role(client: APIClient, admin: User) -> Resultat:
     cible = make_user(Role.AUDITEUR)
-    return client.post(f"{BASE}{cible.id}/change-role/", {"role": "RAI"}, format="json").status_code
+    url = f"{BASE}{cible.id}/change-role/"
+    return _sur_cible(cible, lambda: client.post(url, {"role": "RAI"}, format="json"))
 
 
-def _desactiver(client: APIClient, admin: User) -> int:
+def _desactiver(client: APIClient, admin: User) -> Resultat:
     cible = make_user(Role.AUDITEUR)
-    return client.post(f"{BASE}{cible.id}/deactivate/", {"motif": "x"}, format="json").status_code
+    url = f"{BASE}{cible.id}/deactivate/"
+    return _sur_cible(cible, lambda: client.post(url, {"motif": "x"}, format="json"))
 
 
-def _reactiver(client: APIClient, admin: User) -> int:
+def _reactiver(client: APIClient, admin: User) -> Resultat:
     cible = make_user(Role.AUDITEUR, is_active=False)
-    return client.post(f"{BASE}{cible.id}/reactivate/").status_code
+    return _sur_cible(cible, lambda: client.post(f"{BASE}{cible.id}/reactivate/"))
 
 
-def _modifier_noms(client: APIClient, admin: User) -> int:
+def _modifier_noms(client: APIClient, admin: User) -> Resultat:
     cible = make_user(Role.AUDITEUR)
     corps = {"first_name": "Mariam", "fonction": "Cheffe"}
-    return client.patch(f"{BASE}{cible.id}/", corps, format="json").status_code
+    return _sur_cible(cible, lambda: client.patch(f"{BASE}{cible.id}/", corps, format="json"))
 
 
-def _modifier_courriel(client: APIClient, admin: User) -> int:
+def _modifier_courriel(client: APIClient, admin: User) -> Resultat:
     cible = make_user(Role.AUDITEUR)
     corps = {"email": f"nouvelle.{cible.pk}@onea.bf"}
-    return client.patch(f"{BASE}{cible.id}/", corps, format="json").status_code
+    return _sur_cible(cible, lambda: client.patch(f"{BASE}{cible.id}/", corps, format="json"))
 
 
-def _modifier_direction(client: APIClient, admin: User) -> int:
+def _modifier_direction(client: APIClient, admin: User) -> Resultat:
     if not Direction.objects.filter(code="DNEW").exists():
         Direction.objects.create(code="DNEW", libelle="DNEW", type=TypeEntite.DIRECTION)
     cible = make_user(Role.AUDITE)
-    return client.patch(f"{BASE}{cible.id}/", {"direction_code": "DNEW"}, format="json").status_code
+    corps = {"direction_code": "DNEW"}
+    return _sur_cible(cible, lambda: client.patch(f"{BASE}{cible.id}/", corps, format="json"))
 
 
 APPELS: list[tuple[str, Appel, int]] = [
@@ -112,6 +133,7 @@ APPELS: list[tuple[str, Appel, int]] = [
     ("desactiver", _desactiver, 200),
     ("desactiver", _reactiver, 200),
 ]
+REFUSE = Resultat(403, False)
 
 
 def test_admin_can_do_all(admin: User) -> None:
@@ -124,7 +146,7 @@ def test_admin_can_do_all(admin: User) -> None:
     assert droits_effectifs(admin) == TOUS
     client = _client(admin)
     for _droit, appel, attendu in APPELS:
-        assert appel(client, admin) == attendu, appel.__name__
+        assert appel(client, admin) == (attendu, True), appel.__name__
     assert client.get(BASE).status_code == 200
     assert client.get(f"{BASE}{agent.id}/delegation/").status_code == 200
     r = client.put(f"{BASE}{agent.id}/delegation/", {**AUCUN, "creer": True}, format="json")
@@ -143,8 +165,9 @@ def test_delegate_limited_to_granted_actions(admin: User, droit: str) -> None:
     assert client.get(BASE).status_code == 200
     assert client.get(f"{BASE}{agent.id}/").status_code == 200
     for requis, appel, attendu in APPELS:
-        statut = appel(client, admin)
-        assert statut == (attendu if requis == droit else 403), (droit, appel.__name__)
+        # A refusal changes nothing: no account created, no password, role or flag touched.
+        resultat = appel(client, admin)
+        assert resultat == ((attendu, True) if requis == droit else REFUSE), (droit, appel)
     # Still admin-only: imports, directory, Keycloak resync.
     assert client.post(f"{BASE}{agent.id}/resync-profile/").status_code == 403
     assert client.get(BASE + "directory-search/?q=aud").status_code == 403
@@ -176,7 +199,7 @@ def test_user_without_rights_gets_403_everywhere(admin: User) -> None:
     client = _client(sans_droit)
     assert client.get(BASE).status_code == 403
     for _droit, appel, _attendu in APPELS:
-        assert appel(client, admin) == 403, appel.__name__
+        assert appel(client, admin) == REFUSE, appel.__name__
 
 
 def test_delegate_cannot_grant_self_rights(admin: User) -> None:
@@ -238,12 +261,15 @@ def test_delegate_cannot_touch_other_delegate(admin: User) -> None:
     delegue = _delegue(admin, reinitialiser=True, desactiver=True)
     autre = _delegue(admin, roles=True)
     assert not peut(delegue, "reinitialiser", autre)
+    avant = User.objects.values().get(pk=autre.pk)
     client = _client(delegue)
     r = client.post(f"{BASE}{autre.id}/reset-password/", {"envoyer_courriel": False})
     assert r.status_code == 403
     assert client.post(f"{BASE}{autre.id}/deactivate/", {"motif": "x"}).status_code == 403
     with pytest.raises(PermissionDenied):
         services.reinitialiser_mot_de_passe(autre, par=delegue, envoyer_courriel=False)
+    # Password (hash), active flag, everything unchanged.
+    assert User.objects.values().get(pk=autre.pk) == avant
     # Once revoked, the account is an ordinary one again.
     _deleguer(autre, admin)
     assert peut(delegue, "reinitialiser", autre)
@@ -296,17 +322,17 @@ def test_delegate_cannot_disable_self(admin: User) -> None:
 def test_revoked_delegation_effective_immediately(admin: User) -> None:
     delegue = _delegue(admin, reinitialiser=True, desactiver=True)
     client = _client(delegue)  # same client and same user object throughout
-    assert _reinitialiser(client, admin) == 200
+    assert _reinitialiser(client, admin) == (200, True)
     r = _client(admin).put(
         f"{BASE}{delegue.id}/delegation/", {**AUCUN, "desactiver": True}, format="json"
     )
     assert r.status_code == 200
-    assert _reinitialiser(client, admin) == 403
-    assert _desactiver(client, admin) == 200
+    assert _reinitialiser(client, admin) == REFUSE
+    assert _desactiver(client, admin) == (200, True)
     with pytest.raises(PermissionDenied):
         services.reinitialiser_mot_de_passe(make_user(), par=delegue, envoyer_courriel=False)
     _client(admin).put(f"{BASE}{delegue.id}/delegation/", AUCUN, format="json")
-    assert _desactiver(client, admin) == 403
+    assert _desactiver(client, admin) == REFUSE
     assert client.get(BASE).status_code == 403
 
 
@@ -319,6 +345,58 @@ def test_disabled_delegate_has_no_rights(admin: User) -> None:
         services.creer_compte(
             donnees={"username": "x", "role": "AUDITE"}, par=delegue, envoyer_courriel=False
         )
+    # The deactivation revoked the delegation itself (audited, by the admin) ...
+    delegation = DelegationGestionComptes.objects.get(user=delegue)
+    assert not any(getattr(delegation, a) for a in ACTIONS)
+    derniere = LogEntry.objects.get_for_object(delegation).order_by("pk").last()
+    assert derniere is not None and derniere.actor == admin
+    assert derniere.changes_dict["creer"] == ["True", "False"]
+    # ... so a reactivation restores nothing silently.
+    services.reactiver(delegue, by=admin)
+    assert droits_effectifs(delegue) == AUCUN
+    assert _client(delegue).get(BASE).status_code == 403
+
+
+def test_delegation_refused_to_disabled_account(admin: User) -> None:
+    inactif = make_user(Role.RAI, is_active=False)
+    url = f"{BASE}{inactif.id}/delegation/"
+    r = _client(admin).put(url, {**AUCUN, "creer": True}, format="json")
+    assert r.status_code == 422
+    with pytest.raises(RegleMetierError):
+        _deleguer(inactif, admin, creer=True)
+    assert not DelegationGestionComptes.objects.filter(user=inactif).exists()
+    # Revoking (all false) stays possible.
+    assert _client(admin).put(url, AUCUN, format="json").status_code == 200
+
+
+def test_delegation_of_inactive_actor_ignored(admin: User) -> None:
+    """Even with a delegation row left in place (direct DB write), an inactive actor has
+    no right."""
+    delegue = _delegue(admin, **TOUS)
+    User.objects.filter(pk=delegue.pk).update(is_active=False)
+    assert droits_effectifs(delegue) == AUCUN
+    assert not peut(delegue, "reinitialiser", make_user())
+
+
+@pytest.mark.parametrize("drapeau", ["is_staff", "is_superuser"])
+def test_delegate_cannot_touch_staff_or_superuser(admin: User, drapeau: str) -> None:
+    delegue = _delegue(admin, **TOUS)
+    cible = make_user(Role.AUDITEUR, otp_connexion_actif=True, **{drapeau: True})
+    for action in ACTIONS:
+        assert not peut(delegue, action, cible)
+    avant = User.objects.values().get(pk=cible.pk)
+    client = _client(delegue)
+    url = f"{BASE}{cible.id}/"
+    assert client.post(url + "reset-password/", {"envoyer_courriel": False}).status_code == 403
+    assert client.post(url + "disable-otp/").status_code == 403
+    assert client.post(url + "change-role/", {"role": "DG"}, format="json").status_code == 403
+    assert client.post(url + "deactivate/", {"motif": "x"}, format="json").status_code == 403
+    assert client.patch(url, {"email": "pirate@onea.bf"}, format="json").status_code == 403
+    with pytest.raises(PermissionDenied):
+        services.reinitialiser_mot_de_passe(cible, par=delegue, envoyer_courriel=False)
+    assert User.objects.values().get(pk=cible.pk) == avant
+    # The admin still can.
+    assert peut(admin, "reinitialiser", cible)
 
 
 def test_delegation_changes_audited(admin: User) -> None:
@@ -409,10 +487,47 @@ def test_last_admin_cannot_be_demoted(admin: User) -> None:
     autre_admin = make_user(Role.ADMIN)
     services.changer_role(autre_admin, role=Role.RAI, par=admin)
     systeme = make_user(Role.ADMIN, is_active=False)  # inactive: does not count
-    with pytest.raises(RegleMetierError):
+    with acteur_systeme(systeme), pytest.raises(RegleMetierError):
         services.changer_role(admin, role=Role.RAI, par=systeme)
     admin.refresh_from_db()
     assert admin.role == Role.ADMIN
+
+
+def test_inactive_admin_has_no_right_outside_system_block(admin: User) -> None:
+    inactif = make_user(Role.ADMIN, is_active=False)
+    agent = make_user(Role.AUDITEUR)
+    assert droits_effectifs(inactif) == AUCUN
+    with pytest.raises(PermissionDenied):
+        services.changer_role(agent, role=Role.RAI, par=inactif)
+    assert _client(inactif).get(BASE).status_code == 403
+    with acteur_systeme(inactif):
+        assert droits_effectifs(inactif) == TOUS
+        services.changer_role(agent, role=Role.RAI, par=inactif)
+    assert droits_effectifs(inactif) == AUCUN
+    with pytest.raises(ValueError), acteur_systeme(agent):
+        pass
+
+
+def _try_retrograder(args: tuple[User, User]) -> str:
+    cible, par = args
+    try:
+        services.changer_role(cible, role=Role.RAI, par=par)
+        return "ok"
+    except (RegleMetierError, PermissionDenied) as exc:
+        return type(exc).__name__
+    finally:
+        close_old_connections()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_crossed_demotions_keep_an_admin() -> None:
+    """Two admins demoting each other at once: serialized on the locked admin rows, the
+    second one is no longer an admin when its rights are re-read under the lock."""
+    a, b = make_user(Role.ADMIN), make_user(Role.ADMIN)
+    with ThreadPoolExecutor(2) as pool:
+        resultats = list(pool.map(_try_retrograder, [(b, a), (a, b)]))
+    assert sorted(resultats) == ["PermissionDenied", "ok"]
+    assert User.objects.filter(role=Role.ADMIN, is_active=True).count() == 1
 
 
 def test_me_exposes_effective_account_rights(admin: User) -> None:
@@ -433,12 +548,12 @@ def test_account_actions_throttled_per_user(admin: User) -> None:
     taux = {**base["DEFAULT_THROTTLE_RATES"], "gestion_comptes": "2/hour"}
     with override_settings(REST_FRAMEWORK={**base, "DEFAULT_THROTTLE_RATES": taux}):
         client = _client(delegue)
-        assert _creer(client, admin) == 201
-        assert _reinitialiser(client, admin) == 200
-        assert _desactiver_otp(client, admin) == 429
-        assert _creer(client, admin) == 429
+        assert _creer(client, admin).statut == 201
+        assert _reinitialiser(client, admin).statut == 200
+        assert _desactiver_otp(client, admin).statut == 429
+        assert _creer(client, admin).statut == 429
         # Per user: the admin is not slowed down by the delegate.
-        assert _creer(_client(admin), admin) == 201
+        assert _creer(_client(admin), admin).statut == 201
 
 
 def test_peut_rejects_unknown_action(admin: User) -> None:

@@ -15,6 +15,7 @@ from apps.core.audit import actor_scope
 from apps.core.demo import ACTEUR, ContexteDemo
 from apps.referentiel.models import Direction
 
+from .delegation import acteur_systeme
 from .models import OrigineCompte, Role, User
 from .provisioning import importer_csv
 from .services import modifier_profil
@@ -83,13 +84,15 @@ def _rattacher_aux_directions(ctx: ContexteDemo) -> None:
     """Après le référentiel : direction d'appartenance de chaque compte (service de profil)."""
     directions = [d.code for d in Direction.objects.filter(type="DIRECTION").order_by("code")]
     autres = [c for c in directions if c != "DAI"] or directions
-    for compte in User.objects.exclude(username__in=[ACTEUR]).order_by("username"):
-        if compte.role in (Role.AUDITE, Role.DG):
-            code = ctx.rng.choice(autres) if compte.role == Role.AUDITE else "DAI"
-        else:
-            code = "DAI"
-        if code in directions:
-            modifier_profil(compte, changes={"direction_code": code}, by=ctx.acteur)
+    # The inactive system actor only has rights inside this explicit block.
+    with acteur_systeme(ctx.acteur):
+        for compte in User.objects.exclude(username__in=[ACTEUR]).order_by("username"):
+            if compte.role in (Role.AUDITE, Role.DG):
+                code = ctx.rng.choice(autres) if compte.role == Role.AUDITE else "DAI"
+            else:
+                code = "DAI"
+            if code in directions:
+                modifier_profil(compte, changes={"direction_code": code}, by=ctx.acteur)
 
 
 def peupler(ctx: ContexteDemo) -> None:

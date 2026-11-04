@@ -4,10 +4,12 @@ from typing import Any
 
 import pytest
 from auditlog.models import LogEntry
+from django.core.exceptions import PermissionDenied
 from django.db import close_old_connections
 
 from apps.core.exceptions import RegleMetierError
 from apps.referentiel.models import Direction, TypeEntite
+from apps.users.delegation import DROIT_REFUSE, acteur_systeme
 from apps.users.models import KeycloakSyncStatut, OrigineCompte, Role, User
 from apps.users.services import (
     COMPTE_PERSONNEL,
@@ -95,10 +97,10 @@ def test_reactiver_actif_refuse(admin: User, user: User) -> None:
 
 
 def test_dernier_admin_refuse(admin: User) -> None:
-    # The services check rights now: an inactive admin (e.g. the demo system actor) may
-    # act, and is not an active admin that would keep the platform administered.
+    # The services check rights now: an inactive admin acts only as an explicit system
+    # actor (like the demo one), and is not an active admin keeping the platform run.
     other = make_user(Role.ADMIN, is_active=False)
-    with pytest.raises(RegleMetierError) as exc:
+    with acteur_systeme(other), pytest.raises(RegleMetierError) as exc:
         desactiver(admin, motif="x", by=other)
     assert exc.value.message == DERNIER_ADMIN
     assert (
@@ -114,6 +116,8 @@ def _try_desactiver(args: tuple[User, User]) -> str:
         return "ok"
     except RegleMetierError as exc:
         return exc.message
+    except PermissionDenied as exc:
+        return str(exc)
     finally:
         close_old_connections()
 
@@ -123,7 +127,10 @@ def test_desactivations_croisees_gardent_un_admin() -> None:
     a, b = make_user(Role.ADMIN), make_user(Role.ADMIN)
     with ThreadPoolExecutor(2) as pool:
         results = list(pool.map(_try_desactiver, [(b, a), (a, b)]))
-    assert sorted(results) == sorted(["ok", DERNIER_ADMIN])
+    # Serialized on the locked rows: the second caller has just been deactivated, so his
+    # rights, re-read under the lock, are gone (an inactive admin is no admin). Before the
+    # actor lock and the inactive-admin rule, the last-admin guard refused it instead.
+    assert sorted(results) == sorted(["ok", DROIT_REFUSE])
     assert User.objects.filter(role=Role.ADMIN, is_active=True).count() == 1
 
 
