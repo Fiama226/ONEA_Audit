@@ -36,6 +36,23 @@ export function useUserHistory(userId: number, page: number) {
 
 export type ChangeLine = { field: string; label: string; before: string; after: string };
 
+const OPERATION_LABELS: Record<string, string> = {
+  create: fr.utilisateursHistorique.actionCreate,
+  update: fr.utilisateursHistorique.actionUpdate,
+  delete: fr.utilisateursHistorique.actionDelete,
+};
+
+/**
+ * Libellé de l'action d'une entrée : l'action métier nommée par le backend (`action_metier`)
+ * quand elle existe, sinon l'opération de django-auditlog. Une action métier inconnue est
+ * affichée telle quelle plutôt que masquée.
+ */
+export function describeAction(entry: AuditLog): string {
+  const metier = entry.action_metier;
+  if (metier) return fr.utilisateursHistorique.actionsMetier[metier] ?? metier;
+  return OPERATION_LABELS[entry.action] ?? entry.action;
+}
+
 export const FIELD_LABELS: Record<string, string> = {
   first_name: "Prénom",
   last_name: "Nom",

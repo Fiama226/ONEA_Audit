@@ -5,16 +5,10 @@ import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { fr } from "@/i18n/fr";
 import { formatDateTime } from "@/lib/dates";
-import { describeChanges, HISTORY_PAGE_SIZE, useUserHistory } from "../history";
+import { describeAction, describeChanges, HISTORY_PAGE_SIZE, useUserHistory } from "../history";
 
 type AuditLog = components["schemas"]["AuditLog"];
 const t = fr.utilisateursHistorique;
-
-const ACTION_LABELS: Record<string, string> = {
-  create: t.actionCreate,
-  update: t.actionUpdate,
-  delete: t.actionDelete,
-};
 
 const COLUMNS: DataTableColumn<AuditLog>[] = [
   {
@@ -33,22 +27,30 @@ const COLUMNS: DataTableColumn<AuditLog>[] = [
     id: "action",
     header: t.action,
     enableSorting: false,
-    cell: ({ row }) => ACTION_LABELS[row.original.action] ?? row.original.action,
+    cell: ({ row }) => describeAction(row.original),
   },
   {
     id: "changes",
     header: t.changes,
     enableSorting: false,
-    cell: ({ row }) => (
-      <ul className="space-y-0.5 py-1">
-        {describeChanges(row.original).map((line) => (
-          <li key={line.field}>
-            {line.label} : {line.before} <span className="sr-only">{t.becomes}</span>
-            <span aria-hidden>→</span> {line.after}
-          </li>
-        ))}
-      </ul>
-    ),
+    cell: ({ row }) => {
+      const lines = describeChanges(row.original);
+      // Une action du titulaire (changement de mot de passe, etc.) peut n'avoir aucun champ affichable :
+      // l'entrée reste listée, l'action suffit à la décrire.
+      if (lines.length === 0) {
+        return <span className="text-muted-foreground">{t.noFieldChange}</span>;
+      }
+      return (
+        <ul className="space-y-0.5 py-1">
+          {lines.map((line) => (
+            <li key={line.field}>
+              {line.label} : {line.before} <span className="sr-only">{t.becomes}</span>
+              <span aria-hidden>→</span> {line.after}
+            </li>
+          ))}
+        </ul>
+      );
+    },
   },
 ];
 

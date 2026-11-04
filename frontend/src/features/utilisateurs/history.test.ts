@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { components } from "@/api/schema";
-import { describeChanges, historyKey } from "./history";
+import { describeAction, describeChanges, historyKey } from "./history";
 
 type AuditLog = components["schemas"]["AuditLog"];
 
@@ -14,12 +14,42 @@ function entry(changes: AuditLog["changes"]): AuditLog {
     object_id: "7",
     object_repr: "auditeur2",
     changes,
+    action_metier: null,
   };
 }
 
 describe("historyKey", () => {
   it("is prefixed by utilisateurs so mutations can invalidate it", () => {
     expect(historyKey(7, 2)).toEqual(["utilisateurs", "history", 7, 2]);
+  });
+});
+
+describe("describeAction", () => {
+  it.each([
+    ["creation_compte", "Création du compte"],
+    ["reinitialisation_mot_de_passe", "Réinitialisation du mot de passe par l'administration"],
+    ["desactivation_otp", "Désactivation du code de connexion par courriel"],
+    ["activation_otp", "Activation du code de connexion par courriel"],
+    ["changement_role", "Changement de rôle"],
+    ["amorcage_administrateur", "Création ou reprise du compte administrateur (serveur)"],
+    ["mot_de_passe_temporaire_migration", "Mot de passe temporaire attribué (migration)"],
+    ["changement_mot_de_passe", "Changement du mot de passe par l'agent"],
+    ["changement_mot_de_passe_impose", "Remplacement du mot de passe temporaire par l'agent"],
+    [
+      "reinitialisation_par_code",
+      "Réinitialisation du mot de passe par code (mot de passe oublié)",
+    ],
+  ])("labels the business action %s in French", (metier, label) => {
+    expect(describeAction({ ...entry({}), action_metier: metier })).toBe(label);
+  });
+
+  it("falls back to the auditlog operation when there is no business action", () => {
+    expect(describeAction(entry({}))).toBe("Modification");
+    expect(describeAction({ ...entry({}), action: "create" })).toBe("Création");
+  });
+
+  it("shows an unknown business action as is", () => {
+    expect(describeAction({ ...entry({}), action_metier: "action_future" })).toBe("action_future");
   });
 });
 

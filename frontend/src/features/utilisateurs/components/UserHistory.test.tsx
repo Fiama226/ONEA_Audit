@@ -17,6 +17,7 @@ const ENTRY = {
   object_id: "7",
   object_repr: "auditeur2",
   changes: { is_active: ["True", "False"] },
+  action_metier: null,
 };
 
 const paged = (results: object[], count = results.length) => ({
@@ -65,6 +66,29 @@ describe("UserHistory", () => {
     renderHistory();
     expect(await screen.findByText("Système")).toBeInTheDocument();
     expect(screen.getByText("Création")).toBeInTheDocument();
+  });
+
+  it("renders a holder action with empty changes using its business label", async () => {
+    server.use(
+      http.get(`${API_URL}/api/v1/audit-log/`, () =>
+        HttpResponse.json(
+          paged([
+            {
+              ...ENTRY,
+              actor: { id: 7, username: "auditeur2" },
+              changes: {},
+              action_metier: "changement_mot_de_passe",
+            },
+          ]),
+        ),
+      ),
+    );
+    renderHistory();
+    expect(await screen.findByText("Changement du mot de passe par l'agent")).toBeInTheDocument();
+    expect(screen.getByText("auditeur2")).toBeInTheDocument();
+    expect(screen.getByText("28/10/2026 08:00")).toBeInTheDocument();
+    expect(screen.getByText(fr.utilisateursHistorique.noFieldChange)).toBeInTheDocument();
+    expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
   });
 
   it("goes to page 2 on Suivant", async () => {

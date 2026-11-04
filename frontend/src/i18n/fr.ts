@@ -2226,6 +2226,20 @@ export const fr = {
     actionCreate: "Création",
     actionUpdate: "Modification",
     actionDelete: "Suppression",
+    /** Valeurs de `AuditLog.action_metier` (backend : users/services.py, auth_services.py, commandes). */
+    actionsMetier: {
+      creation_compte: "Création du compte",
+      reinitialisation_mot_de_passe: "Réinitialisation du mot de passe par l'administration",
+      desactivation_otp: "Désactivation du code de connexion par courriel",
+      activation_otp: "Activation du code de connexion par courriel",
+      changement_role: "Changement de rôle",
+      amorcage_administrateur: "Création ou reprise du compte administrateur (serveur)",
+      mot_de_passe_temporaire_migration: "Mot de passe temporaire attribué (migration)",
+      changement_mot_de_passe: "Changement du mot de passe par l'agent",
+      changement_mot_de_passe_impose: "Remplacement du mot de passe temporaire par l'agent",
+      reinitialisation_par_code: "Réinitialisation du mot de passe par code (mot de passe oublié)",
+    } as Record<string, string>,
+    noFieldChange: "Aucun champ modifié à afficher",
     empty: "Aucune modification enregistrée pour ce compte.",
   },
   table: {
