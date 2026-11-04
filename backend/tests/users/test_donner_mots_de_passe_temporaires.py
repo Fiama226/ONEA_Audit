@@ -1,4 +1,5 @@
-"""Temporary passwords for the active accounts left without one by the Keycloak switch."""
+"""Temporary passwords for the active accounts left without one by the switch to the in-app
+login (accounts the former identity provider authenticated have no local password)."""
 
 import logging
 from datetime import timedelta
@@ -75,3 +76,27 @@ def test_dry_run_lists_without_changing() -> None:
     assert "aucune modification" in erreurs
     rai.refresh_from_db()
     assert not rai.has_usable_password()
+
+
+def test_empty_password_field_counts_as_no_password() -> None:
+    vide = make_user(Role.AUDITEUR, username="vide")
+    User.objects.filter(pk=vide.pk).update(password="")
+    sortie, _ = _lancer()
+    mdp = dict(ligne.split("\t") for ligne in sortie.splitlines())["vide"]
+    vide.refresh_from_db()
+    assert vide.check_password(mdp) and vide.doit_changer_mot_de_passe
+
+
+@pytest.mark.parametrize("privilege", ["is_staff", "is_superuser"])
+def test_staff_and_superusers_are_listed_never_changed(privilege: str) -> None:
+    compte = _sans_mot_de_passe("django.admin", **{privilege: True})
+    agent = _sans_mot_de_passe("agent")
+    sortie, erreurs = _lancer()
+    assert set(dict(ligne.split("\t") for ligne in sortie.splitlines())) == {"agent"}
+    assert "django.admin" in erreurs and "1 mot(s) de passe" in erreurs
+    compte.refresh_from_db()
+    assert not compte.has_usable_password() and not compte.doit_changer_mot_de_passe
+    agent.refresh_from_db()
+    assert agent.has_usable_password()
+    sortie, erreurs = _lancer("--a-blanc")
+    assert sortie == "" and "django.admin" in erreurs

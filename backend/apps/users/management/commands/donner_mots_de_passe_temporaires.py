@@ -1,10 +1,15 @@
 """Give a temporary password to every active account that has no usable one.
 
-For the switch from Keycloak: the accounts it used to authenticate (the test accounts of
-the shared test site, for instance) have no local password. Each one gets a temporary
-password (72 h, to be changed at the first login), printed ONCE on the standard output as
-``identifiant<TAB>mot_de_passe``, never logged nor audited (only the account ids and the
-count reach the security log). Accounts that already have a password are never touched.
+For the switch to the in-app login: the accounts the former identity provider used to
+authenticate (the test accounts of the shared test site, for instance) have no local
+password. Each one gets a temporary password (72 h, to be changed at the first login),
+printed ONCE on the standard output as ``identifiant<TAB>mot_de_passe``, never logged nor
+audited (only the account ids and the count reach the security log). Accounts that already
+have a password are never touched.
+
+Django staff and superuser accounts are left out: a password printed in a batch must never
+open the Django admin. They are only listed on the standard error; give them a password
+with ``creer_administrateur`` or ``changepassword``.
 """
 
 from typing import Any
@@ -21,20 +26,39 @@ from apps.users.services import _action_auditee, _poser_mot_de_passe_temporaire
 ACTION_MOT_DE_PASSE_TEMPORAIRE = "mot_de_passe_temporaire_migration"
 
 
-def _sans_mot_de_passe() -> list[int]:
-    """Active accounts whose password is unusable (or empty), by username."""
-    return [
-        u.pk
-        for u in User.objects.filter(is_active=True).only("pk", "password").order_by("username")
-        if not u.has_usable_password()
-    ]
+def _sans_mot_de_passe(user: User) -> bool:
+    """No password that can ever match: marked unusable, or an empty field."""
+    return not user.password or not user.has_usable_password()
+
+
+def _comptes_sans_mot_de_passe() -> tuple[list[int], list[str]]:
+    """Active accounts without a password, by username: (ids to fix, privileged usernames).
+
+    The privileged ones (``is_staff`` or ``is_superuser``) are reported, never changed.
+    """
+    ids: list[int] = []
+    privilegies: list[str] = []
+    comptes = (
+        User.objects.filter(is_active=True)
+        .only("pk", "username", "password", "is_staff", "is_superuser")
+        .order_by("username")
+    )
+    for compte in comptes:
+        if not _sans_mot_de_passe(compte):
+            continue
+        if compte.is_staff or compte.is_superuser:
+            privilegies.append(compte.username)
+        else:
+            ids.append(compte.pk)
+    return ids, privilegies
 
 
 class Command(BaseCommand):
     help = (
         "Donne un mot de passe temporaire (72 h, à changer à la première connexion) à chaque "
         "compte actif sans mot de passe utilisable, et l'affiche une seule fois "
-        "(identifiant<TAB>mot de passe). Les autres comptes ne sont pas modifiés."
+        "(identifiant<TAB>mot de passe). Les autres comptes ne sont pas modifiés ; les comptes "
+        "is_staff ou is_superuser sont seulement signalés (sortie d'erreur)."
     )
 
     def add_arguments(self, parser: CommandParser) -> None:
@@ -45,7 +69,12 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args: Any, **options: Any) -> None:
-        ids = _sans_mot_de_passe()
+        ids, privilegies = _comptes_sans_mot_de_passe()
+        for username in privilegies:
+            self.stderr.write(
+                f"Compte d'administration Django ignoré (is_staff ou is_superuser) : {username} ; "
+                "utilisez creer_administrateur ou changepassword."
+            )
         if options["a_blanc"]:
             for username in (
                 User.objects.filter(pk__in=ids)
@@ -59,9 +88,15 @@ class Command(BaseCommand):
         for compte_id in ids:
             mot_de_passe = generer_mot_de_passe_temporaire()
             with transaction.atomic():
-                user = User.objects.select_for_update().get(pk=compte_id)
-                # Re-checked under the lock: a password set meanwhile is never overwritten.
-                if not user.is_active or user.has_usable_password():
+                user = User.objects.select_for_update(no_key=True).get(pk=compte_id)
+                # Re-checked under the lock: a password set (or a privilege given) meanwhile
+                # is never overwritten.
+                if (
+                    not user.is_active
+                    or user.is_staff
+                    or user.is_superuser
+                    or not _sans_mot_de_passe(user)
+                ):
                     continue
                 champs = _poser_mot_de_passe_temporaire(user, mot_de_passe, timezone.now())
                 with _action_auditee(user, ACTION_MOT_DE_PASSE_TEMPORAIRE):
