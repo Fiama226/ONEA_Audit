@@ -8,10 +8,12 @@ the services (which commands also call):
   except the system actor of a command, marked explicitly with ``acteur_systeme``;
 - a non-ADMIN actor only has the rights of his ``DelegationGestionComptes``, and none while
   his account is disabled;
-- a non-ADMIN actor never acts on a *protected* account: an ADMIN, a Django staff or
+- a non-ADMIN actor never acts on a *protected* account: an ADMIN, a RAI or a DG (taking
+  over one of them would give its validations and signatures: AUTH-03), a Django staff or
   superuser account, another manager (an account holding a delegated right: no lateral
   move to rights one was not given) or his own account;
-- only an ADMIN reads or changes a delegation, and only an ADMIN assigns the ADMIN role.
+- only an ADMIN reads or changes a delegation, and only an ADMIN assigns the ADMIN, RAI or
+  DG role (a delegate gives AUDITEUR or AUDITE only).
 
 Everything is read from the database on every call (role, active flag, delegation): a
 revocation, a deactivation or a role change takes effect on the very next request. Nothing
@@ -51,7 +53,12 @@ def acteur_systeme(acteur: User) -> Iterator[None]:
 
 DROIT_REFUSE = "Vous n'avez pas le droit d'effectuer cette action sur ce compte."
 ADMIN_SEULEMENT = "Seul un administrateur peut gérer les délégations."
-ATTRIBUTION_ADMIN = "Seul un administrateur peut attribuer le rôle Administrateur."
+ATTRIBUTION_RESERVEE = (
+    "Seul un administrateur peut attribuer les rôles Administrateur, Responsable de l'audit "
+    "interne et Direction générale."
+)
+# Roles only an ADMIN acts on or assigns: a delegate manages AUDITEUR and AUDITE accounts.
+ROLES_RESERVES_ADMIN = frozenset({Role.ADMIN, Role.RAI, Role.DG})
 
 
 def _aucun() -> dict[str, bool]:
@@ -73,7 +80,8 @@ def _etat(acteur: Any) -> tuple[bool, dict[str, bool]]:
 
 
 def _cible_protegee(acteur: User, cible: User) -> bool:
-    """For a non-ADMIN actor: own account, an ADMIN, a staff/superuser, or another manager."""
+    """For a non-ADMIN actor: own account, an ADMIN/RAI/DG, a staff/superuser, or another
+    manager."""
     if cible.pk is None or cible.pk == acteur.pk:
         return True
     ligne = (
@@ -84,7 +92,7 @@ def _cible_protegee(acteur: User, cible: User) -> bool:
     if ligne is None:
         return True
     return (
-        ligne["role"] == Role.ADMIN
+        ligne["role"] in ROLES_RESERVES_ADMIN
         or ligne["is_staff"]
         or ligne["is_superuser"]
         or any(ligne[champ] for champ in _CHAMPS)
@@ -140,6 +148,6 @@ def exiger_administrateur(acteur: Any, message: str = ADMIN_SEULEMENT) -> None:
 
 
 def exiger_attribution_role(acteur: Any, role: str) -> None:
-    """Only an ADMIN gives the ADMIN role (at creation or by a role change)."""
-    if role == Role.ADMIN:
-        exiger_administrateur(acteur, ATTRIBUTION_ADMIN)
+    """Only an ADMIN gives the ADMIN, RAI or DG role (at creation or by a role change)."""
+    if role in ROLES_RESERVES_ADMIN:
+        exiger_administrateur(acteur, ATTRIBUTION_RESERVEE)

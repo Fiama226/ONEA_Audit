@@ -165,7 +165,9 @@ class CreationCompteSerializer(serializers.Serializer[dict[str, Any]]):
 class ChangementRoleSerializer(serializers.Serializer[dict[str, str]]):
     role = serializers.ChoiceField(
         choices=Role.choices,
-        help_text="Seul un administrateur attribue le rôle Administrateur.",
+        help_text=(
+            "Seul un administrateur attribue les rôles Administrateur, RAI et Direction générale."
+        ),
         error_messages={
             "required": ROLE_OBLIGATOIRE,
             "null": ROLE_OBLIGATOIRE,

@@ -88,7 +88,7 @@ def _desactiver_otp(client: APIClient, admin: User) -> Resultat:
 def _changer_role(client: APIClient, admin: User) -> Resultat:
     cible = make_user(Role.AUDITEUR)
     url = f"{BASE}{cible.id}/change-role/"
-    return _sur_cible(cible, lambda: client.post(url, {"role": "RAI"}, format="json"))
+    return _sur_cible(cible, lambda: client.post(url, {"role": "AUDITE"}, format="json"))
 
 
 def _desactiver(client: APIClient, admin: User) -> Resultat:
@@ -257,7 +257,8 @@ def test_delegate_cannot_touch_admin_account(admin: User) -> None:
 def test_delegate_cannot_touch_other_delegate(admin: User) -> None:
     """Another manager is out of reach: no lateral move to rights one was not given."""
     delegue = _delegue(admin, reinitialiser=True, desactiver=True)
-    autre = _delegue(admin, roles=True)
+    autre = make_user(Role.AUDITEUR)  # not a RAI: those stay out of reach once revoked
+    _deleguer(autre, admin, roles=True)
     assert not peut(delegue, "reinitialiser", autre)
     avant = User.objects.values().get(pk=autre.pk)
     client = _client(delegue)
@@ -290,9 +291,98 @@ def test_delegate_cannot_assign_admin_role(admin: User) -> None:
         services.changer_role(agent, role=Role.ADMIN, par=delegue)
     agent.refresh_from_db()
     assert agent.role == Role.AUDITEUR
-    # Non-admin roles are fine.
-    r = client.post(f"{BASE}{agent.id}/change-role/", {"role": "DG"}, format="json")
-    assert r.status_code == 200 and r.json()["role"] == "DG"
+    # The roles a delegate may give are fine.
+    r = client.post(f"{BASE}{agent.id}/change-role/", {"role": "AUDITE"}, format="json")
+    assert r.status_code == 200 and r.json()["role"] == "AUDITE"
+
+
+# --- AUTH-03: the RAI and DG accounts and roles are reserved to an ADMIN ------------------
+
+
+@pytest.mark.parametrize("role", [Role.RAI, Role.DG])
+def test_delegate_cannot_touch_rai_or_dg_account(admin: User, role: str) -> None:
+    """A delegate with every right can neither reset, unlock, re-address, demote nor
+    deactivate a RAI or DG account: taking it over would give him its signatures."""
+    cible = make_user(role, otp_connexion_actif=True)
+    delegue = _delegue(admin, **TOUS)
+    for action in ACTIONS:
+        assert not peut(delegue, action, cible)
+    client = _client(delegue)
+    url = f"{BASE}{cible.id}/"
+    # The account page shows no action button to the delegate.
+    assert not any(client.get(url).json()["actions"].values())
+    avant = User.objects.values().get(pk=cible.pk)
+    assert client.post(url + "reset-password/", {"envoyer_courriel": False}).status_code == 403
+    assert client.post(url + "disable-otp/").status_code == 403
+    assert client.post(url + "change-role/", {"role": "AUDITE"}, format="json").status_code == 403
+    assert client.post(url + "deactivate/", {"motif": "x"}, format="json").status_code == 403
+    assert client.patch(url, {"email": "pirate@onea.bf"}, format="json").status_code == 403
+    assert client.patch(url, {"first_name": "X"}, format="json").status_code == 403
+    for appel in (
+        lambda: services.reinitialiser_mot_de_passe(cible, par=delegue, envoyer_courriel=False),
+        lambda: services.desactiver_otp(cible, par=delegue),
+        lambda: services.changer_role(cible, role=Role.AUDITE, par=delegue),
+        lambda: services.desactiver(cible, motif="x", by=delegue),
+        lambda: services.modifier_profil(cible, changes={"email": "pirate@onea.bf"}, by=delegue),
+    ):
+        with pytest.raises(PermissionDenied):
+            appel()
+    assert User.objects.values().get(pk=cible.pk) == avant
+    # A former RAI/DG left disabled cannot be revived by a delegate either.
+    ancien = make_user(role, is_active=False)
+    assert client.post(f"{BASE}{ancien.id}/reactivate/").status_code == 403
+    with pytest.raises(PermissionDenied):
+        services.reactiver(ancien, by=delegue)
+    # The admin still can, and sees the buttons.
+    admin_client = _client(admin)
+    assert all(
+        admin_client.get(url).json()["actions"][a]
+        for a in ("reinitialiser_mot_de_passe", "desactiver_otp", "changer_role", "desactiver")
+    )
+    assert admin_client.post(url + "disable-otp/").status_code == 200
+
+
+@pytest.mark.parametrize("role", ["RAI", "DG", "ADMIN"])
+def test_delegate_cannot_create_or_assign_reserved_roles(admin: User, role: str) -> None:
+    delegue = _delegue(admin, creer=True, roles=True)
+    client = _client(delegue)
+    corps = {"username": "nouveau.chef", "role": role, "envoyer_courriel": False}
+    r = client.post(BASE, corps, format="json")
+    assert r.status_code == 403
+    assert "mot_de_passe_temporaire" not in r.content.decode()
+    assert not User.objects.filter(username="nouveau.chef").exists()
+    with pytest.raises(PermissionDenied):
+        services.creer_compte(
+            donnees={"username": "nouveau.chef", "role": role}, par=delegue, envoyer_courriel=False
+        )
+    agent = make_user(Role.AUDITEUR)
+    r = client.post(f"{BASE}{agent.id}/change-role/", {"role": role}, format="json")
+    assert r.status_code == 403
+    with pytest.raises(PermissionDenied):
+        services.changer_role(agent, role=role, par=delegue)
+    agent.refresh_from_db()
+    assert agent.role == Role.AUDITEUR
+    # An ADMIN gives these roles.
+    r = _client(admin).post(f"{BASE}{agent.id}/change-role/", {"role": role}, format="json")
+    assert r.status_code == 200 and r.json()["role"] == role
+
+
+def test_delegate_still_manages_auditeurs_and_audites(admin: User) -> None:
+    delegue = _delegue(admin, **TOUS)
+    client = _client(delegue)
+    for role in ("AUDITEUR", "AUDITE"):
+        corps = {"username": f"agent.{role.lower()}", "role": role, "envoyer_courriel": False}
+        assert client.post(BASE, corps, format="json").status_code == 201
+    agent = make_user(Role.AUDITEUR, otp_connexion_actif=True)
+    url = f"{BASE}{agent.id}/"
+    actions = client.get(url).json()["actions"]
+    assert all(v for a, v in actions.items() if a != "reactiver")  # the account is active
+    assert client.post(url + "change-role/", {"role": "AUDITE"}, format="json").status_code == 200
+    assert client.post(url + "disable-otp/").status_code == 200
+    r = client.post(url + "reset-password/", {"envoyer_courriel": False}, format="json")
+    assert r.status_code == 200 and r.json()["mot_de_passe_temporaire"]
+    assert client.post(url + "deactivate/", {"motif": "x"}, format="json").status_code == 200
+    assert client.post(url + "reactivate/").status_code == 200
 
 
 def test_delegate_cannot_delegate(admin: User) -> None:

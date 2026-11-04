@@ -476,7 +476,8 @@ def _revoquer_delegation(user: User, par: User) -> None:
 
 
 def changer_role(compte: User, *, role: str, par: User) -> User:
-    """Give the account another role. Only an ADMIN gives the ADMIN role; nobody changes
+    """Give the account another role. Only an ADMIN gives the ADMIN, RAI or DG role (and
+    only an ADMIN acts on such an account, see `delegation`); nobody changes
     his own role; the last active ADMIN keeps his. A promotion to ADMIN drops the
     delegated rights (useless to an admin, and they must not come back on a demotion).
     The new role applies on the account's next request (it is read on each one)."""

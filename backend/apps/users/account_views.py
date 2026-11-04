@@ -241,7 +241,7 @@ class UserAccountViewSet(
             "des comptes » ; courriel = « réinitialiser les mots de passe » (il sert à la "
             "récupération du compte) ; direction = « changer les rôles ». Un champ renvoyé "
             "inchangé ne demande aucun droit. Un délégué ne modifie ni un administrateur, ni "
-            "un autre délégué, ni son propre compte."
+            "un RAI, ni la Direction générale, ni un autre délégué, ni son propre compte."
         ),
         request=ProfilUtilisateurSerializer,
         responses={200: CompteUtilisateurSerializer, **ERROR_400, **_ERREURS_ACTION},
@@ -257,7 +257,8 @@ class UserAccountViewSet(
         tags=[TAG],
         summary="Changer le rôle d'un compte",
         description=(
-            "Seul un administrateur attribue le rôle Administrateur ; personne ne change son "
+            "Seul un administrateur attribue les rôles Administrateur, RAI et Direction "
+            "générale (un délégué attribue Auditeur ou Audité) ; personne ne change son "
             "propre rôle ; le dernier administrateur actif garde le sien."
         ),
         request=ChangementRoleSerializer,
