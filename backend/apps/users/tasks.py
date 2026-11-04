@@ -54,3 +54,11 @@ def synchroniser_comptes_keycloak(limit: int = 50) -> int:
             logger.warning("Keycloak sync batch interrupted after %s account(s)", traites)
             break
     return traites
+
+
+@shared_task(name="users.purger_codes")  # type: ignore[untyped-decorator]
+def purger_codes() -> int:
+    """Daily purge of one-time codes expired for more than 24 h."""
+    from .auth_services import purger_codes_expires
+
+    return purger_codes_expires()

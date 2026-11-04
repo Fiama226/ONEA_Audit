@@ -414,6 +414,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "recherche.reconcilier",
         "schedule": crontab(hour=2, minute=0),
     },
+    "users-purge-codes": {
+        "task": "users.purger_codes",
+        "schedule": crontab(hour=3, minute=30),
+    },
 }
 
 # --- Relances automatiques du suivi des recommandations (lot 8) ---
