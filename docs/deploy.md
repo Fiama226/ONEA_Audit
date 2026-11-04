@@ -10,10 +10,10 @@ Réseaux Docker :
 | Réseau | Type | Services |
 |---|---|---|
 | `edge` | standard | nginx (ports 80/443) |
-| `web` | `internal`, sous-réseau fixe `ONEA_SUBNET_WEB` (défaut `172.30.10.0/28`) | nginx (adresse fixe `ONEA_NGINX_IP`), web, worker |
+| `web` | `internal`, sous-réseau fixe `ONEA_SUBNET_WEB` (défaut `172.30.10.0/28`) | nginx (adresse fixe `ONEA_NGINX_IP`), web, worker (pas `worker-auth`) |
 | `front` | `internal` | nginx, frontend |
-| `mail-out` | standard | worker seul (sortie SMTP) |
-| `backend` | `internal` | web, worker, beat, migrate, db, redis, meilisearch, gotenberg |
+| `mail-out` | standard | `worker` et `worker-auth` seuls (sortie SMTP) |
+| `backend` | `internal` | web, worker, worker-auth, beat, migrate, db, redis, meilisearch, gotenberg |
 | `av` | `internal` | clamav, web, worker (clamd, port 3310, joignable de ces trois services seulement) |
 | `av-out` | standard | clamav seul (mise à jour des signatures par freshclam) |
 
@@ -21,10 +21,20 @@ L'authentification est celle de l'application elle-même (sessions Django) : il 
 serveur d'identité ni de second nom DNS. `web` n'a aucune sortie : tout courriel part du `worker`.
 Chemin d'un courriel d'authentification (code de connexion, code « mot de passe oublié », courriel de
 bienvenue, nouveau mot de passe temporaire) : `web` met une tâche en file dans `redis` (réseau
-`backend`), le `worker` la prend, émet le code ou relit le mot de passe temporaire (chiffré en base,
+`backend`), le `worker-auth` la prend, émet le code ou relit le mot de passe temporaire (chiffré en base,
 1 h au plus) et l'envoie au relais SMTP par `mail-out`. Aucun code ni mot de passe ne passe par
-`redis`. Conséquence : **sans `worker` en marche, aucun courriel d'authentification ne part** (voir
-§5.5). `gotenberg` n'a aucune route sortante.
+`redis`. Ces trois tâches (`users.envoyer_code_connexion`, `users.envoyer_code_reinitialisation`,
+`users.envoyer_mot_de_passe_temporaire`) sont routées vers une file dédiée, **`auth`**
+(`CELERY_TASK_ROUTES`), pour ne pas attendre derrière une conversion de document qui peut occuper le
+`worker` 8 minutes alors qu'un code de connexion vit 10 minutes. Le service **`worker-auth`**
+(`celery -A config worker -n auth@%h -Q auth --concurrency 1 -O fair --prefetch-multiplier 1`, réseaux
+`backend` et `mail-out` seulement, secrets `secret_key`, `secret_key_fallbacks`,
+`postgres_app_password`, `redis_password`, `meili_master_key`, `email_password`) ne lit que cette file.
+Le `worker` principal lance `-Q celery,auth -O fair --prefetch-multiplier 1` : il sert `auth` en
+secours. Il peut encore réserver un message `auth` pendant une longue conversion (un par processus) ;
+`worker-auth` le prend normalement avant lui. **Un worker lancé à la main doit recevoir
+`-Q celery,auth`** : sans `-Q`, il n'envoie aucun courriel d'authentification. Conséquence : **sans
+`worker-auth` ni `worker` en marche, aucun courriel d'authentification ne part** (voir §5.5). `gotenberg` n'a aucune route sortante.
 ClamAV (SEC-04) est un conteneur séparé : `web` et `worker` l'interrogent sur `av` (protocole
 INSTREAM) ; sa seule route sortante est la mise à jour des signatures (`av-out`, aucun autre
 service). Premier démarrage : téléchargement d'environ 300 Mo de signatures puis chargement en
@@ -181,14 +191,14 @@ fichiers `0600`), l'absence de fichier vide et de valeur `CHANGE_ME`.
 
 | Fichier | Lu par | Contenu |
 |---|---|---|
-| `secret_key` | web, worker, beat, migrate | clé secrète Django (96 caractères hexadécimaux) |
-| `secret_key_fallbacks` | web, worker, beat, migrate | anciennes clés acceptées pendant une rotation, une par ligne ; **vide** au départ |
+| `secret_key` | web, worker, worker-auth, beat, migrate | clé secrète Django (96 caractères hexadécimaux) |
+| `secret_key_fallbacks` | web, worker, worker-auth, beat, migrate | anciennes clés acceptées pendant une rotation, une par ligne ; **vide** au départ |
 | `postgres_password` | db, migrate | mot de passe du propriétaire `POSTGRES_USER` |
-| `postgres_app_password` | db (création du rôle), web, worker, beat | mot de passe du rôle applicatif `POSTGRES_APP_USER` |
-| `redis_password` | redis, web, worker, beat, migrate | mot de passe Valkey |
-| `meili_master_key` | meilisearch, web, worker, beat, migrate | clé maître Meilisearch |
+| `postgres_app_password` | db (création du rôle), web, worker, worker-auth, beat | mot de passe du rôle applicatif `POSTGRES_APP_USER` |
+| `redis_password` | redis, web, worker, worker-auth, beat, migrate | mot de passe Valkey |
+| `meili_master_key` | meilisearch, web, worker, worker-auth, beat, migrate | clé maître Meilisearch |
 | `metrics_token` | web | jeton `Authorization: Bearer` de `/api/v1/metrics/` |
-| `email_password` | worker | mot de passe SMTP ; **vide** si le relais n'en exige pas (le mot de passe de `EMAIL_URL` s'applique alors, s'il y en a un) |
+| `email_password` | worker, worker-auth | mot de passe SMTP ; **vide** si le relais n'en exige pas (le mot de passe de `EMAIL_URL` s'applique alors, s'il y en a un) |
 
 **Installation existante (secrets jusqu'ici dans `.env.prod`).** Ne pas laisser le script
 inventer des valeurs que la base ou Meilisearch ne connaissent pas : **avant** de le
@@ -240,13 +250,13 @@ secret n'est lu qu'au démarrage. Abréviation : `dc` =
 
 | Secret | Procédure | Interruption |
 |---|---|---|
-| `SECRET_KEY` | 1. `cat /etc/onea/secrets/secret_key >> /etc/onea/secrets/secret_key_fallbacks` (l'ancienne reste acceptée). 2. Écrire une nouvelle valeur dans `secret_key`. 3. `dc up -d --force-recreate web worker beat`. 4. Après la durée de vie des sessions (8 h) et des jetons signés, vider le fichier des anciennes clés (`: > .../secret_key_fallbacks`) puis recréer `web worker beat`. | aucune (les signatures de l'ancienne clé restent valides pendant la transition) |
-| Mot de passe du rôle applicatif | 1. `dc stop web worker beat`. 2. Écrire la nouvelle valeur dans `postgres_app_password`. 3. Appliquer avec l'encadré « ALTER ROLE » ci-dessous (la valeur est lue dans le conteneur, jamais passée en argument). 4. `dc up -d --force-recreate web worker beat`. | courte (web, worker, beat) |
+| `SECRET_KEY` | 1. `cat /etc/onea/secrets/secret_key >> /etc/onea/secrets/secret_key_fallbacks` (l'ancienne reste acceptée). 2. Écrire une nouvelle valeur dans `secret_key`. 3. `dc up -d --force-recreate web worker worker-auth beat`. 4. Après la durée de vie des sessions (8 h) et des jetons signés, vider le fichier des anciennes clés (`: > .../secret_key_fallbacks`) puis recréer `web worker worker-auth beat`. | aucune (les signatures de l'ancienne clé restent valides pendant la transition) |
+| Mot de passe du rôle applicatif | 1. `dc stop web worker worker-auth beat`. 2. Écrire la nouvelle valeur dans `postgres_app_password`. 3. Appliquer avec l'encadré « ALTER ROLE » ci-dessous (la valeur est lue dans le conteneur, jamais passée en argument). 4. `dc up -d --force-recreate web worker beat`. | courte (web, worker, beat) |
 | Mot de passe du propriétaire | Idem avec `postgres_password` et `POSTGRES_USER` dans l'encadré, puis `dc up -d --force-recreate db migrate`. `POSTGRES_PASSWORD_FILE` n'agit qu'à l'initialisation du volume : l'`ALTER ROLE` est indispensable. Les sauvegardes passent par le socket du conteneur, sans mot de passe. | `migrate` seulement |
-| Redis (Valkey) | 1. Écrire la nouvelle valeur dans `redis_password`. 2. `dc up -d --force-recreate redis web worker beat migrate`. Les tâches en attente sont conservées (`appendonly`). | courte |
-| Meilisearch | 1. Écrire la nouvelle valeur dans `meili_master_key`. 2. `dc up -d --force-recreate meilisearch web worker beat migrate`. 3. `dc exec web python manage.py configurer_recherche` puis `dc exec web python manage.py reindexer`. | recherche indisponible quelques minutes |
+| Redis (Valkey) | 1. Écrire la nouvelle valeur dans `redis_password`. 2. `dc up -d --force-recreate redis web worker worker-auth beat migrate`. Les tâches en attente sont conservées (`appendonly`). | courte |
+| Meilisearch | 1. Écrire la nouvelle valeur dans `meili_master_key`. 2. `dc up -d --force-recreate meilisearch web worker worker-auth beat migrate`. 3. `dc exec web python manage.py configurer_recherche` puis `dc exec web python manage.py reindexer`. | recherche indisponible quelques minutes |
 | Jeton de métriques | Écrire la nouvelle valeur dans `metrics_token`, `dc up -d --force-recreate web`, puis mettre à jour la supervision de l'ONEA (en-tête `Authorization: Bearer`). | aucune |
-| Mot de passe SMTP | Écrire la nouvelle valeur dans `email_password`, `dc up -d --force-recreate worker`. | aucune |
+| Mot de passe SMTP | Écrire la nouvelle valeur dans `email_password`, `dc up -d --force-recreate worker worker-auth`. | aucune |
 
 **Encadré « ALTER ROLE »** (remplacer `postgres_app_password` et `POSTGRES_APP_USER` par
 `postgres_password` et `POSTGRES_USER` pour le propriétaire) : le mot de passe est lu dans le
@@ -420,8 +430,9 @@ passe avec `creer_administrateur` ou `changepassword`.
 
 ### 5.5 Sans serveur SMTP, ou administrateur bloqué
 
-Tant que le relais SMTP n'est pas fourni (`EMAIL_URL=dummymail://`, §2.3), que le `worker` est
-arrêté ou que l'envoi échoue, tout fonctionne sans courriel :
+Tant que le relais SMTP n'est pas fourni (`EMAIL_URL=dummymail://`, §2.3, quel que soit l'hôte indiqué :
+ce mode n'est jamais compté comme un envoi), que `worker-auth` et le `worker` sont arrêtés ou que
+l'envoi échoue, tout fonctionne sans courriel :
 
 - *mot de passe oublié* : aucun code ne peut partir ; l'agent s'adresse à un administrateur ou
   à un délégué (pour un compte AUDITEUR ou AUDITE ; un administrateur pour un RAI ou un DG) qui
@@ -429,16 +440,24 @@ arrêté ou que l'envoi échoue, tout fonctionne sans courriel :
   une fois, compte déverrouillé, sessions fermées) ;
 - **courriel mis en file mais jamais remis** : `web` ne sait que si le courriel a été confié à la
   file. Si le `worker` échoue ensuite (relais injoignable, adresse refusée), il écrit dans le
-  journal de sécurité une ligne `ERROR` « Courriel de mot de passe temporaire NON envoyé :
-  compte=<id> … Réinitialisez le mot de passe avec affichage. ». Le mot de passe de ce courriel
-  est perdu (aucun nouvel essai automatique) : l'administrateur refait une **réinitialisation, envoi
+  journal de sécurité (`onea.securite`) une ligne `ERROR` « Mot de passe temporaire perdu (<raison>) : compte=<id> envoi=<id>. Réinitialisez le mot de passe avec affichage. » La raison est l'une de : file
+  indisponible, identifiant invalide, en attente introuvable, expiré avant l'envoi, compte désactivé,
+  illisible après un changement de `SECRET_KEY`, envoi SMTP en échec. **C'est la ligne à surveiller** :
+  le mot de passe de ce courriel est perdu (le journal ne le contient jamais ; aucun nouvel essai
+  automatique) : l'administrateur refait une **réinitialisation, envoi
   décoché**, et transmet le mot de passe affiché. Même conduite si le `worker` est resté arrêté
-  plus d'une heure : les mots de passe en attente ont expiré et sont abandonnés (ligne `WARNING`
-  « Courriel de mot de passe temporaire abandonné (expiré ou compte inactif) ») ;
+  plus d'une heure : les mots de passe en attente ont expiré (même ligne `ERROR`, raison « expiré avant
+  l'envoi »). Si la file `redis` est injoignable au moment de la réinitialisation hors transaction, le mot
+  de passe est affiché à l'écran ; quand l'appel se fait dans une transaction de l'application, la mise en
+  file est différée à sa validation, l'écran répond « mis en file » aussitôt et un échec ultérieur laisse la
+  même ligne `ERROR` (raison « file indisponible ») ;
+- **`worker-auth` arrêté** : le `worker` principal sert la file `auth` en secours (avec le retard d'une
+  conversion éventuellement en cours). Si les deux sont arrêtés, les demandes restent en file dans
+  `redis` et sont traitées au redémarrage.
 - **`worker` arrêté** : les demandes restent en file dans `redis` et sont traitées à son
-  redémarrage. Un code est émis au moment où le `worker` traite la demande ; mais une connexion en
+  redémarrage (pour l'authentification, par `worker-auth`). Un code est émis au moment où le `worker` traite la demande ; mais une connexion en
   attente de son code expire 10 minutes après la saisie du mot de passe : l'agent recommence alors
-  sa connexion. Contrôle : `dc ps worker` doit indiquer « healthy » ;
+  sa connexion. Contrôle : `dc ps worker worker-auth` doit indiquer « healthy » pour les deux ;
 - *plafond de la réinitialisation par code* : après 15 codes faux en 24 h sur un compte
   (`AUTH_REINITIALISATION_ECHECS_MAX`), « mot de passe oublié » n'émet plus de code et refuse tout
   code jusqu'à la fin de la fenêtre (journal `ERROR` « Réinitialisation par code bloquée 24 h ») ;
@@ -465,10 +484,10 @@ arrêté ou que l'envoi échoue, tout fonctionne sans courriel :
 |---|---|
 | Session | 8 h au plus (durée absolue), 30 min d'inactivité ; les requêtes automatiques marquées `X-Onea-Arriere-Plan: 1` (rafraîchissement d'un onglet ouvert) ne comptent pas comme activité ; stockée en base ; à un changement de mot de passe les autres sessions du compte sont fermées, à une réinitialisation toutes |
 | Verrouillage d'un compte | 5 échecs consécutifs : 15 min ; réponse identique que le compte existe ou non ; levé par une réinitialisation du mot de passe |
-| Code à usage unique (OTP) | 6 chiffres, haché en base, 10 min, 5 essais, usage unique ; codes expirés purgés après 24 h |
+| Code à usage unique (OTP) | 6 chiffres, haché en base, 10 min, 5 essais, usage unique ; codes expirés purgés après 24 h. Code de connexion : au plus `AUTH_CODES_CONNEXION_MAX` (10) codes envoyés par compte et par 15 min (compteur en base, sous verrou de ligne) ; au-delà, aucun nouveau code n'est émis (journal `WARNING`) et le dernier code envoyé reste valable. Un code remplacé par un plus récent est refusé s'il est ressaisi, mais **ne compte pas comme un échec** (ni essai, ni verrouillage, ni plafonds par compte ou par adresse) |
 | Réinitialisation par code (« mot de passe oublié ») | au plus 10 codes émis par compte et par 24 h ; au plus 15 codes faux par compte et par 24 h (`AUTH_REINITIALISATION_ECHECS_MAX`), puis plus aucun code émis ni accepté jusqu'à la fin de la fenêtre ; compteurs en base (une panne du cache ne les lève pas) |
 | Mot de passe temporaire | 16 caractères aléatoires, 72 h, changement obligatoire à la première connexion ; en attente d'envoi, chiffré en base 1 h au plus |
-| Limites de débit par adresse (IPv6 : par /64) | connexion 60/min, code de connexion 30/min, demande de code 20/min, réinitialisation 20/min ; **échecs** : 30 mots de passe ou codes faux par 15 min et 30 réinitialisations refusées par heure, tous comptes confondus (réponse 429 avant tout contrôle du mot de passe) ; `/admin/login/` soumis aux mêmes limites |
+| Limites de débit par adresse (IPv6 : par /64) | connexion 60/min, code de connexion 30/min, demande de code 20/min, réinitialisation 20/min ; **échecs** : 30 mots de passe ou codes faux (ou comptes inconnus) par 15 min et 30 réinitialisations refusées par heure (code faux, aucun code en cours, compte inconnu), tous comptes confondus, en compteurs atomiques par tranches (réponse 429 avant tout contrôle du mot de passe). Ces plafonds ne comptent **pas** un bon secret refusé parce que le compte est verrouillé, désactivé ou a un mot de passe temporaire expiré, ni un code remplacé : les agents d'un siège derrière un NAT ne se bloquent pas entre eux ; `/admin/login/` soumis aux mêmes limites |
 | Limites par identifiant ou par utilisateur | 5 demandes de code par heure et par identifiant saisi ; changement de mot de passe et retrait du code de connexion 10/min par utilisateur ; gestion des comptes 30/h par utilisateur (§8) |
 | CSRF | exigé sur toute écriture, y compris la connexion, et vérifié **avant** les limites de débit (une page tierce ne peut pas épuiser le quota d'une adresse) |
 | Cookies | `__Host-onea-session` et `__Host-onea-csrf`, `Secure` ; `SESSION_COOKIE_SECURE=true` exigé en production |
@@ -505,6 +524,17 @@ interne) :
    task » dans son journal). C'est sans conséquence : elles sont abandonnées et il n'y a rien à
    vider dans Redis.
 4. Donner un mot de passe temporaire aux comptes existants : §5.4.
+
+**Mise à jour depuis une version de l'authentification antérieure au second tour de corrections**
+(commit `7f6b9dc`) :
+
+1. La migration `users.0011_codes_connexion_et_remplaces` ajoute `User.codes_connexion_emis`,
+   `User.codes_connexion_depuis` (compteur des codes de connexion envoyés, hors piste d'audit) et
+   `CodeOtp.remplace_le` ; elle passe avec `migrate` au déploiement, comme les autres.
+2. La composition de production a un nouveau service, `worker-auth` (§1) : `dc up -d` le crée. Tout
+   worker lancé à la main doit recevoir `-Q celery,auth`.
+3. `AUTH_REINITIALISATION_ECHECS_MAX` et `AUTH_CODES_CONNEXION_MAX` sont transmis par la composition
+   et listés dans `.env.prod.example` (valeurs par défaut `15` et `10`).
 
 ## 7. Sauvegardes et restauration
 
@@ -609,7 +639,7 @@ Sans `--oui`, rien n'est modifié. Depuis la copie hors serveur : `restic restor
 /srv/onea-restauration`, puis `--dossier /srv/onea-restauration/srv/onea-backups`. `restore.sh` :
 
 1. contrôle le manifeste et les empreintes (**refus au moindre écart**), la lisibilité des dumps et archives ;
-2. arrête `web`, `worker`, `beat` ;
+2. arrête `web`, `worker`, `worker-auth`, `beat` ;
 3. restaure la base applicative (`pg_restore --clean --if-exists --single-transaction`) ;
 4. **relance `installer_gardes_sql`** : les déclencheurs de gel et les droits de `onea_app` (§7bis) sont
    rétablis par le code, pas par confiance dans le dump ;
@@ -635,9 +665,9 @@ contrôle. Restauration d'un seul document : extraire son fichier de `documents-
 | Rôle | Usage | Droits |
 |---|---|---|
 | `POSTGRES_USER` (propriétaire, défaut `onea`) | service `migrate`, sauvegardes, maintenance | propriétaire des tables |
-| `POSTGRES_APP_USER` (défaut `onea_app`) | `web`, `worker`, `beat` | `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT`, jamais propriétaire ; `SELECT`, `INSERT`, `UPDATE` sur les tables ; `DELETE` uniquement sur les tables de liaison générées et `django_session` ; ni `TRUNCATE`, ni `TRIGGER`, ni `CREATE` ; `USAGE`, `SELECT` sur les séquences |
+| `POSTGRES_APP_USER` (défaut `onea_app`) | `web`, `worker`, `worker-auth`, `beat` | `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT`, jamais propriétaire ; `SELECT`, `INSERT`, `UPDATE` sur les tables ; `DELETE` uniquement sur les tables de liaison générées et `django_session` ; ni `TRUNCATE`, ni `TRIGGER`, ni `CREATE` ; `USAGE`, `SELECT` sur les séquences |
 
-Le mot de passe du propriétaire n'est présent que dans le service `migrate` ; `web`, `worker` et `beat`
+Le mot de passe du propriétaire n'est présent que dans le service `migrate` ; `web`, `worker`, `worker-auth` et `beat`
 reçoivent l'URL du rôle applicatif. Les droits sont réappliqués après chaque migration.
 
 **Gel en base.** Des déclencheurs refusent, même par SQL brut, avec le message
@@ -678,7 +708,7 @@ détecte un gel absent, et `installer_gardes_sql` (sans option) le répare.
 
 **Procédure de maintenance avec contournement.** Seul le propriétaire (ou un superutilisateur) peut lever le
 gel, dans une transaction, avec `SET LOCAL onea.maintenance = 'on'` ; le rôle applicatif n'en tire aucun effet.
-Arrêter d'abord `web`, `worker` et `beat`, sauvegarder, puis :
+Arrêter d'abord `web`, `worker`, `worker-auth` et `beat`, sauvegarder, puis :
 
 ```
 docker compose --env-file .env.prod -f docker/compose.prod.yml exec -T db \
@@ -713,7 +743,7 @@ Pour une base déjà en service :
    ```
 
 3. Déployer : `docker compose --env-file .env.prod -f docker/compose.prod.yml up -d`. Le service `migrate`
-   (connexion du propriétaire) pose les déclencheurs et les droits (`post_migrate`), puis `web`, `worker` et
+   (connexion du propriétaire) pose les déclencheurs et les droits (`post_migrate`), puis `web`, `worker`, `worker-auth` et
    `beat` redémarrent avec le rôle applicatif. Sans redéploiement :
    `docker compose … run --rm migrate python manage.py installer_gardes_sql`.
 4. Vérifier comme ci-dessus (`--verifier --exiger-role`, `select current_user`).
@@ -752,11 +782,12 @@ intercepté (ce droit n'est pas accordé au rôle applicatif).
 | `THROTTLE_RATE_CONNEXION_CODE` | saisie du code de connexion, par adresse client (défaut `30/min`) |
 | `THROTTLE_RATE_MOT_DE_PASSE_OUBLIE_IP` | demandes de code « mot de passe oublié », par adresse client (défaut `20/min`) |
 | `THROTTLE_RATE_REINITIALISATION` | réinitialisation avec le code reçu, par adresse client (défaut `20/min`) |
-| `THROTTLE_RATE_ECHECS_CONNEXION` | **échecs** de connexion (mot de passe ou code de connexion faux) par adresse client, tous comptes confondus (défaut `30/15min`) ; au-delà, la connexion depuis cette adresse répond 429 jusqu'à la fin de la fenêtre, sans verrouiller de compte. Derrière un NAT, tout le site partage ce budget : l'augmenter (par exemple `60/15min`) si des agents sont gênés |
-| `THROTTLE_RATE_ECHECS_REINITIALISATION` | réinitialisations refusées par adresse client, tous comptes confondus (défaut `30/hour`) |
+| `THROTTLE_RATE_ECHECS_CONNEXION` | **échecs** de connexion (mot de passe ou code de connexion faux, compte inconnu ; un bon secret refusé pour verrouillage, désactivation ou mot de passe temporaire expiré n'est pas compté) par adresse client, tous comptes confondus (défaut `30/15min`) ; au-delà, la connexion depuis cette adresse répond 429 jusqu'à la fin de la fenêtre, sans verrouiller de compte. Derrière un NAT, tout le site partage ce budget : l'augmenter (par exemple `60/15min`) si des agents sont gênés |
+| `THROTTLE_RATE_ECHECS_REINITIALISATION` | réinitialisations refusées par adresse client, tous comptes confondus (défaut `30/hour`) ; sont comptés : code faux, aucun code en cours, compte inconnu (pas un compte bloqué ou désactivé, ni un code remplacé) |
 | `THROTTLE_RATE_CHANGEMENT_MOT_DE_PASSE` | changement de son mot de passe et retrait de son code de connexion, **par utilisateur** (défaut `10/min`) |
 | `THROTTLE_RATE_MOT_DE_PASSE_OUBLIE` | demandes de code « mot de passe oublié », par identifiant saisi (défaut `5/hour`) ; en plus, au plus 10 codes par compte et par 24 h, comptés en base, sans effet visible sur la réponse |
-| `AUTH_REINITIALISATION_ECHECS_MAX` | codes de réinitialisation faux acceptés par compte et par 24 h (défaut `15`) ; au-delà, plus aucun code émis ni accepté pour ce compte jusqu'à la fin de la fenêtre. **Attention** : au commit `ccd12f8`, cette variable n'est pas transmise aux conteneurs par `docker/compose.prod.yml` : la valeur par défaut `15` s'applique alors en production et la renseigner dans `.env.prod` est sans effet ; vérifier `docker/compose.prod.yml` (`x-backend-env`) avant de compter sur ce réglage |
+| `AUTH_REINITIALISATION_ECHECS_MAX` | codes de réinitialisation faux acceptés par compte et par 24 h (défaut `15`) ; au-delà, plus aucun code émis ni accepté pour ce compte jusqu'à la fin de la fenêtre. Entier strictement positif exigé : `0`, `-1` ou `abc` arrêtent le démarrage (`ImproperlyConfigured`). Transmis aux conteneurs par `x-backend-env` de `docker/compose.prod.yml` et listé (commenté) dans `.env.prod.example` |
+| `AUTH_CODES_CONNEXION_MAX` | codes de connexion envoyés par compte et par 15 min (défaut `10`) ; entier strictement positif exigé (même refus au démarrage) ; transmis par `x-backend-env`, listé dans `.env.prod.example` |
 | `THROTTLE_RATE_GESTION_COMPTES` | création de compte, réinitialisation de mot de passe et désactivation du code de connexion, par l'administrateur ou un délégué, par utilisateur (défaut `30/hour`) |
 | `ANTIVIRUS_MOTEUR` | `clamav` (défaut en production) ; `aucun` est **refusé** au démarrage sauf `ANTIVIRUS_AUTORISER_AUCUN=true` |
 | `ANTIVIRUS_ECHEC_FERME` | `true` (défaut) : clamd injoignable ou en erreur, téléversement refusé (503, « Analyse antivirus indisponible : réessayez plus tard. ») ; `false` : accepté sans analyse, journalisé en ERROR (déconseillé) |

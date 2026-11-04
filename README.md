@@ -59,6 +59,9 @@ Garde : un nom de base (`E2E_DB_NAME`) hors `^onea_e2e_[0-9]+$` est refusé avec
 toute écriture. Les données de test portent l'identifiant d'exécution (`E2E_RUN_ID`).
 La recherche (Meilisearch) et la file Celery de la pile de dev ne sont pas utilisées (URL
 inerte, base Redis 14).
+Hors e2e, tout worker Celery lancé à la main doit recevoir `-Q celery,auth` : les courriels
+d'authentification (codes, mots de passe temporaires) passent par la file `auth` (en production, service
+`worker-auth`, voir `docs/deploy.md` §1).
 
 Authentification en e2e : `scripts/e2e.sh` (et `e2e.ps1`) crée, après la migration, les comptes de
 test par `python manage.py creer_comptes_e2e` (admin, rai, dg, auditeur1, auditeur2, delegue1, audite1 ;

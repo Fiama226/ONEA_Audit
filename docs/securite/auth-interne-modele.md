@@ -7,7 +7,7 @@ niveau 2 est dans `docs/securite/asvs-l2.md` (rejouée le 2026-11-04 sur cette a
 
 Statut (2026-11-04) : rédigée d'après le code de la branche `feat/auth-interne`, puis mise à jour
 après la revue de sécurité statique de l'authentification (constats AUTH-01 à AUTH-20) et ses
-corrections (commits `39163e0` à `ccd12f8`). Les corrections ont été **relues**, et leurs tests
+corrections (commits `39163e0` à `ccd12f8`), puis après le second tour de corrections (re-revue N1 à N9, commit `7f6b9dc`). Les corrections ont été **relues**, et leurs tests
 lancés par le développeur sur une sélection (`tests/users` complet et fichiers ciblés) ; leur
 comportement **n'a pas été vérifié sur une pile en fonctionnement** (envoi réel par le `worker`,
 réponses 429 derrière un NAT, navigateur).
@@ -24,7 +24,7 @@ réponses 429 derrière un NAT, navigateur).
   courriel (repli par un administrateur, mode `EMAIL_URL=dummymail://`).
 - Le réseau interne (`web`, `backend`) n'est pas exposé ; `nginx` est le seul pair de confiance
   pour l'adresse du client (`TRUSTED_PROXY_CIDRS`). `web` n'a **aucune sortie** : seuls les
-  conteneurs `worker` (réseau `mail-out`, secret `email_password`) joignent le relais SMTP.
+  conteneurs `worker-auth` et `worker` (réseau `mail-out`, secret `email_password`) joignent le relais SMTP.
 
 ## 2. Actifs et menaces
 
@@ -59,8 +59,8 @@ Chemins relatifs à `backend/apps/users/` sauf mention contraire.
 | C12 | Piste d'audit de toute action de compte (création, réinitialisation, rôle, désactivation, délégation, OTP, amorçage) avec l'acteur ; journal de sécurité séparé (`onea.securite` : échecs, verrouillages, blocage de la réinitialisation, plafonds par adresse, échec d'envoi d'un mot de passe temporaire) sans mot de passe ni code ; les compteurs de limites sont exclus de l'audit ; le `correlation_id` relie les lignes, y compris celles du `worker` | non-répudiation, enquête | `apps/core/audit.py`, `apps.py` (`exclude_fields`), `auth_services.py` (`logger_securite`), `envois.py`, commandes `creer_administrateur`, `donner_mots_de_passe_temporaires` |
 | C13 | Limites de débit **par point d'entrée**, par adresse client (IPv6 regroupée par /64, AUTH-12) : connexion 60/min, code de connexion 30/min, demande de code 20/min, réinitialisation 20/min ; par identifiant saisi : 5 demandes de code par heure ; par utilisateur : changement de mot de passe et retrait du code de connexion 10/min, gestion des comptes 30/h ; `/admin/login/` soumis aux limites de la connexion (AUTH-06) ; `nginx` 50 requêtes/s par adresse sur `/api/` | saturation, envoi en masse, quota partagé derrière un NAT | `config/settings/base.py` (`DEFAULT_THROTTLE_RATES`), `auth_throttles.py`, `admin_login.py`, `docker/nginx/prod.conf` |
 | C14 | Amorçage et reprise sans interface : `creer_administrateur` (refuse un compte non ADMIN, un compte désactivé, un identifiant ambigu), `donner_mots_de_passe_temporaires` (ignore les comptes staff), `creer_comptes_e2e` (refuse hors `DEBUG`, hors base `onea_e2e_*`, hors hôte local) ; `/admin/password_change/` fermé (404, AUTH-09) ; identifiants ASCII imposés aux nouveaux comptes (AUTH-11) | blocage de l'exploitation, commande de test détournée en production, comptes sosies | `apps/users/management/commands/`, `config/urls.py`, `account_serializers.py`, `provisioning.py` |
-| C15 | Plafonds d'échecs **en base, par compte** : 15 codes de réinitialisation faux par 24 h (`AUTH_REINITIALISATION_ECHECS_MAX`), puis plus aucun code émis ni accepté jusqu'à la fin de la fenêtre (refus identique, journal `ERROR`) ; 10 codes émis par compte et par 24 h (échec fermé si le cache tombe) (AUTH-02). Plafonds d'**échecs par adresse**, tous comptes confondus, vérifiés avant tout hachage : 30 mots de passe ou codes de connexion faux par 15 min (`echecs_connexion`), 30 réinitialisations refusées par heure (`echecs_reinitialisation`) (AUTH-04) | devinette répartie des codes à 6 chiffres, verrouillage en masse depuis une adresse | `auth_services.py` (`quota_codes_reinitialisation`, `reinitialisation_bloquee`, `_compter_echec_reinitialisation`), `models.py`, `auth_throttles.py` (`_EchecsParIp`) |
-| C16 | Tous les courriels d'authentification partent du **`worker`** (AUTH-01) : `web` met une tâche en file (Redis), sans secret dans le message ; le code (connexion, réinitialisation) est émis par la tâche ; le mot de passe temporaire attend chiffré (Fernet) dans `EnvoiMotDePasse` au plus 1 h, lu une fois puis supprimé, et n'est envoyé que s'il est encore le mot de passe du compte | second facteur inutilisable en production, mot de passe dans la file de messages, envoi d'un mot de passe périmé | `envois.py`, `tasks.py` (`envoyer_code_connexion`, `envoyer_code_reinitialisation`, `envoyer_mot_de_passe_temporaire`), `auth_views.py`, `docker/compose.prod.yml` |
+| C15 | Plafonds d'échecs **en base, par compte** : 15 codes de réinitialisation faux par 24 h (`AUTH_REINITIALISATION_ECHECS_MAX`), puis plus aucun code émis ni accepté jusqu'à la fin de la fenêtre (refus identique, journal `ERROR`) ; 10 codes émis par compte et par 24 h (échec fermé si le cache tombe) (AUTH-02). Plafonds d'**échecs par adresse**, tous comptes confondus, vérifiés avant tout hachage : 30 mots de passe ou codes de connexion faux (ou comptes inconnus) par 15 min (`echecs_connexion`), 30 réinitialisations refusées par heure (`echecs_reinitialisation`) (AUTH-04). Depuis le second tour (N1), seuls les **mauvais secrets et les comptes inconnus** comptent (`Resultat.secret_faux`, jamais envoyé au client) : un bon secret refusé pour verrouillage, désactivation ou mot de passe temporaire expiré, ou un code remplacé, ne compte pas ; les compteurs sont atomiques (10 tranches `cache.incr`, N4). Au plus `AUTH_CODES_CONNEXION_MAX` (10) codes de connexion envoyés par compte et par 15 min, compteur en base sous verrou de ligne (N6) ; un code remplacé par un plus récent est marqué (`remplace_le`), refusé sans compter comme échec | devinette répartie des codes à 6 chiffres, verrouillage en masse depuis une adresse | `auth_services.py` (`quota_codes_reinitialisation`, `reinitialisation_bloquee`, `_compter_echec_reinitialisation`), `models.py`, `auth_throttles.py` (`_EchecsParIp`) |
+| C16 | Tous les courriels d'authentification partent de **`worker-auth`** (AUTH-01, N2) : `web` met une tâche en file (file Celery dédiée `auth`, Redis), sans secret dans le message, pour qu'un code de connexion (10 min) n'attende pas derrière une conversion de document ; le `worker` principal (`-Q celery,auth`) sert `auth` en secours ; le code (connexion, réinitialisation) est émis par la tâche ; le mot de passe temporaire attend chiffré (Fernet) dans `EnvoiMotDePasse` au plus 1 h, lu une fois puis supprimé, et n'est envoyé que s'il est encore le mot de passe du compte | second facteur inutilisable en production, mot de passe dans la file de messages, envoi d'un mot de passe périmé | `envois.py`, `tasks.py` (`envoyer_code_connexion`, `envoyer_code_reinitialisation`, `envoyer_mot_de_passe_temporaire`), `auth_views.py`, `config/settings/base.py` (`CELERY_TASK_ROUTES`), `docker/compose.prod.yml` (`worker-auth`) |
 
 ## 4. Risques résiduels et décisions à connaître
 
@@ -69,11 +69,15 @@ Chemins relatifs à `backend/apps/users/` sauf mention contraire.
   qui borne la devinette, soit environ 1,5 × 10⁻⁵ de chance par compte et par jour. Passer à
   8 chiffres diviserait ce taux par 100 : décision produit (spécification, interface, courriel).
 - **Plafond d'échecs partagé derrière un NAT** : tous les agents qui sortent par une même adresse
-  publique partagent le plafond de 30 échecs par 15 minutes. Un initié malveillant (ou beaucoup
+  publique partagent le plafond de 30 échecs par 15 minutes (seuls les mauvais secrets et comptes inconnus le consomment depuis le second tour : les propriétaires de comptes verrouillés qui ressaisissent leur bon mot de passe ne l'épuisent plus). Un initié malveillant (ou beaucoup
   de fautes de frappe un lundi matin) peut bloquer les connexions **de cette adresse** jusqu'à
   15 minutes (réponse 429), sans verrouiller de compte ni gêner les autres adresses. Réglable par
   `THROTTLE_RATE_ECHECS_CONNEXION` (par exemple `60/15min`). Sans effet si les postes arrivent
   au serveur avec leur propre adresse (déploiement sur site).
+- **Risque résiduel de la file `auth`** : le `worker` principal peut réserver un message `auth` (un par
+  processus) pendant une longue conversion ; `worker-auth` le prend normalement avant lui. Retirer `auth`
+  du `worker` supprimerait ce risque mais aussi le secours. Les fenêtres des compteurs restent fixes
+  (N7, accepté).
 - **Limites par adresse en cache** : si le cache (Redis) tombe, ces limites laissent passer, avec
   un avertissement ; le verrouillage des comptes, le quota d'émission et le plafond de codes faux,
   en base, restent appliqués.
@@ -87,9 +91,13 @@ Chemins relatifs à `backend/apps/users/` sauf mention contraire.
   le manuel de l'administrateur.
 - **Échec d'envoi par le `worker`** : `web` ne peut savoir que si le courriel a été **mis en
   file**. Si le `worker` échoue ensuite (relais injoignable, adresse refusée), le mot de passe
-  temporaire de ce courriel est perdu : une ligne `ERROR` « Courriel de mot de passe temporaire
-  NON envoyé … Réinitialisez le mot de passe avec affichage » est écrite dans `onea.securite`, et
-  l'administrateur refait une réinitialisation, envoi décoché. Pas de nouvel essai automatique
+  temporaire de ce courriel est perdu : une ligne `ERROR` « Mot de passe temporaire perdu
+  (<raison>) : compte=<id> envoi=<id>. Réinitialisez le mot de passe avec affichage. » est écrite dans
+  `onea.securite` (sept raisons : file indisponible, identifiant invalide, en attente introuvable, expiré
+  avant l'envoi, compte désactivé, illisible après un changement de `SECRET_KEY`, envoi SMTP en échec ;
+  jamais le mot de passe), et l'administrateur refait une réinitialisation, envoi décoché. **Cette
+  ligne est celle que l'exploitant doit surveiller.** Dans une transaction de l'appelant, la mise en
+  file est différée à la validation (`transaction.on_commit`) : l'écran répond « mis en file » aussitôt. Pas de nouvel essai automatique
   (un mot de passe n'est jamais envoyé deux fois). Un `worker` arrêté plus d'une heure laisse
   expirer les envois en attente (purge quotidienne). Pour un import, une panne du relais impose
   une réinitialisation par compte.

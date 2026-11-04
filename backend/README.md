@@ -17,13 +17,16 @@ or from the process environment:
 | `REDIS_URL` | e.g. `redis://localhost:6379/0` (Celery broker and result backend; cache and rate limits use database 1). Sessions live in PostgreSQL, not in Redis |
 | `EMAIL_URL` | dev default `smtp://mailpit:1025` (compose network), `smtp://localhost:1025` on the host; required in prod (`smtp+tls://` STARTTLS, `smtps://` implicit TLS). One-time codes and welcome emails go out through it. Password: `EMAIL_PASSWORD_FILE` (prod secret `email_password`). `EMAIL_TIMEOUT` is a setting, not a variable: 15 s in `base.py`, 10 s in `prod.py` |
 | `CA_BUNDLE_PATH` | compose variable (not read by Django): path inside the containers of a PEM bundle that becomes `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE`, for an SMTP relay signed by an internal CA. Empty = default trust store |
-| `THROTTLE_RATE_CONNEXION` | login, login code, forgotten-password and reset endpoints, per client IP; default `20/min` |
+| `THROTTLE_RATE_CONNEXION` | login (`POST auth/login/` and `/admin/login/`), per client IP; default `60/min`, sized for a head office behind one NAT address. Each authentication endpoint has its own bucket: `THROTTLE_RATE_CONNEXION_CODE` (`30/min`), `THROTTLE_RATE_MOT_DE_PASSE_OUBLIE_IP` (`20/min`), `THROTTLE_RATE_REINITIALISATION` (`20/min`). Failure-only caps per IP, all accounts together: `THROTTLE_RATE_ECHECS_CONNEXION` (`30/15min`) and `THROTTLE_RATE_ECHECS_REINITIALISATION` (`30/hour`); they count only wrong secrets and unknown accounts, never a right secret refused for a locked or disabled account |
 | `THROTTLE_RATE_MOT_DE_PASSE_OUBLIE` | "forgotten password" requests, per typed identifier; default `5/hour` (plus a silent cap of 10 codes per account per 24 h) |
+| `AUTH_REINITIALISATION_ECHECS_MAX` | wrong reset codes accepted per account per 24 h; default `15`; a value that is not a positive integer stops the start-up (`ImproperlyConfigured`) |
+| `AUTH_CODES_CONNEXION_MAX` | login codes mailed per account per 15 min; default `10`; same validation; past the cap no new code is issued and a warning is logged |
 | `THROTTLE_RATE_GESTION_COMPTES` | account creation, password reset, login-code removal, per acting user; default `30/hour` |
 | `PLATEFORME_URL` | base of the links in emails, default `http://localhost:5173`; must be `https://` in prod (`https://${PUBLIC_HOST}` in compose) |
 
 Every `THROTTLE_RATE_<SCOPE>` (generation, apercu, televersement, import, export, anonyme,
-recherche, connexion, mot_de_passe_oublie, gestion_comptes) takes `N/sec|min|hour|day`; an invalid
+recherche, connexion, connexion_code, mot_de_passe_oublie, mot_de_passe_oublie_ip, reinitialisation,
+echecs_connexion, echecs_reinitialisation, changement_mot_de_passe, gestion_comptes) takes `N/sec|min|hour|day`; an invalid
 value stops the start-up.
 
 ## Authentication
@@ -49,6 +52,15 @@ Commands (run `python manage.py <command> --help`):
 | `donner_mots_de_passe_temporaires [--a-blanc]` | temporary password for every active account without a usable one (switch from the former identity provider); printed once as `identifiant<TAB>password` |
 | `import_accounts --csv FILE [--apply --by ADMIN] [--sans-courriel] [--fichier-mots-de-passe PATH]` | CSV account import (dry run without `--apply`) |
 | `creer_comptes_e2e` | e2e only: accounts with a known password; refuses outside `DEBUG`, outside `onea_e2e_<digits>` databases and on non-local hosts |
+
+Authentication emails (login code, reset code, temporary password) go through the dedicated Celery
+queue `auth` (`CELERY_TASK_ROUTES`). In production the compose service `worker-auth`
+(`-Q auth --concurrency 1`) serves it and the main `worker` runs `-Q celery,auth` as a fallback; **a
+worker started by hand must use `-Q celery,auth`**, otherwise no authentication email is sent. The
+task never carries a secret. When a temporary password can never reach its owner, `onea.securite`
+logs an ERROR "Mot de passe temporaire perdu (...) : compte=... Réinitialisez le mot de passe avec
+affichage." (see `docs/exploitation/runbook.md`). Migration `users.0011_codes_connexion_et_remplaces`
+belongs to this change.
 
 Scheduled tasks (`CELERY_BEAT_SCHEDULE`): `users.purger_codes` (03:30, expired one-time codes and
 import password files past 24 h) and `users.purger_sessions` (03:45, `clearsessions`). Design and

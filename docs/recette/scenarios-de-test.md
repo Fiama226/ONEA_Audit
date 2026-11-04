@@ -1443,7 +1443,7 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 ### S4-27 — Dégradation sans service annexe
 **Rôle** : `rai` · **Préconditions** : environnement de recette ; arrêter tour à tour Gotenberg, le worker Celery, Meilisearch, le SMTP (un seul à la fois, le remettre ensuite). Ne jamais toucher aux conteneurs d'une autre personne.
 1. Sans Gotenberg : « Générer » un document ; ouvrir un rapport validé.
-2. Sans worker : demander une génération.
+2. Sans worker : demander une génération. Puis, `worker` remis, arrêter seulement `worker-auth` et demander un code « Mot de passe oublié » (S4-41).
 3. Sans Meilisearch : recherche globale.
 4. Sans SMTP : déclencher une relance (`envoyer_relances`) et une diffusion.
 5. Sans SMTP (Mailpit arrêté) : demander un code « Mot de passe oublié » (le message reste identique), puis appliquer le repli de S4-36.
@@ -1483,7 +1483,7 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 4. Attendre 15 minutes, ou faire réinitialiser le mot de passe de `auditeur2` par `admin` (S4-36), puis se connecter.
 5. Environnement de recette seulement : lancer plus de 60 tentatives de connexion en une minute depuis la même adresse (outil de test).
 
-**Résultat attendu** : le message reste « Identifiant ou mot de passe incorrect. » à toutes les étapes (aucune mention du verrouillage) ; à l'étape 2 le bon mot de passe est **refusé** tant que le verrouillage dure (15 minutes) ; le verrouillage cesse à l'échéance ou à la réinitialisation du mot de passe par l'administrateur ; à l'étape 5 la limite par adresse (`THROTTLE_RATE_CONNEXION`, 60 par minute par défaut) répond 429 avec `Retry-After`, affiché « Trop de tentatives, réessayez dans quelques minutes. » ; la connexion d'un autre compte n'est pas affectée par le verrouillage de `auditeur2`. Le plafond d'**échecs** par adresse (30 par 15 minutes, tous comptes confondus) est testé en S4-40.
+**Résultat attendu** : le message reste « Identifiant ou mot de passe incorrect. » à toutes les étapes (aucune mention du verrouillage) ; à l'étape 2 le bon mot de passe est **refusé** tant que le verrouillage dure (15 minutes) ; le verrouillage cesse à l'échéance ou à la réinitialisation du mot de passe par l'administrateur ; à l'étape 5 la limite par adresse (`THROTTLE_RATE_CONNEXION`, 60 par minute par défaut, compteur propre à la connexion) répond 429 avec `Retry-After`, affiché « Trop de tentatives, réessayez dans quelques minutes. » ; la connexion d'un autre compte n'est pas affectée par le verrouillage de `auditeur2`. Le plafond d'**échecs** par adresse (30 par 15 minutes, tous comptes confondus) est testé en S4-40.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1604,27 +1604,28 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 1. Depuis A, **sans** jeton CSRF, envoyer 100 `POST /api/v1/auth/login/` en une minute (ce que ferait une page piégée). Puis, depuis A, se connecter normalement dans le navigateur.
 2. Depuis A, avec le jeton, envoyer 31 connexions avec des identifiants **inexistants** (n'importe quel mot de passe) en moins de 15 minutes.
 3. Toujours depuis A, dans la foulée : se connecter avec un compte réel et son **bon** mot de passe.
+3 bis. (Variante, avant l'étape 2, sur une adresse neuve) verrouiller 6 comptes par 5 faux mots de passe chacun, puis faire ressaisir 60 fois leur **bon** mot de passe depuis l'adresse A, puis connecter un autre agent depuis A.
 4. Depuis B, au même moment : se connecter avec un compte réel.
 5. Depuis A, après l'étape 2 : « Mot de passe oublié ? » pour un compte réel (compteur séparé).
 6. Exploitant : chercher dans les journaux de `web` « Plafond d'échecs atteint pour une adresse : portee=echecs_connexion adresse=… ».
 7. Attendre la fin de la fenêtre (15 minutes, voir `Retry-After`) et se reconnecter depuis A.
 
-**Résultat attendu** : étape 1 chaque requête répond 403 « Jeton CSRF absent ou invalide : rechargez la page. », et la connexion normale qui suit **réussit** (les requêtes sans jeton n'ont pas consommé le quota de l'adresse) ; étape 2 les 30 premières répondent 401 « Identifiant ou mot de passe incorrect. », la 31e **429** avec `Retry-After` (dans le navigateur : « Trop de tentatives, réessayez dans quelques minutes. ») ; étape 3 **429** aussi, avant tout contrôle du mot de passe (le bon mot de passe ne passe pas tant que dure la fenêtre), mais le compte n'est **pas** verrouillé ; étape 4 connexion réussie (autre adresse) ; étape 5 la demande de code fonctionne (compteur distinct de celui de la connexion) ; étape 6 la ligne existe ; étape 7 connexion réussie. En IPv6, toutes les adresses d'un même /64 comptent comme une seule.
+**Résultat attendu** : étape 1 chaque requête répond 403 « Jeton CSRF absent ou invalide : rechargez la page. », et la connexion normale qui suit **réussit** (les requêtes sans jeton n'ont pas consommé le quota de l'adresse) ; étape 2 les 30 premières répondent 401 « Identifiant ou mot de passe incorrect. », la 31e **429** avec `Retry-After` (dans le navigateur : « Trop de tentatives, réessayez dans quelques minutes. ») ; étape 3 **429** aussi, avant tout contrôle du mot de passe (le bon mot de passe ne passe pas tant que dure la fenêtre), mais le compte n'est **pas** verrouillé ; étape 3 bis jamais de 429 : un bon mot de passe refusé parce que le compte est verrouillé ne compte pas dans le plafond d'échecs de l'adresse, et l'autre agent se connecte ; étape 4 connexion réussie (autre adresse) ; étape 5 la demande de code fonctionne (compteur distinct de celui de la connexion) ; étape 6 la ligne existe ; étape 7 connexion réussie. En IPv6, toutes les adresses d'un même /64 comptent comme une seule.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
 ### S4-41 — Service d'envoi (`worker`) arrêté ou en échec : courriels d'authentification
 **Rôle** : opérateur technique, `admin`, `auditeur1` (code de connexion activé, S4-37), `audite1` · **Préconditions** : recette avec `worker`, Redis et Mailpit ; accès aux journaux du `worker`.
-1. Arrêter le `worker` (`docker compose stop worker`, ou arrêter le processus Celery en développement).
+1. Arrêter `worker-auth` **et** le `worker` (`docker compose stop worker worker-auth`, ou arrêter le processus Celery en développement). Variante préalable : arrêter seulement `worker-auth` et vérifier qu'un code « Mot de passe oublié » arrive quand même (repli du `worker` sur la file `auth`) ; puis, en développement, vérifier qu'un worker lancé **sans** `-Q celery,auth` n'envoie rien.
 2. `admin` crée un agent `test.envoi` avec une adresse, « Envoyer le courriel de bienvenue » coché ; consulter Mailpit.
 3. `auditeur1` se connecte : mot de passe, puis étape « Vérification en deux étapes » ; consulter Mailpit.
 4. « Mot de passe oublié ? » pour `audite1` ; consulter Mailpit.
-5. Redémarrer le `worker` dans les 10 minutes ; consulter Mailpit ; `auditeur1` saisit le code reçu.
+5. Redémarrer `worker-auth` et le `worker` dans les 10 minutes ; consulter Mailpit ; `auditeur1` saisit le code reçu.
 6. Le `worker` en marche, arrêter Mailpit (relais injoignable). `admin` réinitialise le mot de passe de `test.envoi`, envoi coché. Lire les journaux du `worker`.
 7. `admin` réinitialise de nouveau `test.envoi`, **envoi décoché** ; se connecter avec le mot de passe affiché. Remettre Mailpit.
 8. Arrêter Redis (file injoignable) ; `admin` crée un agent `test.envoi2` avec une adresse, envoi coché. Remettre Redis puis redémarrer `worker`, `beat` et `web` (runbook « Redis tombé »).
 
-**Résultat attendu** : étape 2 la fenêtre « Compte créé » indique que le courriel a été **mis en file d'envoi**, **aucun** mot de passe n'est affiché, rien n'arrive dans Mailpit ; étapes 3 et 4 les écrans répondent comme d'habitude, rien n'arrive ; étape 5 le courriel de bienvenue, le code de connexion et le code de réinitialisation arrivent après le redémarrage, et le code de connexion est accepté (une connexion en attente expire 10 minutes après la saisie du mot de passe : au-delà, recommencer la connexion) ; étape 6 l'écran indique encore « mis en file d'envoi », rien n'arrive, et le journal du `worker` contient une ligne `ERROR` « Courriel de mot de passe temporaire NON envoyé : compte=<id> nature=REINITIALISATION. Réinitialisez le mot de passe avec affichage. » (sans le mot de passe) ; étape 7 le mot de passe s'affiche une seule fois et permet la connexion ; étape 8 le mot de passe de `test.envoi2` s'affiche une seule fois (« Aucun courriel de bienvenue n'a été mis en file d'envoi … »), aucun courriel ne partira pour lui. Aucun code ni mot de passe n'apparaît dans les journaux ni dans Redis.
+**Résultat attendu** : étape 2 la fenêtre « Compte créé » indique que le courriel a été **mis en file d'envoi**, **aucun** mot de passe n'est affiché, rien n'arrive dans Mailpit ; étapes 3 et 4 les écrans répondent comme d'habitude, rien n'arrive ; étape 5 le courriel de bienvenue, le code de connexion et le code de réinitialisation arrivent après le redémarrage, et le code de connexion est accepté (une connexion en attente expire 10 minutes après la saisie du mot de passe : au-delà, recommencer la connexion) ; étape 6 l'écran indique encore « mis en file d'envoi », rien n'arrive, et le journal du `worker` contient une ligne `ERROR` « Mot de passe temporaire perdu (envoi SMTP en échec, nature=REINITIALISATION) : compte=<id> envoi=<id>. Réinitialisez le mot de passe avec affichage. » (sans le mot de passe) ; étape 7 le mot de passe s'affiche une seule fois et permet la connexion ; étape 8 le mot de passe de `test.envoi2` s'affiche une seule fois (« Aucun courriel de bienvenue n'a été mis en file d'envoi … »), aucun courriel ne partira pour lui. Aucun code ni mot de passe n'apparaît dans les journaux ni dans Redis.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 

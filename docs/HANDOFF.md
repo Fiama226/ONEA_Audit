@@ -48,21 +48,25 @@ avec un vrai relais SMTP.
 **Revue de sécurité et corrections (2026-11-04)** : revue statique de l'authentification (constats AUTH-01 à
 AUTH-20 : 3 élevés, 3 moyens, 7 faibles, 7 informations), corrections en commits `39163e0` à `ccd12f8`, relues
 mais **non éprouvées sur une pile en fonctionnement**. Ce qui a changé : tous les courriels d'authentification
-partent du `worker` (le `web` met en file ; mot de passe temporaire chiffré en base 1 h, jamais dans Redis ;
+partent de `worker-auth` (file Celery `auth`, le `worker` principal la sert en secours ; le `web` met en file ; mot de passe temporaire chiffré en base 1 h, jamais dans Redis ;
 « courriel envoyé » veut dire « mis en file ») ; un délégué ne gère plus que les comptes AUDITEUR et AUDITE ;
 plafond de 15 codes de réinitialisation faux par compte et par 24 h et quota de 10 codes en base ; un compteur
 par point d'entrée de l'authentification (connexion 60/min par adresse), plafonds d'échecs par adresse (30 par
-15 min à la connexion, 30 par heure à la réinitialisation), CSRF vérifié avant les limites, IPv6 par /64,
+15 min à la connexion, 30 par heure à la réinitialisation, ne comptant que les mauvais secrets et les comptes inconnus), CSRF vérifié avant les limites, IPv6 par /64,
 `/admin/login/` sous les mêmes limites ; la production refuse les backends courriel console, fichier et mémoire
 (`dummymail://` = sans courriel) ; en-tête `X-Onea-Arriere-Plan: 1` pour les requêtes d'arrière-plan ;
 `/admin/password_change/` en 404 ; identifiants ASCII. Audit ASVS L2 **rejoué en statique** sur cette
 authentification : `docs/securite/asvs-l2.md` (décompte et non-conformités restantes dans `docs/PRET-A-LIVRER.md`
 B1 et B8). Suites du frontend : commit `8addfca` (rôles d'un délégué, en-tête d'arrière-plan, libellés, message
-429). Restent ouverts : délai d'inactivité des sessions admin (AUTH-09), contraintes d'unicité insensibles à la casse (AUTH-11),
+429). Second tour de re-revue (N1 à N9, commit `7f6b9dc`) : file `auth` et service `worker-auth` (tout worker lancé
+à la main doit recevoir `-Q celery,auth`), plafond `AUTH_CODES_CONNEXION_MAX` (10 codes de connexion par compte
+et 15 min), `AUTH_REINITIALISATION_ECHECS_MAX` et `AUTH_CODES_CONNEXION_MAX` transmis par la composition et validés,
+code remplacé ne comptant pas comme échec, migration `users.0011`. **À surveiller en exploitation** : la ligne
+`ERROR` « Mot de passe temporaire perdu (...) … Réinitialisez le mot de passe avec affichage. » (`onea.securite`).
+Ces corrections sont relues statiquement, **non vérifiées sur une pile en fonctionnement**.
+Restent ouverts : délai d'inactivité des sessions admin (AUTH-09), contraintes d'unicité insensibles à la casse (AUTH-11),
 notifications au titulaire (AUTH-10) et liste de mots de passe compromis (AUTH-13) à arbitrer, TLS vers le
-relais non exigé (AUTH-18), `AUTH_REINITIALISATION_ECHECS_MAX` à transmettre dans `docker/compose.prod.yml` (second
-tour de corrections en cours au moment de cette mise à jour, non commité),
-analyse dynamique (ZAP) à rejouer.
+relais non exigé (AUTH-18), analyse dynamique (ZAP) à rejouer.
 
 ## 3. Décisions déjà prises (ne plus les redemander)
 - Licences MIT-0, PSF-2.0 et ClamAV (conteneur séparé, GPL-2.0) autorisées : commit 6c982ec. ZPL-2.1 : 120ee1b.
@@ -70,10 +74,9 @@ analyse dynamique (ZAP) à rejouer.
 - Hypothèses métier des lots : toutes confirmées (2026-10-29) ; gabarits Word vierges provisoires acceptés.
 
 ## 4. Ce qui reste à faire (équipe projet)
-0. **Authentification interne** : constats de sécurité encore ouverts (voir §2bis : AUTH-09, AUTH-11, AUTH-18, transmission de `AUTH_REINITIALISATION_ECHECS_MAX` par la composition de
-   production ; AUTH-10 et AUTH-13 à arbitrer), suites complètes, e2e Playwright à exécuter, parcours manuel sur
+0. **Authentification interne** : constats de sécurité encore ouverts (voir §2bis : AUTH-09, AUTH-11, AUTH-18 ; AUTH-10 et AUTH-13 à arbitrer), suites complètes, e2e Playwright à exécuter, parcours manuel sur
    le site de test (scénarios S4-29 à S4-41 : création, première connexion, oubli et plafond des codes, code de
-   connexion, délégation et comptes RAI/DG, réponses 429, `worker` arrêté), analyse dynamique ZAP, puis fusion
+   connexion, délégation et comptes RAI/DG, réponses 429, `worker-auth` arrêté, `worker` arrêté), analyse dynamique ZAP, puis fusion
    dans `develop` après accord (ni `develop` ni `preview` ne sont touchées à ce jour). À la mise à jour du site de test : donner un
    mot de passe temporaire aux comptes existants (`donner_mots_de_passe_temporaires`, `docs/deploy.md` §5.4).
 1. **Lot 6 T14**, **lot 7 T17**, **lot 8 T17** : tests e2e Playwright (`frontend/e2e/` ne contient que
@@ -108,7 +111,7 @@ analyse dynamique (ZAP) à rejouer.
 ## 6. Lancer / tester en local
 - Docker Desktop : conteneurs `onea-db-1`, `onea-redis-1` (et `mailpit`, http://127.0.0.1:8025, pour lire les codes
   envoyés par courriel). Plus de conteneur Keycloak. Les courriels d'authentification partent d'un worker Celery :
-  sans `celery -A config worker` lancé, aucun code ni courriel de bienvenue n'arrive dans Mailpit.
+  sans `celery -A config worker -Q celery,auth` lancé (le `-Q celery,auth` est nécessaire : sans lui, le worker ne lit pas la file `auth`), aucun code ni courriel de bienvenue n'arrive dans Mailpit.
 - API : `cd backend`, Python `C:\v\onea\Scripts\python.exe manage.py runserver 127.0.0.1:8000` avec
   `DATABASE_URL=postgres://onea:onea-dev-password@127.0.0.1:5432/onea`.
 - Web : `cd frontend && npm run dev` (http://localhost:5173, utiliser `localhost`).
