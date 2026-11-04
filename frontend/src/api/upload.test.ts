@@ -2,12 +2,7 @@ import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { fr } from "@/i18n/fr";
 import { API_URL, server, TEST_CSRF } from "@/test/msw";
-import {
-  ensureCsrfToken,
-  resetCsrfToken,
-  setSessionUser,
-  setUnauthorizedHandler,
-} from "./client";
+import { ensureCsrfToken, resetCsrfToken, setSessionUser, setUnauthorizedHandler } from "./client";
 import { isApiError } from "./errors";
 import { uploadWithProgress } from "./upload";
 
