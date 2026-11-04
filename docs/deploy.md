@@ -704,7 +704,8 @@ intercepté (ce droit n'est pas accordé au rôle applicatif).
 | `THROTTLE_RATE_EXPORT` | export CSV / Excel (défaut `30/min`) |
 | `THROTTLE_RATE_ANNUAIRE` | recherche dans l'annuaire Keycloak/LDAP (défaut `60/min`) |
 | `THROTTLE_RATE_ANONYME` | appelant non authentifié, par adresse client (défaut `30/min`) |
-| `THROTTLE_RATE_CONNEXION` | connexion et code de connexion, par adresse client (défaut `20/min`) ; le verrouillage du compte (5 échecs, 15 min) s'y ajoute |
+| `THROTTLE_RATE_CONNEXION` | connexion, code de connexion, mot de passe oublié et réinitialisation, par adresse client (défaut `20/min`) ; le verrouillage du compte (5 échecs, 15 min) s'y ajoute |
+| `THROTTLE_RATE_MOT_DE_PASSE_OUBLIE` | demandes de code « mot de passe oublié », par identifiant saisi (défaut `5/hour`) ; en plus, au plus 10 codes par compte et par 24 h, sans effet visible sur la réponse |
 | `ANTIVIRUS_MOTEUR` | `clamav` (défaut en production) ; `aucun` est **refusé** au démarrage sauf `ANTIVIRUS_AUTORISER_AUCUN=true` |
 | `ANTIVIRUS_ECHEC_FERME` | `true` (défaut) : clamd injoignable ou en erreur, téléversement refusé (503, « Analyse antivirus indisponible : réessayez plus tard. ») ; `false` : accepté sans analyse, journalisé en ERROR (déconseillé) |
 | `ANTIVIRUS_AUTORISER_AUCUN` | `false` (défaut) ; `true` accepte par écrit l'absence d'analyse |

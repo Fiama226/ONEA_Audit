@@ -75,6 +75,7 @@ def test_taux_par_defaut_conformes_a_d3() -> None:
         "annuaire": "60/min",
         "recherche": "60/min",
         "connexion": "20/min",
+        "mot_de_passe_oublie": "5/hour",
     }
 
 

@@ -9,9 +9,18 @@ from datetime import datetime, timedelta
 from enum import StrEnum
 
 from django.conf import settings
+from django.contrib.auth import SESSION_KEY
 from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.sessions.backends.db import SessionStore
+from django.contrib.sessions.models import Session
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
+from redis.exceptions import RedisError
+
+from apps.core.exceptions import RegleMetierError
 
 from .models import CodeOtp, ObjetOtp, User
 
@@ -25,6 +34,21 @@ OTP_PURGE_APRES = timedelta(hours=24)
 MOT_DE_PASSE_TEMPORAIRE_LONGUEUR = 16
 ECHECS_AVANT_VERROUILLAGE = 5
 DUREE_VERROUILLAGE = timedelta(minutes=15)
+# At most this many RESET codes per account per window (each code allows 5 guesses).
+CODES_REINITIALISATION_MAX = 10
+CODES_REINITIALISATION_FENETRE = timedelta(hours=24)
+# Session key of a login waiting for its OTP step: the account id.
+CLE_OTP_COMPTE = "onea_otp_compte"
+
+MEME_MOT_DE_PASSE = "Le nouveau mot de passe doit être différent de l'actuel."
+ENVOI_COURRIEL_NON_CONFIGURE = "Envoi de courriels non configuré"
+COMPTE_SANS_COURRIEL = "Aucune adresse de courriel n'est enregistrée sur votre compte."
+
+
+class OtpImpossible(RegleMetierError):
+    """The login code cannot be turned on: no email could reach the account."""
+
+    status_http = 409
 
 
 class Etape(StrEnum):
@@ -46,7 +70,7 @@ class Resultat:
 _REFUS = Resultat()
 
 
-def _trouver_compte(identifiant: str) -> User | None:
+def trouver_compte(identifiant: str) -> User | None:
     """Account by exact username, else by case-insensitive email if exactly one account has it."""
     identifiant = identifiant.strip()
     if not identifiant:
@@ -170,7 +194,7 @@ def authentifier(identifiant: str, mot_de_passe: str, *, adresse: str | None = N
     Refused: unknown or ambiguous identifier, wrong password, locked, disabled, expired
     temporary password. Only a wrong password on a usable account counts as a failure.
     """
-    compte = _trouver_compte(identifiant)
+    compte = trouver_compte(identifiant)
     mot_de_passe_ok = _verifier_mot_de_passe(compte, mot_de_passe)
     if compte is None:
         _journaliser_refus("compte_inconnu", None, adresse)
@@ -236,6 +260,7 @@ def verifier_otp(user: User, objet: str, code: str) -> bool:
         )
         now = timezone.now()
         if actif is None or actif.expire_le <= now or actif.essais >= OTP_ESSAIS_MAX:
+            make_password(code)  # same work as a real check: "no pending code" is no oracle
             return False
         actif.essais += 1
         if not check_password(code, actif.code_hash):
@@ -255,6 +280,183 @@ def envoi_courriel_actif() -> bool:
     if getattr(settings, "EMAIL_HOST", ""):
         return True
     return any(nom in settings.EMAIL_BACKEND for nom in _BACKENDS_SANS_SMTP)
+
+
+def quota_codes_reinitialisation(compte_id: int) -> bool:
+    """Count one RESET code for this account; False past the cap of the 24 h window.
+
+    Silent server-side cap (the forgot answer never changes): the per-identifier throttle
+    keys on the typed text, so an account reachable by username and by email would get
+    twice the codes, and every new code brings 5 fresh guesses. If the cache is down the
+    code is allowed, like the throttles.
+    """
+    cle = f"onea_codes_reinitialisation_{compte_id}"
+    try:
+        cache.add(cle, 0, timeout=int(CODES_REINITIALISATION_FENETRE.total_seconds()))
+        return int(cache.incr(cle)) <= CODES_REINITIALISATION_MAX
+    except ValueError:  # the key expired between add and incr: a new window starts
+        cache.set(cle, 1, timeout=int(CODES_REINITIALISATION_FENETRE.total_seconds()))
+        return True
+    except (RedisError, OSError) as exc:
+        logger_securite.warning(
+            "Quota des codes de réinitialisation non appliqué : cache indisponible (%s).",
+            type(exc).__name__,
+        )
+        return True
+
+
+def terminer_sessions(compte_id: int, *, sauf: str | None = None) -> int:
+    """Delete every live session of this account, except ``sauf``. Returns the number deleted.
+
+    Covers logged-in sessions (``_auth_user_id``) and logins waiting for their OTP step. The
+    database store keeps the session data signed and serialized, so the rows cannot be
+    filtered in SQL: the unexpired ones are decoded in chunks (expired rows can no longer be
+    loaded and are left to the daily purge). Django's session hash check already refuses a
+    session after a password change on its next request; this removes the rows outright.
+    """
+    store = SessionStore()
+    cible = str(compte_id)
+    cles: list[str] = []
+    lignes = (
+        Session.objects.filter(expire_date__gt=timezone.now())
+        .values_list("session_key", "session_data")
+        .iterator(chunk_size=500)
+    )
+    for cle, donnees in lignes:
+        if cle == sauf:
+            continue
+        session = store.decode(donnees)
+        if session.get(SESSION_KEY) == cible or session.get(CLE_OTP_COMPTE) == compte_id:
+            cles.append(cle)
+    supprimees, _ = Session.objects.filter(session_key__in=cles).delete()
+    return supprimees
+
+
+def _appliquer_mot_de_passe(verrou: User, nouveau: str) -> None:
+    """Set the password on the row-locked account and lift every login hindrance.
+
+    Codes still pending were issued under the old password (a login waiting for its OTP
+    step, an earlier reset request): they are dropped. The account's active flag is never
+    touched here.
+    """
+    verrou.set_password(nouveau)
+    verrou.doit_changer_mot_de_passe = False
+    verrou.mot_de_passe_expire_le = None
+    verrou.echecs_connexion = 0
+    verrou.verrouille_jusqu_a = None
+    verrou.save(
+        update_fields=[
+            "password",
+            "doit_changer_mot_de_passe",
+            "mot_de_passe_expire_le",
+            "echecs_connexion",
+            "verrouille_jusqu_a",
+        ]
+    )
+    CodeOtp.objects.filter(user=verrou, utilise_le__isnull=True).delete()
+
+
+def reinitialiser_mot_de_passe(
+    identifiant: str, code: str, nouveau: str, *, adresse: str | None = None
+) -> User | None:
+    """Reset a forgotten password with the RESET code. None = refused (reason never exposed).
+
+    Refused alike: unknown or ambiguous identifier, disabled account, no code, wrong,
+    expired, used or exhausted code. Every refusal costs exactly one hash. The new password
+    is checked first without the account (raises ``ValidationError``: the answer cannot
+    depend on the account), then against the account once the code is right; a password
+    refused there rolls the code check back, so the code is not burnt. On success all the
+    sessions of the account end and the login lock, failure count and forced change go.
+    """
+    validate_password(nouveau)
+    compte = trouver_compte(identifiant)
+    if compte is None:
+        make_password(code)
+        _journaliser_reinitialisation_refusee("compte_inconnu", None, adresse)
+        return None
+    with transaction.atomic():
+        verrou = User.objects.select_for_update().filter(pk=compte.pk).first()
+        if verrou is None or not verrou.is_active:
+            make_password(code)
+            _journaliser_reinitialisation_refusee("desactive", compte, adresse)
+            return None
+        if not verifier_otp(verrou, ObjetOtp.RESET, code):
+            _journaliser_reinitialisation_refusee("code", verrou, adresse)
+            return None
+        validate_password(nouveau, verrou)  # raising rolls back the code consumption
+        _appliquer_mot_de_passe(verrou, nouveau)
+    sessions = terminer_sessions(verrou.pk)
+    logger_securite.info(
+        "Mot de passe réinitialisé par code : compte=%s adresse=%s sessions_terminees=%s",
+        verrou.pk,
+        adresse or "inconnue",
+        sessions,
+    )
+    return verrou
+
+
+def _journaliser_reinitialisation_refusee(
+    motif: str, compte: User | None, adresse: str | None
+) -> None:
+    logger_securite.warning(
+        "Échec de réinitialisation du mot de passe : motif=%s compte=%s adresse=%s",
+        motif,
+        compte.pk if compte is not None else "inconnu",
+        adresse or "inconnue",
+    )
+
+
+def changer_mot_de_passe(
+    compte: User, ancien: str, nouveau: str, *, adresse: str | None = None
+) -> User | None:
+    """Change the password of a logged-in account. None = current password refused.
+
+    The new password is validated first (``ValidationError``, no hash spent). A wrong current
+    password counts as a login failure (5 lock the account for 15 min), and a locked account
+    is refused even with the right one: an open session cannot be used to guess the
+    password. The caller ends the other sessions and keeps the current one.
+    """
+    if nouveau == ancien:
+        raise ValidationError(MEME_MOT_DE_PASSE, code="password_unchanged")
+    validate_password(nouveau, compte)
+    ancien_ok = _verifier_mot_de_passe(compte, ancien)
+    with transaction.atomic():
+        resultat = _conclure(
+            compte.pk,
+            ancien_ok,
+            motif_echec="ancien_mot_de_passe",
+            etape_de=etape_apres_second_facteur,
+            adresse=adresse,
+        )
+        if resultat.user is None:
+            return None
+        _appliquer_mot_de_passe(resultat.user, nouveau)
+    logger_securite.info(
+        "Mot de passe changé par son titulaire : compte=%s adresse=%s",
+        resultat.user.pk,
+        adresse or "inconnue",
+    )
+    return resultat.user
+
+
+def changer_otp_connexion(compte: User, actif: bool, *, adresse: str | None = None) -> None:
+    """Turn the login code on or off for the caller's own account (audit trail via auditlog).
+
+    Turning it on needs a working email: the account would otherwise be locked out.
+    """
+    if actif and not envoi_courriel_actif():
+        raise OtpImpossible(ENVOI_COURRIEL_NON_CONFIGURE)
+    if actif and not compte.email:
+        raise OtpImpossible(COMPTE_SANS_COURRIEL)
+    if compte.otp_connexion_actif != actif:
+        compte.otp_connexion_actif = actif
+        compte.save(update_fields=["otp_connexion_actif"])
+    logger_securite.info(
+        "Code de connexion par courriel %s : compte=%s adresse=%s",
+        "activé" if actif else "désactivé",
+        compte.pk,
+        adresse or "inconnue",
+    )
 
 
 def purger_codes_expires() -> int:

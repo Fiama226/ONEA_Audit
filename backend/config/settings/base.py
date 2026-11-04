@@ -291,6 +291,8 @@ REST_FRAMEWORK = {
             "recherche": "60/min",
             # per client IP on the login endpoints (the per-account limit is the lockout)
             "connexion": "20/min",
+            # per typed identifier on "forgotten password" (+ a silent per-account quota)
+            "mot_de_passe_oublie": "5/hour",
         }.items()
     },
 }

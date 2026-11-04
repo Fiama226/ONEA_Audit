@@ -1,4 +1,5 @@
-"""Session login of the SPA: login (+ OTP step), logout, session state, CSRF token.
+"""Session login of the SPA: login (+ OTP step), logout, session state, CSRF token,
+forgotten password (code by email), password change, login code option.
 
 Every POST here requires the CSRF token, even anonymous (login CSRF). Failures of the
 password or the code always give the same answer, whatever the reason.
@@ -10,11 +11,12 @@ from datetime import timedelta
 from typing import Any, cast
 
 from django.conf import settings
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, update_session_auth_hash
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.middleware.csrf import get_token
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import APIException, AuthenticationFailed, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -22,28 +24,38 @@ from rest_framework.views import APIView
 
 from apps.core.middleware import CLE_ACTIVITE, CLE_CONNEXION
 from apps.core.reseau import adresse_client
-from apps.core.schema import ERROR_400, ERROR_RESPONSES
+from apps.core.schema import ERROR_400, ERROR_409, ERROR_429, ERROR_RESPONSES
 
 from . import auth_services
 from .auth_serializers import (
+    ChangementMotDePasseSerializer,
     CodeConnexionSerializer,
     ConnexionSerializer,
+    EtatOtpSerializer,
     EtatSessionSerializer,
     JetonCsrfSerializer,
+    MessageSerializer,
+    MotDePasseOublieSerializer,
+    ReinitialisationSerializer,
 )
-from .auth_services import Etape, Resultat
-from .auth_throttles import ConnexionParIpThrottle
+from .auth_services import CLE_OTP_COMPTE, Etape, Resultat
+from .auth_throttles import ConnexionParIpThrottle, MotDePasseOublieParIdentifiantThrottle
 from .authentication import SessionAuthentication401
 from .courriels import envoyer_code
 from .models import ObjetOtp, User
 from .serializers import MeSerializer
+from .tasks import envoyer_code_reinitialisation
 
 logger = logging.getLogger(__name__)
 
 ECHEC_CONNEXION = "Identifiant ou mot de passe incorrect."
 CODE_INVALIDE = "Code invalide ou expiré."
-# Pending second step (OTP): the account id and when the password was checked.
-CLE_OTP_COMPTE = "onea_otp_compte"
+DEMANDE_CODE = (
+    "Si un compte actif correspond à cet identifiant, un code de vérification vient d'être "
+    "envoyé à son adresse de courriel. Il est valable 10 minutes."
+)
+ANCIEN_INCORRECT = "Mot de passe actuel incorrect."
+# Pending second step (OTP): the account id (CLE_OTP_COMPTE) and when the password was checked.
 CLE_OTP_LE = "onea_otp_le"
 BACKEND = "django.contrib.auth.backends.ModelBackend"
 
@@ -174,3 +186,150 @@ class JetonCsrfView(APIView):
     )
     def get(self, request: Request) -> Response:
         return Response({"csrf_token": get_token(request._request)})
+
+
+class CodeRefuse(APIException):
+    """Uniform refusal of a reset: unknown account, disabled account, bad or used code."""
+
+    status_code = 400
+    default_detail = CODE_INVALIDE
+    default_code = "code_invalide"
+
+
+def _erreurs_mot_de_passe(champ: str, exc: DjangoValidationError) -> ValidationError:
+    return ValidationError({champ: list(exc.messages)})
+
+
+class MotDePasseOublieView(_CsrfObligatoireMixin, APIView):
+    """Always 202 with the same body: whether an account exists is never told.
+
+    The request only looks the account up and queues the task, for every identifier; the
+    code is issued and emailed by the worker, to an active account only.
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [ConnexionParIpThrottle, MotDePasseOublieParIdentifiantThrottle]
+
+    @extend_schema(
+        tags=["Authentification"],
+        summary="Mot de passe oublié : demande d'un code par courriel",
+        request=MotDePasseOublieSerializer,
+        responses={202: MessageSerializer, **ERROR_400, **ERROR_429, **ERROR_RESPONSES},
+    )
+    def post(self, request: Request) -> Response:
+        serializer = MotDePasseOublieSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        compte = auth_services.trouver_compte(serializer.validated_data["identifiant"])
+        compte_id = compte.pk if compte is not None else None
+        auth_services.logger_securite.info(
+            "Demande de code de réinitialisation : compte=%s adresse=%s",
+            compte_id or "inconnu",
+            adresse_client(request) or "inconnue",
+        )
+        try:
+            envoyer_code_reinitialisation.delay(compte_id)
+        except Exception as exc:  # noqa: BLE001 - broker down: same answer, logged
+            logger.warning("Demande de code non transmise : %s", type(exc).__name__)
+        return Response({"detail": DEMANDE_CODE}, status=202)
+
+
+class ReinitialisationView(_CsrfObligatoireMixin, APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [ConnexionParIpThrottle]
+
+    @extend_schema(
+        tags=["Authentification"],
+        summary="Mot de passe oublié : nouveau mot de passe avec le code reçu",
+        request=ReinitialisationSerializer,
+        responses={204: None, **ERROR_400, **ERROR_429, **ERROR_RESPONSES},
+    )
+    def post(self, request: Request) -> Response:
+        serializer = ReinitialisationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        donnees = serializer.validated_data
+        try:
+            compte = auth_services.reinitialiser_mot_de_passe(
+                donnees["identifiant"],
+                donnees["code"],
+                donnees["nouveau_mot_de_passe"],
+                adresse=adresse_client(request),
+            )
+        except DjangoValidationError as exc:
+            raise _erreurs_mot_de_passe("nouveau_mot_de_passe", exc) from None
+        if compte is None:
+            raise CodeRefuse
+        return Response(status=204)
+
+
+class ChangementMotDePasseView(APIView):
+    """Change by the logged-in agent (also the forced change of a temporary password).
+
+    The current session stays open under a new key (login stamps and fixed expiry kept);
+    every other session of the agent ends.
+    """
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ConnexionParIpThrottle]
+
+    @extend_schema(
+        tags=["Authentification"],
+        summary="Changement de son mot de passe",
+        request=ChangementMotDePasseSerializer,
+        responses={200: EtatSessionSerializer, **ERROR_400, **ERROR_429, **ERROR_RESPONSES},
+    )
+    def post(self, request: Request) -> Response:
+        serializer = ChangementMotDePasseSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            compte = auth_services.changer_mot_de_passe(
+                cast(User, request.user),
+                serializer.validated_data["ancien"],
+                serializer.validated_data["nouveau"],
+                adresse=adresse_client(request),
+            )
+        except DjangoValidationError as exc:
+            raise _erreurs_mot_de_passe("nouveau", exc) from None
+        if compte is None:
+            raise ValidationError({"ancien": [ANCIEN_INCORRECT]})
+        # New session key bound to the new password hash; the session data (stamps) is kept.
+        update_session_auth_hash(request._request, compte)
+        auth_services.terminer_sessions(compte.pk, sauf=request.session.session_key)
+        return Response(_etat(auth_services.etape_apres_second_facteur(compte), compte))
+
+
+class _OtpConnexionView(APIView):
+    """Acts on the caller's own account only: no route or field names another account."""
+
+    permission_classes = [IsAuthenticated]
+    actif: bool
+
+    def _basculer(self, request: Request) -> Response:
+        compte = cast(User, request.user)
+        auth_services.changer_otp_connexion(compte, self.actif, adresse=adresse_client(request))
+        return Response({"otp_connexion_actif": compte.otp_connexion_actif})
+
+
+class ActivationOtpView(_OtpConnexionView):
+    actif = True
+
+    @extend_schema(
+        tags=["Authentification"],
+        summary="Activer le code de connexion par courriel (son propre compte)",
+        request=None,
+        responses={200: EtatOtpSerializer, **ERROR_409, **ERROR_RESPONSES},
+    )
+    def post(self, request: Request) -> Response:
+        return self._basculer(request)
+
+
+class DesactivationOtpView(_OtpConnexionView):
+    actif = False
+
+    @extend_schema(
+        tags=["Authentification"],
+        summary="Désactiver le code de connexion par courriel (son propre compte)",
+        request=None,
+        responses={200: EtatOtpSerializer, **ERROR_RESPONSES},
+    )
+    def post(self, request: Request) -> Response:
+        return self._basculer(request)
