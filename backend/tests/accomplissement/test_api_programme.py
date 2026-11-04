@@ -1,7 +1,15 @@
+from datetime import timedelta
+
 import pytest
+from django.utils import timezone
 from rest_framework.test import APIClient
 
-from apps.accomplissement.models import ProgrammeDeTravail, StatutTest, TestPrevu
+from apps.accomplissement.models import (
+    InstantaneProgramme,
+    ProgrammeDeTravail,
+    StatutTest,
+    TestPrevu,
+)
 from apps.analyse.models import ObjectifAudit
 from apps.missions.models import Mission, StatutEtape
 from tests.accomplissement.fixtures_api import Equipe, client_de
@@ -108,6 +116,34 @@ def test_synthese_et_instantanes(equipe_api: Equipe) -> None:
         .status_code
         == 403
     )
+
+
+def test_instantanes_liste_non_paginee(equipe_api: Equipe) -> None:
+    """Contrat de l'étape X : un tableau nu (pas de {count, results}), le plus récent en tête.
+
+    Un consommateur qui lisait `results` faisait planter l'étape X de toute mission validée.
+    """
+    e = equipe_api
+    etape_x = e.mission.etapes.get(numero=10)
+    valideur = e.users["rai"]
+    maintenant = timezone.now()
+    for age, lettre in ((2, "a"), (1, "b")):
+        InstantaneProgramme(
+            mission=e.mission,
+            etape=etape_x,
+            donnees={"programmes": []},
+            empreinte=lettre * 64,
+            valide_par=valideur,
+            valide_le=maintenant - timedelta(days=age),
+        ).save()
+    c = client_de(e.users["superviseur"])
+    r = c.get(f"/api/v1/work-programs/snapshots/?mission={e.mission.pk}")
+    assert r.status_code == 200
+    corps = r.json()
+    assert isinstance(corps, list)
+    assert [s["empreinte"] for s in corps] == ["b" * 64, "a" * 64]
+    assert set(corps[0]) == {"id", "valide_par", "valide_le", "empreinte"}
+    assert corps[0]["valide_par"]["id"] == valideur.pk
 
 
 def test_tests_prevus_complementaire_deduit_filtres_abandon(equipe_api: Equipe) -> None:
