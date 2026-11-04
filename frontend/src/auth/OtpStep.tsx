@@ -6,6 +6,7 @@ import { ALERT_CLASS, FormField } from "@/components/form/FormField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fr } from "@/i18n/fr";
+import { codeInputProps } from "./codeInput";
 import { otpSchema, type OtpValues } from "./schemas";
 import { useAuth } from "./useAuth";
 
@@ -56,16 +57,7 @@ export function OtpStep({ onBack }: { onBack: () => void }) {
         error={errors.code?.message}
         announceError={errors.code?.type === "server"}
       >
-        {(p) => (
-          <Input
-            {...p}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            required
-            {...register("code")}
-          />
-        )}
+        {(p) => <Input {...p} required {...codeInputProps(register("code"))} />}
       </FormField>
       <Button type="submit" disabled={isSubmitting}>
         {T.otpSubmit}

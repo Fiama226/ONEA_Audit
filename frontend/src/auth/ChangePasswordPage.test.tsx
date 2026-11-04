@@ -101,6 +101,34 @@ describe("ChangePasswordPage", () => {
     expect(csrf).toBe(TEST_CSRF);
   });
 
+  it("changement volontaire : retour à Mon compte avec une confirmation (message d'état)", async () => {
+    server.use(
+      http.post(`${AUTH_URL}/password/change/`, () =>
+        HttpResponse.json({ etape: "OK", me: fakeMe() }),
+      ),
+    );
+    serveSession();
+    const { router } = renderApp({
+      pathname: "/mot-de-passe/changer",
+      state: { from: "/mon-compte" },
+    });
+    const user = userEvent.setup();
+    expect(await screen.findByRole("heading", { name: T.changeTitle })).toBeInTheDocument();
+    // Le lien d'abandon ramène aussi à la page d'origine.
+    expect(screen.getByRole("link", { name: T.changeCancel })).toHaveAttribute(
+      "href",
+      "/mon-compte",
+    );
+    await remplir(user, "ancien-mot-de-passe", "un-nouveau-solide");
+    expect(await screen.findByText(T.passwordChanged)).toHaveAttribute("role", "status");
+    expect(router.state.location.pathname).toBe("/mon-compte");
+  });
+
+  it("rend la page dans le repère principal #contenu (lien d'évitement, e2e)", async () => {
+    await ouvrirChangementImpose();
+    expect(screen.getByRole("main")).toHaveAttribute("id", "contenu");
+  });
+
   it("n'a pas de violation axe", async () => {
     await ouvrirChangementImpose();
     const opts = { rules: { "color-contrast": { enabled: false } } };

@@ -7,7 +7,7 @@ import { useAuth } from "./useAuth";
 export function RequireAuth() {
   const { status, etape, loggedOut } = useAuth();
   const location = useLocation();
-  const from = `${location.pathname}${location.search}`;
+  const from = `${location.pathname}${location.search}${location.hash}`;
 
   if (status === "loading") {
     return (

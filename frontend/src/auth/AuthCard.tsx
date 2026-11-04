@@ -14,8 +14,13 @@ type Props = {
 
 /** Cadre commun des pages publiques de connexion et de mot de passe. */
 export function AuthCard({ title, intro, children, footer }: Props) {
+  // Même repère principal que la coque (#contenu) : cible commune des liens d'évitement.
   return (
-    <main className="mx-auto flex min-h-screen max-w-md items-center p-6">
+    <main
+      id="contenu"
+      tabIndex={-1}
+      className="mx-auto flex min-h-screen max-w-md items-center p-6 outline-none"
+    >
       <Card className="w-full">
         <CardHeader className="justify-items-center text-center">
           <LogoMark className="mb-2 size-24" />

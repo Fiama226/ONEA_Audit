@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { fr } from "@/i18n/fr";
 import { postPasswordReset } from "./api";
 import { AUTH_LINK_CLASS, AuthCard } from "./AuthCard";
+import { codeInputProps } from "./codeInput";
 import { AUTH_PATHS, stateField } from "./paths";
 import { NewPasswordFields } from "./NewPasswordFields";
 import { IDENTIFIANT_MAX, resetSchema, type ResetValues } from "./schemas";
@@ -51,6 +52,11 @@ export function ResetPasswordPage() {
       if (isApiError(e) && e.status === 400 && Object.keys(e.errors).length === 0) {
         // Refus uniforme (compte inconnu ou désactivé, code faux, expiré ou déjà utilisé).
         setError("code", { type: "server", message: T.otpInvalid }, { shouldFocus: true });
+        return;
+      }
+      // Limitation de débit : texte fixe, comme à la connexion (pas le détail du serveur).
+      if (isApiError(e) && e.status === 429) {
+        setFormError(T.loginTooMany);
         return;
       }
       setFormError(applyApiErrors(e, setError, FIELDS));
@@ -97,16 +103,7 @@ export function ResetPasswordPage() {
           error={errors.code?.message}
           announceError={errors.code?.type === "server"}
         >
-          {(p) => (
-            <Input
-              {...p}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              required
-              {...register("code")}
-            />
-          )}
+          {(p) => <Input {...p} required {...codeInputProps(register("code"))} />}
         </FormField>
         <NewPasswordFields
           newPassword={register("nouveau_mot_de_passe")}

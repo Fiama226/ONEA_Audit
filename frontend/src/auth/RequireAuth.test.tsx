@@ -17,6 +17,13 @@ describe("RequireAuth", () => {
     expect(router.state.location.state).toEqual({ from: "/missions" });
   });
 
+  it("garde la requête et le fragment dans le chemin de retour", async () => {
+    server.use(http.get(`${AUTH_URL}/session/`, () => unauthorized()));
+    const { router } = renderApp("/missions?statut=EN_COURS#liste");
+    expect(await screen.findByRole("button", { name: fr.auth.login })).toBeInTheDocument();
+    expect(router.state.location.state).toEqual({ from: "/missions?statut=EN_COURS#liste" });
+  });
+
   it("affiche la page protégée pour un utilisateur authentifié", async () => {
     serveSession();
     const { router } = renderApp("/");

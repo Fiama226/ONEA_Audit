@@ -190,6 +190,8 @@ function DisableForm({ onCancel, onDone }: { onCancel: () => void; onDone: () =>
             {...p}
             type="password"
             autoComplete="current-password"
+            maxLength={MOT_DE_PASSE_MAX}
+            required
             {...register("mot_de_passe")}
           />
         )}

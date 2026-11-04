@@ -8,6 +8,9 @@ export const AUTH_PATHS = {
   change: "/mot-de-passe/changer",
 } as const;
 
+/** Router state `notice` set after a successful password change (read by the app shell). */
+export const PASSWORD_CHANGED_NOTICE = "password-changed";
+
 /** Router state field `name` when it is a string, else undefined. */
 export function stateField(state: unknown, name: string): string | undefined {
   if (typeof state === "object" && state !== null && name in state) {

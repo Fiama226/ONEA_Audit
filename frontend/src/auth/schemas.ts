@@ -10,10 +10,21 @@ export const MOT_DE_PASSE_MAX = 256;
 export const MOT_DE_PASSE_MIN = 12;
 
 const identifiant = z.string().trim().min(1, T.identifiantRequired).max(IDENTIFIANT_MAX);
+/**
+ * Longueur saisissable du champ du code : bien plus que 6, pour qu'un code collé avec
+ * l'indentation du courriel (« ␣␣␣␣123456 ») ne soit pas tronqué avant le nettoyage.
+ */
+export const CODE_SAISIE_MAX = 32;
+
+/** Garde les seuls chiffres (code collé avec espaces, retour à la ligne ou séparateurs). */
+export function digitsOnly(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
 const code = z
   .string()
-  .trim()
-  .regex(/^\d{6}$/, T.otpFormat);
+  .transform(digitsOnly)
+  .pipe(z.string().regex(/^\d{6}$/, T.otpFormat));
 const nouveau = z.string().min(MOT_DE_PASSE_MIN, T.passwordTooShort).max(MOT_DE_PASSE_MAX);
 
 export const loginSchema = z.object({

@@ -53,6 +53,27 @@ describe("ResetPasswordPage", () => {
     expect(csrf).toBe(TEST_CSRF);
   });
 
+  it("code collé avec l'indentation du courriel : espaces retirés, code envoyé (WCAG 3.3.8)", async () => {
+    let body: unknown = null;
+    server.use(
+      http.post(`${AUTH_URL}/password/reset/`, async ({ request }) => {
+        body = await request.json();
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const { user } = await ouvrir({ identifiant: "agent@onea.bf" });
+    const code = screen.getByLabelText(T.otpCode);
+    expect(code).toHaveAttribute("autocomplete", "one-time-code");
+    await user.click(code);
+    await user.paste("    123 456\n");
+    expect(code).toHaveValue("123456");
+    await user.type(screen.getByLabelText(T.newPassword), "un-nouveau-solide");
+    await user.type(screen.getByLabelText(T.confirmPassword), "un-nouveau-solide");
+    await user.click(screen.getByRole("button", { name: T.resetSubmit }));
+    await screen.findByText(T.passwordResetDone);
+    expect(body).toMatchObject({ code: "123456" });
+  });
+
   it("code refusé : message lié au champ du code, focus", async () => {
     server.use(
       http.post(`${AUTH_URL}/password/reset/`, () =>

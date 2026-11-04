@@ -53,6 +53,25 @@ describe("OtpStep", () => {
     expect(csrf).toBe(TEST_CSRF);
   });
 
+  it("code collé avec espaces (indentation du courriel) : accepté sans troncature", async () => {
+    let body: unknown = null;
+    server.use(
+      http.post(`${AUTH_URL}/login/otp/`, async ({ request }) => {
+        body = await request.json();
+        serveSession();
+        return HttpResponse.json({ etape: "OK", me: fakeMe() });
+      }),
+    );
+    const { user } = await jusquAuCode();
+    const code = screen.getByLabelText(T.otpCode);
+    await user.click(code);
+    await user.paste("    654 321  ");
+    expect(code).toHaveValue("654321");
+    await user.click(screen.getByRole("button", { name: T.otpSubmit }));
+    expect(await screen.findByRole("heading", { name: fr.dashboard.raiTitle })).toBeInTheDocument();
+    expect(body).toEqual({ code: "654321" });
+  });
+
   it("code refusé : message lié au champ et focus", async () => {
     server.use(http.post(`${AUTH_URL}/login/otp/`, () => unauthorized("Code invalide ou expiré.")));
     const { user } = await jusquAuCode();

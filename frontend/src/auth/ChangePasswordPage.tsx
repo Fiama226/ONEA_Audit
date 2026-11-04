@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { isApiError } from "@/api/errors";
 import { applyApiErrors } from "@/api/formErrors";
 import { ALERT_CLASS, FormField } from "@/components/form/FormField";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { fr } from "@/i18n/fr";
 import { AUTH_LINK_CLASS, AuthCard } from "./AuthCard";
 import { NewPasswordFields } from "./NewPasswordFields";
-import { returnPathOf } from "./paths";
+import { PASSWORD_CHANGED_NOTICE, returnPathOf } from "./paths";
 import { changeSchema, MOT_DE_PASSE_MAX, type ChangeValues } from "./schemas";
 import { useAuth } from "./useAuth";
 
@@ -25,6 +26,7 @@ export function ChangePasswordPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const forced = etape === "CHANGER_MOT_DE_PASSE";
+  const retour = returnPathOf(location.state);
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
@@ -40,9 +42,12 @@ export function ChangePasswordPage() {
     setFormError(null);
     try {
       await changePassword(values.ancien, values.nouveau);
-      void navigate(returnPathOf(location.state), { replace: true });
+      // Confirmation affichée par la coque sur la page d'arrivée (message d'état, WCAG 4.1.3).
+      void navigate(retour, { replace: true, state: { notice: PASSWORD_CHANGED_NOTICE } });
     } catch (e) {
-      setFormError(applyApiErrors(e, setError, FIELDS));
+      // Limitation de débit : texte fixe, comme à la connexion (pas le détail du serveur).
+      if (isApiError(e) && e.status === 429) setFormError(T.loginTooMany);
+      else setFormError(applyApiErrors(e, setError, FIELDS));
     }
   }
 
@@ -56,8 +61,8 @@ export function ChangePasswordPage() {
             {T.logout}
           </Button>
         ) : (
-          <Link to="/" className={AUTH_LINK_CLASS}>
-            {fr.errors.backToDashboard}
+          <Link to={retour} className={AUTH_LINK_CLASS}>
+            {T.changeCancel}
           </Link>
         )
       }
