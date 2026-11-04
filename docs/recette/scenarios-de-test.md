@@ -3,7 +3,7 @@
 Document de recette manuelle. Il sert à deux usages :
 
 1. **la démonstration** de la plateforme (section 2, déroulé guidé de 25 minutes) ;
-2. **le test par les collègues** (sections 3 à 6 : 113 scénarios classés du plus simple au plus complexe).
+2. **le test par les collègues** (sections 3 à 6 : 117 scénarios classés du plus simple au plus complexe).
 
 Il a été rédigé à partir du code de la branche `develop` (backend `backend/apps/*`, frontend
 `frontend/src/features/*`, libellés de `frontend/src/i18n/fr.ts`, plans de lot, revue ASVS
@@ -1425,7 +1425,7 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 1. Lancer plus de 60 recherches en une minute (global search), plus de 30 téléversements en une heure, plus de 20 générations de document en une minute.
 2. Observer la réponse.
 
-**Résultat attendu** : au-delà du seuil : « Trop de requêtes : réessayez dans quelques instants. » (recherche : « Trop de recherches en peu de temps : patientez une minute. ») ; le service reprend ensuite. Seuils par défaut : génération 20/min, aperçu 30/min, téléversement 30/h, import 10/h, export 30/min, recherche 60/min, connexion 20/min par adresse, mot de passe oublié 5/h par identifiant, gestion des comptes 30/h (réglables ; voir S4-30). Scénario optionnel, souvent N/A en test manuel.
+**Résultat attendu** : au-delà du seuil : « Trop de requêtes : réessayez dans quelques instants. » (recherche : « Trop de recherches en peu de temps : patientez une minute. ») ; le service reprend ensuite. Seuils par défaut : génération 20/min, aperçu 30/min, téléversement 30/h, import 10/h, export 30/min, recherche 60/min, gestion des comptes 30/h ; authentification par adresse : connexion 60/min, code de connexion 30/min, demande de code 20/min, réinitialisation 20/min, échecs 30 par 15 min (connexion) et 30 par heure (réinitialisation) ; mot de passe oublié 5/h par identifiant ; changement de mot de passe 10/min par utilisateur (réglables ; voir S4-30 et S4-40). Scénario optionnel, souvent N/A en test manuel.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1481,9 +1481,9 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 2. À la 6e tentative, saisir le **bon** mot de passe.
 3. Essayer le même identifiant avec un mauvais mot de passe : le message est-il différent ?
 4. Attendre 15 minutes, ou faire réinitialiser le mot de passe de `auditeur2` par `admin` (S4-36), puis se connecter.
-5. Environnement de recette seulement : lancer plus de 20 tentatives de connexion en une minute depuis la même adresse (outil de test).
+5. Environnement de recette seulement : lancer plus de 60 tentatives de connexion en une minute depuis la même adresse (outil de test).
 
-**Résultat attendu** : le message reste « Identifiant ou mot de passe incorrect. » à toutes les étapes (aucune mention du verrouillage) ; à l'étape 2 le bon mot de passe est **refusé** tant que le verrouillage dure (15 minutes) ; le verrouillage cesse à l'échéance ou à la réinitialisation du mot de passe par l'administrateur ; à l'étape 5 la limite par adresse (`THROTTLE_RATE_CONNEXION`, 20 par minute par défaut) répond « Trop de requêtes : réessayez dans… » (429 avec `Retry-After`) ; la connexion d'un autre compte n'est pas affectée par le verrouillage de `auditeur2`.
+**Résultat attendu** : le message reste « Identifiant ou mot de passe incorrect. » à toutes les étapes (aucune mention du verrouillage) ; à l'étape 2 le bon mot de passe est **refusé** tant que le verrouillage dure (15 minutes) ; le verrouillage cesse à l'échéance ou à la réinitialisation du mot de passe par l'administrateur ; à l'étape 5 la limite par adresse (`THROTTLE_RATE_CONNEXION`, 60 par minute par défaut) répond « Trop de requêtes : réessayez dans… » (429 avec `Retry-After`) ; la connexion d'un autre compte n'est pas affectée par le verrouillage de `auditeur2`. Le plafond d'**échecs** par adresse (30 par 15 minutes, tous comptes confondus) est testé en S4-40.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1495,7 +1495,7 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 4. Demander deux codes à la suite ; saisir le **premier**, puis le second.
 5. Réutiliser le code utilisé à l'étape 1 (et, pour la connexion avec code, le code d'une connexion précédente).
 
-**Résultat attendu** : étape 1 réussie, retour à la connexion avec « Votre mot de passe a été modifié… » ; étape 2 le bon code est refusé après 5 essais ; étape 3 « Code invalide ou expiré. » ; étape 4 seul le dernier code émis est accepté ; étape 5 un code déjà utilisé n'est jamais accepté de nouveau. Le message d'erreur est le même quelle que soit la cause. Au plus 10 codes de réinitialisation par compte et par 24 heures (sans effet visible sur la réponse).
+**Résultat attendu** : étape 1 réussie, retour à la connexion avec « Votre mot de passe a été modifié… » ; étape 2 le bon code est refusé après 5 essais ; étape 3 « Code invalide ou expiré. » ; étape 4 seul le dernier code émis est accepté ; étape 5 un code déjà utilisé n'est jamais accepté de nouveau. Le message d'erreur est le même quelle que soit la cause. Au plus 10 codes de réinitialisation par compte et par 24 heures (sans effet visible sur la réponse) ; le plafond de 15 codes faux par compte et par 24 heures est testé en S4-38 (attention : les étapes 2 et 4 consomment déjà des essais faux sur `audite1`).
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1503,12 +1503,12 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 **Rôle** : `admin`, puis `delegue1` (compte AUDITEUR avec des droits délégués) · **Préconditions** : `admin` a délégué à `delegue1` « Créer des comptes » et « Réinitialiser les mots de passe » seulement ; un second administrateur `admin2` et un second délégué `delegue2` existent.
 1. Avec `delegue1`, ouvrir la fiche de `admin` et tenter « Réinitialiser le mot de passe », puis « Désactiver le compte ».
 2. Idem sur `delegue2` (autre délégué) et sur son propre compte.
-3. Créer un agent avec le rôle Administrateur ; tenter ensuite de changer le rôle d'un agent (droit non délégué), puis de modifier la direction d'un agent.
+3. Créer un agent avec le rôle Administrateur (par l'API : l'écran ne le propose pas) ; tenter ensuite de changer le rôle d'un agent (droit non délégué), puis de modifier la direction d'un agent.
 4. Tenter d'ouvrir la délégation de n'importe quel agent (y compris la sienne) et d'ouvrir « Importer un fichier CSV ».
 5. `admin` retire les droits de `delegue1` ; sans se déconnecter, `delegue1` actualise la liste et tente de créer un compte.
 6. Contrôle direct de l'API (outils du navigateur ou outil de test) : refaire les appels des étapes 1 à 4 sur `/api/v1/user-accounts/` avec la session de `delegue1`.
 
-**Résultat attendu** : toutes les tentatives des étapes 1 à 4 sont refusées (403, message « Vous n'avez pas le droit d'effectuer cette action sur ce compte. » ou équivalent) ; « Seul un administrateur peut attribuer le rôle Administrateur. » ; la délégation et l'import CSV restent inaccessibles à un délégué ; après retrait (étape 5) le refus est immédiat, sans reconnexion ; l'API répond comme l'écran. Limite connue et assumée : avec « créer des comptes » ou « réinitialiser les mots de passe », un délégué peut prendre la main sur un compte **non administrateur** (avertissement affiché dans le bloc de délégation).
+**Résultat attendu** : toutes les tentatives des étapes 1 à 4 sont refusées (403, message « Vous n'avez pas le droit d'effectuer cette action sur ce compte. » ou équivalent) ; « Seul un administrateur peut attribuer les rôles Administrateur, Responsable de l'audit interne et Direction générale. » ; la délégation et l'import CSV restent inaccessibles à un délégué ; après retrait (étape 5) le refus est immédiat, sans reconnexion ; l'API répond comme l'écran. Les comptes RAI et DG sont testés en S4-39. Limite connue et assumée : avec « créer des comptes » ou « réinitialiser les mots de passe », un délégué peut prendre la main sur un compte **AUDITEUR ou AUDITE** (il peut décocher l'envoi et voir le mot de passe temporaire ; avertissement affiché dans le bloc de délégation).
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1517,8 +1517,9 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 1. Ne faire aucune action pendant plus de 30 minutes, puis cliquer sur une page.
 2. Se reconnecter ; travailler sans interruption (une action au moins toutes les 20 minutes) jusqu'à dépasser 8 heures depuis la connexion, puis cliquer sur une page. (Si la durée est impraticable, noter « non attendu » et faire fermer la session par l'exploitant en supprimant la ligne correspondante de `django_session` : l'effet côté écran est le même.)
 3. Fermer le navigateur sans se déconnecter, le rouvrir et ouvrir l'application dans les 30 minutes.
+4. Se reconnecter, ouvrir le tableau de bord (la cloche des notifications se rafraîchit seule toutes les minutes) et laisser l'onglet **au premier plan**, sans rien toucher, plus de 30 minutes ; puis cliquer sur une page.
 
-**Résultat attendu** : étapes 1 et 2 redirection vers « Connexion » avec « Votre session a expiré. Veuillez vous reconnecter. » (30 minutes d'inactivité, ou 8 heures au plus depuis la connexion, même en activité continue) ; aucune écriture partielle ; étape 3 la session est encore valable (cookie de session, dans la limite de 8 h / 30 min).
+**Résultat attendu** : étapes 1 et 2 redirection vers « Connexion » avec « Votre session a expiré. Veuillez vous reconnecter. » (30 minutes d'inactivité, ou 8 heures au plus depuis la connexion, même en activité continue) ; aucune écriture partielle ; étape 3 la session est encore valable (cookie de session, dans la limite de 8 h / 30 min) ; étape 4 la session a expiré comme à l'étape 1 : le rafraîchissement automatique (requêtes marquées `X-Onea-Arriere-Plan: 1`) ne compte pas comme une activité. L'étape 4 suppose que le frontend envoie cet en-tête (modification en cours au 2026-11-04) : si la session reste ouverte, noter l'anomalie.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1548,14 +1549,14 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
 ### S4-36 — Réinitialisation par l'administrateur et sessions fermées
-**Rôle** : `admin` (ou un délégué), puis `auditeur2` · **Préconditions** : `auditeur2` connecté dans deux navigateurs (A et B).
+**Rôle** : `admin` (ou un délégué : `auditeur2` est un compte AUDITEUR, qu'un délégué peut gérer), puis `auditeur2` · **Préconditions** : `auditeur2` connecté dans deux navigateurs (A et B).
 1. Dans A, ouvrir « Mon compte » › « Changer mon mot de passe » et le changer.
 2. Dans B, actualiser une page.
 3. Se reconnecter dans A. `admin` ouvre la fiche de `auditeur2` › « Réinitialiser le mot de passe » (courriel coché si Mailpit est actif, sinon relever le mot de passe affiché).
 4. Dans A, actualiser une page ; se reconnecter avec le mot de passe temporaire ; changer le mot de passe.
 5. Tenter de réinitialiser son propre compte avec `admin` ; puis un compte désactivé.
 
-**Résultat attendu** : étape 2 B est ramenée à « Connexion » (changement de mot de passe : « Vos autres sessions ouvertes seront fermées ») ; étape 3 « Mot de passe réinitialisé. » ; étape 4 toutes les sessions de `auditeur2` sont fermées, le compte est déverrouillé (même après un verrouillage, S4-30) et le changement du mot de passe temporaire est obligatoire ; étape 5 refus (« Pour votre propre compte, utilisez « Changer mon mot de passe ». ») ; l'action figure dans l'« Historique du compte ». Repli sans SMTP : tout se fait sans courriel, le mot de passe s'affichant une seule fois à l'écran.
+**Résultat attendu** : étape 2 B est ramenée à « Connexion » (changement de mot de passe : « Vos autres sessions ouvertes seront fermées ») ; étape 3 « Mot de passe réinitialisé. » et, courriel coché, l'indication que le nouveau mot de passe a été **mis en file d'envoi** (il arrive ensuite dans Mailpit, envoyé par le `worker`) ; étape 4 toutes les sessions de `auditeur2` sont fermées, le compte est déverrouillé (même après un verrouillage, S4-30) et le changement du mot de passe temporaire est obligatoire ; étape 5 refus (« Pour votre propre compte, utilisez « Changer mon mot de passe ». ») ; l'action figure dans l'« Historique du compte ». Repli sans SMTP : tout se fait sans courriel, le mot de passe s'affichant une seule fois à l'écran.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1569,6 +1570,61 @@ Plus : un `.xlsm` ou `.docm` (macros), un `.docx` valide renommé en `.pdf`, un 
 6. Opérateur : sur une base de recette, `creer_administrateur --identifiant admin --desactiver-otp` sur un administrateur dont le code est actif, SMTP arrêté.
 
 **Résultat attendu** : étape 2 connexion après le code ; seul le titulaire peut activer ; étape 3 « Code de connexion désactivé. » et journalisation dans l'historique ; étape 5 « L'envoi de courriels n'est pas configuré sur la plateforme : le code de connexion ne peut pas être activé pour le moment. » ; étape 6 nouveau mot de passe temporaire affiché une seule fois, code désactivé, sessions fermées.
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S4-38 — Plafond de la réinitialisation par code (codes faux répétés)
+**Rôle** : aucun, puis `admin` · **Préconditions** : recette ; compte AUDITE de test `test.plafond` actif, avec une adresse de courriel ; `worker` et Mailpit actifs ; réglage par défaut (15 codes faux par 24 h, `AUTH_REINITIALISATION_ECHECS_MAX`) ; accès aux journaux de `web` (exploitant). Aller lentement (moins de 20 réinitialisations par minute) pour ne pas déclencher les limites par adresse.
+1. « Mot de passe oublié ? » pour `test.plafond`, lire le code dans Mailpit ; saisir 5 codes faux (avec un nouveau mot de passe valable).
+2. Redemander un code, saisir 5 codes faux ; recommencer une troisième fois (15 codes faux au total, 3 demandes de code : en dessous de la limite de 5 demandes par heure et par identifiant).
+3. Redemander un code : lire le message, consulter Mailpit.
+4. Saisir le **dernier code reçu** (ou un code juste s'il en arrive un) avec un nouveau mot de passe valable.
+5. Exploitant : chercher dans les journaux de `web` la ligne `ERROR` « Réinitialisation par code bloquée 24 h après 15 codes faux : compte=<id> adresse=… ».
+6. `admin` réinitialise le mot de passe de `test.plafond` (S4-36), envoi décoché ; se connecter avec le mot de passe affiché, puis refaire « Mot de passe oublié ? ».
+
+**Résultat attendu** : étapes 1 et 2 « Code invalide ou expiré. » à chaque code faux ; étape 3 le message de « Mot de passe oublié » est **identique** à d'habitude, mais **aucun** code n'arrive dans Mailpit ; étape 4 refus « Code invalide ou expiré. », même avec un code juste, tant que la fenêtre de 24 h court ; étape 5 la ligne existe, sans code ni identifiant saisi (identifiant interne du compte et adresse seulement) ; étape 6 la connexion avec le mot de passe temporaire fonctionne (la réinitialisation par l'administrateur n'est pas bloquée), mais « Mot de passe oublié » reste sans effet jusqu'à la fin des 24 heures (le compteur n'est remis à zéro que par une réinitialisation par code réussie). Rien à l'écran ne révèle le blocage.
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S4-39 — Délégué face aux comptes RAI et DG
+**Rôle** : `admin`, puis `delegue1` (compte AUDITEUR) · **Préconditions** : `admin` a délégué à `delegue1` les **quatre** droits (créer, réinitialiser, rôles, désactiver) ; les comptes `rai`, `dg`, `auditeur2` et `audite1` existent ; un ancien compte DG désactivé `ancien.dg` existe.
+1. Avec `delegue1`, ouvrir les fiches de `rai` et de `dg` : relever les boutons d'action proposés.
+2. Contrôle direct de l'API avec la session de `delegue1` (outils du navigateur ou outil de test), sur `/api/v1/user-accounts/<id de rai>/` puis `<id de dg>/` : `POST reset-password/` (`{"envoyer_courriel": false}`), `POST disable-otp/`, `POST change-role/` (`{"role": "AUDITE"}`), `POST deactivate/` (`{"motif": "test"}`), `PATCH` de l'adresse de courriel ; puis `POST <id de ancien.dg>/reactivate/`.
+3. « Nouvel agent » : relever les rôles proposés ; puis, par l'API, `POST /api/v1/user-accounts/` avec `"role": "RAI"`, puis `"DG"`, puis `"ADMIN"`.
+4. Sur la fiche de `auditeur2`, tenter de changer son rôle en RAI, puis en DG (API si l'écran ne le propose pas) ; puis en Audité.
+5. Réinitialiser le mot de passe de `audite1` (envoi coché) ; désactiver puis réactiver un compte AUDITE de test.
+6. `admin` refait les actions de l'étape 2 sur `rai` (réinitialisation) : elles réussissent.
+
+**Résultat attendu** : étape 1 aucun bouton d'action sur les fiches RAI et DG ; étape 2 toutes les requêtes répondent **403**, aucune donnée du compte ne change (historique du compte inchangé), y compris la réactivation de `ancien.dg` ; étape 3 l'écran ne propose que « Auditeur interne » et « Audité » ; l'API refuse RAI, DG et ADMIN (403, « Seul un administrateur peut attribuer les rôles Administrateur, Responsable de l'audit interne et Direction générale. ») ; étape 4 refus pour RAI et DG avec le même message, succès pour Audité ; étape 5 succès (comptes AUDITEUR et AUDITE), le courriel est mis en file d'envoi ; étape 6 succès pour l'administrateur.
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S4-40 — Limites de l'authentification : réponses 429, CSRF d'abord, plafond d'échecs par adresse
+**Rôle** : aucun (outil de test : `curl` ou script), puis un agent quelconque · **Préconditions** : environnement de recette **seulement**, réglages par défaut ; deux postes ou deux adresses réseau différentes (A et B) ; jeton CSRF obtenu par `GET /api/v1/auth/csrf/` (cookie et en-tête `X-CSRFToken`). Ne jamais lancer sur la production.
+1. Depuis A, **sans** jeton CSRF, envoyer 100 `POST /api/v1/auth/login/` en une minute (ce que ferait une page piégée). Puis, depuis A, se connecter normalement dans le navigateur.
+2. Depuis A, avec le jeton, envoyer 31 connexions avec des identifiants **inexistants** (n'importe quel mot de passe) en moins de 15 minutes.
+3. Toujours depuis A, dans la foulée : se connecter avec un compte réel et son **bon** mot de passe.
+4. Depuis B, au même moment : se connecter avec un compte réel.
+5. Depuis A, après l'étape 2 : « Mot de passe oublié ? » pour un compte réel (compteur séparé).
+6. Exploitant : chercher dans les journaux de `web` « Plafond d'échecs atteint pour une adresse : portee=echecs_connexion adresse=… ».
+7. Attendre la fin de la fenêtre (15 minutes, voir `Retry-After`) et se reconnecter depuis A.
+
+**Résultat attendu** : étape 1 chaque requête répond 403 « Jeton CSRF absent ou invalide : rechargez la page. », et la connexion normale qui suit **réussit** (les requêtes sans jeton n'ont pas consommé le quota de l'adresse) ; étape 2 les 30 premières répondent 401 « Identifiant ou mot de passe incorrect. », la 31e **429** avec `Retry-After` ; étape 3 **429** aussi, avant tout contrôle du mot de passe (le bon mot de passe ne passe pas tant que dure la fenêtre), mais le compte n'est **pas** verrouillé ; étape 4 connexion réussie (autre adresse) ; étape 5 la demande de code fonctionne (compteur distinct de celui de la connexion) ; étape 6 la ligne existe ; étape 7 connexion réussie. En IPv6, toutes les adresses d'un même /64 comptent comme une seule.
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S4-41 — Service d'envoi (`worker`) arrêté ou en échec : courriels d'authentification
+**Rôle** : opérateur technique, `admin`, `auditeur1` (code de connexion activé, S4-37), `audite1` · **Préconditions** : recette avec `worker`, Redis et Mailpit ; accès aux journaux du `worker`.
+1. Arrêter le `worker` (`docker compose stop worker`, ou arrêter le processus Celery en développement).
+2. `admin` crée un agent `test.envoi` avec une adresse, « Envoyer le courriel de bienvenue » coché ; consulter Mailpit.
+3. `auditeur1` se connecte : mot de passe, puis étape « Vérification en deux étapes » ; consulter Mailpit.
+4. « Mot de passe oublié ? » pour `audite1` ; consulter Mailpit.
+5. Redémarrer le `worker` dans les 10 minutes ; consulter Mailpit ; `auditeur1` saisit le code reçu.
+6. Le `worker` en marche, arrêter Mailpit (relais injoignable). `admin` réinitialise le mot de passe de `test.envoi`, envoi coché. Lire les journaux du `worker`.
+7. `admin` réinitialise de nouveau `test.envoi`, **envoi décoché** ; se connecter avec le mot de passe affiché. Remettre Mailpit.
+8. Arrêter Redis (file injoignable) ; `admin` crée un agent `test.envoi2` avec une adresse, envoi coché. Remettre Redis puis redémarrer `worker`, `beat` et `web` (runbook « Redis tombé »).
+
+**Résultat attendu** : étape 2 la fenêtre « Compte créé » indique que le courriel a été **mis en file d'envoi**, **aucun** mot de passe n'est affiché, rien n'arrive dans Mailpit ; étapes 3 et 4 les écrans répondent comme d'habitude, rien n'arrive ; étape 5 le courriel de bienvenue, le code de connexion et le code de réinitialisation arrivent après le redémarrage, et le code de connexion est accepté (une connexion en attente expire 10 minutes après la saisie du mot de passe : au-delà, recommencer la connexion) ; étape 6 l'écran indique encore « mis en file d'envoi », rien n'arrive, et le journal du `worker` contient une ligne `ERROR` « Courriel de mot de passe temporaire NON envoyé : compte=<id> nature=REINITIALISATION. Réinitialisez le mot de passe avec affichage. » (sans le mot de passe) ; étape 7 le mot de passe s'affiche une seule fois et permet la connexion ; étape 8 le mot de passe de `test.envoi2` s'affiche une seule fois (« Aucun courriel de bienvenue n'a été mis en file d'envoi … »), aucun courriel ne partira pour lui. Aucun code ni mot de passe n'apparaît dans les journaux ni dans Redis.
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
@@ -1645,7 +1701,7 @@ Remarques de lecture :
 | **Gabarits Word provisoires** : les 22 gabarits officiels ONEA restent à récupérer ; les documents générés utilisent des modèles vierges provisoires | `docs/HANDOFF.md`, `docs/documents/gabarits-manquants.md` | ne pas juger la mise en page des documents Word |
 | **Tests de bout en bout (Playwright) jamais exécutés** ; audit d'accessibilité automatisé « outillage livré, exécution en attente » ; bancs réseau du lot 9 non lancés ; suites de tests complètes non relancées | `docs/HANDOFF.md`, `docs/qualite/audit-accessibilite.md` | la présente recette manuelle est la première vérification navigateur réelle |
 | **Antivirus** : `ANTIVIRUS_MOTEUR=aucun` par défaut, ClamAV (conteneur séparé) non livré en développement ; les formats OLE (`doc`, `xls`, `msg`) ne sont pas inspectés pour les macros | `core/antivirus.py`, ASVS SEC-04 | S4-13 étape 4 N/A sans ClamAV |
-| **Authentification interne** : sessions Django (8 h / 30 min), mots de passe Argon2id, code de connexion facultatif ; l'obligation du code pour certains rôles (D19) n'est pas décidée | `docs/securite/auth-interne-modele.md` | S4-29 à S4-37 ; l'audit ASVS L2 doit être rejoué sur la nouvelle authentification |
+| **Authentification interne** : sessions Django (8 h / 30 min), mots de passe Argon2id, code de connexion facultatif ; l'obligation du code pour certains rôles (D19) n'est pas décidée ; tous les courriels d'authentification partent du `worker` (sans lui, rien n'arrive) ; délégués limités aux comptes AUDITEUR et AUDITE | `docs/securite/auth-interne-modele.md`, `docs/securite/asvs-l2.md` (rejoué le 2026-11-04, revue statique) | S4-29 à S4-41 |
 | **Piste d'audit sans écran** : API seule ; lecture du contenu des missions possible par l'ADMIN | ASVS SEC-02, `core/views.py` | S4-22 |
 | **Conflits d'intérêts lisibles par toute l'équipe** | ASVS SEC-08 | constat connu à ne pas rouvrir (SEC-09, compte rendu d'une réunion non tenue, est corrigé) |
 | ~~File de décisions du RAI : liens vers le registre non filtré~~ : corrigé, les liens mènent aux écrans `/recommandations/reports` et `/recommandations/relances` filtrés | `docs/HANDOFF.md` §2ter | S4-21 (clos) |
@@ -1686,8 +1742,10 @@ traitement par intelligence artificielle (exclu du produit par règle du projet)
 | V-16 | Messages exacts affichés pour un dépassement de débit (HTTP 429) dans chaque écran | S4-25 |
 | V-17 | Disponibilité du conteneur ClamAV en recette | S4-13 |
 | V-18 | Contenu exact des documents générés (étape, numéro, rendu) tant que les gabarits officiels manquent | S2-29 |
+| V-19 | Le frontend envoie-t-il l'en-tête `X-Onea-Arriere-Plan: 1` sur ses rafraîchissements automatiques (cloche des notifications) ? Sans lui, un onglet ouvert garde la session jusqu'à 8 h | S4-33 étape 4 |
+| V-20 | Libellés exacts des écrans après les corrections de sécurité du 2026-11-04 (rôles proposés à un délégué, « mis en file d'envoi », message 429 de la connexion) | S4-39, S4-40, S4-41 |
 
-Récapitulatif : **18 points « à vérifier »**.
+Récapitulatif : **20 points « à vérifier »**.
 
 ---
 
@@ -1707,8 +1765,8 @@ Récapitulatif : **18 points « à vérifier »**.
 | 1 — simples (S1-01 à S1-13) | 13 | | | |
 | 2 — courants (S2-01 à S2-30) | 30 | | | |
 | 3 — métier (S3-01 à S3-33) | 33 | | | |
-| 4 — complexes (S4-01 à S4-37) | 37 | | | |
-| **Total** | **113** | | | |
+| 4 — complexes (S4-01 à S4-41) | 41 | | | |
+| **Total** | **117** | | | |
 
 Anomalies ouvertes : bloquantes ___ · majeures ___ · mineures ___ · cosmétiques ___ · sécurité ___.
 
