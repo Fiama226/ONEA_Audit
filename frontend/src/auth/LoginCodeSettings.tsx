@@ -16,8 +16,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { fr } from "@/i18n/fr";
-import { ENVOI_COURRIEL_NON_CONFIGURE, postOtpDisable, postOtpEnable } from "./api";
-import { MOT_DE_PASSE_MAX } from "./schemas";
+import {
+  ENVOI_COURRIEL_NON_CONFIGURE,
+  postOtpDisable,
+  postOtpEnable,
+  postOtpEnableCode,
+} from "./api";
+import { codeInputProps } from "./codeInput";
+import { MOT_DE_PASSE_MAX, otpSchema, type OtpValues } from "./schemas";
 import { useAuth } from "./useAuth";
 
 const T = fr.monCompte;
@@ -31,7 +37,10 @@ type ConfirmValues = z.infer<typeof confirmSchema>;
 /**
  * Code de connexion par courriel de son propre compte (« Mon compte »). Activation possible
  * seulement si un courriel peut partir : sinon le serveur répond 409 et l'interrupteur est
- * désactivé avec l'explication. La désactivation redemande le mot de passe actuel.
+ * désactivé avec l'explication. L'activation envoie un code de confirmation à l'adresse de
+ * l'agent et n'a lieu qu'une fois ce code saisi (preuve que les courriels arrivent : sans
+ * elle, une adresse fausse bloquerait l'agent à sa connexion suivante). La désactivation
+ * redemande le mot de passe actuel.
  */
 export function LoginCodeSettings() {
   const { me, updateMe } = useAuth();
@@ -42,6 +51,7 @@ export function LoginCodeSettings() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const [activating, setActivating] = useState(false);
   const reasonRef = useRef<HTMLParagraphElement>(null);
   const focusReason = useRef(false);
 
@@ -59,14 +69,13 @@ export function LoginCodeSettings() {
   // Sans adresse, le code ne pourrait jamais arriver : l'activation est impossible d'emblée.
   const reason = active ? null : me.email === "" ? T.otpNoEmail : blocked;
 
-  async function enable() {
+  async function requestCode(): Promise<boolean> {
     setPending(true);
     setError(null);
     setNotice("");
     try {
-      const etat = await postOtpEnable();
-      updateMe({ otp_connexion_actif: etat.otp_connexion_actif });
-      setNotice(T.otpEnabled);
+      await postOtpEnableCode();
+      return true;
     } catch (e) {
       if (isApiError(e) && e.status === 409) {
         focusReason.current = true;
@@ -74,9 +83,14 @@ export function LoginCodeSettings() {
       } else {
         setError(isApiError(e) ? e.detail : fr.errors.generic);
       }
+      return false;
     } finally {
       setPending(false);
     }
+  }
+
+  async function startActivation() {
+    if (await requestCode()) setActivating(true);
   }
 
   function onToggle() {
@@ -86,7 +100,7 @@ export function LoginCodeSettings() {
       setError(null);
       setConfirming(true);
     } else {
-      void enable();
+      void startActivation();
     }
   }
 
@@ -134,6 +148,19 @@ export function LoginCodeSettings() {
       <p role="status" className="mt-2 text-sm text-success-text">
         {notice}
       </p>
+      <Dialog open={activating} onOpenChange={setActivating}>
+        <DialogContent>
+          <ActivationForm
+            onResend={requestCode}
+            onCancel={() => setActivating(false)}
+            onDone={() => {
+              updateMe({ otp_connexion_actif: true });
+              setActivating(false);
+              setNotice(T.otpEnabled);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent>
           <DisableForm
@@ -147,6 +174,84 @@ export function LoginCodeSettings() {
         </DialogContent>
       </Dialog>
     </section>
+  );
+}
+
+/** Code de confirmation reçu par courriel ; démonté à la fermeture. */
+function ActivationForm({
+  onResend,
+  onCancel,
+  onDone,
+}: {
+  onResend: () => Promise<boolean>;
+  onCancel: () => void;
+  onDone: () => void;
+}) {
+  const [formError, setFormError] = useState<string | null>(null);
+  const [resent, setResent] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<OtpValues>({ resolver: zodResolver(otpSchema), defaultValues: { code: "" } });
+
+  async function onSubmit(values: OtpValues) {
+    setFormError(null);
+    setResent(false);
+    try {
+      await postOtpEnable(values.code);
+      onDone();
+    } catch (e) {
+      if (isApiError(e) && e.status === 400) {
+        setError("code", { type: "server", message: fr.auth.otpInvalid }, { shouldFocus: true });
+      } else if (isApiError(e) && e.status === 429) {
+        setFormError(fr.auth.loginTooMany);
+      } else {
+        setFormError(isApiError(e) ? e.detail : fr.errors.generic);
+      }
+    }
+  }
+
+  async function resend() {
+    setFormError(null);
+    setResent(await onResend());
+  }
+
+  return (
+    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} noValidate className="grid gap-4">
+      <DialogHeader>
+        <DialogTitle>{T.otpConfirmTitle}</DialogTitle>
+        <DialogDescription>{T.otpConfirmText}</DialogDescription>
+      </DialogHeader>
+      {formError && (
+        <p role="alert" className={ALERT_CLASS}>
+          {formError}
+        </p>
+      )}
+      <FormField
+        label={fr.auth.otpCode}
+        help={fr.auth.otpHelp}
+        error={errors.code?.message}
+        announceError={errors.code?.type === "server"}
+      >
+        {(p) => <Input {...p} required {...codeInputProps(register("code"))} />}
+      </FormField>
+      <p role="status" className="text-sm text-success-text">
+        {resent ? T.otpConfirmResent : ""}
+      </p>
+      <DialogFooter>
+        <Button type="button" variant="link" onClick={() => void resend()}>
+          {T.otpConfirmResend}
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          {fr.common.cancel}
+        </Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {T.otpConfirmSubmit}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
 

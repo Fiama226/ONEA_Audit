@@ -3056,6 +3056,12 @@ export const fr = {
     otpSwitch: "Demander un code par courriel à chaque connexion",
     otpStateOn: "Activé",
     otpStateOff: "Désactivé",
+    otpConfirmTitle: "Confirmer votre adresse de courriel",
+    otpConfirmText:
+      "Pour vous éviter d'être bloqué à votre prochaine connexion, nous vérifions que vous recevez bien nos courriels : saisissez le code à 6 chiffres envoyé à votre adresse professionnelle. Le code de connexion ne sera activé qu'à cette condition.",
+    otpConfirmSubmit: "Activer le code",
+    otpConfirmResend: "Renvoyer un code",
+    otpConfirmResent: "Un nouveau code vient d'être envoyé.",
     otpEnabled: "Code de connexion activé : il vous sera demandé à votre prochaine connexion.",
     otpDisabled: "Code de connexion désactivé.",
     otpEmailNotConfigured:

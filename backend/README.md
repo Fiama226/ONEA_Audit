@@ -40,7 +40,7 @@ similarity). The API accepts no `Authorization: Bearer` header: it answers 401 w
 
 Endpoints (`apps/users/auth_urls.py`, all under `/api/v1/`): `auth/login/`, `auth/login/otp/`,
 `auth/logout/`, `auth/session/`, `auth/csrf/`, `auth/password/forgot/`, `auth/password/reset/`,
-`auth/password/change/`, `auth/otp/enable/`, `auth/otp/disable/`. Account administration:
+`auth/password/change/`, `auth/otp/enable/code/` (mails the confirmation code), `auth/otp/enable/` (on that code), `auth/otp/disable/`. Account administration:
 `user-accounts/` (create, `reset-password`, `disable-otp`, `change-role`, `delegation`,
 `deactivate`, `reactivate`, `import-csv`, `import-passwords/<id>/`), restricted to the ADMIN role or
 to rights delegated by an administrator (`apps/users/delegation.py`).

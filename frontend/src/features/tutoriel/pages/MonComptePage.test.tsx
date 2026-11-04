@@ -37,11 +37,23 @@ describe("MonComptePage — mot de passe", () => {
 });
 
 describe("MonComptePage — code de connexion", () => {
-  it("turns the login code on", async () => {
-    let calls = 0;
+  it("turns the login code on only with the code mailed to the agent", async () => {
+    let requests = 0;
+    const bodies: unknown[] = [];
     server.use(
-      http.post(`${AUTH_URL}/otp/enable/`, () => {
-        calls += 1;
+      http.post(`${AUTH_URL}/otp/enable/code/`, () => {
+        requests += 1;
+        return HttpResponse.json({ detail: "Un code a été envoyé." }, { status: 202 });
+      }),
+      http.post(`${AUTH_URL}/otp/enable/`, async ({ request }) => {
+        const body = (await request.json()) as { code: string };
+        bodies.push(body);
+        if (body.code !== "123456") {
+          return HttpResponse.json(
+            { detail: "Données invalides.", errors: { code: ["Code invalide ou expiré."] } },
+            { status: 400 },
+          );
+        }
         return HttpResponse.json({ otp_connexion_actif: true });
       }),
     );
@@ -50,14 +62,52 @@ describe("MonComptePage — code de connexion", () => {
     const toggle = await findSwitch();
     expect(toggle).not.toBeChecked();
     await user.click(toggle);
+    const dialog = await screen.findByRole("dialog", {
+      name: "Confirmer votre adresse de courriel",
+    });
+    expect(requests).toBe(1);
+    expect(toggle).not.toBeChecked(); // rien n'est activé tant que le code n'est pas saisi
+    expect((await axe(dialog, NO_CONTRAST)).violations).toEqual([]);
+
+    await user.type(within(dialog).getByLabelText("Code de vérification"), "000000");
+    await user.click(within(dialog).getByRole("button", { name: "Activer le code" }));
+    expect(await within(dialog).findByText("Code invalide ou expiré.")).toBeVisible();
+    expect(toggle).not.toBeChecked();
+
+    await user.clear(within(dialog).getByLabelText("Code de vérification"));
+    await user.type(within(dialog).getByLabelText("Code de vérification"), "123456");
+    await user.click(within(dialog).getByRole("button", { name: "Activer le code" }));
     await waitFor(() => expect(toggle).toBeChecked());
     expect(await screen.findByText(/Code de connexion activé/)).toBeVisible();
-    expect(calls).toBe(1);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(bodies).toEqual([{ code: "000000" }, { code: "123456" }]);
+  });
+
+  it("leaves the code off when the agent gives up, and can ask for another code", async () => {
+    let requests = 0;
+    server.use(
+      http.post(`${AUTH_URL}/otp/enable/code/`, () => {
+        requests += 1;
+        return HttpResponse.json({ detail: "Un code a été envoyé." }, { status: 202 });
+      }),
+    );
+    const user = userEvent.setup();
+    openAccount();
+    const toggle = await findSwitch();
+    await user.click(toggle);
+    const dialog = await screen.findByRole("dialog", {
+      name: "Confirmer votre adresse de courriel",
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Renvoyer un code" }));
+    await waitFor(() => expect(requests).toBe(2));
+    await user.click(within(dialog).getByRole("button", { name: "Annuler" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(toggle).not.toBeChecked();
   });
 
   it("disables the switch with an explanation when email is not configured", async () => {
     server.use(
-      http.post(`${AUTH_URL}/otp/enable/`, () =>
+      http.post(`${AUTH_URL}/otp/enable/code/`, () =>
         HttpResponse.json(
           { detail: "Envoi de courriels non configuré", errors: {} },
           { status: 409 },
@@ -85,9 +135,9 @@ describe("MonComptePage — code de connexion", () => {
   it("disables the switch upfront when the account has no email address", async () => {
     let calls = 0;
     server.use(
-      http.post(`${AUTH_URL}/otp/enable/`, () => {
+      http.post(`${AUTH_URL}/otp/enable/code/`, () => {
         calls += 1;
-        return HttpResponse.json({ otp_connexion_actif: true });
+        return HttpResponse.json({ detail: "Envoyé." }, { status: 202 });
       }),
     );
     openAccount({ email: "" });

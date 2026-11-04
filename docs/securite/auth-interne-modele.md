@@ -110,6 +110,9 @@ Chemins relatifs à `backend/apps/users/` sauf mention contraire.
   obligatoire pour aucun rôle, y compris ADMIN (ancienne décision D19 : à reprendre avec l'ONEA ;
   ASVS 4.3.1 non conforme tant qu'elle n'est pas prise). L'OTP par courriel dépend du relais SMTP,
   du `worker` et du compte de courriel de l'agent.
+  L'activation par le titulaire exige un code de confirmation (objet `ACTIVER`, 10 minutes, 5 essais)
+  reçu à son adresse (`auth/otp/enable/code/` puis `auth/otp/enable/`) : une adresse fausse ne peut
+  plus enfermer l'agent à sa connexion suivante. La désactivation reste possible sans courriel.
 - **Notifications au titulaire non envoyées (AUTH-10, arbitrage)** : aucune alerte par courriel
   après une réinitialisation par un administrateur, un changement d'adresse ou la désactivation du
   code ; à décider (modèles, destinataires dont l'ancienne adresse).

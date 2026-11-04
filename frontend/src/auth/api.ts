@@ -44,9 +44,15 @@ export function postPasswordReset(data: S["ReinitialisationRequest"]): Promise<v
   return apiFetch<void>(`${AUTH}/password/reset/`, { method: "POST", json: data });
 }
 
-/** Turns the login code on for one's own account (409 when no email can reach it). */
-export function postOtpEnable(): Promise<S["EtatOtp"]> {
-  return apiFetch<S["EtatOtp"]>(`${AUTH}/otp/enable/`, { method: "POST" });
+/** Mails a confirmation code to one's own address (409 when no email can reach it). */
+export function postOtpEnableCode(): Promise<S["Message"]> {
+  return apiFetch<S["Message"]>(`${AUTH}/otp/enable/code/`, { method: "POST" });
+}
+
+/** Turns the login code on for one's own account, on the code mailed by `postOtpEnableCode`. */
+export function postOtpEnable(code: string): Promise<S["EtatOtp"]> {
+  const json: S["CodeConnexionRequest"] = { code };
+  return apiFetch<S["EtatOtp"]>(`${AUTH}/otp/enable/`, { method: "POST", json });
 }
 
 /** Turns the login code off for one's own account, on the current password. */
