@@ -71,15 +71,32 @@ INFRA_SANS_KEYCLOAK = [
 ]
 
 
+# Seule exception : backup.sh purge les anciennes sauvegardes `keycloak-<h>.dump` (revue finale I3).
+PURGE_ANCIENNES_SAUVEGARDES = RACINE / "scripts" / "backup.sh"
+
+
 def test_aucun_fichier_d_infrastructure_ne_mentionne_keycloak() -> None:
     for relatif in INFRA_SANS_KEYCLOAK:
         texte = (RACINE / relatif).read_text(encoding="utf-8").lower()
         assert "keycloak" not in texte, relatif
     for dossier in ("scripts", "docker"):
         for fichier in (RACINE / dossier).rglob("*"):
-            if fichier.is_file():
-                assert "keycloak" not in fichier.read_text(encoding="utf-8").lower(), fichier
+            if not fichier.is_file():
+                continue
+            texte = fichier.read_text(encoding="utf-8").lower()
+            if fichier == PURGE_ANCIENNES_SAUVEGARDES:
+                lignes = [ligne.strip() for ligne in texte.splitlines() if "keycloak" in ligne]
+                assert lignes, fichier
+                assert all(ligne.startswith("#") or "keycloak-" in ligne for ligne in lignes)
+                continue
+            assert "keycloak" not in texte, fichier
     assert not (RACINE / "docker" / "keycloak").exists()
+
+
+def test_backup_purge_les_anciennes_sauvegardes_keycloak_avec_leur_jeu() -> None:
+    texte = PURGE_ANCIENNES_SAUVEGARDES.read_text(encoding="utf-8")
+    assert 'for old in "$DEST"/keycloak-*.dump; do' in texte
+    assert '[ -f "$DEST/manifeste-$h.sha256" ] || rm -f "$old"' in texte
 
 
 def test_env_example_sans_variable_keycloak_ni_sso() -> None:
