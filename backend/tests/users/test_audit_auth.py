@@ -182,3 +182,40 @@ def test_journal_expose_l_action_metier(agent: User) -> None:
     actions = [item["action_metier"] for item in r.json()["results"]]
     assert "changement_mot_de_passe" in actions
     assert all(a is None or isinstance(a, str) for a in actions)
+
+
+def test_desactivation_et_reactivation_nomment_leur_action(agent: User) -> None:
+    admin = make_user(Role.ADMIN, username="chef")
+    avant = len(_entrees(agent))
+    services.desactiver(agent, motif="Départ", by=admin)
+    (entree,) = _nouvelles(agent, avant)
+    assert _action(entree) == "desactivation_compte"
+    assert entree.actor_id == admin.pk
+    services.reactiver(agent, by=admin)
+    entree = _nouvelles(agent, avant)[-1]
+    assert _action(entree) == "reactivation_compte"
+    assert entree.actor_id == admin.pk
+
+
+def test_delegation_nomme_son_action(agent: User) -> None:
+    from apps.users.models import DelegationGestionComptes
+
+    admin = make_user(Role.ADMIN, username="chef")
+    tous: dict[str, bool] = dict.fromkeys(ACTIONS, True)
+    delegation = services.definir_delegation(agent, droits=tous, par=admin)
+    (entree,) = LogEntry.objects.get_for_object(delegation)
+    assert _action(entree) == "attribution_delegation"
+    assert entree.actor_id == admin.pk
+    services.definir_delegation(agent, droits=dict.fromkeys(ACTIONS, False), par=admin)
+    entrees = list(LogEntry.objects.get_for_object(delegation).order_by("pk"))
+    assert _action(entrees[-1]) == "retrait_delegation"
+    # Disabling a delegate drops his rights: the entry names the withdrawal too.
+    services.definir_delegation(agent, droits=tous, par=admin)
+    services.desactiver(agent, motif="Départ", by=admin)
+    derniere = (
+        LogEntry.objects.get_for_object(DelegationGestionComptes.objects.get(user=agent))
+        .order_by("pk")
+        .last()
+    )
+    assert derniere is not None
+    assert _action(derniere) == "retrait_delegation"

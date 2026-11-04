@@ -148,8 +148,15 @@ class DelegationGestionComptes(models.Model):
     )
     accorde_le = models.DateTimeField(auto_now_add=True)
 
+    # Business action carried by the next save into its audit entry (not a database field).
+    action_audit: str | None = None
+
     def __str__(self) -> str:
         return f"Délégation #{self.user_id}"
+
+    def get_additional_data(self) -> dict[str, str] | None:
+        """Called by auditlog when it writes the entry of a save."""
+        return {"action": self.action_audit} if self.action_audit else None
 
 
 class FichierMotsDePasse(models.Model):

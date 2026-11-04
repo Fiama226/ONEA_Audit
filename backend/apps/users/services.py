@@ -121,6 +121,10 @@ ACTION_CREATION = "creation_compte"
 ACTION_REINITIALISATION = "reinitialisation_mot_de_passe"
 ACTION_DESACTIVATION_OTP = "desactivation_otp"
 ACTION_CHANGEMENT_ROLE = "changement_role"
+ACTION_DESACTIVATION = "desactivation_compte"
+ACTION_REACTIVATION = "reactivation_compte"
+ACTION_ATTRIBUTION_DELEGATION = "attribution_delegation"
+ACTION_RETRAIT_DELEGATION = "retrait_delegation"
 
 
 def mettre_a_jour_tutoriel(user: User, *, action: str, version: int) -> User:
@@ -270,9 +274,10 @@ def desactiver(compte: User, *, motif: str, by: User) -> User:
         user.desactive_le = timezone.now()
         user.desactive_par = by
         user.motif_desactivation = motif.strip()
-        user.save(
-            update_fields=["is_active", "desactive_le", "desactive_par", "motif_desactivation"]
-        )
+        with _action_auditee(user, ACTION_DESACTIVATION):
+            user.save(
+                update_fields=["is_active", "desactive_le", "desactive_par", "motif_desactivation"]
+            )
         # A disabled account keeps no delegated right: a reactivation restores none.
         _revoquer_delegation(user, by)
     # A disabled account is already anonymous for every session (ModelBackend refuses
@@ -294,14 +299,15 @@ def reactiver(compte: User, *, by: User) -> User:
         user.desactive_le = None
         user.desactive_par = None
         user.motif_desactivation = ""
-        user.save(
-            update_fields=["is_active", "desactive_le", "desactive_par", "motif_desactivation"]
-        )
+        with _action_auditee(user, ACTION_REACTIVATION):
+            user.save(
+                update_fields=["is_active", "desactive_le", "desactive_par", "motif_desactivation"]
+            )
         return user
 
 
 @contextmanager
-def _action_auditee(user: User, action: str) -> Iterator[None]:
+def _action_auditee(user: User | DelegationGestionComptes, action: str) -> Iterator[None]:
     """Name the business action on the audit entry written by the save(s) in the block."""
     user.action_audit = action
     try:
@@ -480,7 +486,8 @@ def _revoquer_delegation(user: User, par: User) -> None:
         setattr(delegation, action, False)
     delegation.accorde_par = par
     delegation.accorde_le = timezone.now()
-    delegation.save()
+    with _action_auditee(delegation, ACTION_RETRAIT_DELEGATION):
+        delegation.save()
 
 
 def changer_role(compte: User, *, role: str, par: User) -> User:
@@ -561,7 +568,11 @@ def definir_delegation(
             setattr(delegation, action, valeur)
         delegation.accorde_par = par
         delegation.accorde_le = timezone.now()
-        delegation.save()
+        nom_action = (
+            ACTION_ATTRIBUTION_DELEGATION if any(valeurs.values()) else ACTION_RETRAIT_DELEGATION
+        )
+        with _action_auditee(delegation, nom_action):
+            delegation.save()
     logger_securite.info(
         "Délégation de gestion des comptes modifiée : compte=%s par=%s droits=%s",
         user.pk,
