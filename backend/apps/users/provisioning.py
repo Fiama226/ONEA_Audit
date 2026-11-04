@@ -6,9 +6,10 @@ dry run executes the very same checks, so its report is identical to the real on
 CSV import: every created account is a local one, with a temporary password (72 h, to be
 changed at the first login), validated like the creation form (`services`: role required,
 no "@" in the username, neither the username nor the email may shadow another account's).
-After the commit, each password goes out in a welcome email when sending is on; the ones no
-email carried are kept, encrypted, in a `FichierMotsDePasse` that only the importer may
-download, once, within 24 h. A dry run creates, sends and stores nothing. A CSV never
+Every password is first stored, encrypted, in a `FichierMotsDePasse` in the transaction
+that creates the accounts; after the commit each one goes out in a welcome email when
+sending is on, and the file keeps only the ones no email carried. Only the importer may
+download it, once, within 24 h. A dry run creates, sends and stores nothing. A CSV never
 creates an `ADMIN` (create the account, then change its role) nor `is_staff` /
 `is_superuser` accounts. A password never reaches the audit trail or the logs.
 
@@ -21,6 +22,7 @@ import csv
 import io
 import logging
 import re
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -40,8 +42,13 @@ from apps.core.audit import actor_scope
 from apps.core.exceptions import RegleMetierError
 
 from . import keycloak_admin
-from .auth_services import generer_mot_de_passe_temporaire, logger_securite
+from .auth_services import (
+    envoi_courriel_actif,
+    generer_mot_de_passe_temporaire,
+    logger_securite,
+)
 from .courriels import envoyer_bienvenue
+from .delegation import DROIT_REFUSE, exiger_administrateur
 from .keycloak_admin import KeycloakIntrouvable
 from .models import FichierMotsDePasse, OrigineCompte, Role, User
 from .oidc import OneaOIDCBackend
@@ -76,7 +83,12 @@ ANNUAIRE_IDENTIFIANT_MANQUANT = "Identifiant manquant dans l'annuaire."
 FICHIER_AUTRE_AUTEUR = "Seul l'auteur de l'import peut télécharger ce fichier."
 
 CSV_MAX_BYTES = 1024 * 1024
-CSV_MAX_ROWS = 1000
+# Bounded so that hashing (about 60 ms per password) and the emails (time budget
+# `DUREE_MAX_ENVOIS`) fit well within the 120 s request timeout (see `importer_csv`).
+CSV_MAX_ROWS = 300
+CSV_TROP_DE_LIGNES = (
+    f"Le fichier dépasse {CSV_MAX_ROWS} lignes : découpez-le en plusieurs fichiers."
+)
 CSV_ROLES = {Role.AUDITE.value, Role.AUDITEUR.value, Role.RAI.value, Role.DG.value}
 _CSV_LIMITES = {
     "identifiant": 150,
@@ -311,8 +323,12 @@ _CHAMP_COMPTE = {
 }
 CSV_COLONNES = tuple(_CHAMP_COMPTE)
 DUREE_FICHIER_MOTS_DE_PASSE = timedelta(hours=24)
+# Time budget for the welcome emails of one import; the rest go to the password file.
+DUREE_MAX_ENVOIS = timedelta(seconds=60)
 _SEL_FICHIER = "apps.users.provisioning.FichierMotsDePasse"
-# Spreadsheet formula triggers: such a cell is prefixed with a quote in the password file.
+# Spreadsheet formula triggers (CSV injection): in the password file such a cell is
+# prefixed with a single quote ON PURPOSE, so that a spreadsheet shows it as text and
+# never evaluates it. The quote is not part of the identifier or the address.
 _DEBUT_FORMULE = ("=", "+", "-", "@", "\t", "\r")
 
 
@@ -336,7 +352,7 @@ def _lire_csv(contenu: bytes) -> tuple[list[str], list[tuple[int, list[str]]]]:
             if not any(cell.strip() for cell in row):
                 continue
             if len(lignes) >= CSV_MAX_ROWS:
-                raise FichierImportInvalide("Le fichier dépasse 1 000 lignes.")
+                raise FichierImportInvalide(CSV_TROP_DE_LIGNES)
             lignes.append((reader.line_num, row))
     except csv.Error:
         raise FichierImportInvalide("Le fichier n'est pas un CSV valide.") from None
@@ -434,11 +450,52 @@ def _creer_compte(
     return user, mot_de_passe
 
 
+def _verifier_importateur(by: User) -> None:
+    """Re-check the importer's right under a lock on its row (like `creer_compte`): an
+    active ADMIN, or a command's system actor (`delegation.acteur_systeme`)."""
+    list(User.objects.select_for_update().filter(pk=by.pk))
+    exiger_administrateur(by, DROIT_REFUSE)
+
+
+def _envoyer_courriels(crees: list[tuple[User, str]], envoyer: bool) -> set[int]:
+    """Send the welcome emails; returns the pks of the accounts actually emailed.
+
+    Stops at the first failed send (SMTP down: every later one would wait for its timeout
+    too) and once the time budget is spent: the remaining passwords stay in the file.
+    """
+    envoyes: set[int] = set()
+    if not envoyer or not envoi_courriel_actif():
+        return envoyes
+    limite = time.monotonic() + DUREE_MAX_ENVOIS.total_seconds()
+    for user, mot_de_passe in crees:
+        if not user.email:
+            continue
+        if time.monotonic() >= limite:
+            logger_securite.warning(
+                "Import CSV : courriels de bienvenue arrêtés (durée maximale atteinte)."
+            )
+            break
+        if not envoyer_bienvenue(user, mot_de_passe):
+            logger_securite.warning(
+                "Import CSV : courriels de bienvenue arrêtés au premier échec d'envoi."
+            )
+            break
+        envoyes.add(user.pk)
+    return envoyes
+
+
 def importer_csv(
     contenu: bytes, *, by: User | None, dry_run: bool, envoyer_courriel: bool
 ) -> RapportImport:
     """Create the valid rows as local accounts; each rejected row is reported, the others
-    are still created. ``by`` is required for a real run (audit actor, file owner)."""
+    are still created. ``by`` is required for a real run (audit actor, file owner) and must
+    be an active ADMIN (or the system actor of a command).
+
+    No password can be lost: every one goes, encrypted, into the one-time file in the very
+    transaction that creates the accounts. The welcome emails go out after the commit; the
+    file is then cut down to the passwords no email carried (deleted when none remain). A
+    crash, a timeout or an SMTP failure while emailing leaves the full file behind.
+    """
     if by is None and not dry_run:
         raise ValueError("A real CSV import needs an actor")
     colonnes, lignes = _lire_csv(contenu)
@@ -446,8 +503,11 @@ def importer_csv(
     vus: set[str] = set()
     matricules: set[str] = set()
     crees: list[tuple[User, str]] = []
+    fichier_id: UUID | None = None
     maintenant = timezone.now()
     with transaction.atomic(), actor_scope(by):
+        if by is not None:
+            _verifier_importateur(by)
         for numero, row in lignes:
             cellules = {c: (row[i].strip() if i < len(row) else "") for i, c in enumerate(colonnes)}
             valeurs = {n: cellules.get(n, "") for n in CSV_COLONNES}
@@ -471,21 +531,29 @@ def importer_csv(
                 matricules.add(user.matricule)
         if dry_run:
             transaction.set_rollback(True)
+        elif by is not None and crees:
+            fichier_id = _stocker_fichier(crees, par=by)
     if dry_run or by is None:
         return rapport
-    # Committed: the emails go out now; the passwords none carried go to the one-time file.
-    non_envoyes = [
-        (user, mdp)
-        for user, mdp in crees
-        if not (envoyer_courriel and envoyer_bienvenue(user, mdp))
-    ]
-    if non_envoyes:
-        rapport.fichier_mots_de_passe_id = _stocker_fichier(non_envoyes, par=by)
+    if fichier_id is not None:
+        # Before any email: the id lets an operator find the file if the request dies.
+        logger_securite.info(
+            "Import CSV : fichier de mots de passe enregistré : fichier=%s par=%s comptes=%s",
+            fichier_id,
+            by.pk,
+            len(crees),
+        )
+    envoyes = _envoyer_courriels(crees, envoyer_courriel)
+    restants = [(user, mdp) for user, mdp in crees if user.pk not in envoyes]
+    if fichier_id is not None:
+        rapport.fichier_mots_de_passe_id = (
+            _reduire_fichier(fichier_id, restants) if envoyes else fichier_id
+        )
     logger_securite.info(
         "Import CSV de comptes : par=%s comptes_crees=%s courriels_envoyes=%s fichier=%s",
         by.pk,
         len(crees),
-        len(crees) - len(non_envoyes),
+        len(envoyes),
         rapport.fichier_mots_de_passe_id,
     )
     return rapport
@@ -504,7 +572,7 @@ def _cellule(valeur: str) -> str:
     return f"'{valeur}" if valeur.startswith(_DEBUT_FORMULE) else valeur
 
 
-def _stocker_fichier(comptes: list[tuple[User, str]], *, par: User) -> UUID:
+def _contenu_chiffre(comptes: list[tuple[User, str]]) -> bytes:
     sortie = io.StringIO()
     ecrivain = csv.writer(sortie, delimiter=";", lineterminator="\r\n")
     ecrivain.writerow(["identifiant", "courriel", "mot_de_passe_temporaire", "valable_jusqu_au"])
@@ -512,6 +580,7 @@ def _stocker_fichier(comptes: list[tuple[User, str]], *, par: User) -> UUID:
         expire = user.mot_de_passe_expire_le
         ecrivain.writerow(
             [
+                # Leading quote on a formula-like cell: intentional (CSV injection).
                 _cellule(user.username),
                 _cellule(user.email),
                 mot_de_passe,
@@ -520,13 +589,32 @@ def _stocker_fichier(comptes: list[tuple[User, str]], *, par: User) -> UUID:
         )
     # BOM: spreadsheet software then reads the file as UTF-8.
     texte = "\ufeff" + sortie.getvalue()
+    return _fernet().encrypt(texte.encode("utf-8"))
+
+
+def _stocker_fichier(comptes: list[tuple[User, str]], *, par: User) -> UUID:
     fichier = FichierMotsDePasse.objects.create(
-        contenu=_fernet().encrypt(texte.encode("utf-8")),
+        contenu=_contenu_chiffre(comptes),
         nombre_comptes=len(comptes),
         cree_par=par,
         expire_le=timezone.now() + DUREE_FICHIER_MOTS_DE_PASSE,
     )
     return fichier.pk
+
+
+def _reduire_fichier(fichier_id: UUID, restants: list[tuple[User, str]]) -> UUID | None:
+    """Keep only the passwords no email carried; delete the file when none remain."""
+    with transaction.atomic():
+        fichier = FichierMotsDePasse.objects.select_for_update().filter(pk=fichier_id).first()
+        if fichier is None:
+            return None
+        if not restants:
+            fichier.delete()
+            return None
+        fichier.contenu = _contenu_chiffre(restants)
+        fichier.nombre_comptes = len(restants)
+        fichier.save(update_fields=["contenu", "nombre_comptes"])
+    return fichier_id
 
 
 def lire_fichier_mots_de_passe(fichier_id: UUID, *, par: User) -> str:

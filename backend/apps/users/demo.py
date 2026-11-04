@@ -142,7 +142,9 @@ def peupler(ctx: ContexteDemo) -> None:
     ctx.acteur = acteur
 
     plan = _plan(ctx)
-    rapport = importer_csv(_csv(ctx, plan), by=acteur, dry_run=False, envoyer_courriel=False)
+    # The inactive system actor only has rights inside this explicit block.
+    with acteur_systeme(acteur):
+        rapport = importer_csv(_csv(ctx, plan), by=acteur, dry_run=False, envoyer_courriel=False)
     if rapport.ignores:
         raise RuntimeError(f"Comptes de démonstration refusés : {rapport.ignores}")
     mots_de_passe = _mots_de_passe(rapport.fichier_mots_de_passe_id, acteur)

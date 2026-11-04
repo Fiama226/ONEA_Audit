@@ -12,6 +12,7 @@ from django.contrib.sessions.backends.db import SessionStore
 from django.contrib.sessions.models import Session
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.test import override_settings
 from django.utils import timezone
 
 from apps.users.models import OrigineCompte, Role, User
@@ -21,9 +22,10 @@ from ..factories import make_user
 pytestmark = pytest.mark.django_db
 
 ANCIEN = "Ancien-mot-de-passe-2026"
+SANS_SMTP = {"EMAIL_BACKEND": "django.core.mail.backends.smtp.EmailBackend", "EMAIL_HOST": ""}
 
 
-def _lancer(**options: str) -> tuple[str, str]:
+def _lancer(**options: object) -> tuple[str, str]:
     """Run the command; returns (stdout, the temporary password it printed)."""
     sortie = StringIO()
     call_command("creer_administrateur", stdout=sortie, **options)
@@ -101,6 +103,9 @@ def test_refuses_disabled_admin() -> None:
         ({"identifiant": "nouveau", "courriel": "pas-une-adresse"}, "courriel valide"),
         ({"identifiant": "a@b", "courriel": "a@onea.bf"}, "@"),
         ({"identifiant": "", "courriel": "a@onea.bf"}, "obligatoire"),
+        ({"identifiant": "nom avec espace", "courriel": "a@onea.bf"}, "Identifiant invalide"),
+        ({"identifiant": "x/y", "courriel": "a@onea.bf"}, "Identifiant invalide"),
+        ({"identifiant": "x" * 151, "courriel": "a@onea.bf"}, "150 caractères"),
     ],
 )
 def test_creation_refused_on_invalid_input(options: dict[str, str], fragment: str) -> None:
@@ -136,3 +141,48 @@ def test_password_never_logged_nor_audited(caplog: pytest.LogCaptureFixture) -> 
             assert secret not in str(entree.changes)
     securite = [r.getMessage() for r in caplog.records if r.name == "onea.securite"]
     assert any(f"compte={compte.pk}" in m for m in securite)
+
+
+def test_refuses_ambiguous_identifier() -> None:
+    # Legacy data: two usernames differing only by case.
+    make_user(Role.ADMIN, username="Chef")
+    make_user(Role.ADMIN, username="chef")
+    with pytest.raises(CommandError, match="Plusieurs comptes"):
+        call_command("creer_administrateur", identifiant="CHEF", stdout=StringIO())
+
+
+def _admin_avec_otp() -> User:
+    compte = make_user(Role.ADMIN, username="chef", email="chef@onea.bf")
+    compte.otp_connexion_actif = True
+    compte.save(update_fields=["otp_connexion_actif"])
+    return compte
+
+
+@override_settings(**SANS_SMTP)
+def test_reset_turns_login_code_off_without_smtp(caplog: pytest.LogCaptureFixture) -> None:
+    compte = _admin_avec_otp()
+    with caplog.at_level(logging.INFO):
+        texte, _ = _lancer(identifiant="chef")
+    compte.refresh_from_db()
+    assert compte.otp_connexion_actif is False
+    assert "Code de connexion par courriel désactivé" in texte
+    entree = LogEntry.objects.get_for_object(compte).latest("pk")
+    assert entree.additional_data == {"action": "amorcage_administrateur"}
+    assert "otp_connexion_actif" in entree.changes_dict
+    securite = [r.getMessage() for r in caplog.records if r.name == "onea.securite"]
+    assert any(f"compte={compte.pk}" in m and "otp_desactive=True" in m for m in securite)
+
+
+def test_reset_keeps_login_code_when_smtp_works() -> None:
+    compte = _admin_avec_otp()
+    _lancer(identifiant="chef")
+    compte.refresh_from_db()
+    assert compte.otp_connexion_actif is True
+
+
+def test_reset_turns_login_code_off_on_request() -> None:
+    compte = _admin_avec_otp()
+    texte, mdp = _lancer(identifiant="chef", desactiver_otp=True)
+    compte.refresh_from_db()
+    assert compte.otp_connexion_actif is False and compte.check_password(mdp)
+    assert "Code de connexion par courriel désactivé" in texte

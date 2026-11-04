@@ -654,7 +654,7 @@ export const fr = {
       csvHelpTitle: "Format du fichier",
       csvColumns:
         "Colonnes : identifiant (obligatoire), email, prenom, nom, role, direction, fonction, matricule.",
-      csvFormat: "Séparateur « ; » ou « , », encodage UTF-8, 1 000 lignes au plus (1 Mo au plus).",
+      csvFormat: "Séparateur « ; » ou « , », encodage UTF-8, 300 lignes au plus (1 Mo au plus).",
       csvAdmin:
         "Le rôle ADMIN ne peut pas être attribué par fichier : il ne s'attribue que dans l'annuaire (Keycloak). Une ligne qui le demande est ignorée.",
       csvExample: "Exemple",

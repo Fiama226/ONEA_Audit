@@ -1,5 +1,6 @@
 import csv
 import io
+import os
 from io import StringIO
 from pathlib import Path
 
@@ -101,6 +102,61 @@ def test_commande_fichier_local_existant_refuse_avant_import(admin: User, tmp_pa
         )
     assert cible.read_text(encoding="utf-8") == "ancien"
     assert not User.objects.filter(username="cmd.user").exists()
+
+
+def test_commande_cible_non_inscriptible_refuse_avant_import(admin: User, tmp_path: Path) -> None:
+    cible = tmp_path / "dossier-absent" / "mdp.csv"
+    with pytest.raises(CommandError, match="Impossible de créer"):
+        call_command(
+            "import_accounts",
+            csv=_csv(tmp_path),
+            apply=True,
+            by=admin.username,
+            sans_courriel=True,
+            fichier_mots_de_passe=str(cible),
+        )
+    assert not User.objects.filter(username="cmd.user").exists()
+    assert not FichierMotsDePasse.objects.exists()
+
+
+def test_commande_echec_ecriture_garde_la_copie_serveur(
+    admin: User, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def disque_plein(descripteur: int) -> None:
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(os, "fsync", disque_plein)
+    cible = tmp_path / "mdp.csv"
+    with pytest.raises(CommandError, match="/api/v1/user-accounts/import-passwords/"):
+        call_command(
+            "import_accounts",
+            csv=_csv(tmp_path),
+            apply=True,
+            by=admin.username,
+            sans_courriel=True,
+            fichier_mots_de_passe=str(cible),
+            stdout=StringIO(),
+        )
+    assert not cible.exists()  # no half-written file left behind
+    fichier = FichierMotsDePasse.objects.get()  # the server copy was not consumed
+    assert fichier.nombre_comptes == 1
+    assert User.objects.filter(username="cmd.user").exists()
+
+
+def test_commande_fichier_local_rien_a_ecrire(admin: User, tmp_path: Path) -> None:
+    cible = tmp_path / "mdp.csv"
+    out = StringIO()
+    call_command(
+        "import_accounts",
+        csv=_csv(tmp_path),
+        apply=True,
+        by=admin.username,
+        fichier_mots_de_passe=str(cible),
+        stdout=out,
+    )
+    assert len(mail.outbox) == 1
+    assert "Aucun mot de passe à écrire" in out.getvalue()
+    assert not cible.exists()
 
 
 def test_commande_by_non_admin_refuse(admin: User, tmp_path: Path) -> None:

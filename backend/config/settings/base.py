@@ -457,6 +457,9 @@ EMAIL_HOST_PASSWORD = env_secret("EMAIL_PASSWORD", default="") or _email.get(
     "EMAIL_HOST_PASSWORD", ""
 )
 EMAIL_USE_TLS = _email.get("EMAIL_USE_TLS", False)
+# Seconds before an SMTP connection or send gives up (no timeout by default: a server that
+# stops answering would block a request, e.g. the welcome emails of a CSV import, forever).
+EMAIL_TIMEOUT = 15
 DEFAULT_FROM_EMAIL = "audit-interne@onea.bf"
 
 # --- Keycloak / OIDC bearer authentication (Task 5) ---

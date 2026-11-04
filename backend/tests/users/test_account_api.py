@@ -372,7 +372,13 @@ def test_import_directory_rapport(
     api_client.force_authenticate(admin)
     r = api_client.post(BASE + "import-directory/", {"keycloak_ids": [str(kid)]}, format="json")
     assert r.status_code == 200
-    assert r.json() == {"dry_run": False, "crees": ["nouveau"], "mis_a_jour": [], "ignores": []}
+    assert r.json() == {
+        "dry_run": False,
+        "crees": ["nouveau"],
+        "mis_a_jour": [],
+        "ignores": [],
+        "fichier_mots_de_passe_id": None,
+    }
     assert User.objects.get(username="nouveau").origine == "ANNUAIRE"
 
 

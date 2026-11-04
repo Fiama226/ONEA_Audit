@@ -3,15 +3,17 @@
 A CSV import creates local accounts with temporary passwords, emailed when sending is on.
 The passwords no email carried are never printed: they go to the one-time file of the
 import (downloadable once by the --by administrator, within 24 h), or straight to a new
-local file with --fichier-mots-de-passe (then no copy is kept on the server).
+local file with --fichier-mots-de-passe: that file is created (new file only) before the
+import, and the server copy is destroyed only once the local one is written.
 """
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO
 from uuid import UUID
 
 from django.core.management.base import BaseCommand, CommandError, CommandParser
+from django.db import transaction
 
 from apps.users.keycloak_admin import KeycloakAdminError
 from apps.users.models import Role, User
@@ -67,23 +69,75 @@ class Command(BaseCommand):
         cible = options["fichier_mots_de_passe"]
         if cible and not (options["csv"] and options["apply"]):
             raise CommandError("L'option --fichier-mots-de-passe exige --csv et --apply.")
-        if cible and Path(cible).exists():
-            raise CommandError(f"Le fichier {cible} existe déjà : choisissez un nouveau chemin.")
         par = self._acteur(options["by"])
         dry_run = not options["apply"]
+        # The target is created (new file only) BEFORE the import: an unwritable path stops
+        # everything while nothing has been written yet.
+        sortie = self._ouvrir(cible) if cible else None
+        ecrit = False
         try:
-            if options["keycloak"]:
-                ids = None
-                if options["search"]:
-                    ids = [e.keycloak_id for e in rechercher_annuaire(options["search"])]
-                rapport = importer_depuis_annuaire(ids, by=par, dry_run=dry_run)
+            try:
+                if options["keycloak"]:
+                    ids = None
+                    if options["search"]:
+                        ids = [e.keycloak_id for e in rechercher_annuaire(options["search"])]
+                    rapport = importer_depuis_annuaire(ids, by=par, dry_run=dry_run)
+                else:
+                    rapport = self._csv(options["csv"], par, dry_run, not options["sans_courriel"])
+            except KeycloakAdminError as exc:
+                raise CommandError(exc.message, returncode=1) from exc
+            self._afficher(rapport)
+            fichier_id = rapport.fichier_mots_de_passe_id
+            if fichier_id is None or par is None:
+                if sortie is not None:
+                    self.stdout.write(
+                        "Aucun mot de passe à écrire : tous sont partis par courriel."
+                    )
+            elif sortie is None:
+                url = URL_FICHIER.format(fichier_id)
+                self.stdout.write(
+                    "Mots de passe temporaires non envoyés par courriel : fichier à télécharger "
+                    f"une seule fois, sous 24 h, par {par.username} : {url}"
+                )
             else:
-                rapport = self._csv(options["csv"], par, dry_run, not options["sans_courriel"])
-        except KeycloakAdminError as exc:
-            raise CommandError(exc.message, returncode=1) from exc
-        self._afficher(rapport)
-        if rapport.fichier_mots_de_passe_id is not None and par is not None:
-            self._mots_de_passe(rapport.fichier_mots_de_passe_id, par, cible)
+                self._ecrire(sortie, fichier_id, par, str(cible))
+                ecrit = True
+        finally:
+            if sortie is not None:
+                sortie.close()
+                if not ecrit:
+                    Path(str(cible)).unlink(missing_ok=True)
+
+    def _ouvrir(self, cible: str) -> TextIO:
+        """New file only (O_EXCL), readable by its owner only."""
+        try:
+            descripteur = os.open(cible, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError as exc:
+            raise CommandError(
+                f"Le fichier {cible} existe déjà : choisissez un nouveau chemin."
+            ) from exc
+        except OSError as exc:
+            raise CommandError(f"Impossible de créer le fichier {cible} : {exc.strerror}.") from exc
+        return os.fdopen(descripteur, "w", encoding="utf-8", newline="")
+
+    def _ecrire(self, sortie: TextIO, fichier_id: UUID, par: User, cible: str) -> None:
+        """Copy the server file to the local one; the server copy is destroyed only once
+        the local one is safely written (the read is rolled back otherwise)."""
+        try:
+            with transaction.atomic():
+                texte = lire_fichier_mots_de_passe(fichier_id, par=par)
+                sortie.write(texte)
+                sortie.flush()
+                os.fsync(sortie.fileno())
+        except OSError as exc:
+            raise CommandError(
+                f"Écriture impossible dans {cible} ({exc.strerror or exc}) : les mots de passe "
+                f"restent à télécharger une seule fois, sous 24 h, par {par.username} : "
+                f"{URL_FICHIER.format(fichier_id)}"
+            ) from exc
+        self.stdout.write(
+            f"Mots de passe temporaires non envoyés par courriel écrits dans {cible}."
+        )
 
     def _acteur(self, identifiant: str | None) -> User | None:
         if not identifiant:
@@ -123,19 +177,3 @@ class Command(BaseCommand):
         for ligne in rapport.ignores:
             where = f"ligne {ligne.ligne}" if ligne.ligne is not None else "annuaire"
             self.stdout.write(f"  - {where} ({ligne.identifiant}) : {ligne.motif}")
-
-    def _mots_de_passe(self, fichier_id: UUID, par: User, cible: str | None) -> None:
-        if not cible:
-            self.stdout.write(
-                "Mots de passe temporaires non envoyés par courriel : fichier à télécharger "
-                f"une seule fois, sous 24 h, par {par.username} : {URL_FICHIER.format(fichier_id)}"
-            )
-            return
-        texte = lire_fichier_mots_de_passe(fichier_id, par=par)
-        # New file only, readable by its owner only; the server copy is already destroyed.
-        descripteur = os.open(cible, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        with os.fdopen(descripteur, "w", encoding="utf-8", newline="") as sortie:
-            sortie.write(texte)
-        self.stdout.write(
-            f"Mots de passe temporaires non envoyés par courriel écrits dans {cible}."
-        )

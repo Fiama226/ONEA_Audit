@@ -23,7 +23,7 @@ async function choose(f = file()) {
 describe("ImportCsvDialog", () => {
   it("explains the format and the ADMIN restriction", () => {
     renderDialog();
-    expect(screen.getByText(/UTF-8, 1 000 lignes au plus/)).toBeInTheDocument();
+    expect(screen.getByText(/UTF-8, 300 lignes au plus/)).toBeInTheDocument();
     expect(
       screen.getByText(/Le rôle ADMIN ne peut pas être attribué par fichier/),
     ).toBeInTheDocument();

@@ -17,12 +17,15 @@ from django.http import Http404
 from django.test import override_settings
 from django.utils import timezone
 
+from apps.users import provisioning
+from apps.users.delegation import acteur_systeme
 from apps.users.models import FichierMotsDePasse, Role, User
 from apps.users.provisioning import (
     CSV_COMPTE_EXISTANT,
     CSV_DOUBLON_FICHIER,
     CSV_EMAIL_INVALIDE,
     CSV_ROLE_ADMIN,
+    CSV_TROP_DE_LIGNES,
     FichierImportInvalide,
     LigneIgnoree,
     RapportImport,
@@ -187,7 +190,7 @@ def test_csv_valeurs_invalides(admin: User) -> None:
     ("contenu", "message"),
     [
         (b"x" * (1024 * 1024 + 1), "Le fichier dépasse 1 Mo."),
-        (("identifiant\n" + "u\n" * 1001).encode(), "Le fichier dépasse 1 000 lignes."),
+        (("identifiant\n" + "u\n" * 301).encode(), CSV_TROP_DE_LIGNES),
         ("identifiant\né\n".encode("latin-1"), "Le fichier doit être encodé en UTF-8."),
         (b"email;role\nx;y\n", "En-tête invalide : colonne « identifiant » manquante."),
         (b"", "En-tête invalide : colonne « identifiant » manquante."),
@@ -200,10 +203,10 @@ def test_csv_fichier_invalide(admin: User, contenu: bytes, message: str) -> None
 
 
 def test_csv_trop_gros_et_trop_long(admin: User) -> None:
-    ok = ("identifiant;role\n" + "".join(f"u{i};AUDITE\n" for i in range(1000))).encode()
-    assert len(_importer(ok, admin, dry_run=True).crees) == 1000
+    ok = ("identifiant;role\n" + "".join(f"u{i};AUDITE\n" for i in range(300))).encode()
+    assert len(_importer(ok, admin, dry_run=True).crees) == 300
     with pytest.raises(FichierImportInvalide):
-        _importer(ok + b"u1000;AUDITE\n", admin, dry_run=True)
+        _importer(ok + b"u300;AUDITE\n", admin, dry_run=True)
 
 
 def test_csv_latin1_refuse(admin: User) -> None:
@@ -460,3 +463,101 @@ def test_password_never_in_audit_or_logs(admin: User, caplog: pytest.LogCaptureF
         assert compte.password not in caplog.text
     securite = [r.getMessage() for r in caplog.records if r.name == "onea.securite"]
     assert any(f"par={admin.pk}" in m and "comptes_crees=2" in m for m in securite)
+
+
+# --- No password lost: file first, emails after, stop at the first SMTP failure -----------
+
+TROIS = (
+    "identifiant;email;role\n"
+    "awa;awa@onea.bf;AUDITEUR\nsali;sali@onea.bf;AUDITE\nmoussa;moussa@onea.bf;AUDITE\n"
+)
+
+
+def _verifier_mots_de_passe(lignes: dict[str, dict[str, str]]) -> None:
+    for identifiant, ligne in lignes.items():
+        compte = User.objects.get(username=identifiant)
+        assert compte.check_password(ligne["mot_de_passe_temporaire"])
+
+
+def test_crash_between_commit_and_send_keeps_every_password(
+    admin: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def panne(*args: object, **kwargs: object) -> set[int]:
+        raise RuntimeError("worker killed")
+
+    monkeypatch.setattr(provisioning, "_envoyer_courriels", panne)
+    with pytest.raises(RuntimeError):
+        _importer(TROIS, admin, envoyer_courriel=True)
+    # The accounts are committed, and so is the file with all their passwords.
+    assert User.objects.filter(username__in=["awa", "sali", "moussa"]).count() == 3
+    fichier = FichierMotsDePasse.objects.get()
+    assert fichier.cree_par_id == admin.pk and fichier.nombre_comptes == 3
+    texte = lire_fichier_mots_de_passe(fichier.pk, par=admin)
+    lignes = {
+        ligne["identifiant"]: ligne
+        for ligne in csv.DictReader(io.StringIO(texte.lstrip("\ufeff")), delimiter=";")
+    }
+    assert set(lignes) == {"awa", "sali", "moussa"}
+    _verifier_mots_de_passe(lignes)
+
+
+def test_smtp_down_stops_at_first_failure(admin: User) -> None:
+    with mock.patch("apps.users.courriels.send_mail", side_effect=OSError("smtp down")) as envoi:
+        rapport = _importer(TROIS, admin, envoyer_courriel=True)
+    assert envoi.call_count == 1  # no waiting for a timeout per remaining account
+    lignes = _lignes_fichier(rapport, admin)
+    assert set(lignes) == {"awa", "sali", "moussa"}
+    _verifier_mots_de_passe(lignes)
+
+
+def test_smtp_failure_midway_keeps_the_unsent_ones(admin: User) -> None:
+    with mock.patch(
+        "apps.users.courriels.send_mail", side_effect=[1, OSError("smtp down")]
+    ) as envoi:
+        rapport = _importer(TROIS, admin, envoyer_courriel=True)
+    assert envoi.call_count == 2
+    lignes = _lignes_fichier(rapport, admin)
+    assert set(lignes) == {"sali", "moussa"}  # awa got hers by email
+    _verifier_mots_de_passe(lignes)
+
+
+def test_email_time_budget_spent_keeps_the_rest(
+    admin: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(provisioning, "DUREE_MAX_ENVOIS", timedelta(0))
+    rapport = _importer(TROIS, admin, envoyer_courriel=True)
+    assert mail.outbox == []
+    assert set(_lignes_fichier(rapport, admin)) == {"awa", "sali", "moussa"}
+
+
+def test_file_cut_down_after_emails(admin: User) -> None:
+    rapport = _importer(TROIS + "sans.adresse;;DG\n", admin, envoyer_courriel=True)
+    assert len(mail.outbox) == 3
+    fichier = FichierMotsDePasse.objects.get()
+    assert fichier.pk == rapport.fichier_mots_de_passe_id and fichier.nombre_comptes == 1
+    assert set(_lignes_fichier(rapport, admin)) == {"sans.adresse"}
+
+
+# --- The importer's right is re-checked under lock ---------------------------------------
+
+
+def test_import_refused_to_an_inactive_admin(db: None) -> None:
+    ancien = make_user(Role.ADMIN, is_active=False)
+    with pytest.raises(PermissionDenied):
+        _importer("identifiant;role\nx;AUDITE\n", ancien)
+    assert not User.objects.filter(username="x").exists()
+    assert not FichierMotsDePasse.objects.exists()
+
+
+@pytest.mark.parametrize("role", ["RAI", "AUDITEUR", "AUDITE", "DG"])
+def test_import_refused_to_a_non_admin(db: None, role: str) -> None:
+    with pytest.raises(PermissionDenied):
+        _importer("identifiant;role\nx;AUDITE\n", make_user(role))
+    assert not User.objects.filter(username="x").exists()
+
+
+def test_import_by_system_actor_inside_its_block(db: None) -> None:
+    systeme = make_user(Role.ADMIN, is_active=False)
+    with acteur_systeme(systeme):
+        rapport = _importer("identifiant;role\nx;AUDITE\n", systeme)
+    assert rapport.crees == ["x"]
