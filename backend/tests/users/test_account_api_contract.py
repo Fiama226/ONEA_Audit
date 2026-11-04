@@ -66,6 +66,10 @@ def test_contrat_compte_utilisateur(
             "nom_complet": admin.nom_complet,
         },
         "motif_desactivation": "Départ",
+        "doit_changer_mot_de_passe": False,
+        "mot_de_passe_expire_le": None,
+        "verrouille_jusqu_a": None,
+        "otp_connexion_actif": False,
         "keycloak_sync": {
             "statut": "ECHEC",
             "erreur": "Keycloak a refusé l'opération (HTTP 403).",
@@ -78,6 +82,8 @@ def test_contrat_compte_utilisateur(
             "reactiver": True,
             "resynchroniser_profil": True,
             "relancer_synchro_keycloak": True,
+            "reinitialiser_mot_de_passe": False,
+            "desactiver_otp": False,
         },
     }
     assert data == attendu
@@ -126,6 +132,8 @@ def test_schema_expose_user_accounts_sans_collision() -> None:
         "/api/v1/user-accounts/{id}/reactivate/",
         "/api/v1/user-accounts/{id}/resync-profile/",
         "/api/v1/user-accounts/{id}/retry-keycloak-sync/",
+        "/api/v1/user-accounts/{id}/reset-password/",
+        "/api/v1/user-accounts/{id}/disable-otp/",
         "/api/v1/user-accounts/directory-search/",
         "/api/v1/user-accounts/import-directory/",
         "/api/v1/user-accounts/import-csv/",
@@ -138,6 +146,9 @@ def test_schema_expose_user_accounts_sans_collision() -> None:
         "PaginatedCompteUtilisateurListeList",
         "PatchedProfilUtilisateurRequest",
         "MotifDesactivationRequest",
+        "CreationCompteRequest",
+        "ReinitialisationCompteRequest",
+        "MotDePasseTemporaire",
         "ImportAnnuaireRequest",
         "ImportCsvRequest",
         "RapportImport",

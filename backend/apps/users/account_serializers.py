@@ -1,12 +1,13 @@
 from typing import Any
 
+from django.contrib.auth.validators import UnicodeUsernameValidator
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.fields import empty
 
-from .models import KeycloakSyncStatut, User
+from .models import KeycloakSyncStatut, Role, User
 from .provisioning import CSV_MAX_BYTES, EntreeAnnuaire, LigneIgnoree, RapportImport
-from .services import actions_compte
+from .services import ROLE_OBLIGATOIRE, actions_compte
 
 PROFILE_FIELDS = ("matricule", "direction_code", "fonction")
 CHAMPS_ANNUAIRE = frozenset({"role", "username", "email", "first_name", "last_name"})
@@ -70,6 +71,8 @@ class ActionsCompteSerializer(serializers.Serializer[dict[str, bool]]):
     reactiver = serializers.BooleanField()
     resynchroniser_profil = serializers.BooleanField()
     relancer_synchro_keycloak = serializers.BooleanField()
+    reinitialiser_mot_de_passe = serializers.BooleanField()
+    desactiver_otp = serializers.BooleanField()
 
 
 class CompteUtilisateurListeSerializer(serializers.ModelSerializer[User]):
@@ -116,6 +119,10 @@ class CompteUtilisateurSerializer(CompteUtilisateurListeSerializer):
             "desactive_le",
             "desactive_par",
             "motif_desactivation",
+            "doit_changer_mot_de_passe",
+            "mot_de_passe_expire_le",
+            "verrouille_jusqu_a",
+            "otp_connexion_actif",
             "keycloak_sync",
             "actions",
         )
@@ -147,6 +154,59 @@ class ProfilUtilisateurSerializer(serializers.Serializer[dict[str, str]]):
             if refused:
                 raise serializers.ValidationError(refused)
         return super().to_internal_value(data)
+
+
+class CreationCompteSerializer(serializers.Serializer[dict[str, Any]]):
+    """Nouvel agent : le rôle est obligatoire ; le mot de passe est toujours généré."""
+
+    username = serializers.CharField(max_length=150, validators=[UnicodeUsernameValidator()])
+    email = serializers.EmailField(max_length=254, required=False, allow_blank=True, default="")
+    first_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
+    last_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
+    role = serializers.ChoiceField(
+        choices=Role.choices,
+        error_messages={
+            "required": ROLE_OBLIGATOIRE,
+            "null": ROLE_OBLIGATOIRE,
+            "invalid_choice": "Choisissez un rôle dans la liste.",
+        },
+    )
+    matricule = serializers.CharField(max_length=32, required=False, allow_blank=True, default="")
+    direction_code = serializers.CharField(
+        max_length=16, required=False, allow_blank=True, default=""
+    )
+    fonction = serializers.CharField(max_length=128, required=False, allow_blank=True, default="")
+    envoyer_courriel = serializers.BooleanField(
+        default=True,
+        help_text=(
+            "Envoyer le courriel de bienvenue avec le mot de passe temporaire. Sinon (ou si "
+            "l'envoi échoue), le mot de passe est renvoyé une seule fois dans la réponse."
+        ),
+    )
+
+
+class ReinitialisationCompteSerializer(serializers.Serializer[dict[str, bool]]):
+    envoyer_courriel = serializers.BooleanField(
+        default=True,
+        help_text=(
+            "Envoyer le nouveau mot de passe temporaire par courriel. Sinon (ou si l'envoi "
+            "échoue), il est renvoyé une seule fois dans la réponse."
+        ),
+    )
+
+
+class MotDePasseTemporaireSerializer(serializers.Serializer[dict[str, Any]]):
+    """Résultat d'une création ou d'une réinitialisation (réponse `Cache-Control: no-store`)."""
+
+    compte = CompteUtilisateurSerializer()
+    courriel_envoye = serializers.BooleanField()
+    mot_de_passe_temporaire = serializers.CharField(
+        allow_null=True,
+        help_text=(
+            "Affiché une seule fois, jamais relisible ensuite ; null quand il est parti par "
+            "courriel."
+        ),
+    )
 
 
 class MotifDesactivationSerializer(serializers.Serializer[dict[str, str]]):

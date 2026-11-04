@@ -33,12 +33,15 @@ from .account_permissions import AccountAdminPermission
 from .account_serializers import (
     CompteUtilisateurListeSerializer,
     CompteUtilisateurSerializer,
+    CreationCompteSerializer,
     EntreeAnnuaireSerializer,
     ImportAnnuaireSerializer,
     ImportCsvSerializer,
+    MotDePasseTemporaireSerializer,
     MotifDesactivationSerializer,
     ProfilUtilisateurSerializer,
     RapportImportSerializer,
+    ReinitialisationCompteSerializer,
 )
 from .keycloak_admin import KeycloakAdminError, KeycloakIndisponible, KeycloakNonConfigure
 from .keycloak_sync import relancer_synchronisation, synchroniser_keycloak
@@ -130,6 +133,84 @@ class UserAccountViewSet(
         frais = self.get_queryset().get(pk=compte.pk)
         data = CompteUtilisateurSerializer(frais, context=self.get_serializer_context()).data
         return Response(data)
+
+    def _reponse_mot_de_passe(
+        self, compte: User, mot_de_passe: str | None, envoye: bool, status: int
+    ) -> Response:
+        """Account + one-time temporary password: never cached by the browser or a proxy."""
+        frais = self.get_queryset().get(pk=compte.pk)
+        data = {
+            "compte": CompteUtilisateurSerializer(
+                frais, context=self.get_serializer_context()
+            ).data,
+            "courriel_envoye": envoye,
+            "mot_de_passe_temporaire": mot_de_passe or None,
+        }
+        reponse = Response(data, status=status)
+        reponse["Cache-Control"] = "no-store"
+        return reponse
+
+    @extend_schema(
+        tags=[TAG],
+        summary="Créer un compte",
+        description=(
+            "Crée un compte local avec un mot de passe temporaire (72 h, à changer à la "
+            "première connexion). Le rôle est obligatoire. Le mot de passe n'est renvoyé "
+            "qu'une fois, et seulement s'il n'a pas pu partir par courriel."
+        ),
+        request=CreationCompteSerializer,
+        responses={
+            201: MotDePasseTemporaireSerializer,
+            **ERROR_400,
+            **ERROR_RESPONSES,
+            **ERROR_422,
+        },
+    )
+    def create(self, request: Request) -> Response:
+        serializer = CreationCompteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        donnees = dict(serializer.validated_data)
+        envoyer = donnees.pop("envoyer_courriel")
+        compte, mot_de_passe = services.creer_compte(
+            donnees=donnees, par=self.acteur, envoyer_courriel=envoyer
+        )
+        return self._reponse_mot_de_passe(
+            compte, mot_de_passe, envoye=mot_de_passe is None, status=201
+        )
+
+    @extend_schema(
+        tags=[TAG],
+        summary="Réinitialiser le mot de passe d'un compte",
+        description=(
+            "Nouveau mot de passe temporaire (72 h, à changer à la connexion suivante) : le "
+            "compte est déverrouillé et toutes ses sessions sont fermées. Refusé sur un "
+            "compte désactivé et sur son propre compte."
+        ),
+        request=ReinitialisationCompteSerializer,
+        responses={200: MotDePasseTemporaireSerializer, **ERROR_400, **_ERREURS_ACTION},
+    )
+    @action(detail=True, methods=["post"], url_path="reset-password")
+    def reset_password(self, request: Request, pk: str) -> Response:
+        compte = self.get_object()
+        serializer = ReinitialisationCompteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        mot_de_passe, envoye = services.reinitialiser_mot_de_passe(
+            compte, par=self.acteur, envoyer_courriel=serializer.validated_data["envoyer_courriel"]
+        )
+        return self._reponse_mot_de_passe(compte, mot_de_passe, envoye=envoye, status=200)
+
+    @extend_schema(
+        tags=[TAG],
+        summary="Désactiver le code de connexion par courriel d'un compte",
+        description="Seul le titulaire peut l'activer ; refusé sur son propre compte.",
+        request=None,
+        responses={200: CompteUtilisateurSerializer, **_ERREURS_ACTION},
+    )
+    @action(detail=True, methods=["post"], url_path="disable-otp")
+    def disable_otp(self, request: Request, pk: str) -> Response:
+        compte = self.get_object()
+        services.desactiver_otp(compte, par=self.acteur)
+        return self._reponse(compte)
 
     @extend_schema(
         tags=[TAG],

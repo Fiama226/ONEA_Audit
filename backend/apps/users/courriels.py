@@ -45,6 +45,21 @@ def envoyer_bienvenue(user: User, mot_de_passe: str) -> bool:
     )
 
 
+def envoyer_mot_de_passe_reinitialise(user: User, mot_de_passe: str) -> bool:
+    """Temporary password set by an administrator (or delegate) on an existing account."""
+    return _envoyer(
+        user,
+        "Votre mot de passe a été réinitialisé",
+        "auth_reinitialisation_admin",
+        {
+            "name": user.nom_complet,
+            "identifiant": user.username,
+            "mot_de_passe": mot_de_passe,
+            "url": settings.PLATEFORME_URL,
+        },
+    )
+
+
 def envoyer_code(user: User, code: str, objet: str) -> bool:
     return _envoyer(
         user,
