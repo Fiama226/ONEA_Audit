@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib import admin
-from django.urls import include, path
+from django.http import Http404, HttpRequest, HttpResponse
+from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.core.schema import SchemaAccess
@@ -42,11 +43,19 @@ urlpatterns = [
     ),
 ]
 
+
+def _changement_mot_de_passe_admin_ferme(request: HttpRequest) -> HttpResponse:
+    """AUTH-09: the admin page re-checks the old password without counting failures and
+    keeps the pending codes; a password changes through the application only."""
+    raise Http404
+
+
 # /admin/ is opt-in in production (DJANGO_ADMIN_ENABLED=true); on by default in dev/test.
 if settings.DJANGO_ADMIN_ENABLED:
     # The admin login goes through the API login checks (lockout, expiry, no OTP bypass).
     admin.site.login_form = ConnexionAdminForm
     urlpatterns.insert(0, path("admin/", admin.site.urls))
+    urlpatterns.insert(0, re_path(r"^admin/password_change/", _changement_mot_de_passe_admin_ferme))
 
 handler404 = "apps.core.views.erreur_404"
 handler500 = "apps.core.views.erreur_500"

@@ -22,11 +22,22 @@ CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")  # required
 
 _email = env.email_url("EMAIL_URL")  # required (no mailpit default)
 EMAIL_BACKEND = _email["EMAIL_BACKEND"]
-EMAIL_HOST = _email.get("EMAIL_HOST", "")
-EMAIL_PORT = _email.get("EMAIL_PORT", 25)
-EMAIL_HOST_USER = _email.get("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = env_secret("EMAIL_PASSWORD", default="") or _email.get(
-    "EMAIL_HOST_PASSWORD", ""
+# AUTH-07: a console, file or in-memory backend would write the one-time codes and the
+# temporary passwords to the logs or the disk. Production sends through SMTP, or sends
+# nothing at all (dummymail://: the temporary passwords are then shown to the operator).
+_BACKENDS_COURRIEL_PROD = frozenset(
+    {"django.core.mail.backends.smtp.EmailBackend", "django.core.mail.backends.dummy.EmailBackend"}
+)
+if EMAIL_BACKEND not in _BACKENDS_COURRIEL_PROD:
+    raise ImproperlyConfigured(
+        "EMAIL_URL must be smtp://, smtp+tls://, smtps:// (or dummymail:// to send no email) "
+        "in production"
+    )
+EMAIL_HOST = _email.get("EMAIL_HOST") or ""  # None for dummymail://
+EMAIL_PORT = _email.get("EMAIL_PORT") or 25
+EMAIL_HOST_USER = _email.get("EMAIL_HOST_USER") or ""
+EMAIL_HOST_PASSWORD = env_secret("EMAIL_PASSWORD", default="") or (
+    _email.get("EMAIL_HOST_PASSWORD") or ""
 )
 # django-environ maps smtps:// to STARTTLS; on a smtps:// URL (implicit TLS, usually port
 # 465) Django needs EMAIL_USE_SSL instead. The two are mutually exclusive.

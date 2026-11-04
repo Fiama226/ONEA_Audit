@@ -136,7 +136,8 @@ BUDGETS_REQUETES: dict[str, int] = {
     "/api/v1/test-sheets/": 7,
     "/api/v1/test-sheets/{id}/": 8,
     "/api/v1/user-accounts/": 5,
-    "/api/v1/user-accounts/import-passwords/{fichier_id}/": 2,
+    # Measured on a real first read (test_budget_lecture_reelle_du_fichier_de_mots_de_passe): 4.
+    "/api/v1/user-accounts/import-passwords/{fichier_id}/": 5,
     "/api/v1/user-accounts/{id}/": 5,
     "/api/v1/user-accounts/{id}/delegation/": 4,
     "/api/v1/users/": 5,

@@ -18,6 +18,11 @@ CLE_CONNEXION = "onea_connexion_le"
 CLE_ACTIVITE = "onea_activite_le"
 # The last-activity stamp is rewritten at most once a minute (one session write per minute).
 ACTIVITE_PRECISION_SECONDES = 60
+# Header of the requests the SPA makes on its own (polling of an open tab, e.g. the unread
+# notifications counter): they are answered but do not count as activity, so an unattended
+# tab still ends its session after 30 min (AUTH-08). The client sets it; omitting it only
+# keeps a session alive, which the 8 h absolute limit still bounds.
+ENTETE_ARRIERE_PLAN = "X-Onea-Arriere-Plan"
 
 CHANGEMENT_OBLIGATOIRE = "Vous devez changer votre mot de passe avant de continuer."
 # Paths a session flagged `doit_changer_mot_de_passe` may still call.
@@ -75,6 +80,8 @@ class SessionLimiteeMiddleware:
         ):
             logout(request)  # flushes the session row and makes request.user anonymous
             return
+        if CLE_ACTIVITE in session and request.headers.get(ENTETE_ARRIERE_PLAN) == "1":
+            return  # background polling of an open tab: not an activity (AUTH-08)
         if maintenant - activite >= ACTIVITE_PRECISION_SECONDES or CLE_ACTIVITE not in session:
             session[CLE_ACTIVITE] = maintenant
 

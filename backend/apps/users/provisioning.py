@@ -27,7 +27,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from cryptography.fernet import Fernet, InvalidToken
-from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.contrib.auth.validators import ASCIIUsernameValidator
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
@@ -86,7 +86,8 @@ _CSV_LIMITES = {
     "matricule": 32,
     "fonction": 128,
 }
-_username_validator = UnicodeUsernameValidator()
+# ASCII only, like the creation form (AUTH-11): no look-alike usernames.
+_username_validator = ASCIIUsernameValidator()
 _CONTROLE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 _FORMULE = re.compile(r"^[=+\-@]")
 _TEXTE_LIBRE = ("prenom", "nom", "matricule", "fonction")

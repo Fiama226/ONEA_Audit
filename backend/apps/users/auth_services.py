@@ -166,7 +166,7 @@ def _conclure(
     OTP (the counter is then kept until the code is checked).
     """
     with transaction.atomic():
-        verrou = User.objects.select_for_update().filter(pk=compte_id).first()
+        verrou = User.objects.select_for_update(no_key=True).filter(pk=compte_id).first()
         if verrou is None:
             return _REFUS
         now = timezone.now()
@@ -240,7 +240,7 @@ def emettre_otp(user: User, objet: str) -> str:
     with transaction.atomic():
         # Lock the user row so concurrent issuances for the same user serialize
         # (otherwise both delete, both insert, and the unique active slot raises).
-        User.objects.select_for_update().get(pk=user.pk)
+        User.objects.select_for_update(no_key=True).get(pk=user.pk)
         CodeOtp.objects.filter(user=user, objet=objet, utilise_le__isnull=True).delete()
         CodeOtp.objects.create(
             user=user,

@@ -161,6 +161,26 @@ def test_prod_email_transport_security_and_timeout(url: str, ssl: bool, tls: boo
     assert data["email_timeout"] == 10
 
 
+@pytest.mark.parametrize("url", ["consolemail://", "filemail:///tmp/courriels", "memorymail://"])
+def test_prod_refuse_un_backend_qui_ecrit_les_courriels_hors_smtp(url: str) -> None:
+    """AUTH-07 : un backend console, fichier ou mémoire écrirait les codes et les mots de
+    passe temporaires dans les journaux ou sur le disque."""
+    result = load_prod({**PROD_ENV, "EMAIL_URL": url})
+    assert result.returncode != 0
+    assert "EMAIL_URL" in result.stderr
+
+
+def test_prod_accepte_dummymail_pour_fonctionner_sans_courriel() -> None:
+    """Sans relais SMTP : rien n'est envoyé, les mots de passe sont affichés à l'opérateur."""
+    code = (
+        PROBE + "\nfrom apps.users.auth_services import envoi_courriel_actif\n"
+        "print(envoi_courriel_actif())"
+    )
+    result = load_prod({**PROD_ENV, "EMAIL_URL": "dummymail://"}, code=code)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip().splitlines()[-1] == "False"
+
+
 @pytest.mark.parametrize(
     "url",
     [

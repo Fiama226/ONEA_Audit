@@ -148,7 +148,7 @@ class Command(BaseCommand):
         self, existant: User, mot_de_passe: str, *, desactiver_otp: bool
     ) -> tuple[User, int, bool]:
         with transaction.atomic():
-            user = User.objects.select_for_update().get(pk=existant.pk)
+            user = User.objects.select_for_update(no_key=True).get(pk=existant.pk)
             if user.role != Role.ADMIN:
                 raise CommandError(
                     f"« {user.username} » existe mais n'est pas un administrateur : la commande "

@@ -1,6 +1,6 @@
 from typing import Any
 
-from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.contrib.auth.validators import ASCIIUsernameValidator
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.fields import empty
@@ -136,7 +136,8 @@ class ProfilUtilisateurSerializer(serializers.Serializer[dict[str, str]]):
 class CreationCompteSerializer(serializers.Serializer[dict[str, Any]]):
     """Nouvel agent : le rôle est obligatoire ; le mot de passe est toujours généré."""
 
-    username = serializers.CharField(max_length=150, validators=[UnicodeUsernameValidator()])
+    # ASCII only (AUTH-11): no look-alike of another account (ɡ, full-width letters...).
+    username = serializers.CharField(max_length=150, validators=[ASCIIUsernameValidator()])
     email = serializers.EmailField(max_length=254, required=False, allow_blank=True, default="")
     first_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
     last_name = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
