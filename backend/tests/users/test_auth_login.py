@@ -277,6 +277,29 @@ def test_login_with_email_or_username(agent: User) -> None:
     assert _login(APIClient(), "homonyme").status_code == 200
 
 
+def test_identifiant_sans_casse(agent: User) -> None:
+    """Mobile keyboards capitalize the first letter: « Awa.ouedraogo » is the same account."""
+    assert _login(APIClient(), "Awa.Ouedraogo").status_code == 200
+    assert _login(APIClient(), "  AWA.OUEDRAOGO ").status_code == 200
+    assert auth_services.trouver_compte("Awa.ouedraogo") == agent
+
+
+def test_identifiants_homonymes_par_la_casse_refuses_comme_inconnus(
+    agent: User, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Legacy accounts differing only by case (new ones cannot): ambiguous, never picked."""
+    autre = make_user(username="Awa.Ouedraogo", email="", password=MDP)
+    inconnu = _login(APIClient(), "personne.inconnue")
+    for saisie in ("awa.ouedraogo", "Awa.Ouedraogo", "AWA.OUEDRAOGO"):
+        r = _login(APIClient(), saisie)
+        assert r.status_code == inconnu.status_code == 401
+        assert r.json() == inconnu.json() == ECHEC
+        assert auth_services.trouver_compte(saisie) is None
+    assert f"comptes={min(agent.pk, autre.pk)},{max(agent.pk, autre.pk)}" in caplog.text
+    # The email of one of them still identifies it.
+    assert _login(APIClient(), "awa.ouedraogo@onea.bf").status_code == 200
+
+
 def test_empty_email_never_matches_accounts_without_email() -> None:
     make_user(username="sans.courriel", email="", password=MDP)
     assert _login(APIClient(), "", MDP).status_code == 400

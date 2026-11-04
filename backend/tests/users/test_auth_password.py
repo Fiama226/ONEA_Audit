@@ -273,6 +273,13 @@ def test_reset_by_email_identifier(agent: User) -> None:
     assert agent.check_password(NOUVEAU)
 
 
+def test_reset_by_username_in_another_case(agent: User) -> None:
+    assert _forgot("Awa.Ouedraogo").status_code == 202
+    assert _reset("AWA.ouedraogo", _code_du_courriel()).status_code == 204
+    agent.refresh_from_db()
+    assert agent.check_password(NOUVEAU)
+
+
 def test_reset_wrong_code_five_times_locks_code(agent: User) -> None:
     _forgot("awa.ouedraogo")
     code = _code_du_courriel()

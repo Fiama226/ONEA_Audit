@@ -113,13 +113,27 @@ class VerificationCode(StrEnum):
 
 
 def trouver_compte(identifiant: str) -> User | None:
-    """Account by exact username, else by case-insensitive email if exactly one account has it."""
+    """Account by username, else by email, both case-insensitive; None when unknown or
+    ambiguous.
+
+    Mobile keyboards capitalize the first letter (« Admin »): the username is matched
+    without case, as Keycloak did. New usernames are unique without case (`services`), but
+    legacy accounts may differ by case only: such an identifier matches several accounts
+    and is refused like an unknown one (never the "first" account), logged with the
+    account ids so that the operator renames them.
+    """
     identifiant = identifiant.strip()
     if not identifiant:
         return None
-    compte = User.objects.filter(username=identifiant).first()
-    if compte is not None:
-        return compte
+    homonymes = list(User.objects.filter(username__iexact=identifiant).order_by("pk")[:2])
+    if len(homonymes) == 1:
+        return homonymes[0]
+    if homonymes:
+        logger_securite.warning(
+            "Identifiant correspondant à plusieurs comptes (casse ignorée), refusé : comptes=%s",
+            ",".join(str(c.pk) for c in homonymes),
+        )
+        return None
     if "@" not in identifiant:
         return None
     # email is not unique on AbstractUser: an ambiguous address must never pick an account.

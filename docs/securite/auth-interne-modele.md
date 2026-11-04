@@ -123,8 +123,10 @@ Chemins relatifs à `backend/apps/users/` sauf mention contraire.
 - **Unicité insensible à la casse non garantie en base (AUTH-11)** : les services refusent un
   identifiant ou une adresse déjà pris (comparaison sans casse), mais aucune contrainte de base
   ne l'impose ; deux créations simultanées `jdoe` / `JDoe` peuvent passer. Effet : déni de service
-  sur la connexion par adresse (adresse ambiguë refusée), pas de prise de contrôle. Les
-  contraintes demandent d'abord un contrôle des doublons existants.
+  sur la connexion (l'identifiant est reconnu sans casse, comme l'adresse ; un identifiant ou une
+  adresse qui correspond à plusieurs comptes est refusé comme un identifiant inconnu et le
+  journal de sécurité nomme les comptes à renommer), pas de prise de contrôle. Les contraintes
+  demandent d'abord un contrôle des doublons existants.
 - **Rafraîchissement en arrière-plan (AUTH-08)** : le frontend envoie l'en-tête
   `X-Onea-Arriere-Plan: 1` sur ses interrogations automatiques (compteur de la cloche, suivi de
   l'état des documents : `apiFetch(..., { background: true })`, commit `8addfca`). Toute nouvelle
