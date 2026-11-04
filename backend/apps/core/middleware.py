@@ -11,7 +11,9 @@ from django.utils.functional import SimpleLazyObject, empty
 
 from apps.core.reseau import PROXY_META, adresse_reelle
 
-# Session keys (epoch seconds) written at login by apps.users.auth_views.
+# Session keys (epoch seconds) written ONLY by the login endpoint (auth_views._ouvrir_session)
+# after a full login. CLE_CONNEXION is also the marker of an API session: a session opened
+# any other way (Django admin login, test client force_login) does not authenticate the API.
 CLE_CONNEXION = "onea_connexion_le"
 CLE_ACTIVITE = "onea_activite_le"
 # The last-activity stamp is rewritten at most once a minute (one session write per minute).
@@ -36,12 +38,18 @@ def _horodatage(valeur: object) -> float | None:
     return float(valeur) if isinstance(valeur, int | float) else None
 
 
+def session_ouverte_par_connexion(session: Any) -> bool:
+    """True when this authenticated session was opened by the API login endpoint."""
+    return SESSION_KEY in session and _horodatage(session.get(CLE_CONNEXION)) is not None
+
+
 class SessionLimiteeMiddleware:
-    """Ends an authenticated session after 8 h (absolute) or 30 min without a request.
+    """Ends an API session after 8 h (absolute) or 30 min without a request.
 
     The absolute limit does not slide: it counts from the login stamp kept in the session
-    (the session expiry itself is also set to a fixed date at login). A session opened
-    without the stamps (Django admin, ``force_login``) gets them on its first request.
+    (the session expiry itself is also set to a fixed date at login). Sessions not opened
+    by the login endpoint carry no stamp and are never given one here: the API refuses them
+    (``SessionAuthentication401``); only the Django admin pages accept them.
     """
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponseBase]) -> None:
@@ -49,7 +57,7 @@ class SessionLimiteeMiddleware:
 
     def __call__(self, request: HttpRequest) -> HttpResponseBase:
         session = getattr(request, "session", None)
-        if session is not None and SESSION_KEY in session:
+        if session is not None and session_ouverte_par_connexion(session):
             self._controler(request)
         return self.get_response(request)
 
@@ -57,10 +65,8 @@ class SessionLimiteeMiddleware:
     def _controler(request: HttpRequest) -> None:
         session = request.session
         maintenant = time.time()
-        debut = _horodatage(session.get(CLE_CONNEXION))
+        debut = cast(float, _horodatage(session.get(CLE_CONNEXION)))
         activite = _horodatage(session.get(CLE_ACTIVITE))
-        if debut is None:
-            debut = session[CLE_CONNEXION] = maintenant
         if activite is None:
             activite = maintenant
         if (

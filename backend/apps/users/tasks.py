@@ -62,3 +62,11 @@ def purger_codes() -> int:
     from .auth_services import purger_codes_expires
 
     return purger_codes_expires()
+
+
+@shared_task(name="users.purger_sessions")  # type: ignore[untyped-decorator]
+def purger_sessions() -> None:
+    """Daily removal of expired sessions (database backend; Django's clearsessions)."""
+    from django.core.management import call_command
+
+    call_command("clearsessions")

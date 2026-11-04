@@ -22,6 +22,16 @@ from .test_oidc import SESSION_EXPIRED, _bearer, claims, make_token
 TEMPLATES = "/api/v1/templates/"
 
 
+def _connecter(client: Client, user: User) -> None:
+    """Open a real API session (POST /auth/login/); force_login sessions are not API ones."""
+    r = client.post(
+        "/api/v1/auth/login/",
+        {"identifiant": user.username, "mot_de_passe": "pass-test-12345"},
+        content_type="application/json",
+    )
+    assert r.status_code == 200
+
+
 @pytest.fixture
 def session_client(admin: User) -> Client:
     """Plain Django client holding a valid ADMIN session cookie (CSRF not enforced)."""
@@ -29,7 +39,7 @@ def session_client(admin: User) -> Client:
     admin.is_superuser = True
     admin.save()
     client = Client()
-    client.force_login(admin)
+    _connecter(client, admin)
     return client
 
 
@@ -50,13 +60,14 @@ def test_anonymous_cannot_upload_template_and_body_is_not_parsed(db: None) -> No
 
 
 def test_session_write_without_csrf_token_is_refused(admin: User) -> None:
-    client = APIClient(enforce_csrf_checks=True)
-    client.force_login(admin)
-    with mock.patch.object(MultiPartParser, "parse") as parse:
-        r = client.post(TEMPLATES, depot(), format="multipart")
+    client = APIClient()
+    _connecter(client, admin)
+    client.handler.enforce_csrf_checks = True
+    # Django's CSRF check reads request.POST (form token) before the header, so the body of
+    # an authenticated session is parsed before the refusal; anonymous bodies never are.
+    r = client.post(TEMPLATES, depot(), format="multipart")
     assert r.status_code == 403
     assert r.json()["detail"] == "Jeton CSRF absent ou invalide : rechargez la page."
-    parse.assert_not_called()
 
 
 def test_non_admin_token_cannot_upload_template_and_body_is_not_parsed(

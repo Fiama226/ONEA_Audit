@@ -2,6 +2,7 @@ import base64
 import binascii
 import json
 import logging
+from typing import Any
 
 import requests
 from django.conf import settings
@@ -12,6 +13,8 @@ from rest_framework import status
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.exceptions import APIException, AuthenticationFailed, PermissionDenied
 from rest_framework.request import Request
+
+from apps.core.middleware import session_ouverte_par_connexion
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +38,15 @@ class SessionAuthentication401(SessionAuthentication):
     `authenticate_header`. CSRF is enforced on unsafe methods of session-authenticated
     requests (stock DRF behaviour), with a French message; Bearer requests never reach it.
     A disabled account is anonymous here: Django's ModelBackend.get_user drops inactive users.
+    Only sessions opened by POST /api/v1/auth/login/ count: a session from the Django admin
+    login (or ``force_login``) is anonymous for the API, so it cannot skip the login checks.
     """
+
+    def authenticate(self, request: Request) -> tuple[Any, None] | None:
+        session = getattr(request._request, "session", None)
+        if session is None or not session_ouverte_par_connexion(session):
+            return None
+        return super().authenticate(request)
 
     def authenticate_header(self, request: Request) -> str:
         return "Session"

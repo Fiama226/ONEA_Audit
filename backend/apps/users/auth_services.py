@@ -3,8 +3,9 @@
 import logging
 import secrets
 import string
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from enum import StrEnum
 
 from django.conf import settings
@@ -87,9 +88,9 @@ def etape_apres_second_facteur(compte: User) -> Etape:
     return Etape.CHANGER_MOT_DE_PASSE if compte.doit_changer_mot_de_passe else Etape.OK
 
 
-def compte_utilisable(compte: User) -> str | None:
+def compte_utilisable(compte: User, now: datetime | None = None) -> str | None:
     """Reason why this account cannot open a session now, or None."""
-    now = timezone.now()
+    now = now or timezone.now()
     if compte.verrouille_jusqu_a is not None and compte.verrouille_jusqu_a > now:
         return "verrouille"
     if not compte.is_active:
@@ -99,25 +100,18 @@ def compte_utilisable(compte: User) -> str | None:
     return None
 
 
-def enregistrer_echec(compte: User, motif: str, adresse: str | None = None) -> None:
-    """Count a failure on the account; the 5th consecutive one locks it for 15 minutes.
+def _compter_echec(verrou: User, now: datetime, motif: str, adresse: str | None) -> None:
+    """Count a failure on the row-locked, usable account; the 5th one locks it for 15 min.
 
-    A failure while locked neither counts nor extends the lock (no lock-forever by a third
-    party). The counter restarts at zero when the lock is set.
+    The counter restarts at zero when the lock is set: 5 new attempts once the lock ends.
     """
-    with transaction.atomic():
-        verrou = User.objects.select_for_update().get(pk=compte.pk)
-        now = timezone.now()
-        if verrou.verrouille_jusqu_a is not None and verrou.verrouille_jusqu_a > now:
-            _journaliser_refus("verrouille", verrou, adresse)
-            return
-        verrou.echecs_connexion += 1
-        champs = ["echecs_connexion"]
-        if verrou.echecs_connexion >= ECHECS_AVANT_VERROUILLAGE:
-            verrou.echecs_connexion = 0
-            verrou.verrouille_jusqu_a = now + DUREE_VERROUILLAGE
-            champs.append("verrouille_jusqu_a")
-        verrou.save(update_fields=champs)
+    verrou.echecs_connexion += 1
+    champs = ["echecs_connexion"]
+    if verrou.echecs_connexion >= ECHECS_AVANT_VERROUILLAGE:
+        verrou.echecs_connexion = 0
+        verrou.verrouille_jusqu_a = now + DUREE_VERROUILLAGE
+        champs.append("verrouille_jusqu_a")
+    verrou.save(update_fields=champs)
     _journaliser_refus(motif, verrou, adresse)
     if "verrouille_jusqu_a" in champs:
         logger_securite.warning(
@@ -128,41 +122,66 @@ def enregistrer_echec(compte: User, motif: str, adresse: str | None = None) -> N
         )
 
 
-def enregistrer_succes(compte: User) -> None:
-    """Full login success: reset the failure counter and mark the first login."""
-    now = timezone.now()
-    User.objects.filter(pk=compte.pk).update(echecs_connexion=0, verrouille_jusqu_a=None)
-    User.objects.filter(pk=compte.pk, premiere_connexion_le__isnull=True).update(
-        premiere_connexion_le=now
-    )
-    compte.refresh_from_db(
-        fields=["echecs_connexion", "verrouille_jusqu_a", "premiere_connexion_le"]
-    )
+def _conclure(
+    compte_id: int,
+    secret_ok: bool,
+    *,
+    motif_echec: str,
+    etape_de: Callable[[User], Etape],
+    adresse: str | None,
+) -> Resultat:
+    """Decide on the account row as it is NOW (row-locked), after the slow secret check.
+
+    Lock, active flag and temporary-password expiry are read again under
+    ``select_for_update``: deciding on the row read before the hash would let a concurrent
+    request clear a lock set meanwhile, or count a right password as a failure when the lock
+    ended meanwhile. An unusable account gets the uniform refusal without counting or
+    resetting anything (a failure while locked never extends the lock). A wrong secret on a
+    usable account counts; a right one resets the counter, except when the next step is the
+    OTP (the counter is then kept until the code is checked).
+    """
+    with transaction.atomic():
+        verrou = User.objects.select_for_update().filter(pk=compte_id).first()
+        if verrou is None:
+            return _REFUS
+        now = timezone.now()
+        motif = compte_utilisable(verrou, now)
+        if motif is not None:
+            _journaliser_refus(motif, verrou, adresse)
+            return _REFUS
+        if not secret_ok:
+            _compter_echec(verrou, now, motif_echec, adresse)
+            return _REFUS
+        etape = etape_de(verrou)
+        if etape is not Etape.OTP:
+            verrou.echecs_connexion = 0
+            verrou.verrouille_jusqu_a = None
+            champs = ["echecs_connexion", "verrouille_jusqu_a"]
+            if verrou.premiere_connexion_le is None:
+                verrou.premiere_connexion_le = now
+                champs.append("premiere_connexion_le")
+            verrou.save(update_fields=champs)
+        return Resultat(user=verrou, etape=etape)
 
 
 def authentifier(identifiant: str, mot_de_passe: str, *, adresse: str | None = None) -> Resultat:
     """Check a login. Every refusal looks the same to the caller (and costs one hash).
 
     Refused: unknown or ambiguous identifier, wrong password, locked, disabled, expired
-    temporary password. Only a wrong password on an open account counts as a failure.
-    When the next step is the OTP, the failure counter is kept until the code is checked.
+    temporary password. Only a wrong password on a usable account counts as a failure.
     """
     compte = _trouver_compte(identifiant)
     mot_de_passe_ok = _verifier_mot_de_passe(compte, mot_de_passe)
     if compte is None:
         _journaliser_refus("compte_inconnu", None, adresse)
         return _REFUS
-    motif = compte_utilisable(compte)
-    if motif == "verrouille" or (motif is None and not mot_de_passe_ok):
-        enregistrer_echec(compte, "mot_de_passe", adresse)
-        return _REFUS
-    if motif is not None:  # disabled or expired temporary password
-        _journaliser_refus(motif, compte, adresse)
-        return _REFUS
-    etape = etape_apres_mot_de_passe(compte)
-    if etape is not Etape.OTP:
-        enregistrer_succes(compte)
-    return Resultat(user=compte, etape=etape)
+    return _conclure(
+        compte.pk,
+        mot_de_passe_ok,
+        motif_echec="mot_de_passe",
+        etape_de=etape_apres_mot_de_passe,
+        adresse=adresse,
+    )
 
 
 def authentifier_code(user_id: int, code: str, *, adresse: str | None = None) -> Resultat:
@@ -170,15 +189,15 @@ def authentifier_code(user_id: int, code: str, *, adresse: str | None = None) ->
     compte = User.objects.filter(pk=user_id).first()
     if compte is None:
         return _REFUS
-    motif = compte_utilisable(compte)
-    if motif is not None:
-        _journaliser_refus(motif, compte, adresse)
-        return _REFUS
-    if not verifier_otp(compte, ObjetOtp.LOGIN, code):
-        enregistrer_echec(compte, "code_otp", adresse)
-        return _REFUS
-    enregistrer_succes(compte)
-    return Resultat(user=compte, etape=etape_apres_second_facteur(compte))
+    # An account already unusable burns no code attempt; _conclure re-checks in any case.
+    code_ok = compte_utilisable(compte) is None and verifier_otp(compte, ObjetOtp.LOGIN, code)
+    return _conclure(
+        compte.pk,
+        code_ok,
+        motif_echec="code_otp",
+        etape_de=etape_apres_second_facteur,
+        adresse=adresse,
+    )
 
 
 # No look-alike characters (0/O, 1/l/I) since the password is read from an email.

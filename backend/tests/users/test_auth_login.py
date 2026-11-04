@@ -438,3 +438,168 @@ def test_otp_without_pending_login_is_401() -> None:
     r = APIClient().post(LOGIN_OTP, {"code": "123456"}, format="json")
     assert r.status_code == 401
     assert r.json() == {"detail": "Code invalide ou expiré.", "errors": {}}
+
+
+# --- review round 1: races on the lock, sessions not opened by the login endpoint ---------
+
+
+@pytest.fixture
+def verrou_pendant_le_hachage(monkeypatch: pytest.MonkeyPatch, agent: User) -> Any:
+    """Change the account row in the DB while the (slow) hash runs: the stale row must lose."""
+    reel = auth_services._verifier_mot_de_passe
+
+    def appliquer(**champs: Any) -> None:
+        def pendant(compte: User | None, mot_de_passe: str) -> bool:
+            ok = reel(compte, mot_de_passe)
+            User.objects.filter(pk=agent.pk).update(**champs)
+            return ok
+
+        monkeypatch.setattr(auth_services, "_verifier_mot_de_passe", pendant)
+
+    return appliquer
+
+
+def test_lock_set_during_hash_refuses_correct_password_and_keeps_lock(
+    agent: User, verrou_pendant_le_hachage: Any
+) -> None:
+    fin = timezone.now() + timedelta(minutes=15)
+    verrou_pendant_le_hachage(verrouille_jusqu_a=fin, echecs_connexion=0)
+    assert authentifier("awa.ouedraogo", MDP).etape is None
+    agent.refresh_from_db()
+    assert agent.verrouille_jusqu_a == fin  # not cleared by a "success"
+    assert agent.echecs_connexion == 0  # not counted either
+
+
+def test_disabled_during_hash_refuses_correct_password(
+    agent: User, verrou_pendant_le_hachage: Any
+) -> None:
+    verrou_pendant_le_hachage(is_active=False)
+    assert authentifier("awa.ouedraogo", MDP).etape is None
+    agent.refresh_from_db()
+    assert agent.echecs_connexion == 0
+
+
+def test_temp_password_expiring_during_hash_is_refused(
+    agent: User, verrou_pendant_le_hachage: Any
+) -> None:
+    verrou_pendant_le_hachage(mot_de_passe_expire_le=timezone.now() - timedelta(seconds=1))
+    assert authentifier("awa.ouedraogo", MDP).etape is None
+
+
+def test_lock_expiring_during_hash_lets_correct_password_in(
+    agent: User, verrou_pendant_le_hachage: Any
+) -> None:
+    agent.verrouille_jusqu_a = timezone.now() + timedelta(minutes=1)
+    agent.save()
+    verrou_pendant_le_hachage(verrouille_jusqu_a=timezone.now() - timedelta(seconds=1))
+    resultat = authentifier("awa.ouedraogo", MDP)
+    assert resultat.etape == "OK"
+    agent.refresh_from_db()
+    assert agent.echecs_connexion == 0
+    assert agent.verrouille_jusqu_a is None
+
+
+def test_lock_set_during_code_check_refuses_and_keeps_lock(
+    agent: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    code = auth_services.emettre_otp(agent, "LOGIN")
+    fin = timezone.now() + timedelta(minutes=15)
+    reel = auth_services.verifier_otp
+
+    def pendant(compte: User, objet: str, saisi: str) -> bool:
+        ok = reel(compte, objet, saisi)
+        User.objects.filter(pk=agent.pk).update(verrouille_jusqu_a=fin)
+        return ok
+
+    monkeypatch.setattr(auth_services, "verifier_otp", pendant)
+    assert auth_services.authentifier_code(agent.pk, code).etape is None
+    agent.refresh_from_db()
+    assert agent.verrouille_jusqu_a == fin
+
+
+def test_session_not_opened_by_login_endpoint_is_refused_by_the_api(agent: User) -> None:
+    hors_api = APIClient()
+    hors_api.force_login(agent)  # e.g. Django admin login, test client
+    for chemin in ("/api/v1/me/", "/api/v1/missions/", SESSION):
+        assert hors_api.get(chemin).status_code == 401, chemin
+
+    client = APIClient()
+    assert _login(client, "awa.ouedraogo").status_code == 200
+    for chemin in ("/api/v1/me/", SESSION):
+        assert client.get(chemin).status_code == 200, chemin
+
+
+@pytest.fixture
+def agent_staff(agent: User) -> User:
+    agent.is_staff = True
+    agent.is_superuser = True
+    agent.save()
+    return agent
+
+
+def _login_admin(client: Any, mot_de_passe: str = MDP) -> Any:
+    return client.post(
+        "/admin/login/?next=/admin/", {"username": "awa.ouedraogo", "password": mot_de_passe}
+    )
+
+
+def test_admin_login_counts_failures_and_honours_the_lock(agent_staff: User) -> None:
+    from django.test import Client
+
+    assert _login_admin(Client(), "faux").status_code == 200  # form shown again
+    agent_staff.refresh_from_db()
+    assert agent_staff.echecs_connexion == 1
+
+    agent_staff.verrouille_jusqu_a = timezone.now() + timedelta(minutes=10)
+    agent_staff.save()
+    client = Client()
+    assert _login_admin(client).status_code == 200
+    assert "_auth_user_id" not in client.session
+
+
+def test_admin_login_refuses_otp_and_forced_change_accounts(agent_staff: User) -> None:
+    from django.test import Client
+
+    agent_staff.otp_connexion_actif = True
+    agent_staff.save()
+    client = Client()
+    assert _login_admin(client).status_code == 200
+    assert "_auth_user_id" not in client.session
+
+    agent_staff.otp_connexion_actif = False
+    agent_staff.doit_changer_mot_de_passe = True
+    agent_staff.save()
+    client = Client()
+    assert _login_admin(client).status_code == 200
+    assert "_auth_user_id" not in client.session
+
+
+def test_admin_login_session_works_for_admin_but_not_for_the_api(agent_staff: User) -> None:
+    from django.test import Client
+
+    client = Client()
+    assert _login_admin(client).status_code == 302
+    assert client.get("/admin/").status_code == 200
+    assert client.get("/api/v1/me/").status_code == 401
+
+
+# --- expired sessions purge ------------------------------------------------------------
+
+
+def test_purge_sessions_task_deletes_expired_sessions_only() -> None:
+    from apps.users.tasks import purger_sessions
+
+    maintenant = timezone.now()
+    Session.objects.create(
+        session_key="a" * 32, session_data="x", expire_date=maintenant - timedelta(seconds=1)
+    )
+    Session.objects.create(
+        session_key="b" * 32, session_data="x", expire_date=maintenant + timedelta(hours=1)
+    )
+    purger_sessions()
+    assert list(Session.objects.values_list("session_key", flat=True)) == ["b" * 32]
+
+
+def test_purge_sessions_is_scheduled_daily() -> None:
+    entree = settings.CELERY_BEAT_SCHEDULE["users-purge-sessions"]
+    assert entree["task"] == "users.purger_sessions"

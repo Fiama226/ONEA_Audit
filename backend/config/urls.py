@@ -4,10 +4,11 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.core.schema import SchemaAccess
+from apps.users.admin_login import ConnexionAdminForm
 from apps.users.authentication import OIDCBearerAuthentication, SessionAuthentication401
 
-# The only API views that accept the Django session (an ADMIN logged in /admin/ reads the
-# docs); every real endpoint is bearer-only. Access: SERVE_PERMISSIONS (IsAdminUser in prod).
+# API docs: same authentication as the API (session opened by /api/v1/auth/login/, Keycloak
+# bearer until its removal). Access: SERVE_PERMISSIONS (IsAdminUser in production).
 _SCHEMA_ACCESS = {
     "authentication_classes": [OIDCBearerAuthentication, SessionAuthentication401],
     "permission_classes": [SchemaAccess],
@@ -43,6 +44,8 @@ urlpatterns = [
 
 # /admin/ is opt-in in production (DJANGO_ADMIN_ENABLED=true); on by default in dev/test.
 if settings.DJANGO_ADMIN_ENABLED:
+    # The admin login goes through the API login checks (lockout, expiry, no OTP bypass).
+    admin.site.login_form = ConnexionAdminForm
     urlpatterns.insert(0, path("admin/", admin.site.urls))
 
 handler404 = "apps.core.views.erreur_404"

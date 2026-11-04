@@ -117,7 +117,9 @@ CSRF_COOKIE_SECURE = True
 # `__Host-` prefix: Secure, Path=/, no Domain; only valid over HTTPS, hence production only.
 SESSION_COOKIE_NAME = "__Host-onea-session"
 CSRF_COOKIE_NAME = "__Host-onea-csrf"
-CSRF_COOKIE_HTTPONLY = True  # the API is bearer-only; admin forms carry the token in the page
+# The SPA reads the token from GET /api/v1/auth/csrf/ (body), admin forms from the page:
+# no script needs to read the cookie.
+CSRF_COOKIE_HTTPONLY = True
 
 # --- T13: JSON logs in production (no personal data), metrics token from the environment ---
 LOGGING = {  # noqa: F405
