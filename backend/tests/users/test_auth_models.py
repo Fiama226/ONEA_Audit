@@ -11,6 +11,8 @@ from django.utils import timezone
 from apps.users.models import CodeOtp, DelegationGestionComptes, ObjetOtp, User
 from config.settings import base
 
+from ..factories import make_user
+
 
 def test_password_hash_is_argon2(settings) -> None:
     # The test settings use a fast MD5 hasher; check the production list from base.
@@ -82,3 +84,12 @@ def test_delegation_flags_default_false_and_audited(user: User, admin: User) -> 
     assert (d.creer, d.reinitialiser, d.roles, d.desactiver) == (True, False, False, False)
     assert d.accorde_le is not None
     assert LogEntry.objects.get_for_object(d).count() == 1
+
+
+def test_nom_complet_et_en_attente_connexion(db: None) -> None:
+    u = make_user(first_name="Awa", last_name="Sawadogo", premiere_connexion_le=None)
+    assert u.nom_complet == "Awa Sawadogo" and u.en_attente_connexion
+    u2 = make_user(
+        first_name="", last_name="", username="solo", premiere_connexion_le=timezone.now()
+    )
+    assert u2.nom_complet == "solo" and not u2.en_attente_connexion

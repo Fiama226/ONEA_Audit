@@ -83,8 +83,9 @@ class MotDePasseAChangerMiddleware:
     """While the session user must change their password, only the auth endpoints answer.
 
     A middleware rather than a DRF permission: many views set their own
-    ``permission_classes``, which would silently drop a default permission. Bearer requests
-    are not concerned (the Django user of the request is the session user only).
+    ``permission_classes``, which would silently drop a default permission. Every request
+    carrying an authenticated session is gated, whatever opened the session (API login or
+    Django admin login).
     """
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponseBase]) -> None:
@@ -153,10 +154,11 @@ class _LazyActor(SimpleLazyObject):  # type: ignore[type-arg]
 class LazyActorAuditlogMiddleware(AuditlogMiddleware):  # type: ignore[misc]
     """AuditlogMiddleware that resolves the actor lazily.
 
-    The stock middleware reads ``request.user`` before the view runs, i.e. before
-    DRF authenticates a Bearer token, so API writes were logged with actor=None.
-    DRF's ``Request.user`` setter writes through to ``HttpRequest.user``; resolving
-    on first use (at the first model save) sees the authenticated user.
+    The stock middleware reads ``request.user`` before the view runs, i.e. before DRF
+    authenticates the request (``SessionAuthentication401`` decides, not Django's session
+    middleware), so API writes could be logged with the wrong actor. DRF's ``Request.user``
+    setter writes through to ``HttpRequest.user``; resolving on first use (at the first
+    model save) sees the user DRF authenticated.
     """
 
     def get_extra_data(self, request: HttpRequest) -> dict[str, Any]:

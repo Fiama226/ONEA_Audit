@@ -119,17 +119,3 @@ class SessionCookieAuthenticationScheme(OpenApiAuthenticationExtension):  # type
             ),
         }
 
-
-class OIDCBearerAuthenticationScheme(OpenApiAuthenticationExtension):  # type: ignore[no-untyped-call]
-    """Document the Keycloak bearer-token authentication in the schema."""
-
-    target_class = "apps.users.authentication.OIDCBearerAuthentication"
-    name = "bearerAuth"
-
-    def get_security_definition(self, auto_schema: object) -> dict[str, str]:
-        return {
-            "type": "http",
-            "scheme": "bearer",
-            "bearerFormat": "JWT",
-            "description": "Jeton d'accès Keycloak (OIDC) dans l'en-tête Authorization: Bearer.",
-        }

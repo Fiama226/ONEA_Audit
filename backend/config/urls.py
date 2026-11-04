@@ -5,12 +5,12 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.core.schema import SchemaAccess
 from apps.users.admin_login import ConnexionAdminForm
-from apps.users.authentication import OIDCBearerAuthentication, SessionAuthentication401
+from apps.users.authentication import SessionAuthentication401
 
-# API docs: same authentication as the API (session opened by /api/v1/auth/login/, Keycloak
-# bearer until its removal). Access: SERVE_PERMISSIONS (IsAdminUser in production).
+# API docs: same authentication as the API (session opened by /api/v1/auth/login/).
+# Access: SERVE_PERMISSIONS (IsAdminUser in production).
 _SCHEMA_ACCESS = {
-    "authentication_classes": [OIDCBearerAuthentication, SessionAuthentication401],
+    "authentication_classes": [SessionAuthentication401],
     "permission_classes": [SchemaAccess],
 }
 

@@ -1,6 +1,6 @@
-"""Pre-provision accounts from the Keycloak directory or a CSV file (operations only).
+"""Pre-provision accounts from a CSV file (operations only).
 
-A CSV import creates local accounts with temporary passwords, emailed when sending is on.
+The import creates local accounts with temporary passwords, emailed when sending is on.
 The passwords no email carried are never printed: they go to the one-time file of the
 import (downloadable once by the --by administrator, within 24 h), or straight to a new
 local file with --fichier-mots-de-passe: that file is created (new file only) before the
@@ -15,16 +15,13 @@ from uuid import UUID
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db import transaction
 
-from apps.users.keycloak_admin import KeycloakAdminError
 from apps.users.models import Role, User
 from apps.users.provisioning import (
     CSV_MAX_BYTES,
     FichierImportInvalide,
     RapportImport,
     importer_csv,
-    importer_depuis_annuaire,
     lire_fichier_mots_de_passe,
-    rechercher_annuaire,
 )
 
 URL_FICHIER = "/api/v1/user-accounts/import-passwords/{}/"
@@ -32,16 +29,13 @@ URL_FICHIER = "/api/v1/user-accounts/import-passwords/{}/"
 
 class Command(BaseCommand):
     help = (
-        "Importe des comptes depuis l'annuaire Keycloak (--keycloak) ou un fichier CSV (--csv). "
+        "Importe des comptes depuis un fichier CSV (--csv). "
         "Sans --apply, la commande ne fait qu'une vérification à blanc."
     )
 
     def add_arguments(self, parser: CommandParser) -> None:
-        source = parser.add_mutually_exclusive_group(required=True)
-        source.add_argument("--keycloak", action="store_true", help="Importer depuis Keycloak.")
-        source.add_argument("--csv", metavar="CHEMIN", help="Importer depuis un fichier CSV.")
         parser.add_argument(
-            "--search", metavar="TEXTE", help="Avec --keycloak : ne traiter que la recherche."
+            "--csv", metavar="CHEMIN", required=True, help="Fichier CSV des comptes à créer."
         )
         parser.add_argument("--apply", action="store_true", help="Écrire réellement les comptes.")
         parser.add_argument(
@@ -62,12 +56,10 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args: Any, **options: Any) -> None:
-        if options["search"] and not options["keycloak"]:
-            raise CommandError("L'option --search ne s'utilise qu'avec --keycloak.")
         if options["apply"] and not options["by"]:
             raise CommandError("L'option --apply exige --by IDENTIFIANT_ADMIN (piste d'audit).")
         cible = options["fichier_mots_de_passe"]
-        if cible and not (options["csv"] and options["apply"]):
+        if cible and not options["apply"]:
             raise CommandError("L'option --fichier-mots-de-passe exige --csv et --apply.")
         par = self._acteur(options["by"])
         dry_run = not options["apply"]
@@ -76,16 +68,7 @@ class Command(BaseCommand):
         sortie = self._ouvrir(cible) if cible else None
         ecrit = False
         try:
-            try:
-                if options["keycloak"]:
-                    ids = None
-                    if options["search"]:
-                        ids = [e.keycloak_id for e in rechercher_annuaire(options["search"])]
-                    rapport = importer_depuis_annuaire(ids, by=par, dry_run=dry_run)
-                else:
-                    rapport = self._csv(options["csv"], par, dry_run, not options["sans_courriel"])
-            except KeycloakAdminError as exc:
-                raise CommandError(exc.message, returncode=1) from exc
+            rapport = self._csv(options["csv"], par, dry_run, not options["sans_courriel"])
             self._afficher(rapport)
             fichier_id = rapport.fichier_mots_de_passe_id
             if fichier_id is None or par is None:
@@ -170,10 +153,6 @@ class Command(BaseCommand):
         self.stdout.write(f"Comptes créés : {len(rapport.crees)}")
         for identifiant in rapport.crees:
             self.stdout.write(f"  + {identifiant}")
-        self.stdout.write(f"Comptes mis à jour : {len(rapport.mis_a_jour)}")
-        for identifiant in rapport.mis_a_jour:
-            self.stdout.write(f"  ~ {identifiant}")
         self.stdout.write(f"Lignes ignorées : {len(rapport.ignores)}")
         for ligne in rapport.ignores:
-            where = f"ligne {ligne.ligne}" if ligne.ligne is not None else "annuaire"
-            self.stdout.write(f"  - {where} ({ligne.identifiant}) : {ligne.motif}")
+            self.stdout.write(f"  - ligne {ligne.ligne} ({ligne.identifiant}) : {ligne.motif}")

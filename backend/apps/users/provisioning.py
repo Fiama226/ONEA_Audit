@@ -1,9 +1,9 @@
-"""Pre-provisioning of accounts: a CSV file (local accounts) or the Keycloak directory (D12).
+"""Pre-provisioning of accounts from a CSV file (D12).
 
-Both run in ONE transaction under the audit actor and can be rolled back (`dry_run`): the
-dry run executes the very same checks, so its report is identical to the real one.
+The import runs in ONE transaction under the audit actor and can be rolled back (`dry_run`):
+the dry run executes the very same checks, so its report is identical to the real one.
 
-CSV import: every created account is a local one, with a temporary password (72 h, to be
+Every created account is a local one, with a temporary password (72 h, to be
 changed at the first login), validated like the creation form (`services`: role required,
 no "@" in the username, neither the username nor the email may shadow another account's).
 Every password is first stored, encrypted, in a `FichierMotsDePasse` in the transaction
@@ -12,9 +12,6 @@ sending is on, and the file keeps only the ones no email carried. Only the impor
 download it, once, within 24 h. A dry run creates, sends and stores nothing. A CSV never
 creates an `ADMIN` (create the account, then change its role) nor `is_staff` /
 `is_superuser` accounts. A password never reaches the audit trail or the logs.
-
-The directory import (Keycloak, removed with it) still creates accounts without a usable
-password; it reuses the login matching (`filter_users_by_claims` / `update_user`).
 """
 
 import base64
@@ -26,7 +23,6 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any
 from uuid import UUID
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -41,7 +37,6 @@ from django.utils.crypto import salted_hmac
 from apps.core.audit import actor_scope
 from apps.core.exceptions import RegleMetierError
 
-from . import keycloak_admin
 from .auth_services import (
     envoi_courriel_actif,
     generer_mot_de_passe_temporaire,
@@ -49,9 +44,7 @@ from .auth_services import (
 )
 from .courriels import envoyer_bienvenue
 from .delegation import DROIT_REFUSE, exiger_administrateur
-from .keycloak_admin import KeycloakIntrouvable
 from .models import FichierMotsDePasse, OrigineCompte, Role, User
-from .oidc import OneaOIDCBackend
 from .services import (
     ACTION_CREATION,
     MATRICULE_PRIS,
@@ -68,18 +61,12 @@ CSV_ROLE_ADMIN = (
 )
 CSV_DOUBLON_FICHIER = "Identifiant ou e-mail en doublon dans le fichier."
 CSV_COMPTE_EXISTANT = "Un compte existe déjà avec cet identifiant ou cet e-mail."
-IDENTIFIANT_PRIS = "Identifiant déjà utilisé par un autre compte."
 CSV_IDENTIFIANT_INVALIDE = "Identifiant invalide : lettres, chiffres et . + - _ uniquement."
 CSV_IDENTIFIANT_MANQUANT = "Identifiant manquant."
 CSV_EMAIL_INVALIDE = "Adresse e-mail invalide."
 CSV_ROLE_INCONNU = "Rôle inconnu : valeurs admises AUDITE, AUDITEUR, RAI, DG."
 CSV_VALEUR_TROP_LONGUE = "Valeur trop longue pour la colonne « {colonne} » (maximum {limite})."
-KEYCLOAK_INTROUVABLE = "Compte introuvable dans Keycloak."
-ANNUAIRE_COMPTE_SERVICE = "Compte de service : non importé."
-ANNUAIRE_COMPTE_DESACTIVE = "Compte désactivé dans l'annuaire : non importé."
-ANNUAIRE_ID_INVALIDE = "Identifiant Keycloak invalide."
 CSV_CARACTERES_INTERDITS = "Caractères non autorisés dans la colonne « {colonne} »."
-ANNUAIRE_IDENTIFIANT_MANQUANT = "Identifiant manquant dans l'annuaire."
 FICHIER_AUTRE_AUTEUR = "Seul l'auteur de l'import peut télécharger ce fichier."
 
 CSV_MAX_BYTES = 1024 * 1024
@@ -121,7 +108,7 @@ class FichierImportInvalide(Exception):
 
 @dataclass
 class LigneIgnoree:
-    ligne: int | None
+    ligne: int
     identifiant: str
     motif: str
 
@@ -133,179 +120,9 @@ class LigneIgnoree:
 class RapportImport:
     dry_run: bool
     crees: list[str] = field(default_factory=list)
-    mis_a_jour: list[str] = field(default_factory=list)
     ignores: list[LigneIgnoree] = field(default_factory=list)
     # The one-time file of the passwords no email carried (CSV import, real run only).
     fichier_mots_de_passe_id: UUID | None = None
-
-
-@dataclass
-class EntreeAnnuaire:
-    keycloak_id: UUID
-    username: str
-    email: str
-    nom_complet: str
-    direction: str
-    fonction: str
-    compte_id: int | None
-
-
-# --------------------------------------------------------------------------- directory
-
-
-def _attribut(rep: dict[str, Any], name: str) -> str:
-    attributes = rep.get("attributes")
-    value = attributes.get(name) if isinstance(attributes, dict) else None
-    if isinstance(value, list):
-        value = value[0] if value else ""
-    return value.strip() if isinstance(value, str) else ""
-
-
-def claims_depuis_keycloak(rep: dict[str, Any], roles: set[str]) -> dict[str, Any]:
-    """Build the OIDC-style claims of a Keycloak user representation."""
-
-    def text(key: str) -> str:
-        value = rep.get(key)
-        return value.strip() if isinstance(value, str) else ""
-
-    return {
-        "sub": text("id"),
-        "preferred_username": text("username"),
-        "email": text("email"),
-        "email_verified": rep.get("emailVerified") is True,
-        "given_name": text("firstName"),
-        "family_name": text("lastName"),
-        "direction": _attribut(rep, "direction"),
-        "fonction": _attribut(rep, "fonction"),
-        "roles": sorted(roles),
-    }
-
-
-def rechercher_annuaire(q: str) -> list[EntreeAnnuaire]:
-    """Search the directory (at most 20 hits) and flag the already known accounts."""
-    backend = OneaOIDCBackend()
-    entrees: list[EntreeAnnuaire] = []
-    for rep in keycloak_admin.get_keycloak_admin().search_users(q, max_results=20):
-        claims = claims_depuis_keycloak(rep, set())
-        try:
-            keycloak_id = UUID(claims["sub"])
-        except ValueError:
-            continue
-        compte = backend.filter_users_by_claims(claims).first()
-        entrees.append(
-            EntreeAnnuaire(
-                keycloak_id=keycloak_id,
-                username=claims["preferred_username"],
-                email=claims["email"],
-                nom_complet=f"{claims['given_name']} {claims['family_name']}".strip()
-                or claims["preferred_username"],
-                direction=claims["direction"],
-                fonction=claims["fonction"],
-                compte_id=compte.pk if compte is not None else None,
-            )
-        )
-    return entrees
-
-
-@dataclass
-class _EntreeLue:
-    claims: dict[str, Any]
-    desactive: bool
-    service: bool
-
-
-def _lire_annuaire(keycloak_ids: list[UUID] | None, rapport: RapportImport) -> list[_EntreeLue]:
-    """Fetch the representations and effective roles (network, outside any transaction)."""
-    kc = keycloak_admin.get_keycloak_admin()
-    reps: list[dict[str, Any]] = []
-    if keycloak_ids is None:
-        reps = list(kc.iter_users())
-    else:
-        for keycloak_id in dict.fromkeys(keycloak_ids):
-            try:
-                reps.append(kc.get_user(keycloak_id))
-            except KeycloakIntrouvable:
-                rapport.ignores.append(LigneIgnoree(None, str(keycloak_id), KEYCLOAK_INTROUVABLE))
-    lues: list[_EntreeLue] = []
-    for rep in reps:
-        nom = str(rep.get("username") or rep.get("id") or "")
-        try:
-            keycloak_id = UUID(str(rep.get("id")))
-        except ValueError:
-            rapport.ignores.append(LigneIgnoree(None, nom, ANNUAIRE_ID_INVALIDE))
-            continue
-        try:
-            roles = kc.effective_realm_roles(keycloak_id)
-        except KeycloakIntrouvable:
-            rapport.ignores.append(LigneIgnoree(None, nom, KEYCLOAK_INTROUVABLE))
-            continue
-        lues.append(
-            _EntreeLue(
-                claims=claims_depuis_keycloak(rep, roles),
-                desactive=rep.get("enabled") is False,
-                service=bool(rep.get("serviceAccountClientId"))
-                or nom.startswith("service-account-"),
-            )
-        )
-    return lues
-
-
-def _importer_entree(backend: OneaOIDCBackend, entree: _EntreeLue, rapport: RapportImport) -> None:
-    claims = entree.claims
-    username = claims["preferred_username"]
-    if entree.service:
-        rapport.ignores.append(LigneIgnoree(None, username, ANNUAIRE_COMPTE_SERVICE))
-        return
-    existant = backend.filter_users_by_claims(claims).first()
-    if existant is not None:
-        ancien_role = existant.role
-        backend.update_user(existant, claims)
-        libelle = existant.username
-        if existant.role != ancien_role:
-            libelle += f" (rôle {ancien_role} → {existant.role})"
-        rapport.mis_a_jour.append(libelle)
-        return
-    if entree.desactive:
-        rapport.ignores.append(LigneIgnoree(None, username, ANNUAIRE_COMPTE_DESACTIVE))
-        return
-    if not username:
-        rapport.ignores.append(LigneIgnoree(None, claims["sub"], ANNUAIRE_IDENTIFIANT_MANQUANT))
-        return
-    if User.objects.filter(username__iexact=username).exists():
-        rapport.ignores.append(LigneIgnoree(None, username, IDENTIFIANT_PRIS))
-        return
-    user = User(
-        username=username[:150],
-        origine=OrigineCompte.ANNUAIRE,
-        is_active=True,
-        **backend._claim_values(claims),
-    )
-    user.set_unusable_password()
-    try:
-        with transaction.atomic():
-            user.save()
-    except IntegrityError:
-        rapport.ignores.append(LigneIgnoree(None, username, IDENTIFIANT_PRIS))
-        return
-    rapport.crees.append(user.username)
-
-
-def importer_depuis_annuaire(
-    keycloak_ids: list[UUID] | None, *, by: User | None, dry_run: bool
-) -> RapportImport:
-    """Import the selected directory users (`None` = the whole directory).
-
-    `KeycloakIndisponible` / `KeycloakNonConfigure` propagate; nothing is written then.
-    """
-    rapport = RapportImport(dry_run=dry_run)
-    entrees = _lire_annuaire(keycloak_ids, rapport)
-    backend = OneaOIDCBackend()
-    with transaction.atomic(), actor_scope(by):
-        for entree in entrees:
-            _importer_entree(backend, entree, rapport)
-        if dry_run:
-            transaction.set_rollback(True)
-    return rapport
 
 
 # ------------------------------------------------------------------------------- CSV
@@ -453,7 +270,7 @@ def _creer_compte(
 def _verifier_importateur(by: User) -> None:
     """Re-check the importer's right under a lock on its row (like `creer_compte`): an
     active ADMIN, or a command's system actor (`delegation.acteur_systeme`)."""
-    list(User.objects.select_for_update().filter(pk=by.pk))
+    list(User.objects.select_for_update(no_key=True).filter(pk=by.pk))
     exiger_administrateur(by, DROIT_REFUSE)
 
 

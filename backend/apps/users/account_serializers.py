@@ -6,7 +6,7 @@ from rest_framework import serializers
 from rest_framework.fields import empty
 
 from .models import DelegationGestionComptes, KeycloakSyncStatut, Role, User
-from .provisioning import CSV_MAX_BYTES, EntreeAnnuaire, LigneIgnoree, RapportImport
+from .provisioning import CSV_MAX_BYTES, LigneIgnoree, RapportImport
 from .services import PROFILE_FIELDS, ROLE_INVALIDE, ROLE_OBLIGATOIRE, actions_compte
 
 MSG_ROLE = "Utilisez l'action « Changer le rôle »."
@@ -67,8 +67,6 @@ class ActionsCompteSerializer(serializers.Serializer[dict[str, bool]]):
     modifier_profil = serializers.BooleanField()
     desactiver = serializers.BooleanField()
     reactiver = serializers.BooleanField()
-    resynchroniser_profil = serializers.BooleanField()
-    relancer_synchro_keycloak = serializers.BooleanField()
     reinitialiser_mot_de_passe = serializers.BooleanField()
     desactiver_otp = serializers.BooleanField()
     modifier_courriel = serializers.BooleanField()
@@ -260,20 +258,6 @@ class MotifDesactivationSerializer(serializers.Serializer[dict[str, str]]):
     )
 
 
-class EntreeAnnuaireSerializer(serializers.Serializer[EntreeAnnuaire]):
-    keycloak_id = serializers.UUIDField()
-    username = serializers.CharField()
-    email = serializers.CharField()
-    nom_complet = serializers.CharField()
-    direction = serializers.CharField()
-    fonction = serializers.CharField()
-    compte_id = serializers.IntegerField(allow_null=True)
-
-
-class ImportAnnuaireSerializer(serializers.Serializer[dict[str, Any]]):
-    keycloak_ids = serializers.ListField(child=serializers.UUIDField(), min_length=1, max_length=50)
-
-
 class DefaultTrueBooleanField(serializers.BooleanField):
     """Valeur multipart absente = défaut (les formulaires HTML omettent le champ)."""
 
@@ -306,7 +290,7 @@ class ImportCsvSerializer(serializers.Serializer[dict[str, Any]]):
 
 
 class LigneImportIgnoreeSerializer(serializers.Serializer[LigneIgnoree]):
-    ligne = serializers.IntegerField(allow_null=True)
+    ligne = serializers.IntegerField()
     identifiant = serializers.CharField()
     motif = serializers.CharField()
 
@@ -314,7 +298,6 @@ class LigneImportIgnoreeSerializer(serializers.Serializer[LigneIgnoree]):
 class RapportImportSerializer(serializers.Serializer[RapportImport]):
     dry_run = serializers.BooleanField()
     crees = serializers.ListField(child=serializers.CharField())
-    mis_a_jour = serializers.ListField(child=serializers.CharField())
     ignores = LigneImportIgnoreeSerializer(many=True)
     fichier_mots_de_passe_id = serializers.UUIDField(
         allow_null=True,

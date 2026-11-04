@@ -66,7 +66,7 @@ class LectureComptes(BasePermission):
 
 
 class AccountAdminPermission(BasePermission):
-    """Everything else (delegations, imports, directory, Keycloak resync): ADMIN only."""
+    """Everything else (delegations, imports, import password files): ADMIN only."""
 
     def has_permission(self, request: Request, view: APIView) -> bool:
         acteur = _acteur(request)

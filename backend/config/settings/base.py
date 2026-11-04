@@ -78,7 +78,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",
-    "corsheaders",
     "django_filters",
     "auditlog",
     "apps.core",
@@ -105,7 +104,6 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "apps.core.journalisation.CorrelationMiddleware",
     "apps.core.middleware.PasDeCacheApiMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -238,12 +236,6 @@ STORAGES = {
 # Django admin (/admin/) is mounted only when enabled; prod.py defaults it to False.
 DJANGO_ADMIN_ENABLED: bool = env.bool("DJANGO_ADMIN_ENABLED", default=True)
 
-CORS_ALLOWED_ORIGINS: list[str] = env.list(
-    "CORS_ALLOWED_ORIGINS", default=["http://localhost:5173"]
-)
-# Lisible par la SPA en cross-origin : nom du fichier des exports (CSV / Excel).
-CORS_EXPOSE_HEADERS: list[str] = ["Content-Disposition"]
-
 
 def _taux_debit(portee: str, defaut: str) -> str:
     """Taux « N/min|hour|day » d'une portée, surchargeable par THROTTLE_RATE_<PORTEE>."""
@@ -262,12 +254,8 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.FormParser",
         "rest_framework.parsers.MultiPartParser",
     ],
-    # In-app session login (CSRF enforced on writes). The Keycloak bearer class stays second
-    # until Keycloak is removed; bearer requests are never subject to CSRF.
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "apps.users.authentication.SessionAuthentication401",
-        "apps.users.authentication.OIDCBearerAuthentication",
-    ],
+    # In-app session login only (CSRF enforced on writes); same origin, no bearer tokens.
+    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.users.authentication.SessionAuthentication401"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.StandardPagination",
@@ -287,7 +275,6 @@ REST_FRAMEWORK = {
             "import": "10/hour",
             "export": "30/min",
             "anonyme": "30/min",
-            "annuaire": "60/min",
             "recherche": "60/min",
             # per client IP on the login endpoints (the per-account limit is the lockout)
             "connexion": "20/min",
@@ -338,7 +325,6 @@ SPECTACULAR_SETTINGS = {
         "ActionEtapeEnum": "apps.missions.services.etapes.ActionEtape.choices",
         "TypeDocumentSignableEnum": "apps.signatures.models.TypeDocumentSignable.choices",
         "ModeSignatureParametreEnum": "apps.signatures.models.ModeSignatureParametre.choices",
-        "KeycloakSyncStatutEnum": "apps.users.models.KeycloakSyncStatut.choices",
         "OrigineCompteEnum": "apps.users.models.OrigineCompte.choices",
         "StatutProgrammeEnum": "apps.programmation.models.StatutProgramme.choices",
         # programmation.TypeIntervention a les mêmes choix que missions.TypeMission
@@ -406,10 +392,6 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.tasks.heartbeat",
         "schedule": crontab(hour=6, minute=0),
     },
-    "users-keycloak-sync": {
-        "task": "users.synchroniser_comptes_keycloak",
-        "schedule": crontab(minute="*/15"),
-    },
     "pouls-beat": {
         "task": "core.tasks.pouls_beat",
         "schedule": crontab(minute="*"),
@@ -462,35 +444,6 @@ EMAIL_USE_TLS = _email.get("EMAIL_USE_TLS", False)
 EMAIL_TIMEOUT = 15
 DEFAULT_FROM_EMAIL = "audit-interne@onea.bf"
 
-# --- Keycloak / OIDC bearer authentication (Task 5) ---
-OIDC_OP_BASE_URL: str = env("OIDC_OP_BASE_URL", default="http://localhost:8080/realms/onea").rstrip(
-    "/"
-)
-OIDC_OP_AUTHORIZATION_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/auth"
-OIDC_OP_TOKEN_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/token"
-OIDC_OP_USER_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/userinfo"
-OIDC_OP_JWKS_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/certs"
-OIDC_RP_CLIENT_ID: str = env("OIDC_RP_CLIENT_ID", default="onea-backend")
-# Unused by the Bearer path (userinfo + JWKS only); required in prod only because
-# mozilla-django-oidc reads it when the backend is instantiated.
-OIDC_RP_CLIENT_SECRET: str = env_secret("OIDC_RP_CLIENT_SECRET", default="")
-OIDC_RP_SIGN_ALGO = "RS256"
-OIDC_RP_SCOPES = "openid email profile"
-OIDC_VERIFY_SSL: bool = env.bool("OIDC_VERIFY_SSL", default=True)
-OIDC_TIMEOUT = 5  # seconds; Keycloak calls must never hang a request worker
-# Accepted `azp` (issuing client) of bearer access tokens; other realm clients are refused.
-OIDC_ALLOWED_AZP: list[str] = env.list("OIDC_ALLOWED_AZP", default=["onea-frontend"])
-
-# --- Keycloak Admin API (service account of the realm, least privilege) ---
-# Client-credentials grant of `onea-admin-sync` (view-users + manage-users only). Never an
-# accepted `azp` of bearer tokens. Empty secret = synchronisation not configured.
-KEYCLOAK_ADMIN_API_CLIENT_ID: str = env("KEYCLOAK_ADMIN_API_CLIENT_ID", default="onea-admin-sync")
-KEYCLOAK_ADMIN_API_CLIENT_SECRET: str = env_secret("KEYCLOAK_ADMIN_API_CLIENT_SECRET", default="")
-# The OIDC backend is wired for the DRF bearer path only, NOT in AUTHENTICATION_BACKENDS,
-# so that django authenticate() (admin/session) can never trigger a code-flow exchange.
-# --- Bloc T11 : duree maximale du cache de userinfo (D5), bornee par l'expiration du jeton ---
-OIDC_USERINFO_CACHE_SECONDES: int = env.int("OIDC_USERINFO_CACHE_SECONDES", default=60)
-OIDC_DRF_AUTH_BACKEND = "apps.users.oidc.OneaOIDCBackend"
 AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
 
 # --- T5: cookies, cache. Sessions in the database (no Redis needed to log in). ---

@@ -18,8 +18,6 @@ DEBUG = False
 SECRET_KEY = env_secret("SECRET_KEY")  # required in production, no default (SECRET_KEY_FILE first)
 DATABASES = {"default": base_de_donnees("DATABASE_URL")}  # required (DATABASE_PASSWORD_FILE first)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")  # required
-# The SPA and the API share one origin behind nginx: CORS is optional and closed by default.
-CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")  # required
 
 _email = env.email_url("EMAIL_URL")  # required (no mailpit default)
@@ -72,9 +70,6 @@ _SECRETS_A_CONTROLER = {
     ),
     "mot de passe Redis (REDIS_URL / REDIS_PASSWORD_FILE)": urlsplit(REDIS_URL).password or "",  # noqa: F405
     "mot de passe SMTP (EMAIL_URL / EMAIL_PASSWORD_FILE)": EMAIL_HOST_PASSWORD or "",
-    # Legacy OIDC secrets: optional now (no Keycloak in the stack), still refused if a placeholder.
-    "OIDC_RP_CLIENT_SECRET": OIDC_RP_CLIENT_SECRET,  # noqa: F405
-    "KEYCLOAK_ADMIN_API_CLIENT_SECRET": KEYCLOAK_ADMIN_API_CLIENT_SECRET,  # noqa: F405
     "MEILI_MASTER_KEY": RECHERCHE["CLE"],  # noqa: F405
     "METRICS_TOKEN": METRICS_TOKEN,  # noqa: F405
     **{f"SECRET_KEY_FALLBACKS[{i}]": v for i, v in enumerate(SECRET_KEY_FALLBACKS)},  # noqa: F405

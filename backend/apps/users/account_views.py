@@ -7,7 +7,7 @@ from django.db.models import OuterRef, QuerySet, Subquery
 from django.http import Http404, HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import mixins, serializers
 from rest_framework.decorators import action
 from rest_framework.negotiation import BaseContentNegotiation
@@ -24,9 +24,7 @@ from apps.core.schema import (
     ERROR_404,
     ERROR_422,
     ERROR_429,
-    ERROR_503,
     ERROR_RESPONSES,
-    ApiErrorSerializer,
 )
 from apps.core.throttling import ThrottleParActionMixin
 from apps.referentiel.models import Direction
@@ -40,8 +38,6 @@ from .account_serializers import (
     CompteUtilisateurSerializer,
     CreationCompteSerializer,
     DelegationGestionComptesSerializer,
-    EntreeAnnuaireSerializer,
-    ImportAnnuaireSerializer,
     ImportCsvSerializer,
     MotDePasseTemporaireSerializer,
     MotifDesactivationSerializer,
@@ -50,20 +46,16 @@ from .account_serializers import (
     ReinitialisationCompteSerializer,
 )
 from .delegation import ACTIONS
-from .keycloak_admin import KeycloakAdminError, KeycloakIndisponible, KeycloakNonConfigure
-from .keycloak_sync import relancer_synchronisation, synchroniser_keycloak
 from .models import User
 from .provisioning import FichierImportInvalide
 
 TAG = "Comptes utilisateurs"
-ANNUAIRE_INDISPONIBLE = "L'annuaire (Keycloak) est momentanément indisponible. Réessayez plus tard."
-Q_MIN, Q_MAX = 2, 100
 
 _COMPTE = {"200": None}
 _ERREURS_ACTION = {**ERROR_RESPONSES, **ERROR_404, **ERROR_422}
 
 # Who may call each action (re-checked by the services on the locked target). Anything not
-# listed (delegations, imports, directory, Keycloak resync, OPTIONS) is ADMIN only.
+# listed (delegations, imports, OPTIONS) is ADMIN only.
 _PERMISSIONS: dict[str, type[BasePermission]] = {
     "list": LectureComptes,
     "retrieve": LectureComptes,
@@ -77,20 +69,6 @@ _PERMISSIONS: dict[str, type[BasePermission]] = {
     "deactivate": PeutGererComptes("desactiver"),
     "reactivate": PeutGererComptes("desactiver"),
 }
-
-
-ERROR_502 = {502: ApiErrorSerializer}
-
-
-def _erreur_annuaire(exc: KeycloakAdminError) -> Response:
-    """503 si Keycloak est injoignable, 502 s'il refuse (message fixe, sans secret)."""
-    if isinstance(exc, KeycloakIndisponible | KeycloakNonConfigure):
-        return Response({"detail": ANNUAIRE_INDISPONIBLE, "errors": {}}, status=503)
-    return Response({"detail": exc.message, "errors": {}}, status=502)
-
-
-class _RechercheSerializer(serializers.Serializer[dict[str, str]]):
-    q = serializers.CharField(min_length=Q_MIN, max_length=Q_MAX)
 
 
 class _SansNegociation(BaseContentNegotiation):
@@ -126,8 +104,6 @@ class UserAccountViewSet(
 ):
     throttle_scopes: ClassVar[dict[str, str]] = {
         "import_csv": "import",
-        "import_directory": "import",
-        "directory_search": "annuaire",
         # Open to delegates and sending emails: capped per user (no mailbox flooding).
         "create": "gestion_comptes",
         "reset_password": "gestion_comptes",
@@ -336,7 +312,6 @@ class UserAccountViewSet(
         serializer = MotifDesactivationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         services.desactiver(compte, motif=serializer.validated_data["motif"], by=self.acteur)
-        synchroniser_keycloak(compte.pk, by=self.acteur)
         return self._reponse(compte)
 
     @extend_schema(
@@ -349,90 +324,7 @@ class UserAccountViewSet(
     def reactivate(self, request: Request, pk: str) -> Response:
         compte = self.get_object()
         services.reactiver(compte, by=self.acteur)
-        synchroniser_keycloak(compte.pk, by=self.acteur)
         return self._reponse(compte)
-
-    @extend_schema(
-        tags=[TAG],
-        summary="Rendre direction et fonction à l'annuaire",
-        request=None,
-        responses={200: CompteUtilisateurSerializer, **_ERREURS_ACTION},
-    )
-    @action(detail=True, methods=["post"], url_path="resync-profile")
-    def resync_profile(self, request: Request, pk: str) -> Response:
-        compte = self.get_object()
-        services.resynchroniser_profil(compte, by=self.acteur)
-        return self._reponse(compte)
-
-    @extend_schema(
-        tags=[TAG],
-        summary="Relancer la synchronisation avec Keycloak",
-        request=None,
-        responses={200: CompteUtilisateurSerializer, **_ERREURS_ACTION},
-    )
-    @action(detail=True, methods=["post"], url_path="retry-keycloak-sync")
-    def retry_keycloak_sync(self, request: Request, pk: str) -> Response:
-        compte = self.get_object()
-        relancer_synchronisation(compte, by=self.acteur)
-        return self._reponse(compte)
-
-    @extend_schema(
-        tags=[TAG],
-        summary="Rechercher dans l'annuaire Keycloak",
-        parameters=[
-            OpenApiParameter(
-                "q", OpenApiTypes.STR, required=True, description="2 à 100 caractères."
-            )
-        ],
-        responses={
-            200: EntreeAnnuaireSerializer(many=True),
-            **ERROR_400,
-            **ERROR_RESPONSES,
-            **ERROR_503,
-            **ERROR_502,
-            **ERROR_429,
-        },
-    )
-    @action(
-        detail=False,
-        methods=["get"],
-        url_path="directory-search",
-        filter_backends=[],
-        pagination_class=None,
-    )
-    def directory_search(self, request: Request) -> Response:
-        recherche = _RechercheSerializer(data=request.query_params)
-        recherche.is_valid(raise_exception=True)
-        try:
-            entrees = provisioning.rechercher_annuaire(recherche.validated_data["q"])
-        except KeycloakAdminError as exc:
-            return _erreur_annuaire(exc)
-        return Response(EntreeAnnuaireSerializer(entrees, many=True).data)  # type: ignore[arg-type]
-
-    @extend_schema(
-        tags=[TAG],
-        summary="Importer des comptes depuis l'annuaire Keycloak",
-        request=ImportAnnuaireSerializer,
-        responses={
-            200: RapportImportSerializer,
-            **ERROR_400,
-            **ERROR_RESPONSES,
-            **ERROR_503,
-            **ERROR_502,
-            **ERROR_429,
-        },
-    )
-    @action(detail=False, methods=["post"], url_path="import-directory")
-    def import_directory(self, request: Request) -> Response:
-        serializer = ImportAnnuaireSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            rapport = provisioning.importer_depuis_annuaire(
-                serializer.validated_data["keycloak_ids"], by=self.acteur, dry_run=False
-            )
-        except KeycloakAdminError as exc:
-            return _erreur_annuaire(exc)
-        return Response(RapportImportSerializer(rapport).data)
 
     @extend_schema(
         tags=[TAG],

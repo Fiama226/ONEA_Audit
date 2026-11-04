@@ -6,11 +6,8 @@ himself, never assigns the ADMIN role, never changes a delegation). Every right 
 from the database under the transaction, after the target row is locked.
 
 Every write runs in a transaction, under the audit actor, on a row re-read with
-`select_for_update`. No network call is made here: the Keycloak propagation is done by
-the caller once the transaction has committed. The in-app account actions (creation,
-password reset, login-code removal, email/name/role edits) never touch Keycloak: their
-emails go out after the commit, and a temporary password never reaches the audit trail or
-the logs.
+`select_for_update`. No network call is made inside a transaction: the emails go out after
+the commit, and a temporary password never reaches the audit trail or the logs.
 """
 
 from collections.abc import Iterator, Mapping
@@ -36,7 +33,6 @@ from .delegation import (
     DROIT_REFUSE,
     Action,
     droits_sur,
-    etat_sur,
     exiger,
     exiger_administrateur,
     exiger_attribution_role,
@@ -44,7 +40,6 @@ from .delegation import (
 from .models import (
     CodeOtp,
     DelegationGestionComptes,
-    KeycloakSyncStatut,
     ObjetOtp,
     OrigineCompte,
     Role,
@@ -66,14 +61,10 @@ DROIT_PAR_CHAMP: dict[str, Action] = {
     "email": "reinitialiser",
     "direction_code": "roles",
 }
-# Fields coming from the directory claims; editing one makes the profile local (D4).
-SYNCED_FIELDS = frozenset({"direction_code", "fonction"})
-
 COMPTE_PERSONNEL = "Vous ne pouvez pas désactiver votre propre compte."
 DERNIER_ADMIN = "Impossible de désactiver le dernier administrateur actif de la plateforme."
 DEJA_DESACTIVE = "Ce compte est déjà désactivé."
 DEJA_ACTIF = "Ce compte est déjà actif."
-DEJA_SYNCHRONISE = "Le profil est déjà synchronisé avec l'annuaire."
 MATRICULE_PRIS = "Ce matricule est déjà attribué à un autre utilisateur."
 DIRECTION_INCONNUE = (
     "Direction inconnue : choisissez une direction ou un département du référentiel."
@@ -150,7 +141,7 @@ def direction_existe(code: str) -> bool:
 
 
 def _lock(compte: User) -> User:
-    return User.objects.select_for_update().get(pk=compte.pk)
+    return User.objects.select_for_update(no_key=True).get(pk=compte.pk)
 
 
 def _verrouiller(
@@ -161,12 +152,14 @@ def _verrouiller(
     Locking the actor's row makes a concurrent revocation, deactivation or demotion of the
     actor (which locks that same row) either finish first, and then be seen by the rights
     check that follows, or wait for this action. One statement in pk order: no deadlock
-    between two crossed actions.
+    between two crossed actions. ``FOR NO KEY UPDATE``: the primary key never changes, so
+    the lock does not conflict with the ``FOR KEY SHARE`` lock taken by a concurrent insert
+    of a row referencing an account (audit entry, delegation): no deadlock there either.
     """
     filtre = Q(pk__in=[pk for pk in (compte.pk, acteur.pk) if pk is not None])
     if admins_actifs:
         filtre |= Q(role=Role.ADMIN, is_active=True)
-    locked = list(User.objects.select_for_update().filter(filtre).order_by("pk"))
+    locked = list(User.objects.select_for_update(no_key=True).filter(filtre).order_by("pk"))
     return next(u for u in locked if u.pk == compte.pk), locked
 
 
@@ -177,21 +170,6 @@ def _valeur_comparable(user: User, champ: str) -> str:
     if champ == "email" and valeur:
         return BaseUserManager.normalize_email(valeur.strip())
     return valeur
-
-
-def _mark_pending(user: User, fields: list[str]) -> None:
-    """Flag the account for propagation to Keycloak (only when it is linked)."""
-    if user.keycloak_id is not None:
-        user.keycloak_sync_statut = KeycloakSyncStatut.EN_ATTENTE
-        user.keycloak_sync_erreur = ""
-        user.keycloak_sync_tentatives = 0
-        user.keycloak_sync_manuel = False
-        fields += [
-            "keycloak_sync_statut",
-            "keycloak_sync_erreur",
-            "keycloak_sync_tentatives",
-            "keycloak_sync_manuel",
-        ]
 
 
 def _valeurs_profil(changes: Mapping[str, str]) -> dict[str, str]:
@@ -253,10 +231,6 @@ def modifier_profil(compte: User, *, changes: Mapping[str, str], by: User) -> Us
                 raise RegleMetierError(DONNEES_INVALIDES, {"email": [COURRIEL_PRIS]})
         fields: list[str] = []
         for field, value in modifies.items():
-            if field in SYNCED_FIELDS:
-                user.profil_gere_localement = True
-                if "profil_gere_localement" not in fields:
-                    fields.append("profil_gere_localement")
             setattr(user, field, value)
             fields.append(field)
         if fields:
@@ -293,9 +267,9 @@ def desactiver(compte: User, *, motif: str, by: User) -> User:
         user.desactive_le = timezone.now()
         user.desactive_par = by
         user.motif_desactivation = motif.strip()
-        fields = ["is_active", "desactive_le", "desactive_par", "motif_desactivation"]
-        _mark_pending(user, fields)
-        user.save(update_fields=fields)
+        user.save(
+            update_fields=["is_active", "desactive_le", "desactive_par", "motif_desactivation"]
+        )
         # A disabled account keeps no delegated right: a reactivation restores none.
         _revoquer_delegation(user, by)
         return user
@@ -311,21 +285,9 @@ def reactiver(compte: User, *, by: User) -> User:
         user.desactive_le = None
         user.desactive_par = None
         user.motif_desactivation = ""
-        fields = ["is_active", "desactive_le", "desactive_par", "motif_desactivation"]
-        _mark_pending(user, fields)
-        user.save(update_fields=fields)
-        return user
-
-
-def resynchroniser_profil(compte: User, *, by: User) -> User:
-    """Give direction and function back to the directory (applied at next login)."""
-    exiger_administrateur(by, DROIT_REFUSE)
-    with transaction.atomic(), actor_scope(by):
-        user = _lock(compte)
-        if not user.profil_gere_localement:
-            raise RegleMetierError(DEJA_SYNCHRONISE)
-        user.profil_gere_localement = False
-        user.save(update_fields=["profil_gere_localement"])
+        user.save(
+            update_fields=["is_active", "desactive_le", "desactive_par", "motif_desactivation"]
+        )
         return user
 
 
@@ -410,7 +372,7 @@ def creer_compte(
     mot_de_passe = generer_mot_de_passe_temporaire()
     with transaction.atomic(), actor_scope(par):
         # Re-checked under the actor's lock: a revocation committed meanwhile is respected.
-        list(User.objects.select_for_update().filter(pk=par.pk))
+        list(User.objects.select_for_update(no_key=True).filter(pk=par.pk))
         exiger(par, "creer")
         exiger_attribution_role(par, valeurs["role"])
         _verifier_disponibilite(valeurs)
@@ -531,9 +493,8 @@ def changer_role(compte: User, *, role: str, par: User) -> User:
             raise RegleMetierError(DERNIER_ADMIN_ROLE)
         ancien = user.role
         user.role = role
-        user.role_provisoire = False
         with _action_auditee(user, ACTION_CHANGEMENT_ROLE):
-            user.save(update_fields=["role", "role_provisoire"])
+            user.save(update_fields=["role"])
         if role == Role.ADMIN:
             _revoquer_delegation(user, par)
     logger_securite.info(
@@ -596,18 +557,12 @@ def definir_delegation(
 
 def actions_compte(compte: User, par: User) -> dict[str, bool]:
     """What ``par`` may do on ``compte`` (drives the buttons of the account page)."""
-    admin, droits = etat_sur(par, compte)
-    lie = compte.keycloak_id is not None
+    droits = droits_sur(par, compte)
     autre = compte.pk != par.pk
     return {
         "modifier_profil": droits["creer"],
         "desactiver": compte.is_active and autre and droits["desactiver"],
         "reactiver": not compte.is_active and droits["desactiver"],
-        "resynchroniser_profil": admin and compte.profil_gere_localement,
-        "relancer_synchro_keycloak": admin
-        and lie
-        and compte.keycloak_sync_statut
-        in (KeycloakSyncStatut.EN_ATTENTE, KeycloakSyncStatut.ECHEC),
         "reinitialiser_mot_de_passe": compte.is_active and autre and droits["reinitialiser"],
         "desactiver_otp": compte.otp_connexion_actif and autre and droits["reinitialiser"],
         "modifier_courriel": droits["reinitialiser"],

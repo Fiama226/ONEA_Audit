@@ -11,12 +11,11 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import GenericViewSet
 
 from apps.core.filters import StableOrderingFilter
-from apps.core.schema import ERROR_400, ERROR_503, ERROR_RESPONSES
+from apps.core.schema import ERROR_400, ERROR_RESPONSES
 
 from . import services
 from .filters import UtilisateurFilter
 from .models import Role, User
-from .oidc import purge_userinfo
 from .permissions import HasRole
 from .serializers import (
     MeSerializer,
@@ -29,7 +28,7 @@ from .serializers import (
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(responses={200: MeSerializer, **ERROR_RESPONSES, **ERROR_503})
+    @extend_schema(responses={200: MeSerializer, **ERROR_RESPONSES})
     def get(self, request: Request) -> Response:
         user = cast(User, request.user)
         return Response(MeSerializer(user).data)
@@ -42,7 +41,7 @@ class TutorielView(APIView):
         tags=["Authentification"],
         summary="Enregistrer l'état du tutoriel d'accueil",
         request=TutorielActionSerializer,
-        responses={200: TutorielSerializer, **ERROR_400, **ERROR_RESPONSES, **ERROR_503},
+        responses={200: TutorielSerializer, **ERROR_400, **ERROR_RESPONSES},
     )
     def post(self, request: Request) -> Response:
         serializer = TutorielActionSerializer(data=request.data)
@@ -53,24 +52,6 @@ class TutorielView(APIView):
             version=serializer.validated_data["version"],
         )
         return Response(TutorielSerializer(compte).data)
-
-
-class FinSessionView(APIView):
-    """Fin de session (D5) : purge l'entree de cache userinfo du jeton presente, avant la
-    deconnexion Keycloak. Sans jeton valide : 401."""
-
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        tags=["Authentification"],
-        summary="Fin de session : purge le cache userinfo du jeton",
-        request=None,
-        responses={204: None, **ERROR_RESPONSES, **ERROR_503},
-    )
-    def post(self, request: Request) -> Response:
-        if isinstance(request.auth, str):
-            purge_userinfo(request.auth)
-        return Response(status=204)
 
 
 @extend_schema_view(
