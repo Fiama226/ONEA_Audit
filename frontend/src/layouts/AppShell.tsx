@@ -34,12 +34,15 @@ export function AppShell() {
             className="flex-1 overflow-y-auto px-6 pt-6 pb-12 outline-none lg:px-8 lg:pt-8"
           >
             <div className="mx-auto max-w-[1280px]">
-              {/* Zone présente d'emblée : la confirmation d'un changement de mot de passe. */}
-              <LiveMessage
-                role="status"
-                message={passwordChanged ? fr.auth.passwordChanged : null}
-                className="mb-6 rounded-md border border-success/40 p-3 text-sm text-success-text print:hidden"
-              />
+              {/* Confirmation d'un changement de mot de passe : la zone est rendue vide puis
+                  remplie (LiveMessage), donc annoncée. */}
+              {passwordChanged && (
+                <LiveMessage
+                  role="status"
+                  message={fr.auth.passwordChanged}
+                  className="mb-6 rounded-md border border-success/40 p-3 text-sm text-success-text print:hidden"
+                />
+              )}
               <Outlet />
             </div>
           </main>
