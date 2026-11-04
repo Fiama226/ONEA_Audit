@@ -294,6 +294,10 @@ jobs:
       - name: Pile de recette
         run: |
           sh scripts/recette/up.sh
+      - name: Comptes de recette
+        # creer_administrateur puis changement impose du mot de passe temporaire par l'API :
+        # .recette/comptes.txt (compte admin, utilise par tests/reseaux.sh).
+        run: sh scripts/recette/comptes.sh
       - name: Peripherie (nginx)
         run: sh scripts/recette/tests/edge.sh
       - name: Cloisonnement reseau

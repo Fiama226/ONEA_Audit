@@ -8,6 +8,7 @@
 # Vérifie : mêmes comptes par table, mêmes SHA-256 de 10 documents lus dans le stockage, volume
 # onea-fichiers identique (empreinte de l'arborescence), fichier ajouté entre le dump et l'archive
 # signalé comme orphelin (et seulement lui), gel en base rétabli, API prête après restauration,
+# connexion réelle d'un compte de recette (scripts/recette/comptes.sh) avant et après restauration,
 # manifeste altéré refusé, --hors-serveur refusé sans configuration, copie restic
 # restaurable (si restic est installé), durée de remise en service < 30 min.
 [ -n "${BASH_VERSION:-}" ] || exec bash "$0" "$@"
@@ -66,10 +67,22 @@ except Exception:
 }
 
 echo "== Peuplement (peupler_demo --profil formation, documents Word générés) =="
-compose_recette stop beat worker >/dev/null 2>&1 || true
+compose_recette stop beat worker worker-auth >/dev/null 2>&1 || true
 # Faute de module de réglages « recette » (le garde de peupler_demo refuse les réglages prod), la
 # commande tourne avec les réglages dev sur la base de la recette (rôle applicatif, documents réels).
 compose_recette exec -T -e DJANGO_SETTINGS_MODULE=config.settings.dev web python manage.py peupler_demo --profil formation | tail -n 3
+
+# Connexion réelle (formulaire, empreinte Argon2, session en base, droits du rôle applicatif sur
+# les tables de l'authentification) : avant la sauvegarde, puis après la restauration. Le compte
+# est préparé APRÈS peupler_demo (qui exige une base sans compte « admin ») et AVANT les relevés
+# (son changement de mot de passe écrit une entrée d'audit, comprise dans la sauvegarde).
+COMPTE=${RECETTE_COMPTE_ECRITURE:-admin}
+sh "$REPO_ROOT/scripts/recette/comptes.sh" "$COMPTE"
+connexion_et_session() {
+    connexion_session "$TMP/session.jar" "$COMPTE" >/dev/null &&
+        curl_recette -fs -o /dev/null -b "$TMP/session.jar" "https://$PUBLIC_HOST/api/v1/auth/session/"
+}
+affirmer "connexion de $COMPTE et session API avant la sauvegarde" 'connexion_et_session'
 web_shell "
 from apps.documents.models import DocumentVersion
 for v in DocumentVersion.all_objects.exclude(fichier_docx='').order_by('-numero_version', 'pk')[:60]:
@@ -209,5 +222,9 @@ affirmer "DELETE refusé en base pour le rôle applicatif (gel actif)" \
     'tenter_suppression | grep -qE "^REFUS .*(permission denied|ERREUR ONEA)"'
 affirmer "API prête après restauration (/api/v1/health/ready/)" \
     'curl_recette -fs "https://$PUBLIC_HOST/api/v1/health/ready/"'
+affirmer "connexion de $COMPTE et session API après restauration (mot de passe sauvegardé)" \
+    'connexion_et_session'
+affirmer "changement de mot de passe possible après restauration (DELETE des codes par le rôle)" \
+    'sh "$REPO_ROOT/scripts/recette/comptes.sh" "$COMPTE" >/dev/null && connexion_et_session'
 
 bilan

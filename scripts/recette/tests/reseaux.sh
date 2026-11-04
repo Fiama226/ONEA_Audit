@@ -26,6 +26,10 @@ affirmer "gotenberg : aucune sortie vers Internet" \
 # Connexion par session avec un compte de recette habilite a creer une direction (defaut : admin,
 # $RECETTE_COMPTE_ECRITURE), puis une ecriture portant les en-tetes usurpes ; l'adresse enregistree
 # par le journal d'audit doit etre celle vue par nginx, pas 6.6.6.6.
+# Le compte est prepare par scripts/recette/comptes.sh (CI : etape « Comptes de recette »).
+if [ -z "$(mdp_compte "${RECETTE_COMPTE_ECRITURE:-admin}" 2>/dev/null)" ]; then
+    echo "Compte ${RECETTE_COMPTE_ECRITURE:-admin} absent de $RECETTE_COMPTES : lancer d'abord sh scripts/recette/comptes.sh (l'assertion suivante echoue)." >&2
+fi
 JAR="$RECETTE_DIR/session-reseaux.jar"
 affirmer "adresse usurpee 6.6.6.6 absente du journal d'audit, adresse reelle presente" '
     tok=$(connexion_session "$JAR" "${RECETTE_COMPTE_ECRITURE:-admin}") && [ -n "$tok" ] &&

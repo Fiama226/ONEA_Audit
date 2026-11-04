@@ -48,7 +48,10 @@ affirmer "server_tokens masque (pas de numero de version)" \
 affirmer "/api/v1/health/ -> status ok" \
     'curl_recette -fs "$A/api/v1/health/" | grep -q "\"status\": *\"ok\""'
 
-affirmer "docs/deploy.md sans recette (sauf chemin scripts/recette/)"     '! grep -qiE "recette" "$(grep -v scripts/recette/ "$REPO_ROOT/docs/deploy.md")"'
+# Le texte filtre passe par un tube : en argument, grep le prendrait pour un nom de fichier,
+# sortirait en erreur et le « ! » ferait toujours passer l'assertion.
+affirmer "docs/deploy.md sans recette (sauf chemin scripts/recette/)" \
+    '[ -s "$REPO_ROOT/docs/deploy.md" ] && ! grep -v scripts/recette/ "$REPO_ROOT/docs/deploy.md" | grep -qi recette'
 affirmer ".env.prod.example sans recette"     '! grep -qiE "recette" "$REPO_ROOT/.env.prod.example"'
 
 bilan

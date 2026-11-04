@@ -32,11 +32,14 @@ curl_recette() {
 }
 
 # --- Connexion par session (plus de jetons Bearer) -----------------------------------------
-# Comptes de recette : AUCUNE commande du depot ne les cree avec un mot de passe (peupler_demo et
-# l'import de comptes posent un mot de passe inutilisable) : l'administration des comptes de
-# l'application les cree, puis chaque compte change son mot de passe temporaire ; le fichier
-# .recette/comptes.txt (hors Git) est tenu a la main. Fichier .recette/comptes.txt (ou $RECETTE_COMPTES), une ligne
+# Comptes de recette : fichier .recette/comptes.txt (ou $RECETTE_COMPTES, 0600, hors Git), une ligne
 # `identifiant:mot_de_passe` par compte (le mot de passe commence apres le premier « : »).
+# Le compte d'ecriture (admin) est cree par scripts/recette/comptes.sh, avec les outils de
+# l'application : creer_administrateur, puis changement impose du mot de passe temporaire par l'API.
+# peupler_demo et l'import de comptes posent des mots de passe temporaires jamais affiches : leurs
+# comptes ne sont pas utilisables tels quels. Les comptes de charge (chargeNN) sont crees par
+# l'administration des comptes de l'application ; chacun change son mot de passe temporaire, puis
+# sa ligne est ajoutee au fichier a la main.
 RECETTE_COMPTES=${RECETTE_COMPTES:-$RECETTE_DIR/comptes.txt}
 
 # mdp_compte <identifiant> : mot de passe du compte dans le fichier des comptes de recette.
