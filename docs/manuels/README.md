@@ -59,5 +59,7 @@ Interne (DAI) de l'ONEA. Il couvre les tâches 30, 32, 33 et 34 du lot 9.
 La connexion, la navigation et la déconnexion sont identiques pour tous les rôles ; chaque manuel les
 rappelle en section 1. Le menu utilisateur propose « Mon compte »
 (changement du mot de passe, code de connexion facultatif par courriel) ; le nom, l'adresse électronique, le
-rôle, la direction, la fonction et le matricule sont renseignés par l'administrateur (ou un délégué) : ils ne
-sont pas modifiables par l'agent. Les comptes sont gérés dans la plateforme, sans annuaire externe.
+rôle, la direction, la fonction et le matricule sont renseignés par l'administrateur (ou un délégué, pour les
+comptes Auditeur interne et Audité seulement ; les comptes Administrateur, RAI et DG ne sont gérés que par un
+administrateur) : ils ne sont pas modifiables par l'agent. Les comptes sont gérés dans la plateforme, sans
+annuaire externe.

@@ -43,11 +43,15 @@ identifiant ou votre courriel professionnel, puis cliquez sur « Recevoir un cod
 code à 6 chiffres vous est envoyé par courriel (valable 10 minutes) ; le message affiché est le même que le
 compte existe ou non. Cliquez sur « Saisir le code reçu », saisissez le code et un nouveau mot de passe, puis
 « Enregistrer le mot de passe ». Si aucun courriel n'arrive, adressez-vous à l'administrateur : il peut
-réinitialiser votre mot de passe.
+réinitialiser votre mot de passe. Après 15 codes erronés en 24 heures, plus aucun code n'est accepté pour votre
+compte jusqu'à la fin de ces 24 heures (le message reste « Code invalide ou expiré. ») : demandez alors une
+réinitialisation à l'administrateur.
 
 **Connexion refusée.** Le message « Identifiant ou mot de passe incorrect. » est le même quelle que soit la cause
 (mot de passe erroné, compte inconnu, désactivé ou verrouillé). Après cinq échecs consécutifs, la connexion est
-bloquée pendant 15 minutes ; l'administrateur peut la rétablir plus tôt en réinitialisant votre mot de passe.
+bloquée pendant 15 minutes ; l'administrateur peut la rétablir plus tôt en réinitialisant votre mot de passe. Le
+message « Trop de requêtes… » signifie que trop de tentatives sont venues de votre
+réseau (par exemple de tout votre site) : patientez le temps indiqué, au plus 15 minutes, puis réessayez.
 
 **Durée de la session.** Votre session se ferme après 8 heures, ou après 30 minutes sans activité : « Votre
 session a expiré. Veuillez vous reconnecter. »

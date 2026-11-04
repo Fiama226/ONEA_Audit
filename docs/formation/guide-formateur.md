@@ -33,7 +33,11 @@ Utiliser une pile de **recette** dédiée (jamais la base de développement `one
 
 Les mots de passe temporaires sont propres à l'environnement de formation (jamais ceux de la production) et
 valables 72 heures : créer ou réinitialiser les comptes la veille ou le matin de la session. Le courrier de la
-recette (codes de connexion, « Mot de passe oublié ») se lit dans Mailpit (`docs/recette.md`).
+recette (codes de connexion, « Mot de passe oublié », courriels de bienvenue) se lit dans Mailpit
+(`docs/recette.md`). Ces courriels sont envoyés par le `worker` Celery : vérifier avant la session qu'il est
+démarré, sinon l'écran annonce un courriel « mis en file d'envoi » qui n'arrive jamais. L'exercice de délégation
+(fiche administrateur, exercice 3) suppose les comptes `rai` et `dg` existants : un délégué ne doit pas pouvoir y
+toucher.
 
 ### 1.2 Salle et participants
 Postes, salle, nombre de participants : voir [programme-demi-journee.md](programme-demi-journee.md),
