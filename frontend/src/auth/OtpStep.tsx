@@ -48,7 +48,12 @@ export function OtpStep({ onBack }: { onBack: () => void }) {
           {formError}
         </p>
       )}
-      <FormField label={T.otpCode} help={T.otpHelp} error={errors.code?.message}>
+      <FormField
+        label={T.otpCode}
+        help={T.otpHelp}
+        error={errors.code?.message}
+        announceError={errors.code?.type === "server"}
+      >
         {(p) => (
           <Input
             {...p}

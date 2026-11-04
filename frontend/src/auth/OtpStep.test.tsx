@@ -64,6 +64,14 @@ describe("OtpStep", () => {
     expect(code).toHaveFocus();
   });
 
+  it("code refusé après Entrée : message annoncé (role=alert)", async () => {
+    server.use(http.post(`${AUTH_URL}/login/otp/`, () => unauthorized("Code invalide ou expiré.")));
+    const { user } = await jusquAuCode();
+    await user.type(screen.getByLabelText(T.otpCode), "000000{Enter}");
+    expect(await screen.findByRole("alert")).toHaveTextContent(T.otpInvalid);
+    expect(screen.getByLabelText(T.otpCode)).toHaveFocus();
+  });
+
   it("format invalide : erreur sans appel au serveur", async () => {
     let calls = 0;
     server.use(

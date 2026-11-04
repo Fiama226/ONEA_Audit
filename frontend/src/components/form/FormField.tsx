@@ -5,6 +5,11 @@ type Props = {
   label: string;
   error?: string;
   help?: string;
+  /**
+   * Annonce l'erreur (role="alert") : pour un refus du serveur affiché sur un champ qui a déjà
+   * le focus (envoi par Entrée), que le déplacement du focus ne suffit pas à signaler.
+   */
+  announceError?: boolean;
   children: (props: {
     id: string;
     "aria-invalid": boolean;
@@ -13,7 +18,7 @@ type Props = {
 };
 
 /** Champ de formulaire accessible : libellé, aide et message d'erreur reliés au contrôle. */
-export function FormField({ label, error, help, children }: Props) {
+export function FormField({ label, error, help, announceError = false, children }: Props) {
   const id = useId();
   const helpId = `${id}-help`;
   const errorId = `${id}-error`;
@@ -32,7 +37,11 @@ export function FormField({ label, error, help, children }: Props) {
         </p>
       )}
       {error && (
-        <p id={errorId} className="text-sm text-destructive">
+        <p
+          id={errorId}
+          role={announceError ? "alert" : undefined}
+          className="text-sm text-destructive"
+        >
           {error}
         </p>
       )}

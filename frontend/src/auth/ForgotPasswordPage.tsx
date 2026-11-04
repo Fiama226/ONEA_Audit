@@ -21,10 +21,19 @@ const backToLogin = (
 );
 
 /**
- * Demande d'un code de réinitialisation. La confirmation est toujours la même, que le compte
- * existe ou non, et quelle que soit la réponse du serveur : seule une panne réseau (requête
- * jamais arrivée) est signalée, pour permettre de réessayer.
+ * Demande d'un code de réinitialisation. La confirmation est la même que le compte existe ou
+ * non (202, ou 400 sur une saisie refusée). Les autres cas ne dépendent d'aucun compte et
+ * reçoivent un message neutre pour réessayer : panne réseau, trop de demandes (429), erreur
+ * du serveur.
  */
+function failureOf(e: unknown): string | null {
+  if (!isApiError(e)) return fr.errors.generic;
+  if (e.status === 400) return null;
+  if (e.status === 0) return fr.errors.network;
+  if (e.status === 429) return T.forgotTooMany;
+  return fr.errors.generic;
+}
+
 export function ForgotPasswordPage() {
   const [sentFor, setSentFor] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -47,11 +56,11 @@ export function ForgotPasswordPage() {
     try {
       await postPasswordForgot(values.identifiant);
     } catch (e) {
-      if (isApiError(e) && e.status === 0) {
-        setFormError(e.detail);
+      const failure = failureOf(e);
+      if (failure !== null) {
+        setFormError(failure);
         return;
       }
-      // Toute réponse du serveur donne la même confirmation (aucune énumération des comptes).
     }
     setSentFor(values.identifiant);
   }

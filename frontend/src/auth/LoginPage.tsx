@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fr } from "@/i18n/fr";
 import { AUTH_LINK_CLASS, AuthCard } from "./AuthCard";
+import { LiveMessage } from "./LiveMessage";
 import { OtpStep } from "./OtpStep";
 import { AUTH_PATHS, returnPathOf, stateField } from "./paths";
 import { IDENTIFIANT_MAX, loginSchema, MOT_DE_PASSE_MAX, type LoginValues } from "./schemas";
@@ -58,16 +59,16 @@ export function LoginPage() {
         </Link>
       }
     >
-      {sessionExpired && (
-        <p role="alert" className={ALERT_CLASS}>
-          {T.sessionExpired}
-        </p>
-      )}
-      {notice && !sessionExpired && (
-        <p role="status" className="rounded-md border border-border p-3 text-sm">
-          {notice}
-        </p>
-      )}
+      <LiveMessage
+        role="alert"
+        message={sessionExpired ? T.sessionExpired : null}
+        className={ALERT_CLASS}
+      />
+      <LiveMessage
+        role="status"
+        message={notice && !sessionExpired ? notice : null}
+        className="rounded-md border border-border p-3 text-sm"
+      />
       <CredentialsForm
         defaultIdentifiant={identifiant}
         onOtp={(value) => {
@@ -162,7 +163,8 @@ function CredentialsForm({
         )}
       </FormField>
       {failed && (
-        <p id={failureId} className="text-sm text-destructive">
+        // role="alert" : annoncé même quand le focus était déjà sur le mot de passe (Entrée).
+        <p id={failureId} role="alert" className="text-sm text-destructive">
           {T.loginFailed}
         </p>
       )}

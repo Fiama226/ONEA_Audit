@@ -31,6 +31,7 @@ export function authValueFor(
     me: meFor(role),
     etape: "OK",
     sessionExpired: false,
+    loggedOut: false,
     login: vi.fn().mockResolvedValue("OK"),
     verifyOtp: vi.fn().mockResolvedValue("OK"),
     changePassword: vi.fn().mockResolvedValue(undefined),

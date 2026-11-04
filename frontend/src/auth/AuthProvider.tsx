@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [etape, setEtape] = useState<Etape | undefined>(undefined);
   const [errorDetail, setErrorDetail] = useState<string | undefined>(undefined);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [loggedOut, setLoggedOut] = useState(false);
   // Lu par le gestionnaire de 401, hors du cycle de rendu.
   const statusRef = useRef<AuthStatus>("loading");
 
@@ -51,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setEtape(etat.etape);
       setErrorDetail(undefined);
       setSessionExpired(false);
+      setLoggedOut(false);
       changeStatus("authenticated");
     },
     [changeStatus],
@@ -122,17 +124,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    // Fin de session côté serveur, au plus 2 s ; un échec n'empêche jamais la déconnexion locale.
+    // Fin de session côté serveur, attendue au plus 2 s en tout (jeton CSRF compris) ; un échec
+    // ou une lenteur n'empêche jamais la déconnexion locale. Après le délai, la requête est
+    // annulée : elle ne peut pas fermer une session rouverte entre-temps.
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), LOGOUT_TIMEOUT_MS);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<void>((resolve) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        resolve();
+      }, LOGOUT_TIMEOUT_MS);
+    });
     try {
-      await postLogout(controller.signal);
-    } catch {
-      // ignoré : voir ci-dessus
+      await Promise.race([postLogout(controller.signal).catch(() => undefined), deadline]);
     } finally {
       clearTimeout(timer);
     }
     setSessionExpired(false);
+    setLoggedOut(true);
     goAnonymous();
   }, [goAnonymous]);
 
@@ -143,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       etape,
       errorDetail,
       sessionExpired,
+      loggedOut,
       login,
       verifyOtp,
       changePassword,
@@ -155,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       etape,
       errorDetail,
       sessionExpired,
+      loggedOut,
       login,
       verifyOtp,
       changePassword,

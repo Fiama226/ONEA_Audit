@@ -60,6 +60,23 @@ describe("LoginPage", () => {
     expect(screen.getByLabelText(T.identifiant)).toHaveAccessibleDescription(T.loginFailed);
   });
 
+  it("échec après Entrée dans le mot de passe : message annoncé (role=alert)", async () => {
+    server.use(http.post(`${AUTH_URL}/login/`, () => unauthorized()));
+    renderApp("/connexion");
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText(T.identifiant), "rai");
+    await user.type(screen.getByLabelText(T.password), "mauvais{Enter}");
+    const message = await screen.findByText(T.loginFailed);
+    expect(message).toHaveAttribute("role", "alert");
+    expect(screen.getByLabelText(T.password)).toHaveFocus();
+    expect(screen.getByLabelText(T.password)).toHaveAccessibleDescription(T.loginFailed);
+  });
+
+  it("annonce le mot de passe réinitialisé dans une zone status", async () => {
+    renderApp({ pathname: "/connexion", state: { notice: "reset" } });
+    expect(await screen.findByText(T.passwordResetDone)).toHaveAttribute("role", "status");
+  });
+
   it.each([
     ["compte verrouillé", () => unauthorized("Compte verrouillé jusqu'à 10 h 15.")],
     ["compte désactivé", () => unauthorized("Compte désactivé.")],
@@ -92,7 +109,7 @@ describe("LoginPage", () => {
     server.use(http.post(`${AUTH_URL}/login/`, () => HttpResponse.error()));
     renderApp("/connexion");
     await fill("rai", "mot-de-passe-solide");
-    expect(await screen.findByRole("alert")).toHaveTextContent(fr.errors.network);
+    expect(await screen.findByText(fr.errors.network)).toHaveAttribute("role", "alert");
     expect(screen.queryByText(T.loginFailed)).not.toBeInTheDocument();
   });
 

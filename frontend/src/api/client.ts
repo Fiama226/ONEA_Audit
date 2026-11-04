@@ -133,10 +133,27 @@ async function toApiError(response: Response): Promise<ApiError> {
 }
 
 /**
- * Requête avec le cookie de session (et le jeton CSRF pour une écriture) ; toute réponse non
- * 2xx ou erreur réseau devient une ApiError.
+ * Début du message du serveur quand le jeton CSRF est absent ou périmé
+ * (backend/apps/users/authentication.py, CSRF_REFUSE).
  */
-async function send(path: string, init: ApiInit, accept: string): Promise<Response> {
+const CSRF_REFUSE_PREFIX = "Jeton CSRF";
+
+function isCsrfFailure(error: ApiError): boolean {
+  return error.status === 403 && error.detail.startsWith(CSRF_REFUSE_PREFIX);
+}
+
+/**
+ * Requête avec le cookie de session (et le jeton CSRF pour une écriture) ; toute réponse non
+ * 2xx ou erreur réseau devient une ApiError. Une écriture refusée pour jeton CSRF périmé
+ * (session changée dans un autre onglet, par exemple) est rejouée une seule fois avec un
+ * jeton neuf.
+ */
+async function send(
+  path: string,
+  init: ApiInit,
+  accept: string,
+  csrfRetried = false,
+): Promise<Response> {
   const { json, headers: initHeaders, ...rest } = init;
   const headers = new Headers(initHeaders);
   headers.set("Accept", accept);
@@ -160,7 +177,12 @@ async function send(path: string, init: ApiInit, accept: string): Promise<Respon
 
   if (!response.ok) {
     if (response.status === 401 && !SANS_REDIRECTION_401.has(path)) onUnauthorized?.();
-    throw await toApiError(response);
+    const error = await toApiError(response);
+    if (!SAFE_METHODS.has(method) && !csrfRetried && isCsrfFailure(error)) {
+      resetCsrfToken();
+      return send(path, init, accept, true);
+    }
+    throw error;
   }
   return response;
 }

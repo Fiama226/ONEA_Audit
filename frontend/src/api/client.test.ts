@@ -325,6 +325,88 @@ describe("session expirée en cours d'utilisation (401)", () => {
 });
 
 describe("jeton CSRF", () => {
+  const REFUS_CSRF = { detail: "Jeton CSRF absent ou invalide : rechargez la page.", errors: {} };
+
+  it("jeton périmé : 403 CSRF, nouveau jeton puis un seul rejeu réussi", async () => {
+    let emis = 0;
+    const recus: (string | null)[] = [];
+    server.use(
+      http.get(`${API_URL}/api/v1/auth/csrf/`, () => {
+        emis += 1;
+        return HttpResponse.json({ csrf_token: `jeton-${emis}` });
+      }),
+      http.post(`${API_URL}/api/x/`, ({ request }) => {
+        const jeton = request.headers.get("X-CSRFToken");
+        recus.push(jeton);
+        return jeton === "jeton-1"
+          ? HttpResponse.json(REFUS_CSRF, { status: 403 })
+          : HttpResponse.json({ ok: true });
+      }),
+    );
+    await expect(apiFetch("/api/x/", { method: "POST", json: { a: 1 } })).resolves.toEqual({
+      ok: true,
+    });
+    expect(recus).toEqual(["jeton-1", "jeton-2"]);
+    expect(emis).toBe(2);
+  });
+
+  it("second 403 CSRF : erreur remontée, sans boucle", async () => {
+    let emis = 0;
+    let envois = 0;
+    server.use(
+      http.get(`${API_URL}/api/v1/auth/csrf/`, () => {
+        emis += 1;
+        return HttpResponse.json({ csrf_token: `jeton-${emis}` });
+      }),
+      http.post(`${API_URL}/api/x/`, () => {
+        envois += 1;
+        return HttpResponse.json(REFUS_CSRF, { status: 403 });
+      }),
+    );
+    const error = await apiFetch("/api/x/", { method: "POST", json: {} }).catch((e: unknown) => e);
+    expect(isApiError(error) && error.status).toBe(403);
+    expect(isApiError(error) && error.detail).toBe(REFUS_CSRF.detail);
+    expect(envois).toBe(2);
+    expect(emis).toBe(2);
+  });
+
+  it("un 403 de droits (pas CSRF) n'est pas rejoué", async () => {
+    let envois = 0;
+    server.use(
+      http.post(`${API_URL}/api/x/`, () => {
+        envois += 1;
+        return HttpResponse.json({ detail: "Accès refusé.", errors: {} }, { status: 403 });
+      }),
+    );
+    await expect(apiFetch("/api/x/", { method: "POST", json: {} })).rejects.toMatchObject({
+      status: 403,
+    });
+    expect(envois).toBe(1);
+  });
+
+  it("reset pendant une demande de jeton : le jeton reçu n'est pas mémorisé", async () => {
+    let emis = 0;
+    let liberer: () => void = () => {};
+    const premier = new Promise<void>((resolve) => {
+      liberer = resolve;
+    });
+    server.use(
+      http.get(`${API_URL}/api/v1/auth/csrf/`, async () => {
+        emis += 1;
+        const numero = emis;
+        if (numero === 1) await premier;
+        return HttpResponse.json({ csrf_token: `jeton-${numero}` });
+      }),
+    );
+    const enCours = ensureCsrfToken();
+    resetCsrfToken();
+    liberer();
+    expect(await enCours).toBe("jeton-1");
+    expect(await ensureCsrfToken()).toBe("jeton-2");
+    expect(await ensureCsrfToken()).toBe("jeton-2");
+    expect(emis).toBe(2);
+  });
+
   it("joint X-CSRFToken aux écritures, pas aux lectures, et le met en cache", async () => {
     let emis = 0;
     const spy = vi.spyOn(globalThis, "fetch");

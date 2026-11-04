@@ -72,6 +72,7 @@ export function ChangePasswordPage() {
           label={T.currentPassword}
           help={forced ? T.currentPasswordTemporaryHelp : undefined}
           error={errors.ancien?.message}
+          announceError={errors.ancien?.type === "server"}
         >
           {(p) => (
             <Input

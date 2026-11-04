@@ -91,7 +91,12 @@ export function ResetPasswordPage() {
             />
           )}
         </FormField>
-        <FormField label={T.otpCode} help={T.otpHelp} error={errors.code?.message}>
+        <FormField
+          label={T.otpCode}
+          help={T.otpHelp}
+          error={errors.code?.message}
+          announceError={errors.code?.type === "server"}
+        >
           {(p) => (
             <Input
               {...p}

@@ -1,8 +1,8 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
-import { apiFetch } from "@/api/client";
+import { apiFetch, resetCsrfToken } from "@/api/client";
 import { fr } from "@/i18n/fr";
 import { AUTH_URL, fakeMe, renderApp, serveSession, unauthorized } from "@/test/auth";
 import { API_URL, server } from "@/test/msw";
@@ -70,9 +70,10 @@ describe("AuthProvider : sonde de session", () => {
 describe("AuthProvider : session expirée en cours d'utilisation", () => {
   it("un 401 de l'API ramène à /connexion avec le message de session expirée", async () => {
     serveSession();
-    const { router } = renderApp("/");
+    const { router, client } = renderApp("/");
     expect(await screen.findByRole("heading", { name: fr.dashboard.raiTitle })).toBeInTheDocument();
     expect(screen.queryByText(fr.auth.sessionExpired)).not.toBeInTheDocument();
+    client.setQueryData(["donnees-precedentes"], { secret: true });
 
     server.use(
       http.get(`${AUTH_URL}/session/`, () => unauthorized()),
@@ -81,8 +82,9 @@ describe("AuthProvider : session expirée en cours d'utilisation", () => {
     await act(async () => {
       await apiFetch("/api/v1/ressource/").catch(() => undefined);
     });
-    expect(await screen.findByText(fr.auth.sessionExpired)).toBeInTheDocument();
+    expect(await screen.findByText(fr.auth.sessionExpired)).toHaveAttribute("role", "alert");
     expect(router.state.location.pathname).toBe("/connexion");
+    expect(client.getQueryData(["donnees-precedentes"])).toBeUndefined();
   });
 
   it("un 401 de la connexion elle-même n'est pas une session expirée", async () => {
@@ -142,15 +144,49 @@ describe("AuthProvider : jeton CSRF", () => {
 });
 
 describe("AuthProvider : déconnexion", () => {
+  async function cliquerDeconnexion() {
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: new RegExp(fr.shell.userMenu) }));
+    await user.click(await screen.findByRole("menuitem", { name: fr.auth.logout }));
+  }
+
   async function seDeconnecter() {
     serveSession();
     const app = renderApp("/");
     await screen.findByRole("heading", { name: fr.dashboard.raiTitle });
-    const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: new RegExp(fr.shell.userMenu) }));
-    await user.click(await screen.findByRole("menuitem", { name: fr.auth.logout }));
+    await cliquerDeconnexion();
     return app;
   }
+
+  it("déconnexion volontaire : la page quittée n'est pas reprise (pas de from)", async () => {
+    server.use(http.post(`${AUTH_URL}/logout/`, () => new HttpResponse(null, { status: 204 })));
+    serveSession();
+    const { router } = renderApp("/mon-compte");
+    await screen.findByRole("heading", { name: fr.tutoriel.accountTitle });
+    await cliquerDeconnexion();
+    expect(await screen.findByRole("heading", { name: fr.auth.loginTitle })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/connexion");
+    expect(router.state.location.state).toBeFalsy();
+  });
+
+  it("ne bloque jamais : jeton CSRF sans réponse, déconnexion locale en 2 s", async () => {
+    resetCsrfToken();
+    let envois = 0;
+    server.use(
+      http.get(`${AUTH_URL}/csrf/`, async () => {
+        await delay("infinite");
+        return HttpResponse.json({ csrf_token: "jamais" });
+      }),
+      http.post(`${AUTH_URL}/logout/`, () => {
+        envois += 1;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const { router } = await seDeconnecter();
+    expect(await screen.findByRole("heading", { name: fr.auth.loginTitle })).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe("/connexion");
+    expect(envois).toBe(0);
+  });
 
   it("appelle POST /auth/logout/ puis revient à la connexion, cache vidé", async () => {
     const logout = vi.fn(() => new HttpResponse(null, { status: 204 }));

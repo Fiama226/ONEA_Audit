@@ -819,6 +819,8 @@ export const fr = {
     forgotSentHelp:
       "Le code est valable 10 minutes. Sans courriel, adressez-vous à l'administrateur de la plateforme.",
     forgotEnterCode: "Saisir le code reçu",
+    // Limitation de débit : même message pour tout identifiant (n'indique aucun compte).
+    forgotTooMany: "Trop de demandes, réessayez plus tard.",
     backToLogin: "Retour à la connexion",
     resetTitle: "Nouveau mot de passe",
     resetIntro: "Saisissez le code reçu par courriel, puis choisissez un nouveau mot de passe.",

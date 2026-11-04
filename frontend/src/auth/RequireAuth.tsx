@@ -5,7 +5,7 @@ import { AUTH_PATHS } from "./paths";
 import { useAuth } from "./useAuth";
 
 export function RequireAuth() {
-  const { status, etape } = useAuth();
+  const { status, etape, loggedOut } = useAuth();
   const location = useLocation();
   const from = `${location.pathname}${location.search}`;
 
@@ -18,7 +18,8 @@ export function RequireAuth() {
   }
   if (status === "error") return <ErrorPage />;
   if (status === "anonymous") {
-    return <Navigate to={AUTH_PATHS.login} replace state={{ from }} />;
+    // Après une déconnexion volontaire, l'utilisateur suivant ne reçoit pas l'adresse quittée.
+    return <Navigate to={AUTH_PATHS.login} replace state={loggedOut ? undefined : { from }} />;
   }
   // Mot de passe temporaire : rien d'autre n'est accessible avant le changement.
   if (etape === "CHANGER_MOT_DE_PASSE" && location.pathname !== AUTH_PATHS.change) {

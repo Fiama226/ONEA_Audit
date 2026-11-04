@@ -43,7 +43,7 @@ describe("ResetPasswordPage", () => {
     );
     const { router, user } = await ouvrir({ identifiant: "agent@onea.bf" });
     await remplir(user, "123456", "un-nouveau-solide");
-    expect(await screen.findByText(T.passwordResetDone)).toBeInTheDocument();
+    expect(await screen.findByText(T.passwordResetDone)).toHaveAttribute("role", "status");
     expect(router.state.location.pathname).toBe("/connexion");
     expect(body).toEqual({
       identifiant: "agent@onea.bf",
@@ -64,6 +64,19 @@ describe("ResetPasswordPage", () => {
     const code = screen.getByLabelText(T.otpCode);
     await waitFor(() => expect(code).toHaveFocus());
     expect(code).toHaveAccessibleDescription(`${T.otpHelp} ${T.otpInvalid}`);
+  });
+
+  it("code refusé après Entrée : message annoncé (role=alert)", async () => {
+    server.use(
+      http.post(`${AUTH_URL}/password/reset/`, () =>
+        HttpResponse.json({ detail: "Code invalide ou expiré.", errors: {} }, { status: 400 }),
+      ),
+    );
+    const { user } = await ouvrir({ identifiant: "agent@onea.bf" });
+    await user.type(screen.getByLabelText(T.otpCode), "000000");
+    await user.type(screen.getByLabelText(T.newPassword), "un-nouveau-solide");
+    await user.type(screen.getByLabelText(T.confirmPassword), "un-nouveau-solide{Enter}");
+    expect(await screen.findByRole("alert")).toHaveTextContent(T.otpInvalid);
   });
 
   it("mot de passe refusé par le serveur : message sous le nouveau mot de passe", async () => {

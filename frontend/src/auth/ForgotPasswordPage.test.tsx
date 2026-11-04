@@ -44,10 +44,27 @@ describe("ForgotPasswordPage", () => {
   });
 
   it.each([
+    [
+      "429",
+      () =>
+        HttpResponse.json(
+          { detail: "Trop de requêtes : réessayez dans 42 secondes.", errors: {} },
+          { status: 429 },
+        ),
+      T.forgotTooMany,
+    ],
+    ["500", () => HttpResponse.json({ detail: "Erreur." }, { status: 500 }), fr.errors.generic],
+  ])("réponse %s : message neutre, sans confirmation", async (_status, respond, message) => {
+    server.use(http.post(`${AUTH_URL}/password/forgot/`, respond));
+    await demander("agent@onea.bf");
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(screen.queryByText(T.forgotSent)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(T.identifiant)).toHaveValue("agent@onea.bf");
+  });
+
+  it.each([
     ["202", () => HttpResponse.json({ detail: "x" }, { status: 202 })],
-    ["429", () => HttpResponse.json({ detail: "Trop de requêtes.", errors: {} }, { status: 429 })],
     ["400", () => HttpResponse.json({ detail: "Données invalides.", errors: {} }, { status: 400 })],
-    ["500", () => HttpResponse.json({}, { status: 500 })],
   ])("réponse %s : toujours la même confirmation", async (_status, respond) => {
     server.use(http.post(`${AUTH_URL}/password/forgot/`, respond));
     await demander("inconnu");
