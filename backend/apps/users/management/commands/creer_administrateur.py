@@ -12,7 +12,7 @@ one (reactivate it in the application first) and an identifier matching several 
 
 from typing import Any
 
-from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.contrib.auth.validators import ASCIIUsernameValidator
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.core.validators import validate_email
@@ -40,13 +40,15 @@ from apps.users.services import (
 ACTION_AMORCAGE = "amorcage_administrateur"
 COURRIEL_REQUIS = "La création d'un administrateur exige --courriel ADRESSE."
 IDENTIFIANT_INVALIDE = (
-    "Identifiant invalide : 150 caractères au plus, lettres, chiffres et . + - _ uniquement."
+    "Identifiant invalide : 150 caractères au plus, lettres non accentuées, chiffres et "
+    ". + - _ uniquement."
 )
 IDENTIFIANT_AMBIGU = (
     "Plusieurs comptes correspondent à « {identifiant} » (casse ignorée) : "
     "corrigez les identifiants dans l'application avant de relancer la commande."
 )
-_validateur_identifiant = UnicodeUsernameValidator()
+# ASCII only, like the creation form and the import (AUTH-11): no look-alike usernames.
+_validateur_identifiant = ASCIIUsernameValidator()
 IDENTIFIANT_MAX = 150
 
 

@@ -106,6 +106,10 @@ def test_refuses_disabled_admin() -> None:
         ({"identifiant": "nom avec espace", "courriel": "a@onea.bf"}, "Identifiant invalide"),
         ({"identifiant": "x/y", "courriel": "a@onea.bf"}, "Identifiant invalide"),
         ({"identifiant": "x" * 151, "courriel": "a@onea.bf"}, "150 caractères"),
+        # ASCII only, like the creation form and the import (AUTH-11, final review M4).
+        ({"identifiant": "ɡadmin", "courriel": "a@onea.bf"}, "lettres non accentuées"),
+        ({"identifiant": "ｃhef", "courriel": "a@onea.bf"}, "lettres non accentuées"),
+        ({"identifiant": "élodie", "courriel": "a@onea.bf"}, "lettres non accentuées"),
     ],
 )
 def test_creation_refused_on_invalid_input(options: dict[str, str], fragment: str) -> None:
