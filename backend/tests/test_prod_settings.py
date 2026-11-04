@@ -170,6 +170,32 @@ def test_prod_refuse_un_backend_qui_ecrit_les_courriels_hors_smtp(url: str) -> N
     assert "EMAIL_URL" in result.stderr
 
 
+@pytest.mark.parametrize(
+    ("variable", "valeur"),
+    [
+        ("AUTH_REINITIALISATION_ECHECS_MAX", "0"),
+        ("AUTH_REINITIALISATION_ECHECS_MAX", "abc"),
+        ("AUTH_CODES_CONNEXION_MAX", "-1"),
+    ],
+)
+def test_prod_refuse_un_reglage_d_authentification_invalide(variable: str, valeur: str) -> None:
+    """N5 : un plafond nul, négatif ou illisible empêche le démarrage."""
+    result = load_prod({**PROD_ENV, variable: valeur})
+    assert result.returncode != 0
+    assert variable in result.stderr
+
+
+def test_prod_dummymail_avec_un_hote_reste_sans_envoi() -> None:
+    """N9 : un hôte dans dummymail:// ne fait pas croire à un envoi réel."""
+    code = (
+        PROBE + "\nfrom apps.users.auth_services import envoi_courriel_actif\n"
+        "print(envoi_courriel_actif())"
+    )
+    result = load_prod({**PROD_ENV, "EMAIL_URL": "dummymail://relais.onea.bf"}, code=code)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip().splitlines()[-1] == "False"
+
+
 def test_prod_accepte_dummymail_pour_fonctionner_sans_courriel() -> None:
     """Sans relais SMTP : rien n'est envoyé, les mots de passe sont affichés à l'opérateur."""
     code = (

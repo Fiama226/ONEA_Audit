@@ -316,9 +316,24 @@ REST_FRAMEWORK = {
     },
 }
 
+
+def _entier_positif(nom: str, defaut: int) -> int:
+    """A positive integer from the environment; anything else stops the start-up (N5)."""
+    try:
+        valeur = int(env(nom, default=str(defaut)))
+    except ValueError:
+        valeur = 0
+    if valeur < 1:
+        raise ImproperlyConfigured(f"{nom} doit être un entier strictement positif.")
+    return valeur
+
+
 # AUTH-02: wrong forgotten-password codes accepted per account over 24 h, whatever the code
 # (then no code is issued nor accepted until the window ends; the admin reset remains).
-AUTH_REINITIALISATION_ECHECS_MAX: int = env.int("AUTH_REINITIALISATION_ECHECS_MAX", default=15)
+AUTH_REINITIALISATION_ECHECS_MAX: int = _entier_positif("AUTH_REINITIALISATION_ECHECS_MAX", 15)
+# N6: login codes mailed per account over 15 min (whoever knows the password cannot flood
+# the owner's mailbox; past it, no code is issued until the window ends).
+AUTH_CODES_CONNEXION_MAX: int = _entier_positif("AUTH_CODES_CONNEXION_MAX", 10)
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "API Audit Interne ONEA",
@@ -417,6 +432,18 @@ TEMPLATES[0]["DIRS"] = [BASE_DIR / "templates"]
 
 # --- Celery (namespace CELERY; broker/backend are set from REDIS_URL above) ---
 CELERY_TIMEZONE = "Africa/Ouagadougou"
+# N2: the authentication emails have their own queue, served by a dedicated worker in
+# production (`worker-auth`, docker/compose.prod.yml) and by the main worker as a fallback:
+# a login code (10 min) must not wait behind a document conversion (up to 8 min).
+CELERY_FILE_AUTHENTIFICATION = "auth"
+CELERY_TASK_ROUTES = {
+    nom: {"queue": CELERY_FILE_AUTHENTIFICATION}
+    for nom in (
+        "users.envoyer_code_connexion",
+        "users.envoyer_code_reinitialisation",
+        "users.envoyer_mot_de_passe_temporaire",
+    )
+}
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"

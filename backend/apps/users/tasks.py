@@ -76,7 +76,13 @@ def envoyer_code_connexion(compte_id: int) -> bool:
     Nothing is issued for an account that no longer qualifies (login code turned off,
     disabled, locked, no address).
     """
-    from .auth_services import compte_utilisable, emettre_otp, envoi_courriel_actif
+    from .auth_services import (
+        compte_utilisable,
+        emettre_otp,
+        envoi_courriel_actif,
+        logger_securite,
+        quota_codes_connexion,
+    )
     from .courriels import envoyer_code
     from .models import ObjetOtp
 
@@ -84,6 +90,13 @@ def envoyer_code_connexion(compte_id: int) -> bool:
     if compte is None or not compte.email or not envoi_courriel_actif():
         return False
     if compte_utilisable(compte) is not None:
+        return False
+    if not quota_codes_connexion(compte.pk):
+        # N6: the password holder cannot flood the owner's mailbox (the last code mailed
+        # stays valid).
+        logger_securite.warning(
+            "Code de connexion non émis, plafond par compte atteint : compte=%s", compte.pk
+        )
         return False
     code = emettre_otp(compte, ObjetOtp.LOGIN)
     if not envoyer_code(compte, code, ObjetOtp.LOGIN):
@@ -93,12 +106,13 @@ def envoyer_code_connexion(compte_id: int) -> bool:
 
 
 @shared_task(name="users.envoyer_mot_de_passe_temporaire")  # type: ignore[untyped-decorator]
-def envoyer_mot_de_passe_temporaire(envoi_id: str) -> bool:
+def envoyer_mot_de_passe_temporaire(envoi_id: str, compte_id: int | None = None) -> bool:
     """Email a temporary password queued by `envois.mettre_en_file_mot_de_passe` (AUTH-01).
 
-    The argument is the id of the encrypted, short-lived row: the password itself never
-    travels through the broker. The row is read once and deleted.
+    The arguments are the id of the encrypted, short-lived row and the account id (for the
+    error log if the row is gone): the password itself never travels through the broker.
+    The row is read once and deleted.
     """
     from .envois import envoyer_mot_de_passe_en_attente
 
-    return envoyer_mot_de_passe_en_attente(envoi_id)
+    return envoyer_mot_de_passe_en_attente(envoi_id, compte_id)

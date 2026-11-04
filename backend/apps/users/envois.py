@@ -47,14 +47,60 @@ def _fernet() -> Fernet:
     return Fernet(base64.urlsafe_b64encode(cle))
 
 
+INSTRUCTION_OPERATEUR = "Réinitialisez le mot de passe avec affichage."
+
+
+def _perte(raison: str, compte_id: int | None, envoi_id: object) -> None:
+    """A temporary password that will never reach its owner (N3): an ERROR the operator
+    acts on. The account id and the row id only, never the password."""
+    logger_securite.error(
+        "Mot de passe temporaire perdu (%s) : compte=%s envoi=%s. %s",
+        raison,
+        compte_id if compte_id is not None else "inconnu",
+        envoi_id,
+        INSTRUCTION_OPERATEUR,
+    )
+
+
+def _dans_une_transaction() -> bool:
+    """True inside an atomic block of the caller (a test case's own block does not count,
+    like Django's check of durable blocks)."""
+    connexion = transaction.get_connection()
+    return any(not getattr(bloc, "_from_testcase", False) for bloc in connexion.atomic_blocks)
+
+
+def _deposer(envoi_id: str, compte_id: int) -> bool:
+    """Put the task on the broker; on failure drop the row. True = queued."""
+    from .tasks import envoyer_mot_de_passe_temporaire
+
+    try:
+        envoyer_mot_de_passe_temporaire.delay(envoi_id, compte_id)
+    except Exception as exc:  # noqa: BLE001 - broker down
+        EnvoiMotDePasse.objects.filter(pk=envoi_id).delete()
+        logger_securite.warning(
+            "Courriel de mot de passe temporaire non mis en file : compte=%s (%s)",
+            compte_id,
+            type(exc).__name__,
+        )
+        return False
+    return True
+
+
+def _deposer_apres_validation(envoi_id: str, compte_id: int) -> None:
+    """Run at the commit of the caller's transaction: the caller was already told
+    "queued", so a broker failure now loses the password (logged as such)."""
+    if not _deposer(envoi_id, compte_id):
+        _perte("file indisponible", compte_id, envoi_id)
+
+
 def mettre_en_file_mot_de_passe(user: User, mot_de_passe: str, nature: NatureEnvoi) -> bool:
     """Queue the email carrying this temporary password. True = queued (never shown then).
 
-    Call it after the commit that set the password. False when sending is not configured,
-    the account has no address, or the broker cannot be reached (no row is left behind).
+    False when sending is not configured, the account has no address, or the broker cannot
+    be reached (no row is left behind): the caller shows the password once. Inside a
+    transaction of the caller, the task is queued only at its commit, so that the worker
+    never looks for a row not committed yet (N3); True is then answered at once.
     """
-    from .tasks import envoyer_mot_de_passe_temporaire
-
     if not user.email or not envoi_courriel_actif():
         return False
     envoi = EnvoiMotDePasse.objects.create(
@@ -63,41 +109,42 @@ def mettre_en_file_mot_de_passe(user: User, mot_de_passe: str, nature: NatureEnv
         contenu=_fernet().encrypt(mot_de_passe.encode("utf-8")),
         expire_le=timezone.now() + DUREE_ENVOI_EN_ATTENTE,
     )
-    try:
-        envoyer_mot_de_passe_temporaire.delay(str(envoi.pk))
-    except Exception as exc:  # noqa: BLE001 - broker down: the password is shown instead
-        EnvoiMotDePasse.objects.filter(pk=envoi.pk).delete()
-        logger_securite.warning(
-            "Courriel de mot de passe temporaire non mis en file : compte=%s (%s)",
-            user.pk,
-            type(exc).__name__,
-        )
-        return False
-    return True
+    envoi_id, compte_id = str(envoi.pk), user.pk
+    if _dans_une_transaction():
+        transaction.on_commit(lambda: _deposer_apres_validation(envoi_id, compte_id))
+        return True
+    return _deposer(envoi_id, compte_id)
 
 
-def envoyer_mot_de_passe_en_attente(envoi_id: str) -> bool:
-    """Worker side: read the row once (deleted at once), then send. True = sent."""
+def envoyer_mot_de_passe_en_attente(envoi_id: str, compte_id: int | None = None) -> bool:
+    """Worker side: read the row once (deleted at once), then send. True = sent.
+
+    Every way the password can be lost logs an ERROR with the operator's instruction (N3):
+    row gone (purged, already read), expired, account disabled, row unreadable after a
+    SECRET_KEY change, send failure. A password already replaced is not a loss (info).
+    """
     try:
         cle = UUID(str(envoi_id))
     except ValueError:
+        _perte("identifiant invalide", compte_id, envoi_id)
         return False
     with transaction.atomic():
         envoi = EnvoiMotDePasse.objects.select_for_update().filter(pk=cle).first()
         if envoi is None:
+            _perte("en attente introuvable", compte_id, envoi_id)
             return False
         envoi.delete()
+    if envoi.expire_le <= timezone.now():
+        _perte("expiré avant l'envoi", envoi.user_id, envoi_id)
+        return False
     user = User.objects.filter(pk=envoi.user_id, is_active=True).first()
-    if envoi.expire_le <= timezone.now() or user is None:
-        logger_securite.warning(
-            "Courriel de mot de passe temporaire abandonné (expiré ou compte inactif) : compte=%s",
-            envoi.user_id,
-        )
+    if user is None:
+        _perte("compte désactivé", envoi.user_id, envoi_id)
         return False
     try:
         mot_de_passe = _fernet().decrypt(bytes(envoi.contenu)).decode("utf-8")
     except InvalidToken:  # SECRET_KEY changed meanwhile
-        logger_securite.warning("Mot de passe en attente illisible : compte=%s", envoi.user_id)
+        _perte("illisible après un changement de SECRET_KEY", envoi.user_id, envoi_id)
         return False
     if not user.check_password(mot_de_passe):
         # Replaced (new reset) or already changed by its owner: never mail a stale password.
@@ -109,15 +156,10 @@ def envoyer_mot_de_passe_en_attente(envoi_id: str) -> bool:
     envoyer = (
         envoyer_bienvenue
         if envoi.nature == NatureEnvoi.BIENVENUE
-        else (envoyer_mot_de_passe_reinitialise)
+        else envoyer_mot_de_passe_reinitialise
     )
     if not envoyer(user, mot_de_passe):
-        logger_securite.error(
-            "Courriel de mot de passe temporaire NON envoyé : compte=%s nature=%s. "
-            "Réinitialisez le mot de passe avec affichage.",
-            user.pk,
-            envoi.nature,
-        )
+        _perte(f"envoi SMTP en échec, nature={envoi.nature}", user.pk, envoi_id)
         return False
     return True
 

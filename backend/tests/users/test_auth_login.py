@@ -494,14 +494,14 @@ def test_lock_set_during_code_check_refuses_and_keeps_lock(
 ) -> None:
     code = auth_services.emettre_otp(agent, "LOGIN")
     fin = timezone.now() + timedelta(minutes=15)
-    reel = auth_services.verifier_otp
+    reel = auth_services._verifier_otp
 
-    def pendant(compte: User, objet: str, saisi: str) -> bool:
-        ok = reel(compte, objet, saisi)
+    def pendant(compte: User, objet: str, saisi: str) -> auth_services.VerificationCode:
+        etat = reel(compte, objet, saisi)
         User.objects.filter(pk=agent.pk).update(verrouille_jusqu_a=fin)
-        return ok
+        return etat
 
-    monkeypatch.setattr(auth_services, "verifier_otp", pendant)
+    monkeypatch.setattr(auth_services, "_verifier_otp", pendant)
     assert auth_services.authentifier_code(agent.pk, code).etape is None
     agent.refresh_from_db()
     assert agent.verrouille_jusqu_a == fin

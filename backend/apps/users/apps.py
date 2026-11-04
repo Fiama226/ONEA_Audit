@@ -22,6 +22,8 @@ class UsersConfig(AppConfig):
                 "echecs_reinitialisation_depuis",
                 "codes_reinitialisation_emis",
                 "codes_reinitialisation_depuis",
+                "codes_connexion_emis",
+                "codes_connexion_depuis",
             ],
         )
         auditlog.register(DelegationGestionComptes)

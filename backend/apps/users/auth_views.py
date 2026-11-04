@@ -116,7 +116,8 @@ class ConnexionView(_CsrfObligatoireMixin, APIView):
             adresse=adresse_client(request),
         )
         if resultat.etape is None or resultat.user is None:
-            EchecsConnexionParIpThrottle().enregistrer_echec(request)
+            if resultat.secret_faux:  # never the refusal of a right secret (N1)
+                EchecsConnexionParIpThrottle().enregistrer_echec(request)
             raise AuthenticationFailed(ECHEC_CONNEXION)
         user = resultat.user
         if resultat.etape is Etape.OTP:
@@ -163,7 +164,8 @@ class ConnexionCodeView(_CsrfObligatoireMixin, APIView):
             compte_id, serializer.validated_data["code"], adresse=adresse_client(request)
         )
         if resultat.etape is None or resultat.user is None:
-            EchecsConnexionParIpThrottle().enregistrer_echec(request)
+            if resultat.secret_faux:  # never the refusal of a right secret (N1)
+                EchecsConnexionParIpThrottle().enregistrer_echec(request)
             raise AuthenticationFailed(CODE_INVALIDE)
         _ouvrir_session(request, resultat.user)
         return Response(_etat(resultat.etape, resultat.user))
@@ -270,7 +272,7 @@ class ReinitialisationView(_CsrfObligatoireMixin, APIView):
         serializer.is_valid(raise_exception=True)
         donnees = serializer.validated_data
         try:
-            compte = auth_services.reinitialiser_mot_de_passe(
+            compte, secret_faux = auth_services.reinitialiser_mot_de_passe_detail(
                 donnees["identifiant"],
                 donnees["code"],
                 donnees["nouveau_mot_de_passe"],
@@ -279,7 +281,8 @@ class ReinitialisationView(_CsrfObligatoireMixin, APIView):
         except DjangoValidationError as exc:
             raise _erreurs_mot_de_passe("nouveau_mot_de_passe", exc) from None
         if compte is None:
-            EchecsReinitialisationParIpThrottle().enregistrer_echec(request)
+            if secret_faux:  # not a blocked account nor a replaced code (N1)
+                EchecsReinitialisationParIpThrottle().enregistrer_echec(request)
             raise CodeRefuse
         return Response(status=204)
 

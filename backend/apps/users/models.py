@@ -65,6 +65,9 @@ class User(AbstractUser):
     echecs_reinitialisation_depuis = models.DateTimeField(null=True, blank=True)
     codes_reinitialisation_emis = models.PositiveIntegerField(default=0)
     codes_reinitialisation_depuis = models.DateTimeField(null=True, blank=True)
+    # Login codes mailed over a 15 min window (N6).
+    codes_connexion_emis = models.PositiveIntegerField(default=0)
+    codes_connexion_depuis = models.DateTimeField(null=True, blank=True)
 
     class Meta(AbstractUser.Meta):
         constraints = [
@@ -112,6 +115,9 @@ class CodeOtp(models.Model):
     expire_le = models.DateTimeField()
     essais = models.PositiveSmallIntegerField(default=0)
     utilise_le = models.DateTimeField(null=True, blank=True)
+    # Set (with `utilise_le`) when a newer code replaced this one before it expired: typing it
+    # is refused but is not a wrong attempt (two logins in a row, two reset requests: N6).
+    remplace_le = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -29,7 +29,7 @@ class ConnexionAdminForm(AdminAuthenticationForm):
             adresse = adresse_client(self.request) if self.request is not None else None
             resultat = authentifier(identifiant, mot_de_passe, adresse=adresse)
             if resultat.etape is None or resultat.user is None:
-                if self.request is not None:
+                if self.request is not None and resultat.secret_faux:
                     EchecsConnexionParIpThrottle().enregistrer_echec(self.request)
                 raise self.get_invalid_login_error()
             if resultat.etape is not Etape.OK:

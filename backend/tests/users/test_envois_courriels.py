@@ -159,7 +159,7 @@ def test_creation_queues_the_welcome_without_the_password(
     assert r.json()["courriel_envoye"] is True and r.json()["mot_de_passe_temporaire"] is None
     assert mail.outbox == []
     file_mot_de_passe.assert_called_once()
-    (envoi_id,) = file_mot_de_passe.call_args.args
+    envoi_id = file_mot_de_passe.call_args.args[0]
     envoi = EnvoiMotDePasse.objects.get(pk=envoi_id)
     compte = User.objects.get(username="fatim")
     assert envoi.user_id == compte.pk and envoi.nature == NatureEnvoi.BIENVENUE
@@ -187,7 +187,7 @@ def test_reset_by_admin_queues_the_new_password(
     r = admin_client.post(f"{BASE}{agent.pk}/reset-password/", {}, format="json")
     assert r.status_code == 200
     assert r.json()["courriel_envoye"] is True and r.json()["mot_de_passe_temporaire"] is None
-    (envoi_id,) = file_mot_de_passe.call_args.args
+    envoi_id = file_mot_de_passe.call_args.args[0]
     assert EnvoiMotDePasse.objects.get(pk=envoi_id).nature == NatureEnvoi.REINITIALISATION
     assert mail.outbox == []
     with _comme_le_worker():
@@ -232,7 +232,7 @@ def test_worker_never_sends_a_password_that_is_no_longer_current(
     from apps.users import services
 
     services.reinitialiser_mot_de_passe(agent, par=admin)
-    (envoi_id,) = file_mot_de_passe.call_args.args
+    envoi_id = file_mot_de_passe.call_args.args[0]
     agent.set_password("Un-autre-mot-de-passe-2026")
     agent.save()
     assert tasks.envoyer_mot_de_passe_temporaire(envoi_id) is False
@@ -244,7 +244,7 @@ def test_worker_drops_an_expired_row(admin: User, file_mot_de_passe: mock.MagicM
     from apps.users import services
 
     services.reinitialiser_mot_de_passe(agent, par=admin)
-    (envoi_id,) = file_mot_de_passe.call_args.args
+    envoi_id = file_mot_de_passe.call_args.args[0]
     EnvoiMotDePasse.objects.update(expire_le=timezone.now() - timedelta(seconds=1))
     assert tasks.envoyer_mot_de_passe_temporaire(envoi_id) is False
     assert mail.outbox == [] and not EnvoiMotDePasse.objects.exists()
@@ -258,7 +258,7 @@ def test_worker_send_failure_is_logged_and_the_row_is_gone(
 
     mdp, envoye = services.reinitialiser_mot_de_passe(agent, par=admin)
     assert (mdp, envoye) == ("", True)
-    (envoi_id,) = file_mot_de_passe.call_args.args
+    envoi_id = file_mot_de_passe.call_args.args[0]
     with mock.patch("apps.users.courriels.send_mail", side_effect=OSError("smtp down")):
         assert tasks.envoyer_mot_de_passe_temporaire(envoi_id) is False
     assert not EnvoiMotDePasse.objects.exists()
@@ -295,7 +295,7 @@ def test_import_queues_one_task_per_address_and_files_the_rest(
         envoyer_courriel=True,
     )
     assert file_mot_de_passe.call_count == 1
-    (envoi_id,) = file_mot_de_passe.call_args.args
+    envoi_id = file_mot_de_passe.call_args.args[0]
     assert EnvoiMotDePasse.objects.get(pk=envoi_id).user.username == "awa"
     assert rapport.fichier_mots_de_passe_id is not None
     texte = lire_fichier_mots_de_passe(rapport.fichier_mots_de_passe_id, par=admin)

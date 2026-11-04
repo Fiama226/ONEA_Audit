@@ -16,7 +16,7 @@
 #   web      internal, fixed subnet ONEA_SUBNET_WEB: nginx (fixed address ONEA_NGINX_IP), web,
 #            worker. The only client address web/gunicorn trusts is nginx's.
 #   front    internal: nginx, frontend
-#   mail-out standard: worker only (SMTP egress; web has no route out)
+#   mail-out standard: worker and worker-auth only (SMTP egress; web has no route out)
 #   backend  internal: web, worker, beat, migrate, db, redis, meilisearch, gotenberg
 #   av       internal: clamav, web, worker (clamd 3310 is reachable from these three only)
 #   av-out   standard: clamav only (freshclam signature update; clamd itself accepts no one there)
@@ -76,6 +76,10 @@ x-backend-env: &backend-env
   THROTTLE_RATE_ECHECS_REINITIALISATION: ${THROTTLE_RATE_ECHECS_REINITIALISATION:-30/hour}
   THROTTLE_RATE_CHANGEMENT_MOT_DE_PASSE: ${THROTTLE_RATE_CHANGEMENT_MOT_DE_PASSE:-10/min}
   THROTTLE_RATE_MOT_DE_PASSE_OUBLIE: ${THROTTLE_RATE_MOT_DE_PASSE_OUBLIE:-5/hour}
+  # Per-account caps (database), positive integers: wrong reset codes per 24 h, login codes
+  # mailed per 15 min. A wrong value stops the start-up.
+  AUTH_REINITIALISATION_ECHECS_MAX: ${AUTH_REINITIALISATION_ECHECS_MAX:-15}
+  AUTH_CODES_CONNEXION_MAX: ${AUTH_CODES_CONNEXION_MAX:-10}
   THROTTLE_RATE_GESTION_COMPTES: ${THROTTLE_RATE_GESTION_COMPTES:-30/hour}
   # Base of the links in reminder e-mails (https:// required by prod.py) and the daily reminder switch.
   PLATEFORME_URL: https://${PUBLIC_HOST:?PUBLIC_HOST is required}
@@ -155,7 +159,9 @@ services:
   worker:
     <<: *hardening
     image: onea-backend:${APP_VERSION:?APP_VERSION is required (e.g. 1.0.0)}
-    command: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=2"]
+    # Serves the default queue and, as a fallback, `auth` (the authentication emails, see
+    # worker-auth). Fair dispatch, one message reserved per process.
+    command: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=2", "-Q", "celery,auth", "-O", "fair", "--prefetch-multiplier", "1"]
     environment:
       <<: *backend-env
       # Only the worker reaches the SMTP relay (mail-out). Empty file = password of EMAIL_URL, if any.
@@ -180,6 +186,31 @@ services:
         condition: service_completed_successfully
     # mail-out: the only service allowed to reach the organisation's SMTP relay.
     networks: [backend, web, mail-out, av]
+
+  # Authentication emails only (queue `auth`: login code, reset code, temporary passwords).
+  # A document conversion can hold the main worker 8 minutes; a login code lives 10. Small
+  # and alone on its queue, this worker sends them at once. It needs SECRET_KEY (it decrypts
+  # the queued temporary passwords), the database, redis and the SMTP relay: nothing else.
+  worker-auth:
+    <<: *hardening
+    image: onea-backend:${APP_VERSION:?APP_VERSION is required (e.g. 1.0.0)}
+    command: ["celery", "-A", "config", "worker", "-l", "info", "-n", "auth@%h", "-Q", "auth", "--concurrency", "1", "-O", "fair", "--prefetch-multiplier", "1"]
+    environment:
+      <<: *backend-env
+      EMAIL_PASSWORD_FILE: /run/secrets/email_password
+    secrets: [secret_key, secret_key_fallbacks, postgres_app_password, redis_password, meili_master_key, email_password]
+    volumes:
+      - *ca-volume
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d auth@$$HOSTNAME -t 5 >/dev/null 2>&1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [backend, mail-out]
 
   beat:
     <<: *hardening

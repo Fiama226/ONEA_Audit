@@ -219,6 +219,9 @@ def test_failure_cap_fails_open_when_the_cache_is_down(
         _taux(echecs_connexion="1/15min"),
         mock.patch.object(cache, "get", panne),
         mock.patch.object(cache, "set", panne),
+        mock.patch.object(cache, "get_many", panne),
+        mock.patch.object(cache, "add", panne),
+        mock.patch.object(cache, "incr", panne),
         caplog.at_level(logging.WARNING),
     ):
         for _ in range(3):

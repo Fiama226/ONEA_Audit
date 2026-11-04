@@ -38,6 +38,10 @@ CODES_REINITIALISATION_FENETRE = timedelta(hours=24)
 # Wrong RESET codes of an account, whatever the code, are capped over this window
 # (settings.AUTH_REINITIALISATION_ECHECS_MAX, 15 by default): AUTH-02.
 ECHECS_REINITIALISATION_FENETRE = timedelta(hours=24)
+# Login codes mailed per account over this window (settings.AUTH_CODES_CONNEXION_MAX): N6.
+CODES_CONNEXION_FENETRE = timedelta(minutes=15)
+# How many replaced, still unexpired codes a wrong code is compared with (N6).
+CODES_REMPLACES_VERIFIES = 3
 # Session key of a login waiting for its OTP step: the account id.
 CLE_OTP_COMPTE = "onea_otp_compte"
 
@@ -62,10 +66,25 @@ class Etape(StrEnum):
 
 @dataclass(frozen=True)
 class Resultat:
-    """Outcome of `authentifier`. `etape is None` means refused (the reason is never exposed)."""
+    """Outcome of `authentifier`. `etape is None` means refused (the reason is never exposed).
+
+    ``secret_faux`` (refusals only, never shown to the client): the password or code typed
+    was wrong, or the account unknown. The per-address failure caps count these refusals
+    only, never the refusal of a right secret (locked, disabled, expired account: N1).
+    """
 
     user: User | None = None
     etape: Etape | None = None
+    secret_faux: bool = False
+
+
+class VerificationCode(StrEnum):
+    """Outcome of a one-time code check."""
+
+    JUSTE = "JUSTE"
+    FAUX = "FAUX"  # wrong code against a live one: an attempt is spent
+    AUCUN = "AUCUN"  # no live code (none, expired, exhausted): nothing could match
+    REMPLACE = "REMPLACE"  # a code replaced by a newer one: refused, not a wrong attempt
 
 
 _REFUS = Resultat()
@@ -199,30 +218,48 @@ def authentifier(identifiant: str, mot_de_passe: str, *, adresse: str | None = N
     mot_de_passe_ok = _verifier_mot_de_passe(compte, mot_de_passe)
     if compte is None:
         _journaliser_refus("compte_inconnu", None, adresse)
-        return _REFUS
-    return _conclure(
+        return Resultat(secret_faux=True)
+    resultat = _conclure(
         compte.pk,
         mot_de_passe_ok,
         motif_echec="mot_de_passe",
         etape_de=etape_apres_mot_de_passe,
         adresse=adresse,
     )
+    if resultat.etape is None and not mot_de_passe_ok:
+        return Resultat(secret_faux=True)
+    return resultat
 
 
 def authentifier_code(user_id: int, code: str, *, adresse: str | None = None) -> Resultat:
-    """Second step of a login with OTP. A wrong code counts as a login failure."""
+    """Second step of a login with OTP. A wrong code counts as a login failure, except a
+    code replaced by a newer one (refused, but the agent only typed the older email's code)."""
     compte = User.objects.filter(pk=user_id).first()
     if compte is None:
         return _REFUS
     # An account already unusable burns no code attempt; _conclure re-checks in any case.
-    code_ok = compte_utilisable(compte) is None and verifier_otp(compte, ObjetOtp.LOGIN, code)
-    return _conclure(
+    if compte_utilisable(compte) is not None:
+        return _conclure(
+            compte.pk,
+            False,
+            motif_echec="code_otp",
+            etape_de=etape_apres_second_facteur,
+            adresse=adresse,
+        )
+    etat = _verifier_otp(compte, ObjetOtp.LOGIN, code)
+    if etat is VerificationCode.REMPLACE:
+        _journaliser_refus("code_remplace", compte, adresse)
+        return _REFUS
+    resultat = _conclure(
         compte.pk,
-        code_ok,
+        etat is VerificationCode.JUSTE,
         motif_echec="code_otp",
         etape_de=etape_apres_second_facteur,
         adresse=adresse,
     )
+    if resultat.etape is None and etat is not VerificationCode.JUSTE:
+        return Resultat(secret_faux=True)
+    return resultat
 
 
 # No look-alike characters (0/O, 1/l/I) since the password is read from an email.
@@ -233,15 +270,19 @@ _BACKENDS_SANS_SMTP = ("console", "locmem")
 def emettre_otp(user: User, objet: str) -> str:
     """Create a fresh code and return it in clear (only time it exists in clear).
 
-    Any existing active code for (user, objet) is dropped first, even an expired one, since
-    it would still occupy the unique active slot.
+    The active code of (user, objet) leaves the unique active slot first: deleted when
+    expired, else marked replaced (``remplace_le``), so that typing it later is refused
+    without counting as a wrong attempt (N6).
     """
     code = "".join(secrets.choice(string.digits) for _ in range(6))
     with transaction.atomic():
         # Lock the user row so concurrent issuances for the same user serialize
         # (otherwise both delete, both insert, and the unique active slot raises).
         User.objects.select_for_update(no_key=True).get(pk=user.pk)
-        CodeOtp.objects.filter(user=user, objet=objet, utilise_le__isnull=True).delete()
+        now = timezone.now()
+        en_attente = CodeOtp.objects.filter(user=user, objet=objet, utilise_le__isnull=True)
+        en_attente.filter(expire_le__lte=now).delete()
+        en_attente.update(utilise_le=now, remplace_le=now)
         CodeOtp.objects.create(
             user=user,
             objet=objet,
@@ -251,9 +292,18 @@ def emettre_otp(user: User, objet: str) -> str:
     return code
 
 
-def _verifier_otp(user: User, objet: str, code: str) -> tuple[bool, bool]:
-    """``(right, attempt_spent)``: an attempt is spent only on a live code (not expired, not
-    exhausted); every check costs one hash all the same."""
+def _code_remplace(user: User, objet: str, code: str, now: datetime) -> bool:
+    """The code matches one of the latest codes replaced by a newer one, still unexpired."""
+    remplaces = CodeOtp.objects.filter(
+        user=user, objet=objet, remplace_le__isnull=False, expire_le__gt=now
+    ).order_by("-created_at")[:CODES_REMPLACES_VERIFIES]
+    return any(check_password(code, ancien.code_hash) for ancien in remplaces)
+
+
+def _verifier_otp(user: User, objet: str, code: str) -> VerificationCode:
+    """Check the active code (consumed when right). An attempt is spent only on a live code
+    (not expired, not exhausted) and not by a replaced code; every check costs one hash at
+    least."""
     with transaction.atomic():
         actif = (
             CodeOtp.objects.select_for_update()
@@ -263,19 +313,22 @@ def _verifier_otp(user: User, objet: str, code: str) -> tuple[bool, bool]:
         now = timezone.now()
         if actif is None or actif.expire_le <= now or actif.essais >= OTP_ESSAIS_MAX:
             make_password(code)  # same work as a real check: "no pending code" is no oracle
-            return False, False
+            return VerificationCode.AUCUN
+        if check_password(code, actif.code_hash):
+            actif.essais += 1
+            actif.utilise_le = now
+            actif.save(update_fields=["essais", "utilise_le"])
+            return VerificationCode.JUSTE
+        if _code_remplace(user, objet, code, now):
+            return VerificationCode.REMPLACE
         actif.essais += 1
-        if not check_password(code, actif.code_hash):
-            actif.save(update_fields=["essais"])
-            return False, True
-        actif.utilise_le = now
-        actif.save(update_fields=["essais", "utilise_le"])
-        return True, True
+        actif.save(update_fields=["essais"])
+        return VerificationCode.FAUX
 
 
 def verifier_otp(user: User, objet: str, code: str) -> bool:
-    """Check and consume the active code. Every failed check counts as an attempt."""
-    return _verifier_otp(user, objet, code)[0]
+    """Check and consume the active code. A wrong code spends an attempt."""
+    return _verifier_otp(user, objet, code) is VerificationCode.JUSTE
 
 
 def generer_mot_de_passe_temporaire() -> str:
@@ -283,7 +336,13 @@ def generer_mot_de_passe_temporaire() -> str:
 
 
 def envoi_courriel_actif() -> bool:
-    """True when an email can actually go out (SMTP host set, or console backend in dev)."""
+    """True when an email can actually go out (SMTP host set, or console backend in dev).
+
+    Never with the dummy backend, whatever host its URL carries (N9): the temporary
+    passwords are then shown to the operator.
+    """
+    if "dummy" in settings.EMAIL_BACKEND:
+        return False
     if getattr(settings, "EMAIL_HOST", ""):
         return True
     return any(nom in settings.EMAIL_BACKEND for nom in _BACKENDS_SANS_SMTP)
@@ -301,20 +360,45 @@ def quota_codes_reinitialisation(compte_id: int) -> bool:
     twice the codes, and every new code brings 5 fresh guesses. Kept on the account row,
     under its lock (AUTH-02): a cache outage or eviction cannot lift it (fails closed).
     """
+    return _quota_compte(
+        compte_id,
+        "codes_reinitialisation",
+        CODES_REINITIALISATION_FENETRE,
+        CODES_REINITIALISATION_MAX,
+    )
+
+
+def quota_codes_connexion(compte_id: int) -> bool:
+    """Count one LOGIN code mailed to this account; False past the cap of the 15 min window.
+
+    Whoever knows the password can start as many logins as the address limits allow: the
+    owner's mailbox gets at most ``AUTH_CODES_CONNEXION_MAX`` codes per window (N6). In the
+    database, under the row lock: fails closed whatever the cache.
+    """
+    return _quota_compte(
+        compte_id,
+        "codes_connexion",
+        CODES_CONNEXION_FENETRE,
+        int(settings.AUTH_CODES_CONNEXION_MAX),
+    )
+
+
+def _quota_compte(compte_id: int, prefixe: str, fenetre: timedelta, maximum: int) -> bool:
+    """Count one event in the ``<prefixe>_emis`` / ``<prefixe>_depuis`` window of the
+    row-locked account; False (nothing counted) once ``maximum`` is reached."""
+    nombre, depuis = f"{prefixe}_emis", f"{prefixe}_depuis"
     with transaction.atomic():
         verrou = User.objects.select_for_update(no_key=True).filter(pk=compte_id).first()
         if verrou is None:
             return False
         now = timezone.now()
-        if not _fenetre_ouverte(
-            verrou.codes_reinitialisation_depuis, CODES_REINITIALISATION_FENETRE, now
-        ):
-            verrou.codes_reinitialisation_emis = 0
-            verrou.codes_reinitialisation_depuis = now
-        if verrou.codes_reinitialisation_emis >= CODES_REINITIALISATION_MAX:
+        if not _fenetre_ouverte(getattr(verrou, depuis), fenetre, now):
+            setattr(verrou, nombre, 0)
+            setattr(verrou, depuis, now)
+        if getattr(verrou, nombre) >= maximum:
             return False
-        verrou.codes_reinitialisation_emis += 1
-        verrou.save(update_fields=["codes_reinitialisation_emis", "codes_reinitialisation_depuis"])
+        setattr(verrou, nombre, getattr(verrou, nombre) + 1)
+        verrou.save(update_fields=[nombre, depuis])
         return True
 
 
@@ -411,38 +495,55 @@ def reinitialiser_mot_de_passe(
 ) -> User | None:
     """Reset a forgotten password with the RESET code. None = refused (reason never exposed).
 
+    See `reinitialiser_mot_de_passe_detail`.
+    """
+    return reinitialiser_mot_de_passe_detail(identifiant, code, nouveau, adresse=adresse)[0]
+
+
+def reinitialiser_mot_de_passe_detail(
+    identifiant: str, code: str, nouveau: str, *, adresse: str | None = None
+) -> tuple[User | None, bool]:
+    """Reset a forgotten password with the RESET code: ``(account or None, secret_faux)``.
+
     Refused alike: unknown or ambiguous identifier, disabled account, no code, wrong,
-    expired, used or exhausted code, and an account whose wrong codes reached the 24 h cap
-    (AUTH-02: no code is accepted then). Every refusal costs exactly one hash. A wrong code
-    checked against a live one counts towards that cap; a success clears the count. The new password
-    is checked first without the account (raises ``ValidationError``: the answer cannot
-    depend on the account), then against the account once the code is right; a password
-    refused there rolls the code check back, so the code is not burnt. On success all the
-    sessions of the account end and the login lock, failure count and forced change go.
+    expired, used, exhausted or replaced code, and an account whose wrong codes reached the
+    24 h cap (AUTH-02: no code is accepted then). Every refusal costs one hash at least. A
+    wrong code checked against a live one counts towards that cap; a success clears the
+    count. ``secret_faux`` (never shown to the client) tells the per-address failure cap
+    whether the refusal came from a wrong code or an unknown account (N1).
+
+    The new password is checked first without the account (raises ``ValidationError``: the
+    answer cannot depend on the account), then against the account once the code is right;
+    a password refused there rolls the code check back, so the code is not burnt. On
+    success all the sessions of the account end and the login lock, failure count and
+    forced change go.
     """
     validate_password(nouveau)
     compte = trouver_compte(identifiant)
     if compte is None:
         make_password(code)
         _journaliser_reinitialisation_refusee("compte_inconnu", None, adresse)
-        return None
+        return None, True
     with transaction.atomic():
         verrou = User.objects.select_for_update(no_key=True).filter(pk=compte.pk).first()
         if verrou is None or not verrou.is_active:
             make_password(code)
             _journaliser_reinitialisation_refusee("desactive", compte, adresse)
-            return None
+            return None, False
         now = timezone.now()
         if reinitialisation_bloquee(verrou, now):
             make_password(code)
             _journaliser_reinitialisation_refusee("bloque", verrou, adresse)
-            return None
-        code_ok, essai = _verifier_otp(verrou, ObjetOtp.RESET, code)
-        if not code_ok:
-            if essai:
+            return None, False
+        etat = _verifier_otp(verrou, ObjetOtp.RESET, code)
+        if etat is VerificationCode.REMPLACE:
+            _journaliser_reinitialisation_refusee("code_remplace", verrou, adresse)
+            return None, False
+        if etat is not VerificationCode.JUSTE:
+            if etat is VerificationCode.FAUX:
                 _compter_echec_reinitialisation(verrou, now, adresse)
             _journaliser_reinitialisation_refusee("code", verrou, adresse)
-            return None
+            return None, True
         validate_password(nouveau, verrou)  # raising rolls back the code consumption
         _appliquer_mot_de_passe(verrou, nouveau)
         if verrou.echecs_reinitialisation or verrou.echecs_reinitialisation_depuis:
@@ -456,7 +557,7 @@ def reinitialiser_mot_de_passe(
         adresse or "inconnue",
         sessions,
     )
-    return verrou
+    return verrou, False
 
 
 def _journaliser_reinitialisation_refusee(

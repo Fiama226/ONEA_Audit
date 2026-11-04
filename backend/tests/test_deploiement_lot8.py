@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 from django.conf import settings
@@ -140,9 +140,9 @@ def test_courriels_d_authentification_ont_un_chemin_vers_le_relais_smtp() -> Non
     # web lui-même reste sans route sortante et sans mot de passe SMTP.
     assert all((reseaux[n] or {}).get("internal") for n in _reseaux(services, "web"))
     assert "email_password" not in services["web"]["secrets"]
-    # Le worker consomme la file par défaut, celle des tâches d'envoi.
+    # Les tâches d'envoi passent par la file `auth` (N2) : le worker la sert aussi.
     commande = services["worker"]["command"]
-    assert "worker" in commande and "-Q" not in commande and "--queues" not in commande
+    assert "worker" in commande and commande[commande.index("-Q") + 1] == "celery,auth"
 
 
 def test_le_code_web_n_envoie_aucun_courriel_d_authentification_lui_meme() -> None:
@@ -156,3 +156,75 @@ def test_le_code_web_n_envoie_aucun_courriel_d_authentification_lui_meme() -> No
 
     noms = {t.name for t in (tasks.envoyer_code_connexion, tasks.envoyer_mot_de_passe_temporaire)}
     assert noms == {"users.envoyer_code_connexion", "users.envoyer_mot_de_passe_temporaire"}
+
+
+# --- N2 / N5 : file dédiée aux courriels d'authentification, réglages transmis ---
+
+
+def _option(commande: list[str], nom: str) -> str:
+    return commande[commande.index(nom) + 1]
+
+
+def test_un_worker_dedie_sert_la_file_auth_sans_attendre_les_documents() -> None:
+    """Un PDF peut occuper le worker principal 8 min : le code de connexion (valable 10 min)
+    et les mots de passe en attente (1 h) passent par un worker qui ne sert que `auth`."""
+    compose = yaml.safe_load(COMPOSE_PROD)
+    services, reseaux = compose["services"], compose["networks"]
+    dedie = services["worker-auth"]
+    commande = dedie["command"]
+    assert commande[:4] == ["celery", "-A", "config", "worker"]
+    assert _option(commande, "-Q") == "auth"
+    assert _option(commande, "-O") == "fair"
+    assert _option(commande, "--prefetch-multiplier") == "1"
+    assert _option(commande, "--concurrency") == "1"
+    assert _reseaux(services, "worker-auth") == {"backend", "mail-out"}
+    assert not (reseaux["mail-out"] or {}).get("internal", False)
+    # La clé SECRET_KEY déchiffre les mots de passe en attente ; le secret SMTP pour le relais.
+    assert {"secret_key", "secret_key_fallbacks", "email_password"} <= set(dedie["secrets"])
+    assert dedie["environment"]["EMAIL_PASSWORD_FILE"] == "/run/secrets/email_password"  # noqa: S105
+    assert dedie["environment"]["REDIS_URL"] == services["web"]["environment"]["REDIS_URL"]
+    assert "healthcheck" in dedie
+    # Le worker principal sert aussi `auth` (secours), en distribution équitable.
+    principal = services["worker"]["command"]
+    assert _option(principal, "-O") == "fair"
+    assert _option(principal, "--prefetch-multiplier") == "1"
+
+
+def test_le_worker_de_dev_sert_aussi_la_file_auth() -> None:
+    dev = yaml.safe_load((RACINE / "docker" / "compose.dev.yml").read_text(encoding="utf-8"))
+    commande = dev["services"]["worker"]["command"]
+    assert _option(commande, "-Q") == "celery,auth"
+
+
+def test_routes_celery_des_courriels_d_authentification() -> None:
+    routes = settings.CELERY_TASK_ROUTES
+    assert {routes[n]["queue"] for n in routes if n.startswith("users.envoyer_")} == {"auth"}
+
+
+REGLAGES_AUTH = (
+    "AUTH_REINITIALISATION_ECHECS_MAX",
+    "AUTH_CODES_CONNEXION_MAX",
+)
+
+
+def test_reglages_d_authentification_transmis_et_documentes() -> None:
+    compose = yaml.safe_load(COMPOSE_PROD)
+    env = compose["x-backend-env"]
+    modele = (RACINE / ".env.prod.example").read_text(encoding="utf-8")
+    for nom in REGLAGES_AUTH:
+        assert nom in env, nom
+        assert nom in modele, nom
+    taux = cast(dict[str, str], settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"])
+    for portee in taux:
+        variable = f"THROTTLE_RATE_{portee.upper()}"
+        if portee in {
+            "connexion",
+            "connexion_code",
+            "mot_de_passe_oublie",
+            "mot_de_passe_oublie_ip",
+            "reinitialisation",
+            "changement_mot_de_passe",
+            "echecs_connexion",
+            "echecs_reinitialisation",
+        }:
+            assert variable in modele, variable

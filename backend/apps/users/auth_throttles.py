@@ -163,45 +163,80 @@ class MotDePasseOublieParIdentifiantThrottle(_LimiteAuth):
 
 class _EchecsParIp(_LimiteAuth):
     """Counts failures only (``enregistrer_echec``). ``allow_request`` adds nothing: it
-    refuses once the address reached the cap, before any work is done."""
+    refuses once the address reached the cap, before any work is done.
+
+    The window is cut into ``TRANCHES`` slices, one cache counter each, increased with an
+    atomic ``incr`` (N4: no read-modify-write of a list, so concurrent failures are never
+    lost); the count is the sum of the slices of the window. Reaching the cap logs one
+    warning per address and window (N8).
+    """
+
+    TRANCHES = 10
+
+    def _cles(self, request: Any, maintenant: float) -> tuple[list[str], float, float]:
+        """Keys of the window's slices (oldest first), the slice length and the window."""
+        assert self.rate is not None  # noqa: S101
+        _, duree = analyser_taux(self.rate)
+        tranche = duree / self.TRANCHES
+        courante = int(maintenant // tranche)
+        base = self.get_cache_key(request, None)
+        cles = [f"{base}_{n}" for n in range(courante - self.TRANCHES + 1, courante + 1)]
+        return cles, tranche, float(duree)
+
+    def nombre_echecs(self, request: Any) -> int:
+        """Failures of the address in the current window."""
+        if self.rate is None:
+            return 0
+        cles, _, _ = self._cles(request, self.timer())
+        return sum(int(v) for v in self.cache.get_many(cles).values())
 
     def allow_request(self, request: Any, view: Any) -> bool:
         if self.rate is None:
             return True
-        self.key = self.get_cache_key(request, view)
-        if self.key is None:
-            return True
+        nombre, _ = analyser_taux(self.rate)
+        maintenant = self.timer()
+        cles, tranche, duree = self._cles(request, maintenant)
         try:
-            self.history = self.cache.get(self.key, [])
+            valeurs = self.cache.get_many(cles)
         except (RedisError, OSError) as exc:
             logger.warning(
                 "Plafond d'échecs par adresse désactivé : cache indisponible (%s).",
                 type(exc).__name__,
             )
             return True
-        self.now = self.timer()
-        nombre, duree = analyser_taux(self.rate)
-        while self.history and self.history[-1] <= self.now - duree:
-            self.history.pop()
-        if len(self.history) >= nombre:
+        if sum(int(v) for v in valeurs.values()) < nombre:
+            return True
+        # Retry-After: until the oldest slice that holds failures leaves the window.
+        premiere = next(i for i, cle in enumerate(cles) if valeurs.get(cle))
+        indice = int(maintenant // tranche) - self.TRANCHES + 1 + premiere
+        self._attente = max(1.0, (indice + self.TRANCHES) * tranche - maintenant)
+        try:
+            cle_avis = f"{self.get_cache_key(request, None)}_journalise"
+            premier_avis = self.cache.add(cle_avis, 1, int(duree))
+        except (RedisError, OSError):
+            premier_avis = True
+        if premier_avis:
             logger_securite.warning(
                 "Plafond d'échecs atteint pour une adresse : portee=%s adresse=%s",
                 self.scope,
                 cle_adresse(request),
             )
-            return self.throttle_failure()
-        return True
+        return False
+
+    def wait(self) -> float | None:
+        return getattr(self, "_attente", None)
 
     def enregistrer_echec(self, request: Any) -> None:
-        cle = self.get_cache_key(request, None)
-        if self.rate is None or cle is None:
+        if self.rate is None or self.get_cache_key(request, None) is None:
             return
-        _, duree = analyser_taux(self.rate)
+        cles, tranche, duree = self._cles(request, self.timer())
+        cle = cles[-1]
         try:
-            maintenant = self.timer()
-            historique = [h for h in self.cache.get(cle, []) if h > maintenant - duree]
-            historique.insert(0, maintenant)
-            self.cache.set(cle, historique, duree)
+            self.cache.add(cle, 0, int(duree + tranche) + 1)
+            try:
+                self.cache.incr(cle)
+            except ValueError:  # expired between add and incr: a fresh slice
+                self.cache.set(cle, 1, int(duree + tranche) + 1)
         except (RedisError, OSError) as exc:
             logger.warning(
                 "Échec non compté par adresse : cache indisponible (%s).", type(exc).__name__
