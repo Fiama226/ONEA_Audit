@@ -1,13 +1,16 @@
 """API d'administration des comptes : aucune logique métier, tout passe par les services."""
 
 from typing import Any, ClassVar, cast
+from uuid import UUID
 
 from django.db.models import OuterRef, QuerySet, Subquery
+from django.http import Http404, HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import mixins, serializers
 from rest_framework.decorators import action
+from rest_framework.negotiation import BaseContentNegotiation
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
@@ -88,6 +91,15 @@ def _erreur_annuaire(exc: KeycloakAdminError) -> Response:
 
 class _RechercheSerializer(serializers.Serializer[dict[str, str]]):
     q = serializers.CharField(min_length=Q_MIN, max_length=Q_MAX)
+
+
+class _SansNegociation(BaseContentNegotiation):
+    """A file downloads whatever the `Accept` header says (never a 406)."""
+
+    def select_renderer(  # type: ignore[no-untyped-def]
+        self, request, renderers, format_suffix=None
+    ):
+        return renderers[0], renderers[0].media_type
 
 
 @extend_schema_view(
@@ -425,6 +437,12 @@ class UserAccountViewSet(
     @extend_schema(
         tags=[TAG],
         summary="Importer des comptes depuis un fichier CSV",
+        description=(
+            "Crée des comptes locaux (rôle obligatoire, ADMIN exclu), chacun avec un mot de "
+            "passe temporaire (72 h, à changer à la première connexion), envoyé par courriel "
+            "de bienvenue si l'envoi est actif. Les mots de passe qui ne partent pas vont dans "
+            "un fichier à télécharger une seule fois (`fichier_mots_de_passe_id`)."
+        ),
         request={"multipart/form-data": ImportCsvSerializer},
         responses={200: RapportImportSerializer, **ERROR_400, **ERROR_RESPONSES, **ERROR_429},
     )
@@ -437,8 +455,45 @@ class UserAccountViewSet(
         contenu = fichier.read(provisioning.CSV_MAX_BYTES + 1)
         try:
             rapport = provisioning.importer_csv(
-                contenu, by=self.acteur, dry_run=serializer.validated_data["dry_run"]
+                contenu,
+                by=self.acteur,
+                dry_run=serializer.validated_data["dry_run"],
+                envoyer_courriel=serializer.validated_data["envoyer_courriel"],
             )
         except FichierImportInvalide as exc:
             raise serializers.ValidationError({"fichier": [exc.message]}) from exc
         return Response(RapportImportSerializer(rapport).data)
+
+    @extend_schema(
+        tags=[TAG],
+        summary="Télécharger le fichier des mots de passe d'un import (une seule fois)",
+        description=(
+            "Fichier CSV des mots de passe temporaires qu'aucun courriel n'a portés. "
+            "Réservé à l'auteur de l'import ; détruit dès ce téléchargement, et au plus "
+            "tard 24 h après l'import (404 ensuite)."
+        ),
+        responses={
+            (200, "text/csv"): OpenApiTypes.BINARY,
+            **ERROR_RESPONSES,
+            **ERROR_404,
+        },
+    )
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path=r"import-passwords/(?P<fichier_id>[0-9a-fA-F-]{36})",
+        filter_backends=[],
+        pagination_class=None,
+        content_negotiation_class=_SansNegociation,
+    )
+    def import_passwords(self, request: Request, fichier_id: str) -> HttpResponse:
+        try:
+            identifiant = UUID(fichier_id)
+        except ValueError:
+            raise Http404 from None
+        texte = provisioning.lire_fichier_mots_de_passe(identifiant, par=self.acteur)
+        reponse = HttpResponse(texte.encode("utf-8"), content_type="text/csv; charset=utf-8")
+        reponse["Content-Disposition"] = 'attachment; filename="mots-de-passe-temporaires.csv"'
+        reponse["Cache-Control"] = "no-store"
+        reponse["X-Content-Type-Options"] = "nosniff"
+        return reponse

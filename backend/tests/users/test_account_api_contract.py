@@ -25,6 +25,7 @@ def test_contrat_compte_utilisateur(
         (ENTETE + "kabore.l;l.kabore@onea.bf;Landry;Kabore;M-042;;Auditeur;AUDITEUR\n").encode(),
         by=admin,
         dry_run=False,
+        envoyer_courriel=False,
     )
     cible = User.objects.get(username="kabore.l")
     cible.keycloak_id = fake_keycloak.add_user("kabore.l")
@@ -37,7 +38,7 @@ def test_contrat_compte_utilisateur(
     assert r.status_code == 200
     data = r.json()
     # Volatile values are normalised so that the contract is deterministic.
-    for cle in ("date_joined", "desactive_le"):
+    for cle in ("date_joined", "desactive_le", "mot_de_passe_expire_le"):
         assert data.pop(cle)
     assert data["keycloak_sync"].pop("derniere_tentative_le")
     attendu: dict[str, Any] = {
@@ -57,7 +58,7 @@ def test_contrat_compte_utilisateur(
         "first_name": "Landry",
         "last_name": "Kabore",
         "keycloak_lie": True,
-        "role_provisoire": True,
+        "role_provisoire": False,
         "premiere_connexion_le": None,
         "profil_gere_localement": True,
         "desactive_par": {
@@ -66,8 +67,7 @@ def test_contrat_compte_utilisateur(
             "nom_complet": admin.nom_complet,
         },
         "motif_desactivation": "Départ",
-        "doit_changer_mot_de_passe": False,
-        "mot_de_passe_expire_le": None,
+        "doit_changer_mot_de_passe": True,
         "verrouille_jusqu_a": None,
         "otp_connexion_actif": False,
         "keycloak_sync": {
@@ -108,9 +108,13 @@ def test_contrat_rapport_import(api_client: APIClient, admin: User) -> None:
             {
                 "ligne": 3,
                 "identifiant": "chef",
-                "motif": "Le rôle ADMIN ne s'attribue que dans l'annuaire (Keycloak).",
+                "motif": (
+                    "Le rôle ADMIN ne s'attribue pas par import : créez le compte, puis "
+                    "changez son rôle."
+                ),
             }
         ],
+        "fichier_mots_de_passe_id": None,
     }
 
 
@@ -142,6 +146,7 @@ def test_schema_expose_user_accounts_sans_collision() -> None:
         "/api/v1/user-accounts/directory-search/",
         "/api/v1/user-accounts/import-directory/",
         "/api/v1/user-accounts/import-csv/",
+        "/api/v1/user-accounts/import-passwords/{fichier_id}/",
     ):
         assert p in paths, p
     composants = schema["components"]["schemas"]

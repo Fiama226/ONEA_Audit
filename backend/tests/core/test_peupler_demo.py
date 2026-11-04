@@ -1,6 +1,7 @@
 """Commande `peupler_demo` : refus, volumes, déterminisme, exhaustivité et piste d'audit."""
 
 import importlib
+import re
 from collections.abc import Callable
 from io import StringIO
 from pathlib import Path
@@ -24,7 +25,8 @@ from apps.referentiel.models import (
     Risque,
     StatutCartographie,
 )
-from apps.users.models import User
+from apps.users.demo import COMPTES_TEST
+from apps.users.models import FichierMotsDePasse, Role, User
 from config.documents_settings import configuration_stockage
 from tests.factories import DirectionFactory
 
@@ -161,6 +163,24 @@ def test_peuplement_volumetrie_reduit(base_peuplee: str) -> None:
     assert all(version.taille_docx for version in versions)
     # Données fictives uniquement.
     assert not User.objects.exclude(email="").exclude(email__endswith="@example.org").exists()
+
+
+def test_six_demo_accounts_must_change_password(base_peuplee: str) -> None:
+    affiches = dict(re.findall(r"^\s+(\S+) : (\S+)$", base_peuplee, flags=re.MULTILINE))
+    assert set(affiches) == set(COMPTES_TEST)
+    assert len(set(affiches.values())) == 6
+    for identifiant in COMPTES_TEST:
+        compte = User.objects.get(username=identifiant)
+        assert compte.is_active and compte.doit_changer_mot_de_passe is True
+        assert compte.mot_de_passe_expire_le is not None
+        assert compte.check_password(affiches[identifiant])
+    assert User.objects.get(username="admin").role == Role.ADMIN
+    # The passwords are shown once: no stored copy is left behind.
+    assert not FichierMotsDePasse.objects.exists()
+    # The other demo accounts got a temporary password too, never displayed.
+    autres = User.objects.filter(is_active=True).exclude(username__in=COMPTES_TEST)
+    assert autres.exists()
+    assert all(c.doit_changer_mot_de_passe for c in autres)
 
 
 def test_une_mission_par_statut_atteignable_au_complet(base_peuplee: str) -> None:

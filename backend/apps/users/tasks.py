@@ -58,10 +58,12 @@ def synchroniser_comptes_keycloak(limit: int = 50) -> int:
 
 @shared_task(name="users.purger_codes")  # type: ignore[untyped-decorator]
 def purger_codes() -> int:
-    """Daily purge of one-time codes expired for more than 24 h."""
+    """Daily purge of the transient credentials: one-time codes expired for more than 24 h
+    and import password files past their 24 h (never downloaded). Returns the rows deleted."""
     from .auth_services import purger_codes_expires
+    from .provisioning import purger_fichiers_mots_de_passe
 
-    return purger_codes_expires()
+    return purger_codes_expires() + purger_fichiers_mots_de_passe()
 
 
 @shared_task(name="users.purger_sessions")  # type: ignore[untyped-decorator]

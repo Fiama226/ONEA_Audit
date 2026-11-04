@@ -1,12 +1,15 @@
+import csv
+import io
 from io import StringIO
 from pathlib import Path
 
 import pytest
+from django.core import mail
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
 from apps.users.keycloak_admin import KeycloakIndisponible
-from apps.users.models import Role, User
+from apps.users.models import FichierMotsDePasse, Role, User
 
 from ..conftest import FakeKeycloakAdmin
 from ..factories import make_user
@@ -43,8 +46,61 @@ def test_commande_fichier_trop_gros_refuse_avant_lecture(admin: User, tmp_path: 
 def test_commande_apply_csv(admin: User, tmp_path: Path) -> None:
     out = StringIO()
     call_command("import_accounts", csv=_csv(tmp_path), apply=True, by=admin.username, stdout=out)
-    assert User.objects.filter(username="cmd.user", origine="CSV").exists()
+    compte = User.objects.get(username="cmd.user", origine="CSV")
+    assert compte.doit_changer_mot_de_passe and compte.has_usable_password()
     assert "appliqué" in out.getvalue().lower()
+    assert len(mail.outbox) == 1 and mail.outbox[0].to == ["c@onea.bf"]
+    assert not FichierMotsDePasse.objects.exists()
+
+
+def test_commande_sans_courriel_indique_le_fichier(admin: User, tmp_path: Path) -> None:
+    out = StringIO()
+    call_command(
+        "import_accounts",
+        csv=_csv(tmp_path),
+        apply=True,
+        by=admin.username,
+        sans_courriel=True,
+        stdout=out,
+    )
+    fichier = FichierMotsDePasse.objects.get()
+    assert fichier.cree_par_id == admin.pk
+    assert f"/api/v1/user-accounts/import-passwords/{fichier.pk}/" in out.getvalue()
+    assert mail.outbox == []
+
+
+def test_commande_ecrit_le_fichier_local(admin: User, tmp_path: Path) -> None:
+    cible = tmp_path / "mdp.csv"
+    out = StringIO()
+    call_command(
+        "import_accounts",
+        csv=_csv(tmp_path),
+        apply=True,
+        by=admin.username,
+        sans_courriel=True,
+        fichier_mots_de_passe=str(cible),
+        stdout=out,
+    )
+    texte = cible.read_text(encoding="utf-8-sig")
+    ligne = next(csv.DictReader(io.StringIO(texte), delimiter=";"))
+    assert User.objects.get(username="cmd.user").check_password(ligne["mot_de_passe_temporaire"])
+    assert ligne["mot_de_passe_temporaire"] not in out.getvalue()
+    assert not FichierMotsDePasse.objects.exists()  # consumed: no second copy on the server
+
+
+def test_commande_fichier_local_existant_refuse_avant_import(admin: User, tmp_path: Path) -> None:
+    cible = tmp_path / "mdp.csv"
+    cible.write_text("ancien", encoding="utf-8")
+    with pytest.raises(CommandError, match="existe déjà"):
+        call_command(
+            "import_accounts",
+            csv=_csv(tmp_path),
+            apply=True,
+            by=admin.username,
+            fichier_mots_de_passe=str(cible),
+        )
+    assert cible.read_text(encoding="utf-8") == "ancien"
+    assert not User.objects.filter(username="cmd.user").exists()
 
 
 def test_commande_by_non_admin_refuse(admin: User, tmp_path: Path) -> None:
