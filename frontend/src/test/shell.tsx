@@ -17,6 +17,7 @@ export function meFor(role: Role, overrides: Partial<Me> = {}): Me {
     direction_code: "DAI",
     fonction: "Fonction",
     tutoriel: { version_vue: 1, termine_le: null },
+    otp_connexion_actif: false,
     ...overrides,
   };
 }
@@ -28,11 +29,14 @@ export function authValueFor(
   return {
     status: "authenticated",
     me: meFor(role),
+    etape: "OK",
     sessionExpired: false,
-    login: vi.fn().mockResolvedValue(undefined),
+    loggedOut: false,
+    login: vi.fn().mockResolvedValue("OK"),
+    verifyOtp: vi.fn().mockResolvedValue("OK"),
+    changePassword: vi.fn().mockResolvedValue(undefined),
     logout,
     retry: vi.fn().mockResolvedValue(undefined),
-    completeLogin: vi.fn().mockResolvedValue("/"),
   };
 }
 

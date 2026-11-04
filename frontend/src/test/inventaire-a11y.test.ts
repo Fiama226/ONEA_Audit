@@ -5,6 +5,14 @@ import { DIALOGUES, ROUTES } from "../../e2e/inventaire";
 
 const lire = (chemin: string) => readFileSync(resolve(process.cwd(), chemin), "utf8");
 const motifs = new Set(ROUTES.map((r) => r.motif));
+/** Connexion, mot de passe et erreur : hors du shell, couvertes par les tests de src/auth. */
+const PAGES_AUTHENTIFICATION = [
+  "/connexion",
+  "/mot-de-passe-oublie",
+  "/mot-de-passe/reinitialiser",
+  "/mot-de-passe/changer",
+  "/erreur",
+];
 
 /** Chemins `path:` d'un fichier de routes de fonctionnalité, préfixés ; `enfantsDe` = route parente portant des enfants. */
 function cheminsDe(fichier: string, prefixe: string, enfantsDe?: string): string[] {
@@ -38,7 +46,7 @@ describe("test_inventaire_complet", () => {
     const attendus = [
       ...[...lire("src/routes.tsx").matchAll(/path:\s*"(\/[^"*]*)"/g)]
         .map((m) => m[1] ?? "")
-        .filter((p) => !["/connexion", "/callback", "/erreur"].includes(p)),
+        .filter((p) => !PAGES_AUTHENTIFICATION.includes(p)),
       ...cheminsDe("src/features/missions/routes.tsx", "/missions", ":id"),
       ...cheminsDe("src/features/programmation/routes.tsx", "/programme-annuel"),
       ...cheminsDe("src/features/referentiel/routes.tsx", "/referentiel"),

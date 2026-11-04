@@ -1,18 +1,63 @@
 import { fr } from "@/i18n/fr";
 import { ApiError } from "./errors";
 
-type TokenProvider = () => string | null | undefined;
+/*
+ * Authentification par cookie de session (HttpOnly, posé par POST /api/v1/auth/login/) :
+ * toute requête part avec `credentials: "include"` et aucune n'a d'en-tête Authorization.
+ * Les écritures portent l'en-tête X-CSRFToken ; le jeton est lu sur GET /api/v1/auth/csrf/
+ * (le cookie CSRF est HttpOnly en production, donc illisible en JavaScript).
+ */
 
-let getAccessToken: TokenProvider = () => null;
+export const CSRF_PATH = "/api/v1/auth/csrf/";
+const CSRF_HEADER = "X-CSRFToken";
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
 
-/** Injecte la source du jeton d'accès (jeton Bearer Keycloak via OIDC ; la SPA n'utilise pas d'autre authentification). */
-export function setTokenProvider(fn: TokenProvider): void {
-  getAccessToken = fn;
+let csrfToken: string | null = null;
+let csrfPending: Promise<string> | null = null;
+let csrfGeneration = 0;
+
+/**
+ * Oublie le jeton CSRF : la prochaine écriture le redemande. À appeler après chaque changement
+ * de session (connexion, code, changement de mot de passe, déconnexion, expiration), car le
+ * serveur renouvelle alors le jeton.
+ */
+export function resetCsrfToken(): void {
+  csrfToken = null;
+  csrfPending = null;
+  csrfGeneration += 1;
 }
 
-/** Jeton courant (pour les envois XHR qui ne passent pas par fetch). */
-export function currentToken(): string | null {
-  return getAccessToken() ?? null;
+/** Jeton CSRF courant, demandé au serveur au premier besoin ; une seule demande à la fois. */
+export function ensureCsrfToken(): Promise<string> {
+  if (csrfToken !== null) return Promise.resolve(csrfToken);
+  if (csrfPending) return csrfPending;
+  const generation = csrfGeneration;
+  const pending = loadCsrfToken()
+    .then((token) => {
+      // Un reset pendant la demande rend ce jeton caduc : il n'est pas mémorisé.
+      if (generation === csrfGeneration) csrfToken = token;
+      return token;
+    })
+    .finally(() => {
+      if (csrfPending === pending) csrfPending = null;
+    });
+  csrfPending = pending;
+  return pending;
+}
+
+async function loadCsrfToken(): Promise<string> {
+  const response = await send(CSRF_PATH, {}, "application/json");
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+  const token = isRecord(body) ? body.csrf_token : undefined;
+  if (typeof token !== "string" || token === "") {
+    throw new ApiError(response.status, fr.errors.generic);
+  }
+  return token;
 }
 
 type UnauthorizedHandler = () => void;
@@ -20,15 +65,26 @@ type UnauthorizedHandler = () => void;
 let onUnauthorized: UnauthorizedHandler | null = null;
 
 /**
- * Enregistre la réaction à un 401 reçu en cours d'utilisation (jeton révoqué ou session
- * terminée ailleurs) : l'application ramène alors vers la connexion au lieu d'afficher des erreurs.
+ * Enregistre la réaction à un 401 reçu en cours d'utilisation (session expirée ou terminée
+ * ailleurs) : l'application ramène alors vers la connexion au lieu d'afficher des erreurs.
  */
 export function setUnauthorizedHandler(fn: UnauthorizedHandler | null): void {
   onUnauthorized = fn;
 }
 
-/** Appels pour lesquels un 401 ne signifie pas « session expirée » (la fin de session elle-même). */
-const SANS_REDIRECTION_401 = ["/api/v1/session/fin/"];
+/**
+ * Appels pour lesquels un 401 ne signifie pas « session expirée » : sonde de session d'un
+ * anonyme, échec de connexion ou de code, déconnexion, mot de passe oublié.
+ */
+const SANS_REDIRECTION_401 = new Set([
+  CSRF_PATH,
+  "/api/v1/auth/session/",
+  "/api/v1/auth/login/",
+  "/api/v1/auth/login/otp/",
+  "/api/v1/auth/logout/",
+  "/api/v1/auth/password/forgot/",
+  "/api/v1/auth/password/reset/",
+]);
 
 export function baseUrl(): string {
   const url = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8000";
@@ -76,20 +132,41 @@ async function toApiError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, detail, errors);
 }
 
-/** Requête authentifiée ; toute réponse non 2xx ou erreur réseau devient une ApiError. */
-async function send(path: string, init: ApiInit, accept: string): Promise<Response> {
+/**
+ * Début du message du serveur quand le jeton CSRF est absent ou périmé
+ * (backend/apps/users/authentication.py, CSRF_REFUSE).
+ */
+const CSRF_REFUSE_PREFIX = "Jeton CSRF";
+
+function isCsrfFailure(error: ApiError): boolean {
+  return error.status === 403 && error.detail.startsWith(CSRF_REFUSE_PREFIX);
+}
+
+/**
+ * Requête avec le cookie de session (et le jeton CSRF pour une écriture) ; toute réponse non
+ * 2xx ou erreur réseau devient une ApiError. Une écriture refusée pour jeton CSRF périmé
+ * (session changée dans un autre onglet, par exemple) est rejouée une seule fois avec un
+ * jeton neuf.
+ */
+async function send(
+  path: string,
+  init: ApiInit,
+  accept: string,
+  csrfRetried = false,
+): Promise<Response> {
   const { json, headers: initHeaders, ...rest } = init;
   const headers = new Headers(initHeaders);
   headers.set("Accept", accept);
   if (json !== undefined) headers.set("Content-Type", "application/json");
-  const token = getAccessToken();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const method = (rest.method ?? "GET").toUpperCase();
+  if (!SAFE_METHODS.has(method)) headers.set(CSRF_HEADER, await ensureCsrfToken());
 
   let response: Response;
   try {
     response = await fetch(`${baseUrl()}${path}`, {
       ...rest,
       headers,
+      credentials: "include",
       body: json !== undefined ? JSON.stringify(json) : rest.body,
     });
   } catch {
@@ -99,8 +176,13 @@ async function send(path: string, init: ApiInit, accept: string): Promise<Respon
   }
 
   if (!response.ok) {
-    if (response.status === 401 && !SANS_REDIRECTION_401.includes(path)) onUnauthorized?.();
-    throw await toApiError(response);
+    if (response.status === 401 && !SANS_REDIRECTION_401.has(path)) onUnauthorized?.();
+    const error = await toApiError(response);
+    if (!SAFE_METHODS.has(method) && !csrfRetried && isCsrfFailure(error)) {
+      resetCsrfToken();
+      return send(path, init, accept, true);
+    }
+    throw error;
   }
   return response;
 }
@@ -137,7 +219,7 @@ function rawFilenameFrom(disposition: string | null): string {
   return name || DEFAULT_FILENAME;
 }
 
-/** Télécharge un fichier (export CSV / Excel) avec le même jeton et les mêmes erreurs que apiFetch. */
+/** Télécharge un fichier (export CSV / Excel) avec la même session et les mêmes erreurs que apiFetch. */
 export async function apiDownload(
   path: string,
   signal?: AbortSignal,
@@ -149,7 +231,7 @@ export async function apiDownload(
   };
 }
 
-/** Envoi multipart (dépôt de fichier) : même jeton et mêmes erreurs, sans en-tête Content-Type. */
+/** Envoi multipart (dépôt de fichier) : même session, jeton CSRF et mêmes erreurs, sans en-tête Content-Type. */
 export async function apiUpload<T>(
   path: string,
   formData: FormData,

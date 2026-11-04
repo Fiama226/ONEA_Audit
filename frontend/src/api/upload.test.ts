@@ -1,14 +1,18 @@
 import { http, HttpResponse } from "msw";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fr } from "@/i18n/fr";
-import { API_URL, server } from "@/test/msw";
-import { setTokenProvider } from "./client";
+import { API_URL, server, TEST_CSRF } from "@/test/msw";
+import { resetCsrfToken } from "./client";
 import { isApiError } from "./errors";
 import { uploadWithProgress } from "./upload";
 
-const CORS = { "Access-Control-Allow-Origin": "*" };
+// Requête avec cookie de session (withCredentials) : origine exacte et autorisation explicite.
+const CORS = {
+  "Access-Control-Allow-Origin": window.location.origin,
+  "Access-Control-Allow-Credentials": "true",
+};
 
-afterEach(() => setTokenProvider(() => null));
+beforeEach(() => resetCsrfToken());
 
 // jsdom envoie une pré-requête CORS dès qu'un écouteur de progression est posé.
 beforeEach(() =>
@@ -19,8 +23,8 @@ beforeEach(() =>
         new HttpResponse(null, {
           status: 204,
           headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Headers": "*",
+            ...CORS,
+            "Access-Control-Allow-Headers": "Accept, X-CSRFToken",
             "Access-Control-Allow-Methods": "POST",
           },
         }),
@@ -35,21 +39,23 @@ function form(): FormData {
 }
 
 describe("uploadWithProgress", () => {
-  it("résout avec le JSON, envoie le jeton et termine la progression à 1", async () => {
-    let auth: string | null = null;
+  it("résout avec le JSON, envoie le jeton CSRF et termine la progression à 1", async () => {
+    let csrf: string | null = null;
+    let authorization: string | null = "unset";
     server.use(
       http.post(`${API_URL}/api/v1/evidence/`, ({ request }) => {
-        auth = request.headers.get("Authorization");
+        csrf = request.headers.get("X-CSRFToken");
+        authorization = request.headers.get("Authorization");
         return HttpResponse.json({ id: "p1" }, { status: 201, headers: CORS });
       }),
     );
-    setTokenProvider(() => "tok");
     const ratios: number[] = [];
     const result = await uploadWithProgress<{ id: string }>("/api/v1/evidence/", form(), (r) =>
       ratios.push(r),
     );
     expect(result.id).toBe("p1");
-    expect(auth).toBe("Bearer tok");
+    expect(csrf).toBe(TEST_CSRF);
+    expect(authorization).toBeNull();
     expect(ratios.at(-1)).toBe(1);
   });
 

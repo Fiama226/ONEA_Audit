@@ -11,7 +11,13 @@ import { WelcomeDialog } from "./components/WelcomeDialog";
 
 type Phase = "repos" | "accueil" | "visite";
 
-const PAGES_PUBLIQUES = ["/connexion", "/callback", "/erreur"];
+const PAGES_PUBLIQUES = [
+  "/connexion",
+  "/mot-de-passe-oublie",
+  "/mot-de-passe/reinitialiser",
+  "/mot-de-passe/changer",
+  "/erreur",
+];
 
 /**
  * Propose la visite guidée au premier passage (version courante non vue) et expose

@@ -2,18 +2,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { vi } from "vitest";
 import { AuthProvider } from "@/auth/AuthProvider";
-import type { OidcClient, OidcUser } from "@/auth/oidc";
-import type { Me } from "@/auth/types";
+import type { Etape, Me } from "@/auth/types";
 import { appRoutes } from "@/routes";
 import { API_URL, server } from "./msw";
 
-export const TEST_TOKEN = "tok-123";
-
-export function fakeUser(overrides: Partial<OidcUser> = {}): OidcUser {
-  return { access_token: TEST_TOKEN, expired: false, state: undefined, ...overrides };
-}
+export const AUTH_URL = `${API_URL}/api/v1/auth`;
 
 export function fakeMe(overrides: Partial<Record<keyof Me, unknown>> = {}) {
   return {
@@ -26,57 +20,31 @@ export function fakeMe(overrides: Partial<Record<keyof Me, unknown>> = {}) {
     direction_code: "DAI",
     fonction: "Responsable audit interne",
     tutoriel: { version_vue: 1, termine_le: null },
+    otp_connexion_actif: false,
     ...overrides,
   };
 }
 
-export function mockOidc(user: OidcUser | null = null): OidcClient {
-  return {
-    getUser: vi.fn().mockResolvedValue(user),
-    signinRedirect: vi.fn().mockResolvedValue(undefined),
-    signinRedirectCallback: vi.fn().mockResolvedValue(user ?? fakeUser()),
-    signoutRedirect: vi.fn().mockResolvedValue(undefined),
-    removeUser: vi.fn().mockResolvedValue(undefined),
-    events: {
-      addUserLoaded: vi.fn(),
-      removeUserLoaded: vi.fn(),
-      addAccessTokenExpired: vi.fn(),
-      removeAccessTokenExpired: vi.fn(),
-      addSilentRenewError: vi.fn(),
-      removeSilentRenewError: vi.fn(),
-    },
-  };
+/** Sert GET /api/v1/auth/session/ : session ouverte avec `me` et l'étape donnée. */
+export function serveSession(me: object = fakeMe(), etape: Etape = "OK") {
+  server.use(http.get(`${AUTH_URL}/session/`, () => HttpResponse.json({ etape, me })));
 }
 
-/** Récupère le dernier callback enregistré via la méthode d'événement `name`. */
-export function capturedHandler<A extends unknown[]>(fn: unknown): (...args: A) => void {
-  const calls = (fn as { mock: { calls: unknown[][] } }).mock.calls;
-  const cb = calls[calls.length - 1]?.[0];
-  if (typeof cb !== "function") throw new Error("aucun callback enregistré");
-  return cb as (...args: A) => void;
+/** Corps 401 du serveur (session absente ou expirée). */
+export function unauthorized(detail = "Informations d'authentification non fournies.") {
+  return HttpResponse.json({ detail, errors: {} }, { status: 401 });
 }
 
-/** Sert /me uniquement si la requête porte `Authorization: Bearer <token>`, sinon 401. */
-export function serveMe(body: object = fakeMe(), token: string = TEST_TOKEN) {
-  server.use(
-    http.get(`${API_URL}/api/v1/me/`, ({ request }) => {
-      if (request.headers.get("Authorization") !== `Bearer ${token}`) {
-        return HttpResponse.json({}, { status: 401 });
-      }
-      return HttpResponse.json(body);
-    }),
-  );
-}
-
-export function renderApp(path: string | { pathname: string; state?: unknown }, oidc: OidcClient) {
+/** Rend l'application complète (routes réelles) avec le vrai AuthProvider. */
+export function renderApp(path: string | { pathname: string; state?: unknown }) {
   const router = createMemoryRouter(appRoutes, { initialEntries: [path] });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <AuthProvider userManager={oidc}>
+      <AuthProvider>
         <RouterProvider router={router} />
       </AuthProvider>
     </QueryClientProvider>,
   );
-  return router;
+  return { router, client };
 }

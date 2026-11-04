@@ -792,6 +792,54 @@ export const fr = {
     password: "Mot de passe",
     sessionExpired: "Votre session a expiré. Veuillez vous reconnecter.",
     loginPrompt: "Connectez-vous avec votre compte ONEA pour accéder à la plateforme.",
+    loginTitle: "Connexion",
+    identifiant: "Identifiant ou courriel professionnel",
+    identifiantRequired: "Saisissez votre identifiant ou votre courriel professionnel.",
+    passwordRequired: "Saisissez votre mot de passe.",
+    // Message unique : ne révèle jamais si le compte existe, est désactivé ou verrouillé.
+    loginFailed: "Identifiant ou mot de passe incorrect.",
+    forgotLink: "Mot de passe oublié ?",
+    passwordResetDone:
+      "Votre mot de passe a été modifié. Connectez-vous avec votre nouveau mot de passe.",
+    otpTitle: "Vérification en deux étapes",
+    otpIntro:
+      "Un code à 6 chiffres vient d'être envoyé à votre adresse de courriel. Il est valable 10 minutes.",
+    otpCode: "Code de vérification",
+    otpHelp: "6 chiffres, reçus par courriel.",
+    otpFormat: "Le code comporte 6 chiffres.",
+    otpInvalid: "Code invalide ou expiré.",
+    otpSubmit: "Valider le code",
+    otpBack: "Recommencer la connexion",
+    forgotTitle: "Mot de passe oublié",
+    forgotIntro:
+      "Indiquez votre identifiant ou votre courriel professionnel : un code de vérification vous sera envoyé par courriel.",
+    forgotSubmit: "Recevoir un code",
+    // Confirmation neutre, identique que le compte existe ou non.
+    forgotSent: "Si un compte correspond, un code vous a été envoyé.",
+    forgotSentHelp:
+      "Le code est valable 10 minutes. Sans courriel, adressez-vous à l'administrateur de la plateforme.",
+    forgotEnterCode: "Saisir le code reçu",
+    // Limitation de débit : même message pour tout identifiant (n'indique aucun compte).
+    forgotTooMany: "Trop de demandes, réessayez plus tard.",
+    backToLogin: "Retour à la connexion",
+    resetTitle: "Nouveau mot de passe",
+    resetIntro: "Saisissez le code reçu par courriel, puis choisissez un nouveau mot de passe.",
+    resetSubmit: "Enregistrer le mot de passe",
+    resetNewCode: "Recevoir un nouveau code",
+    currentPassword: "Mot de passe actuel",
+    currentPasswordRequired: "Saisissez votre mot de passe actuel.",
+    currentPasswordTemporaryHelp: "Le mot de passe temporaire qui vous a été communiqué.",
+    newPassword: "Nouveau mot de passe",
+    confirmPassword: "Confirmer le nouveau mot de passe",
+    passwordRule:
+      "12 caractères au minimum. Évitez un mot de passe courant ou proche de votre identifiant.",
+    passwordTooShort: "Le mot de passe doit comporter au moins 12 caractères.",
+    passwordMismatch: "Les deux mots de passe ne correspondent pas.",
+    changeTitle: "Changer le mot de passe",
+    changeForcedIntro:
+      "Pour des raisons de sécurité, choisissez un nouveau mot de passe avant d'accéder à la plateforme.",
+    changeIntro: "Choisissez un nouveau mot de passe. Vos autres sessions ouvertes seront fermées.",
+    changeSubmit: "Changer le mot de passe",
   },
   missionTravaux: {
     meetingsTitle: "Réunions de la mission",
