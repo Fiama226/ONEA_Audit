@@ -124,6 +124,11 @@ export REDIS_URL="redis://localhost:${REDIS_HOST_PORT}/14"
 
 (cd "$ROOT/backend" && "$PY" manage.py migrate --noinput) || { STATUS=1; exit 1; }
 
+# Limites de débit relevées : la suite se connecte des dizaines de fois par minute depuis la même
+# IP (seau « connexion », 20/min par défaut). Environnement e2e jetable uniquement.
+export THROTTLE_RATE_CONNEXION="10000/min"
+export THROTTLE_RATE_MOT_DE_PASSE_OUBLIE="10000/hour"
+
 # Comptes de test avec un mot de passe connu (e2e uniquement : la commande refuse tout hors
 # DEBUG et hors base onea_e2e_<nombre>). Les specs se connectent par le vrai formulaire.
 E2E_PASSWORD="${E2E_PASSWORD:-Onea-e2e-2026-pwd}"

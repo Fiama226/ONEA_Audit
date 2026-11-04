@@ -25,6 +25,7 @@ def _lancer(**options: object) -> str:
 @pytest.fixture
 def base_e2e(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(connection.settings_dict, "NAME", "onea_e2e_1730000000")
+    monkeypatch.setitem(connection.settings_dict, "HOST", "localhost")
 
 
 @override_settings(DEBUG=True)
@@ -38,6 +39,15 @@ def test_refuse_une_base_qui_n_est_pas_jetable() -> None:
 @override_settings(DEBUG=False)
 def test_refuse_hors_debug() -> None:
     with pytest.raises(CommandError, match="DEBUG"):
+        _lancer(mot_de_passe=MOT_DE_PASSE)
+    assert not User.objects.exists()
+
+
+@pytest.mark.usefixtures("base_e2e")
+@override_settings(DEBUG=True)
+def test_refuse_un_hote_de_base_distant(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(connection.settings_dict, "HOST", "db.prod.example.org")
+    with pytest.raises(CommandError, match="hôte"):
         _lancer(mot_de_passe=MOT_DE_PASSE)
     assert not User.objects.exists()
 

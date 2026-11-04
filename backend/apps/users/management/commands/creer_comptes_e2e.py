@@ -8,6 +8,7 @@ deployment, hence three guards, all checked before any write:
 * ``DEBUG`` must be on (never true in the production settings);
 * the database name must match ``^onea_e2e_[0-9]+$`` (the throw-away database that
   ``scripts/e2e.sh`` / ``scripts/e2e.ps1`` create and drop);
+* the database host must be local (localhost, 127.0.0.1, ::1 or a socket);
 * the password comes from ``--mot-de-passe`` or the ``E2E_PASSWORD`` variable, never a default.
 
 Idempotent: an existing account of the list is reset to the same state. A delegate account
@@ -26,6 +27,7 @@ from django.db import connection, transaction
 from apps.users.models import DelegationGestionComptes, OrigineCompte, Role, User
 
 NOM_BASE_E2E = re.compile(r"^onea_e2e_[0-9]+$")
+HOTES_LOCAUX = {"", "localhost", "127.0.0.1", "::1"}
 DIRECTION_AUDITE = "DEX"
 
 # (identifiant, rôle, direction)
@@ -64,6 +66,9 @@ class Command(BaseCommand):
                 f"Refus : la base « {base} » ne correspond pas à ^onea_e2e_[0-9]+$ "
                 "(aucune écriture faite)."
             )
+        hote = str(connection.settings_dict.get("HOST") or "")
+        if hote not in HOTES_LOCAUX:
+            raise CommandError(f"Refus : l'hôte de base « {hote} » n'est pas local.")
         if not mot_de_passe:
             raise CommandError("Mot de passe manquant : --mot-de-passe ou variable E2E_PASSWORD.")
         with transaction.atomic():

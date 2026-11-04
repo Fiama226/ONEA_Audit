@@ -49,6 +49,8 @@ test("a delegate sees the account administration, a plain auditor does not", asy
   const nav = page.getByRole("navigation", { name: "Menu principal" });
   await expect(nav.getByRole("link", { name: "Administration" })).toHaveCount(0);
   await page.goto("/administration/utilisateurs");
+  // Attendre la vue « accès refusé » avant le contrôle négatif : sinon il passerait trop tôt.
+  await expect(page.locator("main h1")).toHaveText("Accès refusé");
   await expect(page.getByRole("heading", { level: 1, name: "Utilisateurs" })).toHaveCount(0);
   await page.context().clearCookies();
 
@@ -58,9 +60,10 @@ test("a delegate sees the account administration, a plain auditor does not", asy
   await expect(page.getByRole("heading", { level: 1, name: "Utilisateurs" })).toBeVisible();
 });
 
+// Identifiant inexistant : aucun compte e2e ne peut être verrouillé par ce test (réponse identique).
 test("a wrong password shows one neutral message and stays on the form", async ({ page }) => {
   await page.goto("/connexion");
-  await page.getByLabel("Identifiant ou courriel professionnel").fill("rai");
+  await page.getByLabel("Identifiant ou courriel professionnel").fill("inconnu.e2e");
   await page.getByLabel("Mot de passe", { exact: true }).fill(`${E2E_PASSWORD}-faux`);
   await page.getByRole("button", { name: "Se connecter" }).click();
   await expect(page.getByText("Identifiant ou mot de passe incorrect.")).toBeVisible();
