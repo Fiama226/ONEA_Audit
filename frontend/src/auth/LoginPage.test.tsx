@@ -60,6 +60,17 @@ describe("LoginPage", () => {
     expect(screen.getByLabelText(T.identifiant)).toHaveAccessibleDescription(T.loginFailed);
   });
 
+  it("échec : le même message, pour tous, rappelle la règle de verrouillage", async () => {
+    server.use(http.post(`${AUTH_URL}/login/`, () => unauthorized()));
+    renderApp("/connexion");
+    await fill("inconnu", "mauvais");
+    const message = await screen.findByText(/Identifiant ou mot de passe incorrect\./);
+    expect(message).toHaveTextContent(/patientez, ou contactez l'administrateur/);
+    expect(message).toHaveTextContent(/15 minutes/);
+    // Ni « verrouillé » ni « compte » : rien ne dit que ce compte existe ou est bloqué.
+    expect(message).not.toHaveTextContent(/verrouillé|existe|désactivé/i);
+  });
+
   it("échec après Entrée dans le mot de passe : message annoncé (role=alert)", async () => {
     server.use(http.post(`${AUTH_URL}/login/`, () => unauthorized()));
     renderApp("/connexion");

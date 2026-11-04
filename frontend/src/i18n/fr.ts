@@ -875,8 +875,10 @@ export const fr = {
     identifiant: "Identifiant ou courriel professionnel",
     identifiantRequired: "Saisissez votre identifiant ou votre courriel professionnel.",
     passwordRequired: "Saisissez votre mot de passe.",
-    // Message unique : ne révèle jamais si le compte existe, est désactivé ou verrouillé.
-    loginFailed: "Identifiant ou mot de passe incorrect.",
+    // Message unique : ne révèle jamais si le compte existe, est désactivé ou verrouillé ; la règle
+    // de verrouillage est donnée à tous, sans dire si elle s'applique à ce compte.
+    loginFailed:
+      "Identifiant ou mot de passe incorrect. Après plusieurs échecs, la connexion est bloquée environ 15 minutes : patientez, ou contactez l'administrateur de la plateforme.",
     // 429 : message calme et unique, sans détail du serveur (aucune indication sur le compte).
     loginTooMany: "Trop de tentatives, réessayez dans quelques minutes.",
     forgotLink: "Mot de passe oublié ?",
