@@ -149,6 +149,8 @@ describe("UserDetailPage — mot de passe et code de connexion", () => {
     await user.click(within(dialog).getByRole("button", { name: "Réinitialiser" }));
     expect(await within(dialog).findByText(PASSWORD)).toBeVisible();
     expect(within(dialog).getByText(/il ne sera plus jamais affiché/)).toBeVisible();
+    expect(within(dialog).getByText(/Aucun courriel n'a été mis en file d'envoi/)).toBeVisible();
+    expect(within(dialog).queryByText(/courriel de bienvenue/)).toBeNull();
     expect((await axe(dialog, NO_CONTRAST)).violations).toEqual([]);
 
     // Échap ne ferme pas la fenêtre tant que le mot de passe est affiché.

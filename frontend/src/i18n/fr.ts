@@ -681,6 +681,8 @@ export const fr = {
       resetConfirm: "Réinitialiser",
       resetting: "Réinitialisation en cours",
       resetDone: "Mot de passe réinitialisé.",
+      resetNotEmailed:
+        "Aucun courriel n'a été mis en file d'envoi : transmettez vous-même le mot de passe à l'agent.",
       resetEmailed:
         "Le nouveau mot de passe temporaire a été mis en file d'envoi par courriel pour ",
       disableOtp: "Désactiver le code de connexion",

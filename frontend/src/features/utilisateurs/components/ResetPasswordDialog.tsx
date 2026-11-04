@@ -131,7 +131,7 @@ function ResetResult({ result, onClose }: { result: MotDePasseTemporaire; onClos
       <p ref={statusRef} tabIndex={-1} className="text-sm font-medium outline-none">
         {result.courriel_envoye
           ? `${t.resetDone} ${t.resetEmailed}${result.compte.email}.`
-          : `${t.resetDone} ${fr.utilisateurs.creation.notEmailed}`}
+          : `${t.resetDone} ${t.resetNotEmailed}`}
       </p>
       {result.mot_de_passe_temporaire && (
         <TemporaryPassword value={result.mot_de_passe_temporaire} />
