@@ -244,6 +244,9 @@ describe("mission routes", () => {
     expect(screen.getByRole("link", { name: fr.missions.tabInterviews })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: fr.missions.tabSteps })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: fr.missions.tabTracking })).not.toBeInTheDocument();
-    expect(screen.getByText(fr.missions.documentsSoon)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: fr.missions.documentsPanel }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText(fr.documents.noDocument)).toBeInTheDocument();
   });
 });

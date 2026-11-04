@@ -103,7 +103,7 @@ describe("MeetingsPage", () => {
     expect(await screen.findByText("Salle A")).toBeInTheDocument();
     expect(screen.getByText(t.statusPlanned)).toBeInTheDocument();
     expect(screen.getByText(/Mamadou Kaboré/)).toBeInTheDocument();
-    expect(screen.getAllByText(t.pvLater)).toHaveLength(3);
+    expect(screen.getAllByText(t.pvNone)).toHaveLength(2); // lancement et clôture
   });
 
   it("displays the server refusal when marking held without minutes", async () => {
