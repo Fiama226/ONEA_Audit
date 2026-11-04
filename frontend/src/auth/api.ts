@@ -21,8 +21,12 @@ export function postLoginOtp(code: string): Promise<EtatSession> {
   return apiFetch<EtatSession>(`${AUTH}/login/otp/`, { method: "POST", json });
 }
 
+/**
+ * Ends the server session. `keepalive`: the browser still delivers the request if the page is
+ * closed or reloaded right after (sendBeacon cannot carry the X-CSRFToken header).
+ */
 export function postLogout(signal?: AbortSignal): Promise<void> {
-  return apiFetch<void>(`${AUTH}/logout/`, { method: "POST", signal });
+  return apiFetch<void>(`${AUTH}/logout/`, { method: "POST", keepalive: true, signal });
 }
 
 export function postPasswordChange(ancien: string, nouveau: string): Promise<EtatSession> {

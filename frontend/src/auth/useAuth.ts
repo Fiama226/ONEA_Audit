@@ -10,8 +10,12 @@ export type AuthContextValue = {
   errorDetail?: string;
   /** Vrai quand la session a expiré en cours d'utilisation (401 de l'API). */
   sessionExpired: boolean;
+  /** Vrai quand un autre agent s'est connecté dans un autre onglet pendant cette session. */
+  sessionChanged: boolean;
   /** Vrai après une déconnexion volontaire : la page quittée n'est pas proposée au suivant. */
   loggedOut: boolean;
+  /** Vrai quand le serveur n'a pas confirmé la fin de session (rejouée au prochain démarrage). */
+  logoutUnconfirmed: boolean;
   /**
    * Vérifie identifiant et mot de passe. Renvoie "OTP" si un code par courriel est attendu
    * (session pas encore ouverte), sinon l'étape de la session ouverte. Rejette en ApiError.

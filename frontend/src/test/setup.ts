@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, configure } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll } from "vitest";
+import { clearPendingLogout } from "@/auth/crossTab";
 import { server } from "./msw";
 
 // jsdom n'implémente pas ResizeObserver, requis par les cases à cocher Radix dans un formulaire.
@@ -17,6 +18,8 @@ beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 afterEach(() => {
   server.resetHandlers();
   cleanup();
+  // Marque de déconnexion non confirmée (stockage local) : elle ne passe pas d'un test à l'autre.
+  clearPendingLogout();
 });
 afterAll(() => server.close());
 

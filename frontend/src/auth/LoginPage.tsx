@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { isApiError } from "@/api/errors";
@@ -27,7 +27,7 @@ function loginErrorOf(e: unknown): { credentials: boolean; message: string } {
 }
 
 export function LoginPage() {
-  const { status, sessionExpired } = useAuth();
+  const { status, sessionExpired, sessionChanged, logoutUnconfirmed } = useAuth();
   const location = useLocation();
   const [step, setStep] = useState<"identification" | "code">("identification");
   const [identifiant, setIdentifiant] = useState("");
@@ -51,6 +51,13 @@ export function LoginPage() {
   }
 
   const notice = stateField(location.state, "notice") === "reset" ? T.passwordResetDone : null;
+  const warning = sessionChanged
+    ? T.sessionChanged
+    : sessionExpired
+      ? T.sessionExpired
+      : logoutUnconfirmed
+        ? T.logoutUnconfirmed
+        : null;
   return (
     <AuthCard
       title={T.loginTitle}
@@ -61,14 +68,10 @@ export function LoginPage() {
         </Link>
       }
     >
-      <LiveMessage
-        role="alert"
-        message={sessionExpired ? T.sessionExpired : null}
-        className={ALERT_CLASS}
-      />
+      <LiveMessage role="alert" message={warning} className={ALERT_CLASS} />
       <LiveMessage
         role="status"
-        message={notice && !sessionExpired ? notice : null}
+        message={notice && !warning ? notice : null}
         className="rounded-md border border-border p-3 text-sm"
       />
       <CredentialsForm
@@ -104,6 +107,12 @@ function CredentialsForm({
     resolver: zodResolver(loginSchema),
     defaultValues: { identifiant: defaultIdentifiant, mot_de_passe: "" },
   });
+
+  useEffect(() => {
+    // Page dédiée : le focus va au premier champ à remplir (le mot de passe au retour de
+    // l'étape du code, l'identifiant étant repris).
+    setFocus(defaultIdentifiant ? "mot_de_passe" : "identifiant");
+  }, [defaultIdentifiant, setFocus]);
 
   async function onSubmit(values: LoginValues) {
     setFailed(false);
@@ -171,7 +180,7 @@ function CredentialsForm({
         </p>
       )}
       <Button type="submit" disabled={isSubmitting}>
-        {T.login}
+        {isSubmitting ? T.loggingIn : T.login}
       </Button>
     </form>
   );

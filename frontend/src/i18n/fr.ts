@@ -912,7 +912,7 @@ export const fr = {
       "La déconnexion n'a pas pu être confirmée par le serveur : fermez le navigateur si vous quittez le poste.",
     // Connexion ou déconnexion faite dans un autre onglet pendant une action dans celui-ci.
     sessionChanged:
-      "La session a changé dans un autre onglet (connexion ou déconnexion) : votre dernière action n'a pas été enregistrée. Reconnectez-vous pour continuer.",
+      "Un autre agent s'est connecté dans un autre onglet de ce navigateur : reconnectez-vous pour continuer. Une action en cours dans cet onglet n'a pas été enregistrée.",
   },
   missionTravaux: {
     meetingsTitle: "Réunions de la mission",
