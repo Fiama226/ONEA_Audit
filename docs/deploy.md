@@ -518,17 +518,44 @@ images portent l'étiquette `APP_VERSION`.
 interne) :
 
 1. Sauvegarder (`scripts/backup.sh`) : la migration `users.0008_suppression_champs_keycloak`
-   supprime les champs de rattachement à l'ancien serveur d'identité.
+   supprime les champs de rattachement à l'ancien serveur d'identité, dont `role_provisoire`.
+   Avant la mise à jour, relever les comptes encore en attente de rôle (ils deviendront des
+   AUDITE ordinaires) :
+   `dc exec web python manage.py shell -c "from apps.users.models import User; print(list(User.objects.filter(role_provisoire=True).values_list('username', flat=True)))"`,
+   puis leur donner le bon rôle dans *Utilisateurs* après la mise à jour.
 2. Retirer de `.env.prod` les anciennes variables (`SSO_HOST`, `ADMIN_ALLOW_CIDR`, `KEYCLOAK_*`,
    `OIDC_*`, `CORS_ALLOWED_ORIGINS`, `THROTTLE_RATE_ANNUAIRE`) et renommer `SSO_CA_BUNDLE_PATH` en
    `CA_BUNDLE_PATH` ; supprimer les fichiers de secrets `oidc_client_secret` et
-   `keycloak_sync_secret`. Après `up -d --remove-orphans`, les conteneurs `keycloak` et
-   `keycloak-db` et leur volume peuvent être supprimés à la main une fois la sauvegarde vérifiée.
-3. Les tâches `users.synchroniser_comptes_keycloak` qui seraient encore dans la file Celery au moment
+   `keycloak_sync_secret`.
+3. **Fenêtre de maintenance** : `0008` supprime des colonnes que l'ancienne version lit encore ; si
+   l'ancien `web` tournait pendant `migrate`, il répondrait 500. Construire d'abord, arrêter
+   l'ancienne application, puis démarrer la nouvelle (`migrate` passe avant `web`, `worker`,
+   `worker-auth` et `beat`) :
+   ```
+   git pull
+   dc build
+   dc stop web worker beat
+   dc up -d --remove-orphans
+   ```
+   Les navigateurs qui gardent l'ancienne page en cache appellent encore le serveur d'identité :
+   demander aux agents de recharger la page (Ctrl+F5).
+4. Les tâches `users.synchroniser_comptes_keycloak` qui seraient encore dans la file Celery au moment
    du déploiement n'existent plus dans le code : le `worker` les rejette (message « unregistered
    task » dans son journal). C'est sans conséquence : elles sont abandonnées et il n'y a rien à
    vider dans Redis.
-4. Donner un mot de passe temporaire aux comptes existants : §5.4.
+5. Donner un mot de passe temporaire aux comptes existants : §5.4.
+6. Une fois la nouvelle version validée et une sauvegarde postérieure vérifiée, supprimer les restes
+   de Keycloak. `--remove-orphans` n'a retiré que les conteneurs `keycloak` et `keycloak-db` ; le
+   volume et les réseaux portent le nom du projet (`COMPOSE_PROJECT_NAME`, défaut `onea-prod`) :
+   ```
+   docker volume rm onea-prod_keycloak-db-data
+   docker network rm onea-prod_sso onea-prod_kc onea-prod_kc-out
+   ```
+   Retirer aussi le nom DNS `SSO_HOST` et son certificat TLS. Les sauvegardes de la base Keycloak
+   (`keycloak-<horodatage>.dump` dans `/srv/onea-backups`) contiennent les empreintes des mots de
+   passe Keycloak des agents : `backup.sh` supprime chacune avec son jeu (après 14 nouveaux jeux) ;
+   pour ne pas attendre, `sudo rm /srv/onea-backups/keycloak-*.dump`. Dans la copie hors serveur,
+   elles disparaissent avec les instantanés qui les contiennent (`restic forget --prune`, §7.2).
 
 **Mise à jour depuis une version de l'authentification antérieure au second tour de corrections**
 (commit `7f6b9dc`) :

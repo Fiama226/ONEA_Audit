@@ -141,6 +141,15 @@ for prefix in documents fichiers; do
   ls -1t "$DEST"/"$prefix"-*.tar.gz 2>/dev/null | tail -n +15 | while read -r old; do rm -f "$old"; done
 done
 ls -1t "$DEST"/manifeste-*.sha256 2>/dev/null | tail -n +15 | while read -r old; do rm -f "$old"; done
+# Jeux antérieurs au retrait de Keycloak : plus aucun keycloak-<h>.dump n'est écrit, le compte des 14
+# ne les ferait jamais sortir. Chacun part avec le manifeste de son jeu (il contient les empreintes
+# des mots de passe Keycloak des agents).
+for old in "$DEST"/keycloak-*.dump; do
+  [ -e "$old" ] || continue
+  h=${old##*/keycloak-}
+  h=${h%.dump}
+  [ -f "$DEST/manifeste-$h.sha256" ] || rm -f "$old"
+done
 
 echo "OK : sauvegarde $STAMP écrite et vérifiée dans $DEST (manifeste-$STAMP.sha256)."
 
