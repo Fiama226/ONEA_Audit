@@ -1,6 +1,6 @@
 # Passation — plateforme d'audit interne ONEA
 
-Dernière mise à jour : **2026-11-04**. Rien n'est poussé : tout est local (Git). Sources de vérité de cet
+Dernière mise à jour : **2026-11-04** (revue de sécurité de l'authentification et rejeu ASVS compris). Rien n'est poussé : tout est local (Git). Sources de vérité de cet
 état : `git log --oneline` et `git branch --merged develop` (le texte précédent de ce fichier, daté du
 2026-10-30, était périmé).
 
@@ -42,8 +42,26 @@ Le conteneur, la base, le thème, les secrets et les variables Keycloak/OIDC/SSO
 du backend lancés **application par application** (le disque disponible ne permettait pas une exécution
 unique de la suite complète), tests du frontend ciblés sur les dossiers touchés, `tsc`, `eslint`, `ruff`, `mypy`.
 **Ce qui n'a pas été fait** : une suite complète back et front en une seule exécution, les specs Playwright
-(`frontend/e2e/`, vérifiées au typage mais **non exécutées**), le parcours manuel sur le site de test, le
-rejeu de l'audit ASVS niveau 2 sur la nouvelle authentification, l'essai avec un vrai relais SMTP.
+(`frontend/e2e/`, vérifiées au typage mais **non exécutées**), le parcours manuel sur le site de test, l'essai
+avec un vrai relais SMTP.
+
+**Revue de sécurité et corrections (2026-11-04)** : revue statique de l'authentification (constats AUTH-01 à
+AUTH-20 : 3 élevés, 3 moyens, 7 faibles, 7 informations), corrections en commits `39163e0` à `ccd12f8`, relues
+mais **non éprouvées sur une pile en fonctionnement**. Ce qui a changé : tous les courriels d'authentification
+partent du `worker` (le `web` met en file ; mot de passe temporaire chiffré en base 1 h, jamais dans Redis ;
+« courriel envoyé » veut dire « mis en file ») ; un délégué ne gère plus que les comptes AUDITEUR et AUDITE ;
+plafond de 15 codes de réinitialisation faux par compte et par 24 h et quota de 10 codes en base ; un compteur
+par point d'entrée de l'authentification (connexion 60/min par adresse), plafonds d'échecs par adresse (30 par
+15 min à la connexion, 30 par heure à la réinitialisation), CSRF vérifié avant les limites, IPv6 par /64,
+`/admin/login/` sous les mêmes limites ; la production refuse les backends courriel console, fichier et mémoire
+(`dummymail://` = sans courriel) ; en-tête `X-Onea-Arriere-Plan: 1` pour les requêtes d'arrière-plan ;
+`/admin/password_change/` en 404 ; identifiants ASCII. Audit ASVS L2 **rejoué en statique** sur cette
+authentification : `docs/securite/asvs-l2.md` (décompte et non-conformités restantes dans `docs/PRET-A-LIVRER.md`
+B1 et B8). Restent ouverts : en-tête d'arrière-plan à envoyer par le frontend (AUTH-08, en cours), délai
+d'inactivité des sessions admin (AUTH-09), contraintes d'unicité insensibles à la casse (AUTH-11),
+notifications au titulaire (AUTH-10) et liste de mots de passe compromis (AUTH-13) à arbitrer, TLS vers le
+relais non exigé (AUTH-18), `AUTH_REINITIALISATION_ECHECS_MAX` à transmettre dans `docker/compose.prod.yml`,
+analyse dynamique (ZAP) à rejouer.
 
 ## 3. Décisions déjà prises (ne plus les redemander)
 - Licences MIT-0, PSF-2.0 et ClamAV (conteneur séparé, GPL-2.0) autorisées : commit 6c982ec. ZPL-2.1 : 120ee1b.
@@ -51,10 +69,12 @@ rejeu de l'audit ASVS niveau 2 sur la nouvelle authentification, l'essai avec un
 - Hypothèses métier des lots : toutes confirmées (2026-10-29) ; gabarits Word vierges provisoires acceptés.
 
 ## 4. Ce qui reste à faire (équipe projet)
-0. **Authentification interne** : revue de sécurité et corrections, rejeu de l'audit ASVS L2 (`asvs-l2.md` décrit
-   encore l'ancienne authentification), suites complètes, e2e Playwright à exécuter, parcours manuel sur le
-   site de test (création, première connexion, oubli, code, délégation), puis fusion dans `develop` après
-   accord (ni `develop` ni `preview` ne sont touchées à ce jour). À la mise à jour du site de test : donner un
+0. **Authentification interne** : constats de sécurité encore ouverts (voir §2bis : AUTH-08 côté frontend,
+   AUTH-09, AUTH-11, AUTH-18, transmission de `AUTH_REINITIALISATION_ECHECS_MAX` par la composition de
+   production ; AUTH-10 et AUTH-13 à arbitrer), suites complètes, e2e Playwright à exécuter, parcours manuel sur
+   le site de test (scénarios S4-29 à S4-41 : création, première connexion, oubli et plafond des codes, code de
+   connexion, délégation et comptes RAI/DG, réponses 429, `worker` arrêté), analyse dynamique ZAP, puis fusion
+   dans `develop` après accord (ni `develop` ni `preview` ne sont touchées à ce jour). À la mise à jour du site de test : donner un
    mot de passe temporaire aux comptes existants (`donner_mots_de_passe_temporaires`, `docs/deploy.md` §5.4).
 1. **Lot 6 T14**, **lot 7 T17**, **lot 8 T17** : tests e2e Playwright (`frontend/e2e/` ne contient que
    connexion, référentiel, missions, accessibilité, clavier, impression), documentation de fin de lot.
@@ -73,7 +93,10 @@ rejeu de l'audit ASVS niveau 2 sur la nouvelle authentification, l'essai avec un
 |---|---|---|
 | Sauvegarde hors serveur (U1) | destination (SFTP, NAS, disque chiffré, S3 interne) et détenteurs du mot de passe restic | sauvegardes locales seules ; `backup.sh --hors-serveur` refuse sans `RESTIC_REPOSITORY` |
 | Hébergement, DNS, TLS (U2) | VPS ou site, **un seul nom** (application), autorité interne ou Let's Encrypt | recette avec AC jetable |
-| SMTP (U3) | hôte, port, mode, compte, expéditeur, SPF/DKIM ; **désormais aussi nécessaire à l'authentification** (codes de connexion et « mot de passe oublié », courriel de bienvenue) | la production refuse de démarrer sans `EMAIL_URL` ; sans relais fonctionnel, repli : l'administrateur réinitialise les mots de passe (`docs/deploy.md` §5.5) |
+| SMTP (U3) | hôte, port, mode, compte, expéditeur, SPF/DKIM ; **désormais aussi nécessaire à l'authentification** (codes de connexion et « mot de passe oublié », courriel de bienvenue, tous envoyés par le `worker`) | la production refuse de démarrer sans `EMAIL_URL` ; en attendant le relais : `EMAIL_URL=dummymail://` (aucun courriel), et l'administrateur réinitialise les mots de passe avec affichage (`docs/deploy.md` §2.3 et §5.5) |
+| Notifications de sécurité (AUTH-10) | courriel au titulaire après une réinitialisation par un administrateur, un changement d'adresse ou la désactivation de son code (et à l'ancienne adresse ?) | aucune notification |
+| Mots de passe compromis (AUTH-13) | corpus hors ligne de mots de passe compromis (taille, licence, mise à jour) | liste de Django (environ 20 000 mots de passe courants) |
+| Codes à 8 chiffres | passer les codes de 6 à 8 chiffres (résistance à un attaquant réparti) | 6 chiffres, plafond de 15 codes faux par compte et par 24 h |
 | Réseau ONEA (U5) | proxy amont, réseau d'administration, supervision | aucun proxy |
 | Formation (U6) | participants, dates, salle, postes | supports prêts, calendrier à fixer |
 | 22 gabarits Word réels | `docs/documents/gabarits-manquants.md` | gabarits provisoires générés |
@@ -84,7 +107,8 @@ rejeu de l'audit ASVS niveau 2 sur la nouvelle authentification, l'essai avec un
 
 ## 6. Lancer / tester en local
 - Docker Desktop : conteneurs `onea-db-1`, `onea-redis-1` (et `mailpit`, http://127.0.0.1:8025, pour lire les codes
-  envoyés par courriel). Plus de conteneur Keycloak.
+  envoyés par courriel). Plus de conteneur Keycloak. Les courriels d'authentification partent d'un worker Celery :
+  sans `celery -A config worker` lancé, aucun code ni courriel de bienvenue n'arrive dans Mailpit.
 - API : `cd backend`, Python `C:\v\onea\Scripts\python.exe manage.py runserver 127.0.0.1:8000` avec
   `DATABASE_URL=postgres://onea:onea-dev-password@127.0.0.1:5432/onea`.
 - Web : `cd frontend && npm run dev` (http://localhost:5173, utiliser `localhost`).

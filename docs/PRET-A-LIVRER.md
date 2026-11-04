@@ -1,7 +1,8 @@
 # Prêt à livrer — liste de contrôle go / no-go (T36 « vérification finale »)
 
 Établie le 2026-11-03 d'après le dépôt (branche `develop`) ; mise à jour le 2026-11-04 pour le remplacement de
-Keycloak par l'authentification interne (branche `feat/auth-interne`, non fusionnée). Légende du statut :
+Keycloak par l'authentification interne (branche `feat/auth-interne`, non fusionnée), puis le même jour pour la
+revue de sécurité de l'authentification et le rejeu de l'audit ASVS (B1, B8). Légende du statut :
 **OK** = preuve lue dans le dépôt (le fichier cité) ; **à vérifier** = non exécuté ni constaté par l'auteur de
 cette liste, à rejouer ; **à faire** = travail restant de l'équipe ; **bloqué par ONEA** = dépend d'une
 décision ou d'une information de l'ONEA (voir `docs/HANDOFF.md` §5). Aucune commande n'a été exécutée pour
@@ -28,8 +29,8 @@ bloquent la mise en production (pas la livraison du logiciel), chacune avec son 
 
 | # | Critère | Comment vérifier | Statut |
 |---|---|---|---|
-| B1 | Revue ASVS niveau 2 : aucun constat critique, élevé ou moyen ouvert | `docs/securite/asvs-l2.md` : SEC-01 corrigé, SEC-02 résolu, SEC-03 corrigé, SEC-04 résolu ; SEC-05 à SEC-09 faibles corrigés ou acceptés (SEC-07 accepté par l'utilisateur). **Cette revue portait sur Keycloak** : elle doit être rejouée sur l'authentification interne (V2, V3, V4) | OK pour l'ancienne version ; à refaire |
-| B8 | Revue de sécurité de l'authentification interne, constats critiques et élevés corrigés | `docs/securite/auth-interne-modele.md` ; scénarios S4-29 à S4-37 de `docs/recette/scenarios-de-test.md` | à faire (revue statique en cours, scénarios non joués) |
+| B1 | Revue ASVS niveau 2 : aucun constat critique, élevé ou moyen ouvert | `docs/securite/asvs-l2.md`, **rejouée le 2026-11-04 sur l'authentification interne** (revue statique, commit `ccd12f8`) : V2, V3, V4 et V7 exigence par exigence, lignes touchées de V8, V9, V13, V14. Décompte (Conforme / Partiel / Non conforme / Non applicable) : V2 21/9/7/15, V3 13/2/1/2, V4 6/2/1/0, V7 7/5/0/0. Aucun constat critique, élevé ou moyen ouvert (SEC-01 corrigé, SEC-02 résolu, SEC-04 résolu, SEC-03/05/06 sans objet depuis le retrait de Keycloak, AUTH-01 à AUTH-06 corrigés). Non-conformités L2 restantes, toutes faibles ou fonctionnelles : indicateur de robustesse et affichage du mot de passe (2.1.8, 2.1.12), notifications au titulaire (2.2.3, 2.5.5 = AUTH-10), WebAuthn (2.3.2), poivre (2.4.5), mot de passe temporaire envoyé en clair par courriel (2.5.1), liste des sessions (3.3.4), second facteur obligatoire des administrateurs (4.3.1, décision ONEA). **Analyse dynamique (ZAP) non rejouée** depuis Keycloak | OK (statique) ; à vérifier (dynamique, B6) |
+| B8 | Revue de sécurité de l'authentification interne, constats critiques et élevés corrigés | Revue statique faite le 2026-11-04 (constats AUTH-01 à AUTH-20 : 0 critique, 3 élevés, 3 moyens, 7 faibles, 7 informations ; synthèse et statut de chaque constat dans `docs/securite/asvs-l2.md` §2.2). Corrections appliquées (commits `39163e0`, `f77d1ff`, `f713854`, `91222a0`, `ccd12f8`) et **relues** ; tests du développeur lancés sur une sélection (pas de suite complète). Les 3 élevés et les 3 moyens sont corrigés. Restent ouverts : AUTH-08 (en-tête d'arrière-plan à envoyer par le frontend), AUTH-09 (délai d'inactivité des sessions admin), AUTH-11 (unicité insensible à la casse en base), AUTH-10 et AUTH-13 (arbitrages), AUTH-18 (TLS vers le relais non exigé), les constats d'information ; `AUTH_REINITIALISATION_ECHECS_MAX` non transmis par `docker/compose.prod.yml`. **Comportement non vérifié sur une pile en fonctionnement** (envoi par le `worker`, 429 derrière le NAT, navigateur) ; scénarios S4-29 à S4-41 de `docs/recette/scenarios-de-test.md` non joués ; modèle : `docs/securite/auth-interne-modele.md` | OK (revue faite, élevés et moyens corrigés) ; à vérifier (pile réelle, scénarios) |
 | B2 | Licences : aucune hors liste, SBOM produit | `bash scripts/audit-dependances.sh` ; rapport daté du 2026-10-30 dans `docs/securite/licences.md` (0 bloquant) à rejouer, la liste ayant évolué le 2026-11-02 | à vérifier |
 | B3 | Vulnérabilités connues | même script (pip-audit, npm audit) ; 0 au 2026-10-30 | à vérifier |
 | B4 | Images et dépendances épinglées | `sh scripts/verifier-epinglage.sh` | à vérifier |
@@ -68,7 +69,7 @@ bloquent la mise en production (pas la livraison du logiciel), chacune avec son 
 |---|---|---|
 | E1 | Destination de la copie hors serveur des sauvegardes et détenteurs du mot de passe restic (U1) | bloqué par ONEA |
 | E2 | Hébergement, nom DNS (un seul : plus de nom pour un serveur d'identité), source du certificat TLS (U2) | bloqué par ONEA |
-| E3 | SMTP (U3) : sans `EMAIL_URL`, la production refuse de démarrer ; il porte aussi les codes de connexion, le « mot de passe oublié » et le courriel de bienvenue (repli sans courriel : réinitialisation par un administrateur) | bloqué par ONEA |
+| E3 | SMTP (U3) : sans `EMAIL_URL`, la production refuse de démarrer ; il porte aussi les codes de connexion, le « mot de passe oublié » et le courriel de bienvenue, tous envoyés par le `worker` (repli sans courriel : `EMAIL_URL=dummymail://` et réinitialisation par un administrateur, `docs/deploy.md` §2.3 et §5.5) | bloqué par ONEA |
 | E4 | Réseau : proxy amont, réseau d'administration, supervision (U5) | bloqué par ONEA |
 | E5 | 22 gabarits Word réels (provisoires acceptés pour la livraison, pas pour l'usage final) | bloqué par ONEA |
 | E6 | Abréviations QPC, GST, QCI, MARC, FF, RO, PT, FCT, FDT, FIT, FO ; rôles pour lesquels le code de connexion par courriel deviendrait obligatoire (D19, aujourd'hui facultatif) ; libellé de la direction des participants sur l'ordre de mission | bloqué par ONEA |
@@ -82,8 +83,10 @@ vérifications « à vérifier » non rejouées. Mise en production : en plus, E
 
 Authentification interne (`feat/auth-interne`, non fusionnée dans `develop`) : le remplacement de Keycloak est
 écrit, documenté (`docs/deploy.md` §5, runbook, manuels, scénarios) et ses tests ont été lancés par application ;
-**ne sont pas faits** : suite complète en une exécution, specs Playwright (typage vérifié, exécution non faite),
-parcours manuel sur le site de test, revue de sécurité (B8) et rejeu de l'audit ASVS (B1). Ce qui reste à
+la revue de sécurité statique (B8) est faite et ses constats élevés et moyens sont corrigés (corrections relues,
+non éprouvées sur une pile réelle) ; l'audit ASVS L2 est rejoué en statique (B1). **Ne sont pas faits** : suite
+complète en une exécution, specs Playwright (typage vérifié, exécution non faite), parcours manuel sur le site de
+test (scénarios S4-29 à S4-41), analyse dynamique, et les constats ouverts listés en B8. Ce qui reste à
 fournir par l'ONEA pour l'authentification : le relais SMTP (E3), le certificat TLS réel, le nom DNS et
 l'hébergement (E2), la copie hors serveur des sauvegardes (E1), et, hors authentification, les 22 gabarits Word
 réels (E5). Verdict inchangé tant que ces points ne sont pas levés : on ne peut pas dire « prêt à livrer ».

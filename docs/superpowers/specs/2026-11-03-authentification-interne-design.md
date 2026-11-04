@@ -2,6 +2,18 @@
 
 Date : 2026-11-03. Statut : brouillon soumis à relecture, **non approuvé**.
 
+> **Amendements du 2026-11-04** (revue de sécurité de l'authentification, constats AUTH-01 à AUTH-20 ;
+> détail dans `docs/securite/asvs-l2.md` §2.2 et `docs/securite/auth-interne-modele.md`). Ce qui suit dans
+> ce document reste la conception d'origine ; là où il diffère, le code et ces deux documents font foi :
+> - un délégué ne gère que les comptes AUDITEUR et AUDITE (ni ADMIN, ni RAI, ni DG) et n'attribue que ces
+>   deux rôles ;
+> - tous les courriels d'authentification sont envoyés par le `worker` ; `web` met en file sans secret
+>   (mot de passe temporaire chiffré en base 1 h) ; « courriel envoyé » signifie « mis en file » ;
+> - au plus 15 codes de réinitialisation faux par compte et par 24 h, et 10 codes émis, comptés en base ;
+> - limites de débit par point d'entrée, plafonds d'échecs par adresse, CSRF vérifié avant les limites ;
+> - production : `EMAIL_URL` limité à SMTP ou `dummymail://` (sans courriel) ; identifiants ASCII ;
+>   `/admin/password_change/` fermé.
+
 ## Intention
 
 Aujourd'hui l'identité (mot de passe, connexion, sessions) dépend de Keycloak, alors que les
