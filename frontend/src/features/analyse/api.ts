@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import { fetchAllPages } from "@/api/allPages";
 import { apiFetch } from "@/api/client";
+import { toQuery } from "@/api/query";
 import { missionKeys } from "../missions/keys";
 import type {
   AvisInput,
@@ -125,11 +126,14 @@ export function useQuestionnaires(missionId: string | undefined, type?: TypeQues
   });
 }
 
+/** Questions d'un questionnaire : la liste n'est pas paginée, l'API renvoie un tableau nu. */
 export function useQuestions(questionnaireId: string | undefined) {
   return useQuery({
     queryKey: analyseKeys.questions(questionnaireId),
     queryFn: () =>
-      fetchAllPages<Question>("analysis-questions", { questionnaire: questionnaireId }),
+      apiFetch<Question[]>(
+        `${BASE}/analysis-questions/${toQuery({ questionnaire: questionnaireId })}`,
+      ),
     enabled: questionnaireId !== undefined,
   });
 }
@@ -172,13 +176,8 @@ export function useDeleteQuestion() {
     onSuccess: (_, { id, missionId, questionnaireId }) => {
       // Pas de requête par question : on retire l'élément supprimé de la liste en cache
       // pour ne jamais l'afficher ni le recharger.
-      client.setQueryData<{ results: Question[]; count: number }>(
-        analyseKeys.questions(questionnaireId),
-        (old) =>
-          old && {
-            count: old.count - 1,
-            results: old.results.filter((q) => q.id !== id),
-          },
+      client.setQueryData<Question[]>(analyseKeys.questions(questionnaireId), (old) =>
+        old?.filter((q) => q.id !== id),
       );
       return invalidateAnalyse(client, missionId, analyseKeys.questions(questionnaireId));
     },
