@@ -648,11 +648,13 @@ class EtapeSerializer(serializers.ModelSerializer[EtapeMission]):
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_livrables_manquants(self, obj: EtapeMission) -> list[str]:
-        return livrables_manquants(obj) if self._detail() else []
+        if not self._detail() or self.context["request"].user.role == Role.AUDITE:
+            return []
+        return livrables_manquants(obj)
 
     @extend_schema_field(EvenementSerializer(many=True))
     def get_evenements(self, obj: EtapeMission) -> list[dict[str, Any]]:
-        if not self._detail():
+        if not self._detail() or self.context["request"].user.role == Role.AUDITE:
             return []
         return [dict(EvenementSerializer(e).data) for e in obj.evenements.all()]
 

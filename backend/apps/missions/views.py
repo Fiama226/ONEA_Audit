@@ -582,6 +582,8 @@ class EtapeViewSet(
     http_method_names = ["get", "post", "patch", "head", "options"]
     filterset_class = filters.EtapeFilter
     ordering = ("numero",)
+    # Lecture seule pour l'audité : le plan d'actions (étape XVI) a besoin de l'état des étapes.
+    audite_actions = frozenset({"list", "retrieve"})
     _mission_liste: Mission | None = None
 
     def get_queryset(self) -> QuerySet[EtapeMission]:
