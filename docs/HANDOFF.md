@@ -52,7 +52,7 @@ partent de `worker-auth` (file Celery `auth`, le `worker` principal la sert en s
 « courriel envoyé » veut dire « mis en file ») ; un délégué ne gère plus que les comptes AUDITEUR et AUDITE ;
 plafond de 15 codes de réinitialisation faux par compte et par 24 h et quota de 10 codes en base ; un compteur
 par point d'entrée de l'authentification (connexion 60/min par adresse), plafonds d'échecs par adresse (30 par
-15 min à la connexion, 30 par heure à la réinitialisation, ne comptant que les mauvais secrets et les comptes inconnus), CSRF vérifié avant les limites, IPv6 par /64,
+15 min à la connexion, 30 par heure à la réinitialisation : un mauvais secret sur un compte utilisable compte à chaque fois, un refus sur un compte inutilisable (verrouillé, désactivé, expiré) une fois par compte et par fenêtre quel que soit le secret, un identifiant inconnu au plus 5 fois ; plus un plafond de tous les refus, `echecs_tous` 120 par 15 min, état des tours 3 et 4, commits `2fbaad9`, `4eabb55`), CSRF vérifié avant les limites, IPv6 par /64,
 `/admin/login/` sous les mêmes limites ; la production refuse les backends courriel console, fichier et mémoire
 (`dummymail://` = sans courriel) ; en-tête `X-Onea-Arriere-Plan: 1` pour les requêtes d'arrière-plan ;
 `/admin/password_change/` en 404 ; identifiants ASCII. Audit ASVS L2 **rejoué en statique** sur cette
@@ -67,6 +67,22 @@ Ces corrections sont relues statiquement, **non vérifiées sur une pile en fonc
 Restent ouverts : délai d'inactivité des sessions admin (AUTH-09), contraintes d'unicité insensibles à la casse (AUTH-11),
 notifications au titulaire (AUTH-10) et liste de mots de passe compromis (AUTH-13) à arbitrer, TLS vers le
 relais non exigé (AUTH-18), analyse dynamique (ZAP) à rejouer.
+
+**Revue finale de la branche et dernière vague de corrections (2026-11-04)** : trois revues (infrastructure et
+documents, backend, frontend). Corrigé côté backend et exploitation : le rôle PostgreSQL `onea_app` reçoit
+`DELETE` sur les trois tables transitoires de l'authentification (`users_codeotp`, `users_envoimotdepasse`,
+`users_fichiermotsdepasse`) ; sans cela, en production, tout changement de mot de passe, envoi de code ou
+téléchargement du fichier des mots de passe échouait (« permission denied ») ; des tests rejouent désormais
+les parcours sous un rôle construit comme `onea_app`. Les actions du titulaire (changement de mot de passe
+volontaire ou imposé, réinitialisation par code, activation et désactivation du code de connexion) écrivent
+une entrée d'audit nommée, exposée par l'API du journal (`action_metier`). L'identifiant de connexion est
+reconnu sans casse (homonymes de casse refusés comme un identifiant inconnu). `TRUSTED_PROXY_CIDRS` est
+exigé en production. `creer_administrateur` impose l'ASCII. Les courriels texte ne sont plus échappés en
+HTML. Recette : `scripts/recette/comptes.sh` prépare le compte `admin` (CI : job `recette`), le banc de
+restauration vérifie une connexion avant et après restauration. `backup.sh` purge les anciens
+`keycloak-*.dump`, et la procédure de passage depuis Keycloak est complétée (`deploy.md` §6). Les
+corrections du frontend (revue finale) sont menées en parallèle : voir leur compte rendu. **Non vérifié sur
+une pile en fonctionnement** : les scripts de recette modifiés n'ont pas été exécutés (seulement `sh -n`).
 
 ## 3. Décisions déjà prises (ne plus les redemander)
 - Licences MIT-0, PSF-2.0 et ClamAV (conteneur séparé, GPL-2.0) autorisées : commit 6c982ec. ZPL-2.1 : 120ee1b.
@@ -118,8 +134,9 @@ relais non exigé (AUTH-18), analyse dynamique (ZAP) à rejouer.
 - Comptes de développement et de recette : `admin`, `rai`, `auditeur1`, `auditeur2`, `audite1`, `dg`. Il n'y a plus
   de mot de passe commun : `python manage.py creer_administrateur --identifiant admin --courriel admin@example.org`
   crée l'administrateur (mot de passe temporaire affiché une fois), et `donner_mots_de_passe_temporaires`
-  en donne un aux comptes existants sans mot de passe ; chacun le change à sa première connexion. Jamais en
-  production.
+  en donne un aux comptes existants sans mot de passe ; chacun le change à sa première connexion. Ces deux
+  commandes servent aussi en production (`deploy.md` §5.1 et §5.4) ; « jamais en production » vise les
+  comptes de test eux-mêmes. En recette, `sh scripts/recette/comptes.sh` prépare `admin` (`docs/recette.md`).
 - Tests back : `unset DJANGO_SETTINGS_MODULE`, base dédiée (jamais `onea`), `pytest` ciblé. Tests front :
   `npx vitest run --maxWorkers=2 --testTimeout=30000`. Une suite complète prend 15 à 30 minutes.
 - Données de démonstration : `python manage.py peupler_demo --profil formation --recette` sur base vide (comptes

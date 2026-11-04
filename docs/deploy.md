@@ -286,7 +286,7 @@ ferme toutes les sessions du compte, §5), relecture du journal d'audit de la p�
 `.pre-commit-config.yaml`) et **tout l'historique** en intégration continue (job `secrets-scan`).
 Les règles par défaut s'appliquent ; `.gitleaks.toml` ne liste que des valeurs de développement
 ou de modèle (publiques, refusées en production) et des faux positifs documentés (références
-`${VARIABLE}` de Compose, URL JDBC sans identifiants, chemin `/etc/passwd` d'un test). Installation
+`${VARIABLE}` de Compose, chemin `/etc/passwd` d'un test). Installation
 locale : `pre-commit install`. Contrôle manuel de l'historique :
 
 ```
@@ -303,8 +303,9 @@ confiance pour joindre le relais en TLS (`smtp+tls://` ou `smtps://`). Créer un
 `certs/ca-bundle.pem` à la racine du dépôt contenant **les autorités publiques de confiance
 puis l'autorité interne** (la variable remplace le magasin par défaut de Python), puis
 renseigner dans `.env.prod` : `CA_BUNDLE_PATH=/etc/onea/ca/ca-bundle.pem`. Le
-répertoire `certs/` est monté en lecture seule dans `web` et `worker`
-(`SSL_CERT_FILE` pour le relais SMTP, `REQUESTS_CA_BUNDLE` pour les appels HTTPS sortants).
+répertoire `certs/` est monté en lecture seule dans `web`, `worker` et `worker-auth` (qui envoie
+tous les courriels de l'authentification) (`SSL_CERT_FILE` pour le relais SMTP,
+`REQUESTS_CA_BUNDLE` pour les appels HTTPS sortants).
 Laisser la variable vide pour un certificat d'autorité publique ou un relais en clair.
 
 ## 4. Premier démarrage
@@ -315,8 +316,8 @@ docker compose --env-file .env.prod -f docker/compose.prod.yml ps
 ```
 
 Le service à usage unique `migrate` (`restart: "no"`) applique les migrations et rassemble
-les fichiers statiques dans le volume partagé avec `nginx` ; `web`, `worker` et `beat`
-attendent sa fin réussie (`service_completed_successfully`). Si `migrate` échoue, rien
+les fichiers statiques dans le volume partagé avec `nginx` ; `web`, `worker`, `worker-auth` et
+`beat` attendent sa fin réussie (`service_completed_successfully`). Si `migrate` échoue, rien
 d'autre ne démarre : consulter `docker compose ... logs migrate`.
 `https://audit.onea.bf/api/v1/health/` doit répondre `{"status":"ok",...}`. Tant qu'aucun
 administrateur n'existe (section suivante), la connexion à l'application n'est pas possible.
@@ -797,11 +798,11 @@ intercepté (ce droit n'est pas accordé au rôle applicatif).
 | `APP_VERSION` | étiquette des images `onea-backend` / `onea-frontend` (obligatoire) |
 | `DJANGO_ADMIN_ENABLED` | `false` par défaut ; `true` expose `/admin/` |
 | `ONEA_SECRETS_DIR` | dossier des fichiers de secrets (root, 0700 ; voir §3.1) : obligatoire |
-| `EMAIL_URL` | relais SMTP **sans mot de passe** : `smtp+tls://` (STARTTLS), `smtps://` (TLS implicite) ou `smtp://` (clair, relais interne), ex. `smtp+tls://compte@smtp.onea.bf:587` (le mot de passe est le fichier `email_password`, lu par le `worker` seul) ; ou `dummymail://` pour fonctionner sans courriel ; **toute autre forme est refusée au démarrage** (§2.3). Sert aux codes à usage unique, aux courriels de bienvenue et aux mots de passe temporaires, tous envoyés par le `worker` ; délai d'attente de 10 s par envoi (`EMAIL_TIMEOUT`, fixé par `config/settings/prod.py`, non configurable par l'environnement) |
+| `EMAIL_URL` | relais SMTP **sans mot de passe** : `smtp+tls://` (STARTTLS), `smtps://` (TLS implicite) ou `smtp://` (clair, relais interne), ex. `smtp+tls://compte@smtp.onea.bf:587` (le mot de passe est le fichier `email_password`, lu par `worker` et `worker-auth` seuls) ; ou `dummymail://` pour fonctionner sans courriel ; **toute autre forme est refusée au démarrage** (§2.3). Sert aux codes à usage unique, aux courriels de bienvenue et aux mots de passe temporaires, tous envoyés par `worker-auth` (file `auth`, repli sur le `worker`) ; délai d'attente de 10 s par envoi (`EMAIL_TIMEOUT`, fixé par `config/settings/prod.py`, non configurable par l'environnement) |
 | `SESSION_COOKIE_SECURE` | `true` : posé par `docker/compose.prod.yml` ; la production refuse de démarrer si la variable est absente ou fausse |
 | `CSRF_TRUSTED_ORIGINS` | posé par `docker/compose.prod.yml` à `https://${PUBLIC_HOST}` ; obligatoire pour le backend de production |
 | `POSTGRES_DB`, `POSTGRES_USER` | base applicative (mot de passe : fichier `postgres_password`) |
-| `POSTGRES_APP_USER` | rôle applicatif sans privilèges de web, worker, beat (voir §7bis) ; mot de passe : fichier `postgres_app_password` |
+| `POSTGRES_APP_USER` | rôle applicatif sans privilèges de web, worker, worker-auth, beat (voir §7bis) ; mot de passe : fichier `postgres_app_password` |
 | Fichiers de secrets | `secret_key`, `secret_key_fallbacks`, `redis_password`, `meili_master_key`, `metrics_token`, `email_password` : voir §3.1 (ils ne sont plus des variables) |
 | `DOCUMENTS_HOST_DIR` | dossier de l'hôte (absolu, hors dépôt) où sont stockés les documents ; monté en `/var/lib/onea/documents` dans `web` et `worker` |
 | `THROTTLE_RATE_GENERATION` | limite par utilisateur : génération de document (défaut `20/min`) |

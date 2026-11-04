@@ -213,8 +213,9 @@ Aucune route n'atteint 300 ms. Trois routes sont proches du seuil (`findings/`,
 `follow-up/actions/`, `document-types/`), mais uniquement sous la charge du poste de mesure
 (agents en parallèle) : leur médiane est d'environ 50 ms, le temps est passé en sérialisation
 Python (0 à 30 ms de SQL) et non en base. Sur une machine chargée, relever `PERF_P95_MS`.
-Deux routes sont exclues du test de temps car dominées par un service externe :
-`templates/{id}/preview/` (conversion Gotenberg) et `user-accounts/directory-search/` (Keycloak).
+Une route est exclue du test de temps car dominée par un service externe :
+`templates/{id}/preview/` (conversion Gotenberg). (La seconde exclusion,
+`user-accounts/directory-search/`, servait l'annuaire Keycloak : la route n'existe plus.)
 
 ## Limites
 

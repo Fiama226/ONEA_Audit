@@ -26,7 +26,8 @@ or from the process environment:
 
 Every `THROTTLE_RATE_<SCOPE>` (generation, apercu, televersement, import, export, anonyme,
 recherche, connexion, connexion_code, mot_de_passe_oublie, mot_de_passe_oublie_ip, reinitialisation,
-echecs_connexion, echecs_reinitialisation, changement_mot_de_passe, gestion_comptes) takes `N/sec|min|hour|day`; an invalid
+echecs_connexion, echecs_reinitialisation, echecs_tous, changement_mot_de_passe, gestion_comptes) takes
+`N/sec|min|hour|day`; the authentication scopes also take `N/<k>min` (e.g. `30/15min`). An invalid
 value stops the start-up.
 
 ## Authentication
@@ -62,8 +63,8 @@ logs an ERROR "Mot de passe temporaire perdu (...) : compte=... Réinitialisez l
 affichage." (see `docs/exploitation/runbook.md`). Migration `users.0011_codes_connexion_et_remplaces`
 belongs to this change.
 
-Scheduled tasks (`CELERY_BEAT_SCHEDULE`): `users.purger_codes` (03:30, expired one-time codes and
-import password files past 24 h) and `users.purger_sessions` (03:45, `clearsessions`). Design and
+Scheduled tasks (`CELERY_BEAT_SCHEDULE`): `users.purger_codes` (03:30, one-time codes expired for 24 h,
+import password files past 24 h and queued temporary passwords past their hour) and `users.purger_sessions` (03:45, `clearsessions`). Design and
 control map: `docs/securite/auth-interne-modele.md`.
 
 API schema and docs (`/api/schema/`, `/api/docs/`) are anonymous in dev/test and admin-only in prod.

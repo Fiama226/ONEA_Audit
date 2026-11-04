@@ -196,7 +196,7 @@ l'histoire. Les créations courtes (programme, mission, déclaration) sont refai
 
 | Min | Acte | Qui | Ce qu'on montre | Message à faire passer |
 |---|---|---|---|---|
-| 0–2 | 1. Connexion et tableau de bord | `rai` | « Se connecter » (SSO), tableau de bord du RAI : missions par statut, file de décisions, jalons à valider, cartographie 5×5 | un point d'entrée unique, des rôles distincts, tout est en français |
+| 0–2 | 1. Connexion et tableau de bord | `rai` | formulaire de connexion (identifiant et mot de passe), tableau de bord du RAI : missions par statut, file de décisions, jalons à valider, cartographie 5×5 | un point d'entrée unique, des rôles distincts, tout est en français |
 | 2–4 | 2. Le socle | `rai` | Référentiel › Cartographies (matrice 5×5, niveaux faible 1–7, moyen 8–14, élevé 15–25), comparaison de versions ; Programme annuel (calendrier, validé = figé) | la cartographie validée est figée et versionnée ; le programme découle des risques |
 | 4–7 | 3. Créer et lancer une mission | `rai` | Nouvelle mission (S2-21), « Planifier » (référence `DAI/AAAA/Mnn` attribuée), équipe, « Lancer » | la référence est attribuée à la planification et ne sera jamais réutilisée |
 | 7–9 | 4. Indépendance | `auditeur2`, puis `rai` | `auditeur2` : bandeau « Confirmez votre déclaration d'indépendance… », déclaration d'un conflit ; `rai` : « Arbitrer » | pas de contribution tant que la déclaration n'est pas levée |

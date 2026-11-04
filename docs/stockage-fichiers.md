@@ -112,7 +112,7 @@ restic chiffré (destinations acceptées, mot de passe, minuteries et alerte par
 `sudo sh scripts/restore.sh <horodatage> --oui --dossier <dossier de sauvegarde>` automatise la
 procédure ; le détail et les garde-fous sont dans `docs/deploy.md`, §7.4. En résumé :
 
-1. contrôle du manifeste (refus d'un jeu altéré), arrêt de `web`, `worker`, `beat` ;
+1. contrôle du manifeste (refus d'un jeu altéré), arrêt de `web`, `worker`, `worker-auth`, `beat` ;
 2. `pg_restore --clean --if-exists --single-transaction` de la base applicative, puis `installer_gardes_sql`
    (déclencheurs de gel et droits de `onea_app`, que le dump ne suffit pas à garantir) ;
 3. le dossier des documents est **déplacé** en `<DOCUMENTS_HOST_DIR>-avant-restauration-<horodatage>`,
