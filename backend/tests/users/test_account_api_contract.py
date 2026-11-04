@@ -84,6 +84,9 @@ def test_contrat_compte_utilisateur(
             "relancer_synchro_keycloak": True,
             "reinitialiser_mot_de_passe": False,
             "desactiver_otp": False,
+            "modifier_courriel": True,
+            "modifier_direction": True,
+            "changer_role": True,
         },
     }
     assert data == attendu
@@ -134,6 +137,8 @@ def test_schema_expose_user_accounts_sans_collision() -> None:
         "/api/v1/user-accounts/{id}/retry-keycloak-sync/",
         "/api/v1/user-accounts/{id}/reset-password/",
         "/api/v1/user-accounts/{id}/disable-otp/",
+        "/api/v1/user-accounts/{id}/change-role/",
+        "/api/v1/user-accounts/{id}/delegation/",
         "/api/v1/user-accounts/directory-search/",
         "/api/v1/user-accounts/import-directory/",
         "/api/v1/user-accounts/import-csv/",
@@ -156,6 +161,10 @@ def test_schema_expose_user_accounts_sans_collision() -> None:
         "EntreeAnnuaire",
         "SyncKeycloak",
         "ActionsCompte",
+        "ChangementRoleRequest",
+        "DelegationGestionComptes",
+        "DelegationGestionComptesRequest",
+        "DroitsGestionComptes",
         "KeycloakSyncStatutEnum",
         "OrigineCompteEnum",
     ):

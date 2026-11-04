@@ -43,6 +43,7 @@ def test_schema_exposes_me_component_with_expected_fields(api_client: APIClient)
         "fonction",
         "tutoriel",
         "otp_connexion_actif",
+        "gestion_comptes",
     }
 
 

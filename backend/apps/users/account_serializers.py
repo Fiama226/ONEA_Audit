@@ -5,13 +5,12 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.fields import empty
 
-from .models import KeycloakSyncStatut, Role, User
+from .models import DelegationGestionComptes, KeycloakSyncStatut, Role, User
 from .provisioning import CSV_MAX_BYTES, EntreeAnnuaire, LigneIgnoree, RapportImport
-from .services import ROLE_OBLIGATOIRE, actions_compte
+from .services import PROFILE_FIELDS, ROLE_INVALIDE, ROLE_OBLIGATOIRE, actions_compte
 
-PROFILE_FIELDS = ("matricule", "direction_code", "fonction")
-CHAMPS_ANNUAIRE = frozenset({"role", "username", "email", "first_name", "last_name"})
-MSG_ANNUAIRE = "Ce champ est géré dans l'annuaire (Keycloak) et ne peut pas être modifié ici."
+MSG_ROLE = "Utilisez l'action « Changer le rôle »."
+MSG_IDENTIFIANT = "L'identifiant ne peut pas être modifié."
 MSG_ACTIF = "Utilisez les actions « Désactiver » et « Réactiver »."
 MSG_AUTRE = "Champ non modifiable."
 FICHIER_TROP_GROS = "Le fichier dépasse 1 Mo."
@@ -29,11 +28,9 @@ TYPES_CSV = frozenset(
 
 
 def message_champ_refuse(champ: str) -> str:
-    if champ in CHAMPS_ANNUAIRE:
-        return MSG_ANNUAIRE
-    if champ == "is_active":
-        return MSG_ACTIF
-    return MSG_AUTRE
+    return {"role": MSG_ROLE, "username": MSG_IDENTIFIANT, "is_active": MSG_ACTIF}.get(
+        champ, MSG_AUTRE
+    )
 
 
 class UserRefSerializer(serializers.ModelSerializer[User]):
@@ -64,7 +61,8 @@ class SyncKeycloakSerializer(serializers.Serializer[User]):
 
 
 class ActionsCompteSerializer(serializers.Serializer[dict[str, bool]]):
-    """Actions que l'administrateur connecté peut effectuer sur le compte."""
+    """Actions que l'utilisateur connecté (administrateur ou délégué) peut effectuer sur le
+    compte."""
 
     modifier_profil = serializers.BooleanField()
     desactiver = serializers.BooleanField()
@@ -73,6 +71,9 @@ class ActionsCompteSerializer(serializers.Serializer[dict[str, bool]]):
     relancer_synchro_keycloak = serializers.BooleanField()
     reinitialiser_mot_de_passe = serializers.BooleanField()
     desactiver_otp = serializers.BooleanField()
+    modifier_courriel = serializers.BooleanField()
+    modifier_direction = serializers.BooleanField()
+    changer_role = serializers.BooleanField()
 
 
 class CompteUtilisateurListeSerializer(serializers.ModelSerializer[User]):
@@ -138,11 +139,18 @@ class CompteUtilisateurSerializer(CompteUtilisateurListeSerializer):
 
 
 class ProfilUtilisateurSerializer(serializers.Serializer[dict[str, str]]):
-    """Champs de profil modifiables ; tout autre champ est refusé explicitement."""
+    """Champs de profil modifiables ; tout autre champ est refusé explicitement.
+
+    Droit requis par champ modifié (administrateur ou délégué) : nom, prénom, matricule et
+    fonction = « créer des comptes » ; courriel = « réinitialiser les mots de passe » ;
+    direction = « changer les rôles »."""
 
     matricule = serializers.CharField(max_length=32, allow_blank=True)
     direction_code = serializers.CharField(max_length=16, allow_blank=True)
     fonction = serializers.CharField(max_length=128, allow_blank=True)
+    email = serializers.EmailField(max_length=254, allow_blank=True)
+    first_name = serializers.CharField(max_length=150, allow_blank=True)
+    last_name = serializers.CharField(max_length=150, allow_blank=True)
 
     def to_internal_value(self, data: Any) -> Any:
         if hasattr(data, "keys"):
@@ -183,6 +191,36 @@ class CreationCompteSerializer(serializers.Serializer[dict[str, Any]]):
             "l'envoi échoue), le mot de passe est renvoyé une seule fois dans la réponse."
         ),
     )
+
+
+class ChangementRoleSerializer(serializers.Serializer[dict[str, str]]):
+    role = serializers.ChoiceField(
+        choices=Role.choices,
+        help_text="Seul un administrateur attribue le rôle Administrateur.",
+        error_messages={
+            "required": ROLE_OBLIGATOIRE,
+            "null": ROLE_OBLIGATOIRE,
+            "invalid_choice": ROLE_INVALIDE,
+        },
+    )
+
+
+class DelegationGestionComptesSerializer(serializers.ModelSerializer[DelegationGestionComptes]):
+    """Droits de gestion des comptes délégués à un agent (lecture et écriture : ADMIN)."""
+
+    creer = serializers.BooleanField(help_text="Créer des comptes.")
+    reinitialiser = serializers.BooleanField(
+        help_text="Réinitialiser les mots de passe et désactiver le code de connexion."
+    )
+    roles = serializers.BooleanField(help_text="Changer les rôles (et la direction).")
+    desactiver = serializers.BooleanField(help_text="Désactiver et réactiver des comptes.")
+    accorde_par = UserRefSerializer(read_only=True, allow_null=True)
+    accorde_le = serializers.DateTimeField(read_only=True, allow_null=True)
+
+    class Meta:
+        model = DelegationGestionComptes
+        fields = ("creer", "reinitialiser", "roles", "desactiver", "accorde_par", "accorde_le")
+        read_only_fields = ("accorde_par", "accorde_le")
 
 
 class ReinitialisationCompteSerializer(serializers.Serializer[dict[str, bool]]):

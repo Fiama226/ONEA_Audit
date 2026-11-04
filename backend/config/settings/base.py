@@ -293,6 +293,8 @@ REST_FRAMEWORK = {
             "connexion": "20/min",
             # per typed identifier on "forgotten password" (+ a silent per-account quota)
             "mot_de_passe_oublie": "5/hour",
+            # per user: account creation, password reset, login-code removal (emails sent)
+            "gestion_comptes": "30/hour",
         }.items()
     },
 }

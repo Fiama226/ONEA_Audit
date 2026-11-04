@@ -45,6 +45,9 @@ def _routes(cible: int) -> list[tuple[str, str, dict[str, Any], str]]:
         ("post", BASE, {"username": "nouvel.agent", "role": "AUDITEUR"}, "json"),
         ("post", f"{BASE}{cible}/reset-password/", {}, "json"),
         ("post", f"{BASE}{cible}/disable-otp/", {}, "json"),
+        ("post", f"{BASE}{cible}/change-role/", {"role": "RAI"}, "json"),
+        ("get", f"{BASE}{cible}/delegation/", {}, "json"),
+        ("put", f"{BASE}{cible}/delegation/", {}, "json"),
         ("get", BASE + "directory-search/?q=aud", {}, "json"),
         ("post", BASE + "import-directory/", {"keycloak_ids": [str(uuid.uuid4())]}, "json"),
         ("post", BASE + "import-csv/", {}, "multipart"),
@@ -119,7 +122,8 @@ def test_reactivate_et_resync_profile(
     assert api_client.post(f"{BASE}{cible.id}/reactivate/").status_code == 422
 
 
-MSG_ANNUAIRE = "Ce champ est géré dans l'annuaire (Keycloak) et ne peut pas être modifié ici."
+MSG_ROLE = "Utilisez l'action « Changer le rôle »."
+MSG_IDENTIFIANT = "L'identifiant ne peut pas être modifié."
 MSG_ACTIF = "Utilisez les actions « Désactiver » et « Réactiver »."
 MSG_AUTRE = "Champ non modifiable."
 
@@ -127,11 +131,8 @@ MSG_AUTRE = "Champ non modifiable."
 @pytest.mark.parametrize(
     "champ,message",
     [
-        ("role", MSG_ANNUAIRE),
-        ("username", MSG_ANNUAIRE),
-        ("email", MSG_ANNUAIRE),
-        ("first_name", MSG_ANNUAIRE),
-        ("last_name", MSG_ANNUAIRE),
+        ("role", MSG_ROLE),
+        ("username", MSG_IDENTIFIANT),
         ("is_active", MSG_ACTIF),
         ("id", MSG_AUTRE),
         ("keycloak_id", MSG_AUTRE),
@@ -250,6 +251,9 @@ def test_actions_dans_le_detail(api_client: APIClient, admin: User) -> None:
     r = api_client.get(f"{BASE}{admin.id}/").json()
     assert r["actions"] == {
         "modifier_profil": True,
+        "modifier_courriel": True,
+        "modifier_direction": True,
+        "changer_role": False,
         "desactiver": False,
         "reactiver": False,
         "resynchroniser_profil": False,

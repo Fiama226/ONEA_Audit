@@ -35,7 +35,14 @@ def _direction(code: str) -> Direction:
 
 
 def test_constants() -> None:
-    assert PROFILE_FIELDS == {"matricule", "direction_code", "fonction"}
+    assert PROFILE_FIELDS == {
+        "matricule",
+        "direction_code",
+        "fonction",
+        "email",
+        "first_name",
+        "last_name",
+    }
     assert SYNCED_FIELDS == {"direction_code", "fonction"}
     assert OrigineCompte.CSV.label == "Import CSV"
     assert KeycloakSyncStatut.ECHEC.label == "Échec"
@@ -88,7 +95,9 @@ def test_reactiver_actif_refuse(admin: User, user: User) -> None:
 
 
 def test_dernier_admin_refuse(admin: User) -> None:
-    other = make_user(Role.AUDITEUR)
+    # The services check rights now: an inactive admin (e.g. the demo system actor) may
+    # act, and is not an active admin that would keep the platform administered.
+    other = make_user(Role.ADMIN, is_active=False)
     with pytest.raises(RegleMetierError) as exc:
         desactiver(admin, motif="x", by=other)
     assert exc.value.message == DERNIER_ADMIN
@@ -176,7 +185,15 @@ def test_resync_leve_le_drapeau(admin: User, user: User) -> None:
 @pytest.mark.parametrize(
     ("self_target", "active", "linked", "statut", "local", "otp", "expected"),
     [
-        (False, True, True, "A_JOUR", False, False, (True, True, False, False, False, True, False)),
+        (
+            False,
+            True,
+            True,
+            "A_JOUR",
+            False,
+            False,
+            (True, True, False, False, False, True, False, True, True, True),
+        ),
         (
             True,
             True,
@@ -184,9 +201,17 @@ def test_resync_leve_le_drapeau(admin: User, user: User) -> None:
             "A_JOUR",
             False,
             True,
-            (True, False, False, False, False, False, False),
+            (True, False, False, False, False, False, False, True, True, False),
         ),
-        (False, False, True, "ECHEC", True, False, (True, False, True, True, True, False, False)),
+        (
+            False,
+            False,
+            True,
+            "ECHEC",
+            True,
+            False,
+            (True, False, True, True, True, False, False, True, True, True),
+        ),
         (
             False,
             False,
@@ -194,7 +219,7 @@ def test_resync_leve_le_drapeau(admin: User, user: User) -> None:
             "EN_ATTENTE",
             False,
             True,
-            (True, False, True, False, True, False, True),
+            (True, False, True, False, True, False, True, True, True, True),
         ),
         (
             False,
@@ -203,9 +228,17 @@ def test_resync_leve_le_drapeau(admin: User, user: User) -> None:
             "EN_ATTENTE",
             False,
             False,
-            (True, False, True, False, False, False, False),
+            (True, False, True, False, False, False, False, True, True, True),
         ),
-        (False, True, False, "A_JOUR", False, True, (True, True, False, False, False, True, True)),
+        (
+            False,
+            True,
+            False,
+            "A_JOUR",
+            False,
+            True,
+            (True, True, False, False, False, True, True, True, True, True),
+        ),
     ],
 )
 def test_actions_compte(
@@ -235,6 +268,9 @@ def test_actions_compte(
         "relancer_synchro_keycloak",
         "reinitialiser_mot_de_passe",
         "desactiver_otp",
+        "modifier_courriel",
+        "modifier_direction",
+        "changer_role",
     ]
 
 

@@ -9,6 +9,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema
 from rest_framework import mixins, serializers
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -29,11 +30,13 @@ from apps.referentiel.models import Direction
 
 from . import provisioning, services
 from .account_filters import UserAccountFilter
-from .account_permissions import AccountAdminPermission
+from .account_permissions import AccountAdminPermission, LectureComptes, PeutGererComptes
 from .account_serializers import (
+    ChangementRoleSerializer,
     CompteUtilisateurListeSerializer,
     CompteUtilisateurSerializer,
     CreationCompteSerializer,
+    DelegationGestionComptesSerializer,
     EntreeAnnuaireSerializer,
     ImportAnnuaireSerializer,
     ImportCsvSerializer,
@@ -43,6 +46,7 @@ from .account_serializers import (
     RapportImportSerializer,
     ReinitialisationCompteSerializer,
 )
+from .delegation import ACTIONS
 from .keycloak_admin import KeycloakAdminError, KeycloakIndisponible, KeycloakNonConfigure
 from .keycloak_sync import relancer_synchronisation, synchroniser_keycloak
 from .models import User
@@ -54,6 +58,22 @@ Q_MIN, Q_MAX = 2, 100
 
 _COMPTE = {"200": None}
 _ERREURS_ACTION = {**ERROR_RESPONSES, **ERROR_404, **ERROR_422}
+
+# Who may call each action (re-checked by the services on the locked target). Anything not
+# listed (delegations, imports, directory, Keycloak resync, OPTIONS) is ADMIN only.
+_PERMISSIONS: dict[str, type[BasePermission]] = {
+    "list": LectureComptes,
+    "retrieve": LectureComptes,
+    "create": PeutGererComptes("creer"),
+    "reset_password": PeutGererComptes("reinitialiser"),
+    "disable_otp": PeutGererComptes("reinitialiser"),
+    "change_role": PeutGererComptes("roles"),
+    # Per changed field in the service: names/matricule/function = creer, email =
+    # reinitialiser, direction = roles.
+    "partial_update": PeutGererComptes("creer", "reinitialiser", "roles"),
+    "deactivate": PeutGererComptes("desactiver"),
+    "reactivate": PeutGererComptes("desactiver"),
+}
 
 
 ERROR_502 = {502: ApiErrorSerializer}
@@ -96,11 +116,15 @@ class UserAccountViewSet(
         "import_csv": "import",
         "import_directory": "import",
         "directory_search": "annuaire",
+        # Open to delegates and sending emails: capped per user (no mailbox flooding).
+        "create": "gestion_comptes",
+        "reset_password": "gestion_comptes",
+        "disable_otp": "gestion_comptes",
     }
     permission_classes = [AccountAdminPermission]
     filter_backends = [DjangoFilterBackend, StableOrderingFilter]
     filterset_class = UserAccountFilter
-    http_method_names = ["get", "patch", "post"]
+    http_method_names = ["get", "patch", "post", "put"]
     lookup_value_regex = r"\d+"
     ordering_fields = (
         "last_name",
@@ -119,6 +143,9 @@ class UserAccountViewSet(
         return User.objects.select_related("desactive_par").annotate(
             direction_libelle=Subquery(libelle)
         )
+
+    def get_permissions(self) -> list[BasePermission]:
+        return [_PERMISSIONS.get(self.action or "", AccountAdminPermission)()]
 
     def get_serializer_class(self) -> type[serializers.BaseSerializer[Any]]:
         if self.action == "list":
@@ -164,6 +191,7 @@ class UserAccountViewSet(
             **ERROR_400,
             **ERROR_RESPONSES,
             **ERROR_422,
+            **ERROR_429,
         },
     )
     def create(self, request: Request) -> Response:
@@ -187,7 +215,12 @@ class UserAccountViewSet(
             "compte désactivé et sur son propre compte."
         ),
         request=ReinitialisationCompteSerializer,
-        responses={200: MotDePasseTemporaireSerializer, **ERROR_400, **_ERREURS_ACTION},
+        responses={
+            200: MotDePasseTemporaireSerializer,
+            **ERROR_400,
+            **_ERREURS_ACTION,
+            **ERROR_429,
+        },
     )
     @action(detail=True, methods=["post"], url_path="reset-password")
     def reset_password(self, request: Request, pk: str) -> Response:
@@ -204,7 +237,7 @@ class UserAccountViewSet(
         summary="Désactiver le code de connexion par courriel d'un compte",
         description="Seul le titulaire peut l'activer ; refusé sur son propre compte.",
         request=None,
-        responses={200: CompteUtilisateurSerializer, **_ERREURS_ACTION},
+        responses={200: CompteUtilisateurSerializer, **_ERREURS_ACTION, **ERROR_429},
     )
     @action(detail=True, methods=["post"], url_path="disable-otp")
     def disable_otp(self, request: Request, pk: str) -> Response:
@@ -215,6 +248,13 @@ class UserAccountViewSet(
     @extend_schema(
         tags=[TAG],
         summary="Modifier le profil d'un compte",
+        description=(
+            "Droit requis par champ modifié : nom, prénom, matricule et fonction = « créer "
+            "des comptes » ; courriel = « réinitialiser les mots de passe » (il sert à la "
+            "récupération du compte) ; direction = « changer les rôles ». Un champ renvoyé "
+            "inchangé ne demande aucun droit. Un délégué ne modifie ni un administrateur, ni "
+            "un autre délégué, ni son propre compte."
+        ),
         request=ProfilUtilisateurSerializer,
         responses={200: CompteUtilisateurSerializer, **ERROR_400, **_ERREURS_ACTION},
     )
@@ -224,6 +264,53 @@ class UserAccountViewSet(
         serializer.is_valid(raise_exception=True)
         services.modifier_profil(compte, changes=serializer.validated_data, by=self.acteur)
         return self._reponse(compte)
+
+    @extend_schema(
+        tags=[TAG],
+        summary="Changer le rôle d'un compte",
+        description=(
+            "Seul un administrateur attribue le rôle Administrateur ; personne ne change son "
+            "propre rôle ; le dernier administrateur actif garde le sien."
+        ),
+        request=ChangementRoleSerializer,
+        responses={200: CompteUtilisateurSerializer, **ERROR_400, **_ERREURS_ACTION},
+    )
+    @action(detail=True, methods=["post"], url_path="change-role")
+    def change_role(self, request: Request, pk: str) -> Response:
+        compte = self.get_object()
+        serializer = ChangementRoleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        services.changer_role(compte, role=serializer.validated_data["role"], par=self.acteur)
+        return self._reponse(compte)
+
+    @extend_schema(
+        methods=["GET"],
+        tags=[TAG],
+        summary="Délégation de gestion des comptes d'un agent",
+        description="Administrateur seulement (un délégué ne lit pas les délégations).",
+        responses={200: DelegationGestionComptesSerializer, **_ERREURS_ACTION},
+    )
+    @extend_schema(
+        methods=["PUT"],
+        tags=[TAG],
+        summary="Définir la délégation de gestion des comptes d'un agent",
+        description=(
+            "Administrateur seulement. Les quatre droits sont obligatoires ; tout à faux "
+            "révoque la délégation. Effet immédiat ; refusé sur un compte administrateur."
+        ),
+        request=DelegationGestionComptesSerializer,
+        responses={200: DelegationGestionComptesSerializer, **ERROR_400, **_ERREURS_ACTION},
+    )
+    @action(detail=True, methods=["get", "put"], url_path="delegation")
+    def delegation(self, request: Request, pk: str) -> Response:
+        compte = self.get_object()
+        if request.method == "PUT":
+            serializer = DelegationGestionComptesSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            droits: dict[str, bool] = {a: serializer.validated_data[a] for a in ACTIONS}
+            services.definir_delegation(compte, droits=droits, par=self.acteur)
+        data = DelegationGestionComptesSerializer(services.delegation_de(compte)).data
+        return Response(data)
 
     @extend_schema(
         tags=[TAG],

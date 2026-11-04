@@ -77,6 +77,7 @@ x-backend-env: &backend-env
   THROTTLE_RATE_RECHERCHE: ${THROTTLE_RATE_RECHERCHE:-60/min}
   THROTTLE_RATE_CONNEXION: ${THROTTLE_RATE_CONNEXION:-20/min}
   THROTTLE_RATE_MOT_DE_PASSE_OUBLIE: ${THROTTLE_RATE_MOT_DE_PASSE_OUBLIE:-5/hour}
+  THROTTLE_RATE_GESTION_COMPTES: ${THROTTLE_RATE_GESTION_COMPTES:-30/hour}
   # Base of the links in reminder e-mails (https:// required by prod.py) and the daily reminder switch.
   PLATEFORME_URL: https://${PUBLIC_HOST:?PUBLIC_HOST is required}
   RELANCES_ACTIVES: ${RELANCES_ACTIVES:-true}

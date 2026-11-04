@@ -1,10 +1,16 @@
-"""Account administration services (ADMIN only; permissions are enforced by the views).
+"""Account administration services: the ADMIN role, or rights delegated by an admin.
+
+The rights are checked here too, not only by the views (commands call these services):
+see `delegation` for the rules (a delegate never touches an ADMIN, another manager or
+himself, never assigns the ADMIN role, never changes a delegation). Every right is re-read
+from the database under the transaction, after the target row is locked.
 
 Every write runs in a transaction, under the audit actor, on a row re-read with
 `select_for_update`. No network call is made here: the Keycloak propagation is done by
 the caller once the transaction has committed. The in-app account actions (creation,
-password reset, login-code removal) never touch Keycloak: their emails go out after the
-commit, and a temporary password never reaches the audit trail or the logs.
+password reset, login-code removal, email/name/role edits) never touch Keycloak: their
+emails go out after the commit, and a temporary password never reaches the audit trail or
+the logs.
 """
 
 from collections.abc import Iterator, Mapping
@@ -13,6 +19,8 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from django.contrib.auth.base_user import BaseUserManager
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -23,9 +31,41 @@ from apps.referentiel.models import Direction
 
 from .auth_services import generer_mot_de_passe_temporaire, logger_securite, terminer_sessions
 from .courriels import envoyer_bienvenue, envoyer_mot_de_passe_reinitialise
-from .models import CodeOtp, KeycloakSyncStatut, ObjetOtp, OrigineCompte, Role, User
+from .delegation import (
+    ACTIONS,
+    DROIT_REFUSE,
+    Action,
+    droits_sur,
+    etat_sur,
+    exiger,
+    exiger_administrateur,
+    exiger_attribution_role,
+)
+from .models import (
+    CodeOtp,
+    DelegationGestionComptes,
+    KeycloakSyncStatut,
+    ObjetOtp,
+    OrigineCompte,
+    Role,
+    User,
+)
 
-PROFILE_FIELDS = frozenset({"matricule", "direction_code", "fonction"})
+PROFILE_FIELDS = frozenset(
+    {"matricule", "direction_code", "fonction", "email", "first_name", "last_name"}
+)
+# Right needed to change each profile field of an existing account. Names, matricule and
+# function: the right to create accounts. The email is the password-recovery channel, so
+# changing it is worth a password reset. The direction scopes what an audité can read,
+# like a role.
+DROIT_PAR_CHAMP: dict[str, Action] = {
+    "first_name": "creer",
+    "last_name": "creer",
+    "matricule": "creer",
+    "fonction": "creer",
+    "email": "reinitialiser",
+    "direction_code": "roles",
+}
 # Fields coming from the directory claims; editing one makes the profile local (D4).
 SYNCED_FIELDS = frozenset({"direction_code", "fonction"})
 
@@ -39,7 +79,30 @@ DIRECTION_INCONNUE = (
     "Direction inconnue : choisissez une direction ou un département du référentiel."
 )
 
-_MAX_LENGTHS = {"matricule": 32, "fonction": 128}
+_MAX_LENGTHS = {
+    "matricule": 32,
+    "fonction": 128,
+    "email": 254,
+    "first_name": 150,
+    "last_name": 150,
+}
+COURRIEL_INVALIDE = "Saisissez une adresse de courriel valide."
+COURRIEL_REQUIS_OTP = (
+    "Le code de connexion par courriel est actif sur ce compte : l'adresse ne peut pas être vidée."
+)
+IDENTIFIANT_AROBASE = (
+    "L'identifiant ne doit pas contenir « @ » : la connexion par adresse de courriel est "
+    "déjà possible."
+)
+ROLE_INVALIDE = "Choisissez un rôle dans la liste."
+ROLE_INCHANGE = "Ce compte a déjà ce rôle."
+PROPRE_ROLE = "Vous ne pouvez pas modifier votre propre rôle."
+DERNIER_ADMIN_ROLE = (
+    "Impossible de retirer le rôle Administrateur au dernier administrateur actif de la plateforme."
+)
+DELEGATION_ADMIN = (
+    "Un administrateur dispose déjà de tous les droits : aucune délégation ne lui est accordée."
+)
 
 # A temporary password (creation or reset) is only good for this long, and must be changed.
 DUREE_MOT_DE_PASSE_TEMPORAIRE = timedelta(hours=72)
@@ -63,6 +126,7 @@ OTP_DEJA_DESACTIVE = "Le code de connexion par courriel est déjà désactivé s
 ACTION_CREATION = "creation_compte"
 ACTION_REINITIALISATION = "reinitialisation_mot_de_passe"
 ACTION_DESACTIVATION_OTP = "desactivation_otp"
+ACTION_CHANGEMENT_ROLE = "changement_role"
 
 
 def mettre_a_jour_tutoriel(user: User, *, action: str, version: int) -> User:
@@ -103,43 +167,85 @@ def _mark_pending(user: User, fields: list[str]) -> None:
         ]
 
 
-def modifier_profil(compte: User, *, changes: dict[str, str], by: User) -> User:
+def _valeurs_profil(changes: Mapping[str, str]) -> dict[str, str]:
     unknown = set(changes) - PROFILE_FIELDS
     if unknown:
         raise ValueError(f"Unsupported profile fields: {sorted(unknown)}")
-    values = {k: v.strip() for k, v in changes.items()}
+    values = {k: str(v).strip() for k, v in changes.items()}
     for field, limit in _MAX_LENGTHS.items():
         if field in values and len(values[field]) > limit:
             raise RegleMetierError(
-                "Données invalides.",
+                DONNEES_INVALIDES,
                 {field: [f"Assurez-vous que ce champ comporte au plus {limit} caractères."]},
             )
+    if values.get("email"):
+        try:
+            validate_email(values["email"])
+        except ValidationError as exc:
+            raise RegleMetierError(DONNEES_INVALIDES, {"email": [COURRIEL_INVALIDE]}) from exc
+        values["email"] = BaseUserManager.normalize_email(values["email"])
+    return values
+
+
+def _courriel_pris(email: str, *, sauf: int | None = None) -> bool:
+    """An address used by another account, as its email or as its username.
+
+    Login tries the exact username first, then the email: an address equal to someone
+    else's username would never reach its own account (case-insensitive on both sides).
+    """
+    autres = User.objects.exclude(pk=sauf) if sauf is not None else User.objects.all()
+    return autres.filter(Q(email__iexact=email) | Q(username__iexact=email)).exists()
+
+
+def modifier_profil(compte: User, *, changes: Mapping[str, str], by: User) -> User:
+    """Edit profile and identity fields; each changed field needs its own right.
+
+    A field sent with its current value needs no right (a whole form sent back as is).
+    Changing the email drops the account's pending one-time codes: a code already sent to
+    the old address must not open the account any more.
+    """
+    values = _valeurs_profil(changes)
     with transaction.atomic(), actor_scope(by):
         user = _lock(compte)
-        if "direction_code" in values:
-            new_code = values["direction_code"]
-            if new_code != user.direction_code and new_code and not direction_existe(new_code):
-                raise RegleMetierError(
-                    "Données invalides.", {"direction_code": [DIRECTION_INCONNUE]}
-                )
+        modifies = {f: v for f, v in values.items() if getattr(user, f) != v}
+        droits = droits_sur(by, user)
+        if modifies:
+            autorise = all(droits[DROIT_PAR_CHAMP[f]] for f in modifies)
+        else:
+            autorise = any(droits[a] for a in set(DROIT_PAR_CHAMP.values()))
+        if not autorise:
+            raise PermissionDenied(DROIT_REFUSE)
+        new_code = modifies.get("direction_code")
+        if new_code and not direction_existe(new_code):
+            raise RegleMetierError(DONNEES_INVALIDES, {"direction_code": [DIRECTION_INCONNUE]})
+        if "email" in modifies:
+            email = modifies["email"]
+            if not email and user.otp_connexion_actif:
+                raise RegleMetierError(DONNEES_INVALIDES, {"email": [COURRIEL_REQUIS_OTP]})
+            if email and _courriel_pris(email, sauf=user.pk):
+                raise RegleMetierError(DONNEES_INVALIDES, {"email": [COURRIEL_PRIS]})
         fields: list[str] = []
-        for field, value in values.items():
-            if getattr(user, field) != value:
-                if field in SYNCED_FIELDS:
-                    user.profil_gere_localement = True
-                    if "profil_gere_localement" not in fields:
-                        fields.append("profil_gere_localement")
-                setattr(user, field, value)
-                fields.append(field)
+        for field, value in modifies.items():
+            if field in SYNCED_FIELDS:
+                user.profil_gere_localement = True
+                if "profil_gere_localement" not in fields:
+                    fields.append("profil_gere_localement")
+            setattr(user, field, value)
+            fields.append(field)
         if fields:
             try:
                 with transaction.atomic():
                     user.save(update_fields=fields)
             except IntegrityError as exc:
-                raise RegleMetierError(
-                    "Données invalides.", {"matricule": [MATRICULE_PRIS]}
-                ) from exc
-        return user
+                raise RegleMetierError(DONNEES_INVALIDES, {"matricule": [MATRICULE_PRIS]}) from exc
+        if "email" in modifies:
+            CodeOtp.objects.filter(user=user, utilise_le__isnull=True).delete()
+    if "email" in modifies:
+        # The addresses themselves stay in the audit trail only, not in the logs.
+        logger_securite.info(
+            "Adresse de courriel d'un compte modifiée : compte=%s par=%s", user.pk, by.pk
+        )
+    return user
 
 
 def desactiver(compte: User, *, motif: str, by: User) -> User:
@@ -152,6 +258,7 @@ def desactiver(compte: User, *, motif: str, by: User) -> User:
             .order_by("pk")
         )
         user = next(u for u in locked if u.pk == compte.pk)
+        exiger(by, "desactiver", user)
         if user.pk == by.pk:
             raise RegleMetierError(COMPTE_PERSONNEL)
         if not user.is_active:
@@ -173,6 +280,7 @@ def desactiver(compte: User, *, motif: str, by: User) -> User:
 def reactiver(compte: User, *, by: User) -> User:
     with transaction.atomic(), actor_scope(by):
         user = _lock(compte)
+        exiger(by, "desactiver", user)
         if user.is_active:
             raise RegleMetierError(DEJA_ACTIF)
         user.is_active = True
@@ -187,6 +295,7 @@ def reactiver(compte: User, *, by: User) -> User:
 
 def resynchroniser_profil(compte: User, *, by: User) -> User:
     """Give direction and function back to the directory (applied at next login)."""
+    exiger_administrateur(by, DROIT_REFUSE)
     with transaction.atomic(), actor_scope(by):
         user = _lock(compte)
         if not user.profil_gere_localement:
@@ -232,6 +341,9 @@ def _valeurs_creation(donnees: Mapping[str, Any]) -> dict[str, str]:
         erreurs["role"] = [ROLE_OBLIGATOIRE]
     if not valeurs.get("username"):
         erreurs["username"] = [IDENTIFIANT_OBLIGATOIRE]
+    elif "@" in valeurs["username"]:
+        # Login tries the username before the email: "x@y" would shadow that address.
+        erreurs["username"] = [IDENTIFIANT_AROBASE]
     if erreurs:
         raise RegleMetierError(DONNEES_INVALIDES, erreurs)
     if valeurs.get("email"):
@@ -241,11 +353,13 @@ def _valeurs_creation(donnees: Mapping[str, Any]) -> dict[str, str]:
 
 def _verifier_disponibilite(valeurs: dict[str, str]) -> None:
     erreurs: dict[str, list[str]] = {}
-    if User.objects.filter(username__iexact=valeurs["username"]).exists():
+    username = valeurs["username"]
+    # Neither an existing username nor an existing email: login resolves both.
+    if User.objects.filter(Q(username__iexact=username) | Q(email__iexact=username)).exists():
         erreurs["username"] = [IDENTIFIANT_PRIS]
     email = valeurs.get("email", "")
     # Login accepts the email when exactly one account has it: keep addresses unique.
-    if email and User.objects.filter(email__iexact=email).exists():
+    if email and _courriel_pris(email):
         erreurs["email"] = [COURRIEL_PRIS]
     matricule = valeurs.get("matricule", "")
     if matricule and User.objects.filter(matricule=matricule).exists():
@@ -266,7 +380,9 @@ def creer_compte(
     configured, the account has an address and the send succeeds. Only otherwise is the
     password returned, for a single display: it is stored hashed and never readable again.
     """
+    exiger(par, "creer")
     valeurs = _valeurs_creation(donnees)
+    exiger_attribution_role(par, valeurs["role"])
     mot_de_passe = generer_mot_de_passe_temporaire()
     with transaction.atomic(), actor_scope(par):
         _verifier_disponibilite(valeurs)
@@ -305,6 +421,7 @@ def reinitialiser_mot_de_passe(
     mot_de_passe = generer_mot_de_passe_temporaire()
     with transaction.atomic(), actor_scope(par):
         user = _lock(compte)
+        exiger(par, "reinitialiser", user)
         if not user.is_active:
             raise RegleMetierError(REINITIALISATION_DESACTIVE)
         champs = _poser_mot_de_passe_temporaire(user, mot_de_passe, timezone.now())
@@ -334,6 +451,7 @@ def desactiver_otp(compte: User, *, par: User) -> User:
         raise RegleMetierError(PROPRE_OTP)
     with transaction.atomic(), actor_scope(par):
         user = _lock(compte)
+        exiger(par, "reinitialiser", user)
         if not user.otp_connexion_actif:
             raise RegleMetierError(OTP_DEJA_DESACTIVE)
         user.otp_connexion_actif = False
@@ -348,17 +466,124 @@ def desactiver_otp(compte: User, *, par: User) -> User:
     return user
 
 
+def _revoquer_delegation(user: User, par: User) -> None:
+    """Drop every delegated right of the account (in the caller's transaction, audited)."""
+    delegation = DelegationGestionComptes.objects.select_for_update().filter(user=user).first()
+    if delegation is None or not any(getattr(delegation, a) for a in ACTIONS):
+        return
+    for action in ACTIONS:
+        setattr(delegation, action, False)
+    delegation.accorde_par = par
+    delegation.accorde_le = timezone.now()
+    delegation.save()
+
+
+def changer_role(compte: User, *, role: str, par: User) -> User:
+    """Give the account another role. Only an ADMIN gives the ADMIN role; nobody changes
+    his own role; the last active ADMIN keeps his. A promotion to ADMIN drops the
+    delegated rights (useless to an admin, and they must not come back on a demotion).
+    The new role applies on the account's next request (it is read on each one)."""
+    if role not in Role.values:
+        raise RegleMetierError(DONNEES_INVALIDES, {"role": [ROLE_INVALIDE]})
+    exiger_attribution_role(par, role)
+    with transaction.atomic(), actor_scope(par):
+        # Same lock order as `desactiver`: every active admin plus the target, by pk.
+        locked = list(
+            User.objects.select_for_update()
+            .filter(Q(role=Role.ADMIN, is_active=True) | Q(pk=compte.pk))
+            .order_by("pk")
+        )
+        user = next(u for u in locked if u.pk == compte.pk)
+        exiger(par, "roles", user)
+        if user.pk == par.pk:
+            raise RegleMetierError(PROPRE_ROLE)
+        if user.role == role:
+            raise RegleMetierError(ROLE_INCHANGE)
+        if (
+            user.role == Role.ADMIN
+            and user.is_active
+            and not any(u.pk != user.pk and u.role == Role.ADMIN and u.is_active for u in locked)
+        ):
+            raise RegleMetierError(DERNIER_ADMIN_ROLE)
+        ancien = user.role
+        user.role = role
+        user.role_provisoire = False
+        with _action_auditee(user, ACTION_CHANGEMENT_ROLE):
+            user.save(update_fields=["role", "role_provisoire"])
+        if role == Role.ADMIN:
+            _revoquer_delegation(user, par)
+    logger_securite.info(
+        "Rôle d'un compte modifié : compte=%s par=%s ancien=%s nouveau=%s",
+        user.pk,
+        par.pk,
+        ancien,
+        role,
+    )
+    return user
+
+
+def delegation_de(compte: User) -> DelegationGestionComptes:
+    """The account's delegation, or an unsaved all-false one when it never had any."""
+    delegation = (
+        DelegationGestionComptes.objects.select_related("accorde_par").filter(user=compte).first()
+    )
+    return delegation or DelegationGestionComptes(user=compte)
+
+
+def definir_delegation(
+    compte: User, *, droits: Mapping[str, bool], par: User
+) -> DelegationGestionComptes:
+    """Set the four delegated rights of a non-ADMIN account (ADMIN only, audited).
+
+    Takes effect on the delegate's next request. A call that changes nothing writes
+    nothing; an all-false call on an account without delegation creates no row.
+    """
+    if set(droits) != set(ACTIONS):
+        raise ValueError(f"Expected exactly the rights {list(ACTIONS)}, got {sorted(droits)}")
+    exiger_administrateur(par)
+    valeurs = {action: bool(droits[action]) for action in ACTIONS}
+    with transaction.atomic(), actor_scope(par):
+        user = _lock(compte)
+        if user.role == Role.ADMIN:
+            raise RegleMetierError(DELEGATION_ADMIN)
+        delegation = DelegationGestionComptes.objects.select_for_update().filter(user=user).first()
+        if delegation is None:
+            delegation = DelegationGestionComptes(user=user)
+            if not any(valeurs.values()):
+                return delegation
+        elif all(getattr(delegation, a) == v for a, v in valeurs.items()):
+            return delegation
+        for action, valeur in valeurs.items():
+            setattr(delegation, action, valeur)
+        delegation.accorde_par = par
+        delegation.accorde_le = timezone.now()
+        delegation.save()
+    logger_securite.info(
+        "Délégation de gestion des comptes modifiée : compte=%s par=%s droits=%s",
+        user.pk,
+        par.pk,
+        ",".join(a for a in ACTIONS if valeurs[a]) or "aucun",
+    )
+    return delegation
+
+
 def actions_compte(compte: User, par: User) -> dict[str, bool]:
+    """What ``par`` may do on ``compte`` (drives the buttons of the account page)."""
+    admin, droits = etat_sur(par, compte)
     lie = compte.keycloak_id is not None
     autre = compte.pk != par.pk
     return {
-        "modifier_profil": True,
-        "desactiver": compte.is_active and autre,
-        "reactiver": not compte.is_active,
-        "resynchroniser_profil": compte.profil_gere_localement,
-        "relancer_synchro_keycloak": lie
+        "modifier_profil": droits["creer"],
+        "desactiver": compte.is_active and autre and droits["desactiver"],
+        "reactiver": not compte.is_active and droits["desactiver"],
+        "resynchroniser_profil": admin and compte.profil_gere_localement,
+        "relancer_synchro_keycloak": admin
+        and lie
         and compte.keycloak_sync_statut
         in (KeycloakSyncStatut.EN_ATTENTE, KeycloakSyncStatut.ECHEC),
-        "reinitialiser_mot_de_passe": compte.is_active and autre,
-        "desactiver_otp": compte.otp_connexion_actif and autre,
+        "reinitialiser_mot_de_passe": compte.is_active and autre and droits["reinitialiser"],
+        "desactiver_otp": compte.otp_connexion_actif and autre and droits["reinitialiser"],
+        "modifier_courriel": droits["reinitialiser"],
+        "modifier_direction": droits["roles"],
+        "changer_role": autre and droits["roles"],
     }
