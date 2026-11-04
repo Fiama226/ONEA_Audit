@@ -1,3 +1,5 @@
+import uuid
+
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -150,3 +152,24 @@ class DelegationGestionComptes(models.Model):
 
     def __str__(self) -> str:
         return f"Délégation #{self.user_id}"
+
+
+class FichierMotsDePasse(models.Model):
+    """Temporary passwords of an import that no email carried, for ONE download.
+
+    A transient credential, like `CodeOtp`: the content is encrypted (key derived from
+    `SECRET_KEY`), the row is deleted on the first download and in any case once expired
+    (24 h, daily purge). Never registered in the audit trail; never soft-deleted.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    contenu = models.BinaryField()
+    nombre_comptes = models.PositiveIntegerField()
+    cree_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+"
+    )
+    cree_le = models.DateTimeField(auto_now_add=True)
+    expire_le = models.DateTimeField()
+
+    def __str__(self) -> str:
+        return f"Fichier de mots de passe {self.pk}"

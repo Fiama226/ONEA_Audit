@@ -295,6 +295,14 @@ class ImportCsvSerializer(serializers.Serializer[dict[str, Any]]):
     dry_run = DefaultTrueBooleanField(
         default=True, help_text="Simulation sans écriture (par défaut)."
     )
+    envoyer_courriel = DefaultTrueBooleanField(
+        default=True,
+        help_text=(
+            "Envoyer à chaque compte créé son courriel de bienvenue avec son mot de passe "
+            "temporaire (par défaut). Les mots de passe qui ne partent pas par courriel vont "
+            "dans un fichier téléchargeable une seule fois."
+        ),
+    )
 
 
 class LigneImportIgnoreeSerializer(serializers.Serializer[LigneIgnoree]):
@@ -308,3 +316,11 @@ class RapportImportSerializer(serializers.Serializer[RapportImport]):
     crees = serializers.ListField(child=serializers.CharField())
     mis_a_jour = serializers.ListField(child=serializers.CharField())
     ignores = LigneImportIgnoreeSerializer(many=True)
+    fichier_mots_de_passe_id = serializers.UUIDField(
+        allow_null=True,
+        help_text=(
+            "Import CSV appliqué : fichier des mots de passe temporaires non envoyés par "
+            "courriel, à télécharger une seule fois, sous 24 h, par l'auteur de l'import "
+            "(`GET /user-accounts/import-passwords/{id}/`) ; null sinon."
+        ),
+    )

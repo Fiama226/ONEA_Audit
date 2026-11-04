@@ -1,43 +1,68 @@
-"""Pre-provisioning of accounts before their first login (D12).
+"""Pre-provisioning of accounts: a CSV file (local accounts) or the Keycloak directory (D12).
 
-Two sources: the Keycloak directory and a CSV file. Both run in ONE transaction under the
-audit actor and can be rolled back (`dry_run`): the dry run executes the very same code,
-so its report is identical to the real one.
+Both run in ONE transaction under the audit actor and can be rolled back (`dry_run`): the
+dry run executes the very same checks, so its report is identical to the real one.
 
-Security rules: a CSV can never create an `ADMIN` (that role is only granted in the
-directory), never creates `is_staff` / `is_superuser` accounts, and created accounts have
-an unusable password. Directory imports reuse the login matching (`filter_users_by_claims`
-/ `update_user`): `is_active` is never touched and a locally managed profile is respected.
+CSV import: every created account is a local one, with a temporary password (72 h, to be
+changed at the first login), validated like the creation form (`services`: role required,
+no "@" in the username, neither the username nor the email may shadow another account's).
+After the commit, each password goes out in a welcome email when sending is on; the ones no
+email carried are kept, encrypted, in a `FichierMotsDePasse` that only the importer may
+download, once, within 24 h. A dry run creates, sends and stores nothing. A CSV never
+creates an `ADMIN` (create the account, then change its role) nor `is_staff` /
+`is_superuser` accounts. A password never reaches the audit trail or the logs.
+
+The directory import (Keycloak, removed with it) still creates accounts without a usable
+password; it reuses the login matching (`filter_users_by_claims` / `update_user`).
 """
 
+import base64
 import csv
 import io
 import logging
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
 
+from cryptography.fernet import Fernet, InvalidToken
 from django.contrib.auth.validators import UnicodeUsernameValidator
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
+from django.http import Http404
+from django.utils import timezone
+from django.utils.crypto import salted_hmac
 
 from apps.core.audit import actor_scope
+from apps.core.exceptions import RegleMetierError
 
 from . import keycloak_admin
+from .auth_services import generer_mot_de_passe_temporaire, logger_securite
+from .courriels import envoyer_bienvenue
 from .keycloak_admin import KeycloakIntrouvable
-from .models import OrigineCompte, Role, User
+from .models import FichierMotsDePasse, OrigineCompte, Role, User
 from .oidc import OneaOIDCBackend
-from .services import DIRECTION_INCONNUE, MATRICULE_PRIS, direction_existe
+from .services import (
+    ACTION_CREATION,
+    MATRICULE_PRIS,
+    _action_auditee,
+    _poser_mot_de_passe_temporaire,
+    _valeurs_creation,
+    _verifier_disponibilite,
+)
 
 logger = logging.getLogger(__name__)
 
-CSV_ROLE_ADMIN = "Le rôle ADMIN ne s'attribue que dans l'annuaire (Keycloak)."
+CSV_ROLE_ADMIN = (
+    "Le rôle ADMIN ne s'attribue pas par import : créez le compte, puis changez son rôle."
+)
 CSV_DOUBLON_FICHIER = "Identifiant ou e-mail en doublon dans le fichier."
 CSV_COMPTE_EXISTANT = "Un compte existe déjà avec cet identifiant ou cet e-mail."
 IDENTIFIANT_PRIS = "Identifiant déjà utilisé par un autre compte."
-CSV_IDENTIFIANT_INVALIDE = "Identifiant invalide : lettres, chiffres et @ . + - _ uniquement."
+CSV_IDENTIFIANT_INVALIDE = "Identifiant invalide : lettres, chiffres et . + - _ uniquement."
 CSV_IDENTIFIANT_MANQUANT = "Identifiant manquant."
 CSV_EMAIL_INVALIDE = "Adresse e-mail invalide."
 CSV_ROLE_INCONNU = "Rôle inconnu : valeurs admises AUDITE, AUDITEUR, RAI, DG."
@@ -48,6 +73,7 @@ ANNUAIRE_COMPTE_DESACTIVE = "Compte désactivé dans l'annuaire : non importé."
 ANNUAIRE_ID_INVALIDE = "Identifiant Keycloak invalide."
 CSV_CARACTERES_INTERDITS = "Caractères non autorisés dans la colonne « {colonne} »."
 ANNUAIRE_IDENTIFIANT_MANQUANT = "Identifiant manquant dans l'annuaire."
+FICHIER_AUTRE_AUTEUR = "Seul l'auteur de l'import peut télécharger ce fichier."
 
 CSV_MAX_BYTES = 1024 * 1024
 CSV_MAX_ROWS = 1000
@@ -97,6 +123,8 @@ class RapportImport:
     crees: list[str] = field(default_factory=list)
     mis_a_jour: list[str] = field(default_factory=list)
     ignores: list[LigneIgnoree] = field(default_factory=list)
+    # The one-time file of the passwords no email carried (CSV import, real run only).
+    fichier_mots_de_passe_id: UUID | None = None
 
 
 @dataclass
@@ -270,6 +298,23 @@ def importer_depuis_annuaire(
 
 # ------------------------------------------------------------------------------- CSV
 
+# CSV column -> account field, as validated by the creation service.
+_CHAMP_COMPTE = {
+    "identifiant": "username",
+    "email": "email",
+    "prenom": "first_name",
+    "nom": "last_name",
+    "matricule": "matricule",
+    "direction": "direction_code",
+    "fonction": "fonction",
+    "role": "role",
+}
+CSV_COLONNES = tuple(_CHAMP_COMPTE)
+DUREE_FICHIER_MOTS_DE_PASSE = timedelta(hours=24)
+_SEL_FICHIER = "apps.users.provisioning.FichierMotsDePasse"
+# Spreadsheet formula triggers: such a cell is prefixed with a quote in the password file.
+_DEBUT_FORMULE = ("=", "+", "-", "@", "\t", "\r")
+
 
 def _lire_csv(contenu: bytes) -> tuple[list[str], list[tuple[int, list[str]]]]:
     if len(contenu) > CSV_MAX_BYTES:
@@ -299,7 +344,7 @@ def _lire_csv(contenu: bytes) -> tuple[list[str], list[tuple[int, list[str]]]]:
 
 
 def _valider_ligne(valeurs: dict[str, str]) -> str | None:
-    """Return the reason why a row is rejected, or None."""
+    """File-level checks (sizes, characters, formats, roles a file may grant), or None."""
     for colonne, limite in _CSV_LIMITES.items():
         if len(valeurs[colonne]) > limite:
             return CSV_VALEUR_TROP_LONGUE.format(colonne=colonne, limite=limite)
@@ -318,85 +363,205 @@ def _valider_ligne(valeurs: dict[str, str]) -> str | None:
             return CSV_EMAIL_INVALIDE
     if valeurs["role"] == Role.ADMIN.value:
         return CSV_ROLE_ADMIN
-    if valeurs["role"] not in CSV_ROLES:
+    if valeurs["role"] and valeurs["role"] not in CSV_ROLES:
         return CSV_ROLE_INCONNU
-    if valeurs["direction"] and not direction_existe(valeurs["direction"]):
-        return DIRECTION_INCONNUE
     return None
 
 
-def importer_csv(contenu: bytes, *, by: User | None, dry_run: bool) -> RapportImport:
-    colonnes, lignes = _lire_csv(contenu)
-    rapport = RapportImport(dry_run=dry_run)
-    noms = ("identifiant", "email", "prenom", "nom", "matricule", "direction", "fonction", "role")
-    vus: set[str] = set()
-    matricules: set[str] = set()
-    with transaction.atomic(), actor_scope(by):
-        for numero, row in lignes:
-            cellules = {c: (row[i].strip() if i < len(row) else "") for i, c in enumerate(colonnes)}
-            valeurs = {n: cellules.get(n, "") for n in noms}
-            valeurs["role"] = valeurs["role"].upper() or Role.AUDITE.value
-            identifiant = valeurs["identifiant"]
-            motif = (
-                _motif_refus(valeurs, vus, matricules) if identifiant else CSV_IDENTIFIANT_MANQUANT
-            )
-            if motif is None:
-                motif = _creer_compte(valeurs, rapport)
-            if motif is not None:
-                rapport.ignores.append(LigneIgnoree(numero, identifiant, motif))
-                continue
-            vus.add(identifiant.lower())
-            if valeurs["email"]:
-                vus.add(valeurs["email"].lower())
-            if valeurs["matricule"]:
-                matricules.add(valeurs["matricule"])
-        if dry_run:
-            transaction.set_rollback(True)
-    return rapport
+def _motif(exc: RegleMetierError) -> str:
+    """The rejection reason of a row, from the creation service's field errors."""
+    messages = [m for erreurs in exc.errors.values() for m in erreurs]
+    return " ".join(messages) or exc.message
 
 
-def _motif_refus(valeurs: dict[str, str], vus: set[str], matricules: set[str]) -> str | None:
+def _preparer(valeurs: dict[str, str], vus: set[str], matricules: set[str]) -> dict[str, str] | str:
+    """The account fields of a valid row, or the reason why the row is rejected.
+
+    Same rules as the creation form (`services`): role required, no "@" in the username,
+    the username and the email must not be any account's username or email (login resolves
+    both), matricule unique, direction known.
+    """
+    if not valeurs["identifiant"]:
+        return CSV_IDENTIFIANT_MANQUANT
     motif = _valider_ligne(valeurs)
     if motif is not None:
         return motif
-    identifiant, email, matricule = valeurs["identifiant"], valeurs["email"], valeurs["matricule"]
-    if identifiant.lower() in vus or (email and email.lower() in vus):
+    try:
+        donnees = _valeurs_creation({_CHAMP_COMPTE[c]: v for c, v in valeurs.items() if v})
+    except RegleMetierError as exc:
+        return _motif(exc)
+    email, matricule = donnees.get("email", ""), donnees.get("matricule", "")
+    if donnees["username"].lower() in vus or (email and email.lower() in vus):
         return CSV_DOUBLON_FICHIER
-    if User.objects.filter(username__iexact=identifiant).exists() or (
-        email and User.objects.filter(email__iexact=email).exists()
-    ):
-        return CSV_COMPTE_EXISTANT
-    if matricule and (matricule in matricules or User.objects.filter(matricule=matricule).exists()):
+    if matricule and matricule in matricules:
         return MATRICULE_PRIS
-    return None
+    try:
+        _verifier_disponibilite(donnees)
+    except RegleMetierError as exc:
+        return _motif(exc)
+    return donnees
 
 
-def _creer_compte(valeurs: dict[str, str], rapport: RapportImport) -> str | None:
-    """Create the account; returns a rejection reason if a concurrent write won."""
-    if valeurs["role"] not in CSV_ROLES:  # defence in depth: never grant ADMIN from a file
+def _creer_compte(
+    donnees: Mapping[str, str], *, dry_run: bool, maintenant: datetime
+) -> tuple[User, str] | str:
+    """Create the account; returns it with its temporary password, or the rejection reason
+    when a concurrent write won. The dry run (rolled back) skips the costly hashing."""
+    if donnees["role"] not in CSV_ROLES:  # defence in depth: never grant ADMIN from a file
         raise ValueError("Unsupported CSV role")
     user = User(
-        username=valeurs["identifiant"],
-        email=valeurs["email"],
-        first_name=valeurs["prenom"],
-        last_name=valeurs["nom"],
-        matricule=valeurs["matricule"],
-        direction_code=valeurs["direction"],
-        fonction=valeurs["fonction"],
-        role=valeurs["role"],
+        **donnees,
         origine=OrigineCompte.CSV,
-        role_provisoire=True,
-        profil_gere_localement=bool(valeurs["direction"] or valeurs["fonction"]),
+        profil_gere_localement=bool(donnees.get("direction_code") or donnees.get("fonction")),
         is_active=True,
         is_staff=False,
         is_superuser=False,
     )
-    user.set_unusable_password()
+    mot_de_passe = ""
+    if dry_run:
+        user.set_unusable_password()
+    else:
+        mot_de_passe = generer_mot_de_passe_temporaire()
+        _poser_mot_de_passe_temporaire(user, mot_de_passe, maintenant)
+    with _action_auditee(user, ACTION_CREATION):
+        try:
+            with transaction.atomic():
+                user.save()
+        except IntegrityError:
+            matricule = donnees.get("matricule", "")
+            pris = matricule and User.objects.filter(matricule=matricule).exists()
+            return MATRICULE_PRIS if pris else CSV_COMPTE_EXISTANT
+    return user, mot_de_passe
+
+
+def importer_csv(
+    contenu: bytes, *, by: User | None, dry_run: bool, envoyer_courriel: bool
+) -> RapportImport:
+    """Create the valid rows as local accounts; each rejected row is reported, the others
+    are still created. ``by`` is required for a real run (audit actor, file owner)."""
+    if by is None and not dry_run:
+        raise ValueError("A real CSV import needs an actor")
+    colonnes, lignes = _lire_csv(contenu)
+    rapport = RapportImport(dry_run=dry_run)
+    vus: set[str] = set()
+    matricules: set[str] = set()
+    crees: list[tuple[User, str]] = []
+    maintenant = timezone.now()
+    with transaction.atomic(), actor_scope(by):
+        for numero, row in lignes:
+            cellules = {c: (row[i].strip() if i < len(row) else "") for i, c in enumerate(colonnes)}
+            valeurs = {n: cellules.get(n, "") for n in CSV_COLONNES}
+            valeurs["role"] = valeurs["role"].upper()
+            donnees = _preparer(valeurs, vus, matricules)
+            cree = (
+                _creer_compte(donnees, dry_run=dry_run, maintenant=maintenant)
+                if isinstance(donnees, dict)
+                else donnees
+            )
+            if isinstance(cree, str):
+                rapport.ignores.append(LigneIgnoree(numero, valeurs["identifiant"], cree))
+                continue
+            user, mot_de_passe = cree
+            crees.append((user, mot_de_passe))
+            rapport.crees.append(user.username)
+            vus.add(user.username.lower())
+            if user.email:
+                vus.add(user.email.lower())
+            if user.matricule:
+                matricules.add(user.matricule)
+        if dry_run:
+            transaction.set_rollback(True)
+    if dry_run or by is None:
+        return rapport
+    # Committed: the emails go out now; the passwords none carried go to the one-time file.
+    non_envoyes = [
+        (user, mdp)
+        for user, mdp in crees
+        if not (envoyer_courriel and envoyer_bienvenue(user, mdp))
+    ]
+    if non_envoyes:
+        rapport.fichier_mots_de_passe_id = _stocker_fichier(non_envoyes, par=by)
+    logger_securite.info(
+        "Import CSV de comptes : par=%s comptes_crees=%s courriels_envoyes=%s fichier=%s",
+        by.pk,
+        len(crees),
+        len(crees) - len(non_envoyes),
+        rapport.fichier_mots_de_passe_id,
+    )
+    return rapport
+
+
+# --------------------------------------------------------- one-time password file
+
+
+def _fernet() -> Fernet:
+    """Key derived from SECRET_KEY: a database dump alone never reveals a password."""
+    cle = salted_hmac(_SEL_FICHIER, "fichier-mots-de-passe", algorithm="sha256").digest()
+    return Fernet(base64.urlsafe_b64encode(cle))
+
+
+def _cellule(valeur: str) -> str:
+    return f"'{valeur}" if valeur.startswith(_DEBUT_FORMULE) else valeur
+
+
+def _stocker_fichier(comptes: list[tuple[User, str]], *, par: User) -> UUID:
+    sortie = io.StringIO()
+    ecrivain = csv.writer(sortie, delimiter=";", lineterminator="\r\n")
+    ecrivain.writerow(["identifiant", "courriel", "mot_de_passe_temporaire", "valable_jusqu_au"])
+    for user, mot_de_passe in comptes:
+        expire = user.mot_de_passe_expire_le
+        ecrivain.writerow(
+            [
+                _cellule(user.username),
+                _cellule(user.email),
+                mot_de_passe,
+                timezone.localtime(expire).strftime("%d/%m/%Y %H:%M") if expire else "",
+            ]
+        )
+    # BOM: spreadsheet software then reads the file as UTF-8.
+    texte = "\ufeff" + sortie.getvalue()
+    fichier = FichierMotsDePasse.objects.create(
+        contenu=_fernet().encrypt(texte.encode("utf-8")),
+        nombre_comptes=len(comptes),
+        cree_par=par,
+        expire_le=timezone.now() + DUREE_FICHIER_MOTS_DE_PASSE,
+    )
+    return fichier.pk
+
+
+def lire_fichier_mots_de_passe(fichier_id: UUID, *, par: User) -> str:
+    """Return the CSV text of the file and destroy it: one read only, by its importer.
+
+    ``Http404`` when it does not exist (any more) or has expired (then destroyed too);
+    ``PermissionDenied`` for anybody else than the importer (the file is kept).
+    """
+    with transaction.atomic():
+        fichier = FichierMotsDePasse.objects.select_for_update().filter(pk=fichier_id).first()
+        if fichier is None:
+            raise Http404
+        if fichier.cree_par_id != par.pk:
+            raise PermissionDenied(FICHIER_AUTRE_AUTEUR)
+        nombre = fichier.nombre_comptes
+        expire = fichier.expire_le <= timezone.now()
+        chiffre = bytes(fichier.contenu)
+        fichier.delete()
+    if expire:
+        raise Http404
     try:
-        with transaction.atomic():
-            user.save()
-    except IntegrityError:
-        pris = valeurs["matricule"] and User.objects.filter(matricule=valeurs["matricule"]).exists()
-        return MATRICULE_PRIS if pris else CSV_COMPTE_EXISTANT
-    rapport.crees.append(user.username)
-    return None
+        texte = _fernet().decrypt(chiffre).decode("utf-8")
+    except InvalidToken:  # SECRET_KEY changed since the import: unreadable, destroyed anyway
+        logger_securite.warning("Fichier de mots de passe illisible : fichier=%s", fichier_id)
+        raise Http404 from None
+    logger_securite.info(
+        "Fichier de mots de passe temporaires téléchargé : fichier=%s par=%s comptes=%s",
+        fichier_id,
+        par.pk,
+        nombre,
+    )
+    return texte
+
+
+def purger_fichiers_mots_de_passe() -> int:
+    """Delete the expired password files nobody downloaded. Returns the number deleted."""
+    supprimes, _ = FichierMotsDePasse.objects.filter(expire_le__lte=timezone.now()).delete()
+    return supprimes
