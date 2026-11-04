@@ -226,6 +226,7 @@ def test_reglages_d_authentification_transmis_et_documentes() -> None:
             "changement_mot_de_passe",
             "echecs_connexion",
             "echecs_reinitialisation",
+            "echecs_tous",
         }:
             assert variable in modele, variable
 

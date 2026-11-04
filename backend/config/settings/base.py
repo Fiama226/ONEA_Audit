@@ -248,6 +248,7 @@ _PORTEES_AUTHENTIFICATION = frozenset(
         "changement_mot_de_passe",
         "echecs_connexion",
         "echecs_reinitialisation",
+        "echecs_tous",
     }
 )
 
@@ -306,6 +307,9 @@ REST_FRAMEWORK = {
             # failures only, across accounts: one address cannot keep many accounts locked
             "echecs_connexion": "30/15min",
             "echecs_reinitialisation": "30/hour",
+            # every refusal of any kind (login, code, reset, admin), whatever the secret:
+            # bounds the unauthenticated hashing one address can cause (round 4)
+            "echecs_tous": "120/15min",
             # per user: change of password, removal of the login code (password re-checked)
             "changement_mot_de_passe": "10/min",
             # per typed identifier on "forgotten password" (+ a per-account quota in the DB)

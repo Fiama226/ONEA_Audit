@@ -79,6 +79,7 @@ def test_taux_par_defaut_conformes_a_d3() -> None:
         "reinitialisation": "20/min",
         "echecs_connexion": "30/15min",
         "echecs_reinitialisation": "30/hour",
+        "echecs_tous": "120/15min",
         "changement_mot_de_passe": "10/min",
         "mot_de_passe_oublie": "5/hour",
         "gestion_comptes": "30/hour",

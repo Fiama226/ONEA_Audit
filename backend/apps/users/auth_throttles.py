@@ -264,6 +264,21 @@ class _EchecsParIp(_LimiteAuth):
             if self._dans_la_limite(request, sujet, self.INCONNUS_PAR_IDENTIFIANT):
                 self.enregistrer_echec(request)
 
+    def compter_refus_reinitialisation(
+        self, request: Any, comptage: Any, *, identifiant: object
+    ) -> None:
+        """Reset: every refusal (unknown, wrong code, disabled, blocked account) counts the
+        same way, at most 5 per (address, typed identifier, window): the per-address counter
+        tells nothing about whether the identifier exists or what state it is in (round 4).
+        A replaced code counts nothing."""
+        from .auth_services import Comptage
+
+        if comptage is None or comptage is Comptage.AUCUN:
+            return
+        sujet = f"identifiant:{_normaliser(identifiant)}"
+        if self._dans_la_limite(request, sujet, self.INCONNUS_PAR_IDENTIFIANT):
+            self.enregistrer_echec(request)
+
     def _dans_la_limite(self, request: Any, sujet: str, maximum: int) -> bool:
         """Count one refusal for (address, subject) in the window; True while <= maximum.
 
@@ -313,6 +328,15 @@ class EchecsConnexionParIpThrottle(_EchecsParIp):
     scope = "echecs_connexion"
 
 
+class RefusParIpThrottle(_EchecsParIp):
+    """Every refusal of a login, login code, reset or admin login, of any kind, per address
+    (round 4). Looser than the caps above and independent of the secret (no oracle): it
+    bounds the unauthenticated hashing work one address can cause (each refusal costs one
+    to four Argon2 hashes) while leaving room for a head office behind one NAT address."""
+
+    scope = "echecs_tous"
+
+
 class EchecsReinitialisationParIpThrottle(_EchecsParIp):
     """Refused password resets per address, across accounts (AUTH-02, AUTH-04)."""
 
@@ -321,6 +345,8 @@ class EchecsReinitialisationParIpThrottle(_EchecsParIp):
 
 def autoriser_connexion_hors_api(request: HttpRequest) -> bool:
     """The login limits of the API, for a login outside DRF (Django admin form, AUTH-06)."""
-    return ConnexionParIpThrottle().allow_request(
-        request, None
-    ) and EchecsConnexionParIpThrottle().allow_request(request, None)
+    return (
+        ConnexionParIpThrottle().allow_request(request, None)
+        and EchecsConnexionParIpThrottle().allow_request(request, None)
+        and RefusParIpThrottle().allow_request(request, None)
+    )

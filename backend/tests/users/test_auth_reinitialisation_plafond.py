@@ -168,7 +168,7 @@ def test_guess_without_a_pending_code_is_not_counted(agent: User) -> None:
     assert agent.echecs_reinitialisation == 0
 
 
-def test_blocked_refusal_costs_one_hash(agent: User, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_blocked_refusal_costs_four_hashes(agent: User, monkeypatch: pytest.MonkeyPatch) -> None:
     User.objects.filter(pk=agent.pk).update(
         echecs_reinitialisation=settings.AUTH_REINITIALISATION_ECHECS_MAX,
         echecs_reinitialisation_depuis=timezone.now(),

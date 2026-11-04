@@ -5,7 +5,11 @@ from django.contrib.admin.forms import AdminAuthenticationForm
 from apps.core.reseau import adresse_client
 
 from .auth_services import Etape, authentifier
-from .auth_throttles import EchecsConnexionParIpThrottle, autoriser_connexion_hors_api
+from .auth_throttles import (
+    EchecsConnexionParIpThrottle,
+    RefusParIpThrottle,
+    autoriser_connexion_hors_api,
+)
 
 
 class ConnexionAdminForm(AdminAuthenticationForm):
@@ -30,6 +34,7 @@ class ConnexionAdminForm(AdminAuthenticationForm):
             resultat = authentifier(identifiant, mot_de_passe, adresse=adresse)
             if resultat.etape is None or resultat.user is None:
                 if self.request is not None:
+                    RefusParIpThrottle().enregistrer_echec(self.request)
                     EchecsConnexionParIpThrottle().compter_refus(
                         self.request,
                         resultat.comptage,

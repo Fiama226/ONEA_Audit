@@ -176,6 +176,8 @@ def test_prod_refuse_un_backend_qui_ecrit_les_courriels_hors_smtp(url: str) -> N
         ("AUTH_REINITIALISATION_ECHECS_MAX", "0"),
         ("AUTH_REINITIALISATION_ECHECS_MAX", "abc"),
         ("AUTH_CODES_CONNEXION_MAX", "-1"),
+        ("THROTTLE_RATE_ECHECS_TOUS", "beaucoup"),
+        ("THROTTLE_RATE_ECHECS_TOUS", "0/15min"),
     ],
 )
 def test_prod_refuse_un_reglage_d_authentification_invalide(variable: str, valeur: str) -> None:

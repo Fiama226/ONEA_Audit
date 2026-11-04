@@ -180,8 +180,9 @@ def test_login_code_on_unusable_account_counted_once() -> None:
 
 
 @pytest.mark.parametrize("etat", ["desactive", "bloque"])
-def test_reset_on_unusable_account_counted_once_whatever_the_code(etat: str) -> None:
-    """D3: a disabled or blocked account costs one unit per address, right code or not."""
+def test_reset_on_unusable_account_counted_the_same_whatever_the_code(etat: str) -> None:
+    """D3: a disabled or blocked account counts the same, right code or not (round 4: like
+    any reset refusal, at most 5 per typed identifier and address)."""
     compte = make_user(Role.AUDITEUR, username="awa", email="awa@onea.bf", password=MDP)
     code = auth_services.emettre_otp(compte, ObjetOtp.RESET)
     if etat == "desactive":
@@ -195,7 +196,7 @@ def test_reset_on_unusable_account_counted_once_whatever_the_code(etat: str) -> 
         for _ in range(3):
             assert _reset(APIClient(REMOTE_ADDR="203.0.113.1"), "awa", code).status_code == 400
             assert _reset(APIClient(REMOTE_ADDR="203.0.113.2"), "awa", "000000").status_code == 400
-        assert _echecs("203.0.113.1", "reset") == _echecs("203.0.113.2", "reset") == 1
+        assert _echecs("203.0.113.1", "reset") == _echecs("203.0.113.2", "reset") == 3
 
 
 def test_admin_login_on_a_locked_account_counted_once() -> None:

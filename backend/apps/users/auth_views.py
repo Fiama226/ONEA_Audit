@@ -48,6 +48,7 @@ from .auth_throttles import (
     EchecsReinitialisationParIpThrottle,
     MotDePasseOublieParIdentifiantThrottle,
     MotDePasseOublieParIpThrottle,
+    RefusParIpThrottle,
     ReinitialisationParIpThrottle,
 )
 from .authentication import SessionAuthentication401
@@ -99,7 +100,7 @@ class _CsrfObligatoireMixin:
 
 class ConnexionView(_CsrfObligatoireMixin, APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [ConnexionParIpThrottle, EchecsConnexionParIpThrottle]
+    throttle_classes = [ConnexionParIpThrottle, EchecsConnexionParIpThrottle, RefusParIpThrottle]
 
     @extend_schema(
         tags=["Authentification"],
@@ -117,6 +118,7 @@ class ConnexionView(_CsrfObligatoireMixin, APIView):
         )
         if resultat.etape is None or resultat.user is None:
             # Counted by kind of refusal, never by whether the secret was right (D1).
+            RefusParIpThrottle().enregistrer_echec(request)
             EchecsConnexionParIpThrottle().compter_refus(
                 request,
                 resultat.comptage,
@@ -146,7 +148,11 @@ class ConnexionView(_CsrfObligatoireMixin, APIView):
 
 class ConnexionCodeView(_CsrfObligatoireMixin, APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [CodeConnexionParIpThrottle, EchecsConnexionParIpThrottle]
+    throttle_classes = [
+        CodeConnexionParIpThrottle,
+        EchecsConnexionParIpThrottle,
+        RefusParIpThrottle,
+    ]
 
     @extend_schema(
         tags=["Authentification"],
@@ -170,6 +176,7 @@ class ConnexionCodeView(_CsrfObligatoireMixin, APIView):
         )
         if resultat.etape is None or resultat.user is None:
             # Counted by kind of refusal, never by whether the secret was right (D1).
+            RefusParIpThrottle().enregistrer_echec(request)
             EchecsConnexionParIpThrottle().compter_refus(
                 request, resultat.comptage, compte_id=resultat.compte_id, identifiant=None
             )
@@ -266,7 +273,11 @@ class MotDePasseOublieView(_CsrfObligatoireMixin, APIView):
 
 class ReinitialisationView(_CsrfObligatoireMixin, APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [ReinitialisationParIpThrottle, EchecsReinitialisationParIpThrottle]
+    throttle_classes = [
+        ReinitialisationParIpThrottle,
+        EchecsReinitialisationParIpThrottle,
+        RefusParIpThrottle,
+    ]
 
     @extend_schema(
         tags=["Authentification"],
@@ -288,8 +299,9 @@ class ReinitialisationView(_CsrfObligatoireMixin, APIView):
         except DjangoValidationError as exc:
             raise _erreurs_mot_de_passe("nouveau_mot_de_passe", exc) from None
         if compte is None:
-            EchecsReinitialisationParIpThrottle().compter_refus(
-                request, comptage, compte_id=compte_id, identifiant=donnees["identifiant"]
+            RefusParIpThrottle().enregistrer_echec(request)
+            EchecsReinitialisationParIpThrottle().compter_refus_reinitialisation(
+                request, comptage, identifiant=donnees["identifiant"]
             )
             raise CodeRefuse
         return Response(status=204)

@@ -345,7 +345,7 @@ def test_reset_uniform_failure_whatever_the_reason(agent: User) -> None:
 
 
 @pytest.mark.parametrize("cas", ["inconnu", "desactive", "sans_code", "mauvais_code"])
-def test_reset_failure_costs_one_hash(
+def test_reset_failure_costs_four_hashes(
     agent: User, monkeypatch: pytest.MonkeyPatch, cas: str
 ) -> None:
     make_user(username="desactive", password=MDP, is_active=False)

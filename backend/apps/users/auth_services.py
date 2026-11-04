@@ -307,11 +307,13 @@ def _hachages_factices(code: str, nombre: int) -> None:
         make_password(code)
 
 
-def _code_remplace(user: User, objet: str, code: str, now: datetime) -> bool:
-    """The code matches one of the latest codes replaced by a newer one, still unexpired.
+def _code_remplace(user: User, objet: str, code: str, now: datetime) -> tuple[bool, int]:
+    """``(match, dummy hashes owed)``: the code matches one of the latest codes replaced by
+    a newer one, still unexpired.
 
-    Always ``CODES_REMPLACES_VERIFIES`` hashes, whatever the number of replaced codes and
-    wherever the match is (no short-circuit): the time tells nothing (D2).
+    Every replaced code is checked (no short-circuit) and the missing ones are owed as dummy
+    hashes, so that a refusal always costs ``CODES_REMPLACES_VERIFIES`` hashes here (D2).
+    The caller pays the debt outside any row lock.
     """
     remplaces = list(
         CodeOtp.objects.filter(
@@ -321,14 +323,18 @@ def _code_remplace(user: User, objet: str, code: str, now: datetime) -> bool:
     trouve = False
     for ancien in remplaces:
         trouve = check_password(code, ancien.code_hash) or trouve
-    _hachages_factices(code, CODES_REMPLACES_VERIFIES - len(remplaces))
-    return trouve
+    return trouve, CODES_REMPLACES_VERIFIES - len(remplaces)
 
 
-def _verifier_otp(user: User, objet: str, code: str) -> VerificationCode:
-    """Check the active code (consumed when right). An attempt is spent only on a live code
-    (not expired, not exhausted) and not by a replaced code. Every refusal costs exactly
-    ``HACHAGES_PAR_REFUS`` hashes (D2); a right code costs one."""
+def _verifier_otp_sans_bourrage(user: User, objet: str, code: str) -> tuple[VerificationCode, int]:
+    """Check the active code (consumed when right): ``(outcome, dummy hashes owed)``.
+
+    An attempt is spent only on a live code (not expired, not exhausted) and not by a
+    replaced code. With the dummy hashes owed, every refusal costs exactly
+    ``HACHAGES_PAR_REFUS`` hashes (D2); a right code costs one. The caller pays the debt
+    (`_hachages_factices`) once out of every transaction holding a row lock: a flood of
+    refusals must not hold the account row while it hashes (round 4).
+    """
     with transaction.atomic():
         actif = (
             CodeOtp.objects.select_for_update()
@@ -338,18 +344,25 @@ def _verifier_otp(user: User, objet: str, code: str) -> VerificationCode:
         now = timezone.now()
         if actif is None or actif.expire_le <= now or actif.essais >= OTP_ESSAIS_MAX:
             # The same work as a real refusal: "no pending code" is no oracle.
-            _hachages_factices(code, HACHAGES_PAR_REFUS)
-            return VerificationCode.AUCUN
+            return VerificationCode.AUCUN, HACHAGES_PAR_REFUS
         if check_password(code, actif.code_hash):
             actif.essais += 1
             actif.utilise_le = now
             actif.save(update_fields=["essais", "utilise_le"])
-            return VerificationCode.JUSTE
-        if _code_remplace(user, objet, code, now):
-            return VerificationCode.REMPLACE
+            return VerificationCode.JUSTE, 0
+        remplace, dette = _code_remplace(user, objet, code, now)
+        if remplace:
+            return VerificationCode.REMPLACE, dette
         actif.essais += 1
         actif.save(update_fields=["essais"])
-        return VerificationCode.FAUX
+        return VerificationCode.FAUX, dette
+
+
+def _verifier_otp(user: User, objet: str, code: str) -> VerificationCode:
+    """`_verifier_otp_sans_bourrage`, the dummy hashes paid after its transaction."""
+    etat, dette = _verifier_otp_sans_bourrage(user, objet, code)
+    _hachages_factices(code, dette)
+    return etat
 
 
 def verifier_otp(user: User, objet: str, code: str) -> bool:
@@ -551,33 +564,13 @@ def reinitialiser_mot_de_passe_detail(
         _hachages_factices(code, HACHAGES_PAR_REFUS)
         _journaliser_reinitialisation_refusee("compte_inconnu", None, adresse)
         return None, Comptage.INCONNU, None
-    inutilisable = (None, Comptage.COMPTE_INUTILISABLE, compte.pk)
-    with transaction.atomic():
-        verrou = User.objects.select_for_update(no_key=True).filter(pk=compte.pk).first()
-        if verrou is None or not verrou.is_active:
-            _hachages_factices(code, HACHAGES_PAR_REFUS)
-            _journaliser_reinitialisation_refusee("desactive", compte, adresse)
-            return inutilisable
-        now = timezone.now()
-        if reinitialisation_bloquee(verrou, now):
-            _hachages_factices(code, HACHAGES_PAR_REFUS)
-            _journaliser_reinitialisation_refusee("bloque", verrou, adresse)
-            return inutilisable
-        etat = _verifier_otp(verrou, ObjetOtp.RESET, code)
-        if etat is VerificationCode.REMPLACE:
-            _journaliser_reinitialisation_refusee("code_remplace", verrou, adresse)
-            return None, Comptage.AUCUN, verrou.pk
-        if etat is not VerificationCode.JUSTE:
-            if etat is VerificationCode.FAUX:
-                _compter_echec_reinitialisation(verrou, now, adresse)
-            _journaliser_reinitialisation_refusee("code", verrou, adresse)
-            return None, Comptage.SECRET_FAUX, verrou.pk
-        validate_password(nouveau, verrou)  # raising rolls back the code consumption
-        _appliquer_mot_de_passe(verrou, nouveau)
-        if verrou.echecs_reinitialisation or verrou.echecs_reinitialisation_depuis:
-            verrou.echecs_reinitialisation = 0
-            verrou.echecs_reinitialisation_depuis = None
-            verrou.save(update_fields=["echecs_reinitialisation", "echecs_reinitialisation_depuis"])
+    refus, dette = _reinitialiser_sous_verrou(compte, code, nouveau, adresse)
+    # Dummy hashes paid once the account row is released (round 4): flooding the reset of
+    # someone's identifier never delays that person's own login, which waits on the row.
+    _hachages_factices(code, dette)
+    if refus is not None:
+        return refus
+    verrou = compte
     sessions = terminer_sessions(verrou.pk)
     logger_securite.info(
         "Mot de passe réinitialisé par code : compte=%s adresse=%s sessions_terminees=%s",
@@ -586,6 +579,43 @@ def reinitialiser_mot_de_passe_detail(
         sessions,
     )
     return verrou, None, verrou.pk
+
+
+_Refus = tuple[None, Comptage, int]
+
+
+def _reinitialiser_sous_verrou(
+    compte: User, code: str, nouveau: str, adresse: str | None
+) -> tuple[_Refus | None, int]:
+    """The locked part of a reset: ``(refusal or None, dummy hashes owed)``. On success the
+    new password is set on ``compte`` (refreshed from the locked row)."""
+    inutilisable: _Refus = (None, Comptage.COMPTE_INUTILISABLE, compte.pk)
+    with transaction.atomic():
+        verrou = User.objects.select_for_update(no_key=True).filter(pk=compte.pk).first()
+        if verrou is None or not verrou.is_active:
+            _journaliser_reinitialisation_refusee("desactive", compte, adresse)
+            return inutilisable, HACHAGES_PAR_REFUS
+        now = timezone.now()
+        if reinitialisation_bloquee(verrou, now):
+            _journaliser_reinitialisation_refusee("bloque", verrou, adresse)
+            return inutilisable, HACHAGES_PAR_REFUS
+        etat, dette = _verifier_otp_sans_bourrage(verrou, ObjetOtp.RESET, code)
+        if etat is VerificationCode.REMPLACE:
+            _journaliser_reinitialisation_refusee("code_remplace", verrou, adresse)
+            return (None, Comptage.AUCUN, verrou.pk), dette
+        if etat is not VerificationCode.JUSTE:
+            if etat is VerificationCode.FAUX:
+                _compter_echec_reinitialisation(verrou, now, adresse)
+            _journaliser_reinitialisation_refusee("code", verrou, adresse)
+            return (None, Comptage.SECRET_FAUX, verrou.pk), dette
+        validate_password(nouveau, verrou)  # raising rolls back the code consumption
+        _appliquer_mot_de_passe(verrou, nouveau)
+        if verrou.echecs_reinitialisation or verrou.echecs_reinitialisation_depuis:
+            verrou.echecs_reinitialisation = 0
+            verrou.echecs_reinitialisation_depuis = None
+            verrou.save(update_fields=["echecs_reinitialisation", "echecs_reinitialisation_depuis"])
+    compte.refresh_from_db()
+    return None, 0
 
 
 def _journaliser_reinitialisation_refusee(
