@@ -20,11 +20,9 @@ from apps.core.middleware import MotDePasseAChangerMiddleware
 from apps.users import auth_services
 from apps.users.auth_services import authentifier
 from apps.users.models import Role, User
-from apps.users.oidc import OneaOIDCBackend
 from apps.users.serializers import MeSerializer
 
 from ..factories import make_user
-from .test_oidc import _bearer, claims
 
 pytestmark = pytest.mark.django_db
 
@@ -350,15 +348,6 @@ def test_csrf_required_on_post(agent: User) -> None:
     )
     nouveau = {"HTTP_X_CSRFTOKEN": client.get(CSRF).json()["csrf_token"]}
     assert client.post(LOGOUT, **nouveau).status_code == 204
-
-
-def test_bearer_requests_need_no_csrf(api_client: APIClient) -> None:
-    client = APIClient(enforce_csrf_checks=True)
-    with mock.patch.object(OneaOIDCBackend, "get_userinfo", return_value=claims()):
-        r = _bearer(client).post(
-            "/api/v1/me/tutoriel/", {"action": "terminer", "version": 1}, format="json"
-        )
-    assert r.status_code == 200
 
 
 # --- throttling, logging -----------------------------------------------------------

@@ -72,7 +72,6 @@ def test_taux_par_defaut_conformes_a_d3() -> None:
         "import": "10/hour",
         "export": "30/min",
         "anonyme": "30/min",
-        "annuaire": "60/min",
         "recherche": "60/min",
         "connexion": "20/min",
         "mot_de_passe_oublie": "5/hour",
@@ -189,8 +188,6 @@ def test_portees_des_actions_couteuses() -> None:
     from apps.users.account_views import UserAccountViewSet
 
     assert portee(UserAccountViewSet, "import_csv") == "import"
-    assert portee(UserAccountViewSet, "import_directory") == "import"
-    assert portee(UserAccountViewSet, "directory_search") == "annuaire"
     # Opened to delegates: account creation and resets send emails, so they are capped.
     for action in ("create", "reset_password", "disable_otp"):
         assert portee(UserAccountViewSet, action) == "gestion_comptes", action
@@ -211,8 +208,6 @@ def test_openapi_documente_429() -> None:
         ("/api/v1/audit-plans/{id}/export/", "get"),
         ("/api/v1/risk-maps/{id}/export/", "get"),
         ("/api/v1/user-accounts/import-csv/", "post"),
-        ("/api/v1/user-accounts/import-directory/", "post"),
-        ("/api/v1/user-accounts/directory-search/", "get"),
         ("/api/v1/user-accounts/", "post"),
         ("/api/v1/user-accounts/{id}/reset-password/", "post"),
         ("/api/v1/user-accounts/{id}/disable-otp/", "post"),

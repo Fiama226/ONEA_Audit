@@ -122,8 +122,7 @@ def test_create_sends_welcome_and_hides_password(admin_client: APIClient) -> Non
         <= compte.mot_de_passe_expire_le
         <= timezone.now() + timedelta(hours=72)
     )
-    assert compte.role == Role.AUDITEUR and compte.role_provisoire is False
-    assert compte.keycloak_id is None
+    assert compte.role == Role.AUDITEUR
     assert compte.origine == OrigineCompte.ADMINISTRATION
     assert compte.is_active and compte.otp_connexion_actif is False
     assert "password" not in json.dumps(corps)

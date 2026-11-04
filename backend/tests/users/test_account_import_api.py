@@ -50,7 +50,6 @@ def test_import_csv_dry_run_par_defaut(admin_client: APIClient) -> None:
     assert r.json() == {
         "dry_run": True,
         "crees": ["kabore.l"],
-        "mis_a_jour": [],
         "ignores": [],
         "fichier_mots_de_passe_id": None,
     }

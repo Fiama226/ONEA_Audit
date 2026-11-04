@@ -250,6 +250,7 @@ def modifier_profil(compte: User, *, changes: Mapping[str, str], by: User) -> Us
 
 
 def desactiver(compte: User, *, motif: str, by: User) -> User:
+    """Disable the account and end its open sessions (a reactivation does not revive them)."""
     with transaction.atomic(), actor_scope(by):
         # Lock every active admin plus the target and the actor, in pk order, so that two
         # crossed deactivations serialize instead of both succeeding.
@@ -272,7 +273,13 @@ def desactiver(compte: User, *, motif: str, by: User) -> User:
         )
         # A disabled account keeps no delegated right: a reactivation restores none.
         _revoquer_delegation(user, by)
-        return user
+    # A disabled account is already anonymous for every session (ModelBackend refuses
+    # inactive users); the rows go too, as the former identity provider logged it out.
+    sessions = terminer_sessions(user.pk)
+    logger_securite.info(
+        "Compte désactivé : compte=%s par=%s sessions_terminees=%s", user.pk, by.pk, sessions
+    )
+    return user
 
 
 def reactiver(compte: User, *, by: User) -> User:

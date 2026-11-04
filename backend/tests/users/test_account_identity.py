@@ -17,7 +17,6 @@ from apps.core.exceptions import RegleMetierError
 from apps.users import services
 from apps.users.models import CodeOtp, DelegationGestionComptes, ObjetOtp, Role, User
 
-from ..conftest import FakeKeycloakAdmin
 from ..factories import make_user
 
 pytestmark = pytest.mark.django_db
@@ -75,9 +74,8 @@ def test_username_equal_to_existing_email_refused(admin: User) -> None:
 # --- Editing email and names --------------------------------------------------------------
 
 
-def test_admin_edits_email_and_names(admin: User, fake_keycloak: FakeKeycloakAdmin) -> None:
-    cible = make_user(Role.AUDITEUR, email="ancienne@onea.bf", keycloak_id=None)
-    lie = make_user(Role.AUDITEUR, keycloak_id=fake_keycloak.add_user("lie"))
+def test_admin_edits_email_and_names(admin: User) -> None:
+    cible = make_user(Role.AUDITEUR, email="ancienne@onea.bf")
     client = _client(admin)
     r = client.patch(
         f"{BASE}{cible.id}/",
@@ -90,11 +88,6 @@ def test_admin_edits_email_and_names(admin: User, fake_keycloak: FakeKeycloakAdm
     entree = LogEntry.objects.get_for_object(cible).filter(actor=admin).order_by("pk").last()
     assert entree is not None
     assert entree.changes_dict["email"] == ["ancienne@onea.bf", "Nouvelle@onea.bf"]
-    # No Keycloak call, no pending sync, for a linked account either.
-    r = client.patch(f"{BASE}{lie.id}/", {"email": "lie.nouveau@onea.bf"}, format="json")
-    assert r.status_code == 200
-    assert r.json()["keycloak_sync"]["statut"] == "A_JOUR"
-    assert fake_keycloak.calls == []
 
 
 def test_email_change_keeps_uniqueness(admin: User) -> None:

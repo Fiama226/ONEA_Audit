@@ -14,7 +14,7 @@ from django.core import mail
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError
 from django.http import Http404
-from django.test import override_settings
+from django.test import Client, override_settings
 from django.utils import timezone
 
 from apps.users import provisioning
@@ -43,8 +43,6 @@ from apps.users.services import (
 from apps.users.tasks import purger_codes
 
 from ..factories import DirectionFactory, make_user
-from .test_account_oidc_sync import _login
-from .test_oidc import claims
 
 ENTETE = "identifiant;email;prenom;nom;matricule;direction;fonction;role\n"
 SANS_SMTP = {"EMAIL_BACKEND": "django.core.mail.backends.smtp.EmailBackend", "EMAIL_HOST": ""}
@@ -104,7 +102,7 @@ def test_csv_cree_avec_les_bons_attributs(admin: User) -> None:
     DirectionFactory(code="DAI")  # type: ignore[no-untyped-call]
     _importer(ENTETE + "kabore.l;l@onea.bf;Landry;Kabore;M-1;DAI;Auditeur;RAI\n", admin)
     u = User.objects.get(username="kabore.l")
-    assert (u.origine, u.role, u.keycloak_id, u.role_provisoire) == ("CSV", "RAI", None, False)
+    assert (u.origine, u.role) == ("CSV", "RAI")
     assert u.is_active and not u.is_staff and not u.is_superuser
     assert (u.first_name, u.last_name, u.matricule) == ("Landry", "Kabore", "M-1")
 
@@ -166,15 +164,16 @@ def test_csv_direction_inconnue(admin: User) -> None:
     assert rapport.ignores == [LigneIgnoree(2, "n1", DIRECTION_INCONNUE)]
 
 
-def test_csv_profil_fourni_pose_le_drapeau(admin: User) -> None:
+def test_csv_profil_fourni_est_enregistre(admin: User) -> None:
     DirectionFactory(code="DAI")  # type: ignore[no-untyped-call]
     _importer(ENTETE + "a;;;;;DAI;;AUDITE\nb;;;;;;Chef;AUDITE\nc;;;;;;;AUDITE\n", admin)
-    flags = dict(
-        User.objects.filter(username__in=["a", "b", "c"]).values_list(
-            "username", "profil_gere_localement"
+    profils = {
+        u: (d, f)
+        for u, d, f in User.objects.filter(username__in=["a", "b", "c"]).values_list(
+            "username", "direction_code", "fonction"
         )
-    )
-    assert flags == {"a": True, "b": True, "c": False}
+    }
+    assert profils == {"a": ("DAI", ""), "b": ("", "Chef"), "c": ("", "")}
 
 
 def test_csv_valeurs_invalides(admin: User) -> None:
@@ -221,17 +220,20 @@ def test_csv_entete_sans_identifiant(admin: User) -> None:
 
 def test_csv_puis_premiere_connexion_sans_doublon(admin: User) -> None:
     DirectionFactory(code="DAI")  # type: ignore[no-untyped-call]
-    _importer(ENTETE + "kabore.l;l@onea.bf;;;M-042;DAI;Local;AUDITEUR\n", admin)
+    rapport = _importer(ENTETE + "kabore.l;l@onea.bf;;;M-042;DAI;Local;AUDITEUR\n", admin)
+    mot_de_passe = _lignes_fichier(rapport, admin)["kabore.l"]["mot_de_passe_temporaire"]
     pre = User.objects.get(username="kabore.l")
-    sub = "6f9619ff-8b86-d011-b42d-00c04fc964ff"
-    lie = _login(
-        claims(
-            sub=sub, preferred_username="Kabore.L", roles=["RAI"], email="x@y.bf", direction="DAF"
-        )
+    assert pre.en_attente_connexion
+    r = Client().post(
+        "/api/v1/auth/login/",
+        {"identifiant": "l@onea.bf", "mot_de_passe": mot_de_passe},
+        content_type="application/json",
     )
-    assert lie.pk == pre.pk and str(lie.keycloak_id) == sub and lie.role == Role.RAI
-    assert lie.matricule == "M-042" and lie.direction_code == "DAI"  # local profile kept
-    assert not lie.role_provisoire and lie.premiere_connexion_le is not None
+    assert r.status_code == 200
+    lie = User.objects.get(pk=pre.pk)
+    assert lie.role == Role.AUDITEUR and lie.doit_changer_mot_de_passe
+    assert lie.matricule == "M-042" and lie.direction_code == "DAI"  # imported profile kept
+    assert lie.premiere_connexion_le is not None
     assert User.objects.filter(username__iexact="kabore.l").count() == 1
 
 
@@ -561,3 +563,10 @@ def test_import_by_system_actor_inside_its_block(db: None) -> None:
     with acteur_systeme(systeme):
         rapport = _importer("identifiant;role\nx;AUDITE\n", systeme)
     assert rapport.crees == ["x"]
+
+
+def test_identifiant_rejete_affiche_tronque_sans_caractere_de_controle(admin: User) -> None:
+    identifiant = "b\x1b[31m" + "z" * 500
+    rapport = _importer(f"identifiant;role\n{identifiant};AUDITEUR\n", admin, dry_run=True)
+    echo = rapport.ignores[0].identifiant
+    assert len(echo) <= 151 and "\x1b" not in echo

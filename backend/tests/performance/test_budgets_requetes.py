@@ -22,9 +22,7 @@ def test_budgets_sans_route_orpheline() -> None:
 
 
 @pytest.mark.parametrize("chemin", sorted(ROUTES))
-def test_budget_requetes(
-    chemin: str, volumetrie: dict[str, Any], db: None, fake_keycloak: Any
-) -> None:
+def test_budget_requetes(chemin: str, volumetrie: dict[str, Any], db: None) -> None:
     assert chemin in BUDGETS_REQUETES, f"Route sans budget de requetes : {chemin}"
     client = client_pour(ROLES.get(chemin, DEFAUT))
     mesures = {

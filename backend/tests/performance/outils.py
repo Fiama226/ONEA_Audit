@@ -14,7 +14,6 @@ ROLES = {
     "/api/v1/dashboards/auditor/": "auditeur1",
     "/api/v1/dashboards/dg/": "dg",
     "/api/v1/user-accounts/": "admin",
-    "/api/v1/user-accounts/directory-search/": "admin",
     "/api/v1/user-accounts/{id}/": "admin",
 }
 DEFAUT = "rai"
@@ -94,7 +93,7 @@ class Resolveur:
     def _requete(self, chemin: str, *, mission: str | None, page_size: int | None = None) -> str:
         """Parametres declares par la route ; `mission` en plus si la liste l'exige (400 sinon)."""
         declares = set(self.routes.get(chemin, ())) & OBLIGATOIRES
-        if chemin in ("/api/v1/search/", "/api/v1/user-accounts/directory-search/"):
+        if chemin == "/api/v1/search/":
             declares.add("q")
         if chemin == "/api/v1/auditable-objects/tree/":
             declares.add("processus")

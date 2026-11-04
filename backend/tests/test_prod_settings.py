@@ -15,11 +15,8 @@ PROD_ENV = {
     "DATABASE_URL": "postgres://u:p@db:5432/onea",
     "EMAIL_URL": "smtp://user:pw@smtp.onea.bf:587",
     "ALLOWED_HOSTS": "audit.onea.bf,.audit.onea.bf",
-    "CORS_ALLOWED_ORIGINS": "https://audit.onea.bf",
     "CSRF_TRUSTED_ORIGINS": "https://audit.onea.bf",
     "SESSION_COOKIE_SECURE": "true",
-    # Legacy Python OIDC setting (removed with the OIDC code in Task 11); no longer required.
-    "KEYCLOAK_ADMIN_API_CLIENT_SECRET": "prod-sync-secret",
     "DOCUMENTS_ROOT": "/var/lib/onea/documents",
     "MEILI_MASTER_KEY": "prod-meili-key",
     "PLATEFORME_URL": "https://audit.onea.bf",
@@ -33,7 +30,7 @@ django.setup()
 from django.conf import settings
 print(json.dumps({
     "hosts": settings.ALLOWED_HOSTS,
-    "cors": settings.CORS_ALLOWED_ORIGINS,
+    "cors": [n for n in [*settings.INSTALLED_APPS, *settings.MIDDLEWARE] if "cors" in n.lower()],
     "csrf": settings.CSRF_TRUSTED_ORIGINS,
     "db_host": settings.DATABASES["default"]["HOST"],
     "email_host": settings.EMAIL_HOST,
@@ -91,7 +88,7 @@ def probe(env: dict[str, str]) -> dict[str, object]:
 def test_prod_settings_load_and_are_hardened() -> None:
     data = probe(PROD_ENV)
     assert data["hosts"] == ["audit.onea.bf", ".audit.onea.bf"]
-    assert data["cors"] == ["https://audit.onea.bf"]
+    assert data["cors"] == []  # same origin: no CORS app nor middleware
     assert data["csrf"] == ["https://audit.onea.bf"]
     assert data["db_host"] == "db"
     assert data["email_host"] == "smtp.onea.bf"
@@ -117,19 +114,15 @@ def test_prod_cookies_are_host_prefixed_secure_httponly() -> None:
 
 def test_prod_auth_is_session_first_and_cache_is_redis() -> None:
     data = probe({**PROD_ENV, "REDIS_URL": "redis://:pw@redis:6379/0"})
-    assert data["auth"] == [
-        "apps.users.authentication.SessionAuthentication401",
-        "apps.users.authentication.OIDCBearerAuthentication",
-    ]
+    assert data["auth"] == ["apps.users.authentication.SessionAuthentication401"]
     cache = data["cache"]
     assert isinstance(cache, dict)
     assert cache["BACKEND"] == "django.core.cache.backends.redis.RedisCache"
     assert cache["LOCATION"] == "redis://:pw@redis:6379/1"
 
 
-def test_prod_cors_is_optional_and_empty_by_default() -> None:
-    env = {k: v for k, v in PROD_ENV.items() if k != "CORS_ALLOWED_ORIGINS"}
-    assert probe(env)["cors"] == []
+def test_prod_ignores_a_stale_cors_variable() -> None:
+    assert probe({**PROD_ENV, "CORS_ALLOWED_ORIGINS": "https://malveillant.example"})["cors"] == []
 
 
 def test_prod_cache_url_overrides_redis_url() -> None:
@@ -146,7 +139,8 @@ def test_prod_cors_preflight_from_foreign_origin_has_no_allow_origin() -> None:
         " HTTP_ACCESS_CONTROL_REQUEST_METHOD='GET', HTTP_HOST='audit.onea.bf', secure=True)\n"
         "print('ACAO', r.headers.get('Access-Control-Allow-Origin'))\n"
     )
-    result = load_prod(PROD_ENV, code=code)
+    stale = {**PROD_ENV, "CORS_ALLOWED_ORIGINS": "https://malveillant.example"}
+    result = load_prod(stale, code=code)
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip().splitlines()[-1] == "ACAO None"
 

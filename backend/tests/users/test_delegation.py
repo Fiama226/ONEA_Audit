@@ -168,9 +168,9 @@ def test_delegate_limited_to_granted_actions(admin: User, droit: str) -> None:
         # A refusal changes nothing: no account created, no password, role or flag touched.
         resultat = appel(client, admin)
         assert resultat == ((attendu, True) if requis == droit else REFUSE), (droit, appel)
-    # Still admin-only: imports, directory, Keycloak resync.
-    assert client.post(f"{BASE}{agent.id}/resync-profile/").status_code == 403
-    assert client.get(BASE + "directory-search/?q=aud").status_code == 403
+    # Still admin-only: the imports and the delegations.
+    assert client.post(BASE + "import-csv/", {}, format="multipart").status_code == 403
+    assert client.get(f"{BASE}{agent.id}/delegation/").status_code == 403
 
 
 def test_delegate_actions_flags_follow_rights(admin: User) -> None:
@@ -184,8 +184,6 @@ def test_delegate_actions_flags_follow_rights(admin: User) -> None:
         "changer_role": False,
         "desactiver": False,
         "reactiver": False,
-        "resynchroniser_profil": False,
-        "relancer_synchro_keycloak": False,
         "reinitialiser_mot_de_passe": True,
         "desactiver_otp": True,
     }

@@ -1,27 +1,16 @@
-import uuid
 from typing import Any
-from unittest import mock
 
 import pytest
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
-from apps.users.keycloak_admin import (
-    KeycloakAdminError,
-    KeycloakIndisponible,
-    KeycloakIntrouvable,
-    KeycloakRefus,
-)
 from apps.users.models import Role, User
-from apps.users.oidc import OneaOIDCBackend
 
-from ..conftest import FakeKeycloakAdmin
+from ..connexion import connecter
 from ..factories import DirectionFactory, make_user
-from .test_oidc import _bearer, claims
 
 BASE = "/api/v1/user-accounts/"
-ANNUAIRE_503 = "L'annuaire (Keycloak) est momentanément indisponible. Réessayez plus tard."
 
 
 ROLES_REFUSES = ["RAI", "AUDITEUR", "AUDITE", "DG"]
@@ -40,16 +29,12 @@ def _routes(cible: int) -> list[tuple[str, str, dict[str, Any], str]]:
         ("patch", f"{BASE}{cible}/", {"fonction": "X"}, "json"),
         ("post", f"{BASE}{cible}/deactivate/", {"motif": "x"}, "json"),
         ("post", f"{BASE}{cible}/reactivate/", {}, "json"),
-        ("post", f"{BASE}{cible}/resync-profile/", {}, "json"),
-        ("post", f"{BASE}{cible}/retry-keycloak-sync/", {}, "json"),
         ("post", BASE, {"username": "nouvel.agent", "role": "AUDITEUR"}, "json"),
         ("post", f"{BASE}{cible}/reset-password/", {}, "json"),
         ("post", f"{BASE}{cible}/disable-otp/", {}, "json"),
         ("post", f"{BASE}{cible}/change-role/", {"role": "RAI"}, "json"),
         ("get", f"{BASE}{cible}/delegation/", {}, "json"),
         ("put", f"{BASE}{cible}/delegation/", {}, "json"),
-        ("get", BASE + "directory-search/?q=aud", {}, "json"),
-        ("post", BASE + "import-directory/", {"keycloak_ids": [str(uuid.uuid4())]}, "json"),
         ("post", BASE + "import-csv/", {}, "multipart"),
         ("options", BASE, {}, "json"),
         ("options", f"{BASE}{cible}/", {}, "json"),
@@ -57,9 +42,7 @@ def _routes(cible: int) -> list[tuple[str, str, dict[str, Any], str]]:
 
 
 @pytest.mark.parametrize("role", ROLES_REFUSES)
-def test_droits_admin_seul_toutes_les_routes(
-    api_client: APIClient, user: User, role: str, fake_keycloak: FakeKeycloakAdmin
-) -> None:
+def test_droits_admin_seul_toutes_les_routes(api_client: APIClient, user: User, role: str) -> None:
     cible = make_user(Role.AUDITEUR)
     fonction_initiale = cible.fonction
     api_client.force_authenticate(make_user(role))
@@ -71,13 +54,10 @@ def test_droits_admin_seul_toutes_les_routes(
     assert cible.is_active and cible.fonction == fonction_initiale
 
 
-def test_admin_acces_aux_routes(
-    api_client: APIClient, admin: User, fake_keycloak: FakeKeycloakAdmin
-) -> None:
+def test_admin_acces_aux_routes(api_client: APIClient, admin: User) -> None:
     cible = make_user(Role.AUDITEUR)
     api_client.force_authenticate(admin)
     assert api_client.get(BASE).status_code == 200
-    assert api_client.get(BASE + "directory-search/?q=aud").status_code == 200
     r = api_client.post(f"{BASE}{cible.id}/deactivate/", {"motif": "x"}, format="json")
     assert r.status_code == 200
 
@@ -89,34 +69,27 @@ def test_anonyme_401_sur_toutes_les_routes(api_client: APIClient, user: User) ->
         assert set(r.json()) == {"detail", "errors"}, (methode, url)
 
 
-def test_deactivate_keycloak_echec_200(
-    api_client: APIClient, admin: User, fake_keycloak: FakeKeycloakAdmin, settings: Any
+@pytest.mark.parametrize(
+    "methode,suffixe",
+    [
+        ("post", "{id}/resync-profile/"),
+        ("post", "{id}/retry-keycloak-sync/"),
+        ("get", "directory-search/?q=aud"),
+        ("post", "import-directory/"),
+    ],
+)
+def test_routes_de_l_ancien_annuaire_supprimees(
+    api_client: APIClient, admin: User, methode: str, suffixe: str
 ) -> None:
-    settings.KEYCLOAK_ADMIN_API_CLIENT_SECRET = "s3cr3t-de-test"  # noqa: S105
-    cible = make_user(Role.AUDITEUR, keycloak_id=fake_keycloak.add_user("auditeur2"))
-    fake_keycloak.fail_with(
-        KeycloakRefus(
-            "Keycloak a refusé l'opération (HTTP 403) : vérifiez les droits du client de service.",
-            403,
-        )
-    )
+    cible = make_user(Role.AUDITEUR)
     api_client.force_authenticate(admin)
-    r = api_client.post(f"{BASE}{cible.id}/deactivate/", {"motif": "Départ"}, format="json")
-    assert r.status_code == 200 and r.json()["is_active"] is False
-    assert r.json()["keycloak_sync"]["statut"] == "ECHEC"
-    assert r.json()["keycloak_sync"]["manuel"] is True
-    assert r.json()["actions"]["relancer_synchro_keycloak"]
-    assert settings.KEYCLOAK_ADMIN_API_CLIENT_SECRET not in r.content.decode()
+    r = getattr(api_client, methode)(BASE + suffixe.format(id=cible.id))
+    assert r.status_code in (404, 405)
 
 
-def test_reactivate_et_resync_profile(
-    api_client: APIClient, admin: User, fake_keycloak: FakeKeycloakAdmin
-) -> None:
-    cible = make_user(Role.AUDITEUR, is_active=False, profil_gere_localement=True)
+def test_reactivate(api_client: APIClient, admin: User) -> None:
+    cible = make_user(Role.AUDITEUR, is_active=False)
     api_client.force_authenticate(admin)
-    r = api_client.post(f"{BASE}{cible.id}/resync-profile/")
-    assert r.status_code == 200 and r.json()["profil_gere_localement"] is False
-    assert api_client.post(f"{BASE}{cible.id}/resync-profile/").status_code == 422
     r = api_client.post(f"{BASE}{cible.id}/reactivate/")
     assert r.status_code == 200 and r.json()["is_active"] is True
     assert api_client.post(f"{BASE}{cible.id}/reactivate/").status_code == 422
@@ -135,7 +108,7 @@ MSG_AUTRE = "Champ non modifiable."
         ("username", MSG_IDENTIFIANT),
         ("is_active", MSG_ACTIF),
         ("id", MSG_AUTRE),
-        ("keycloak_id", MSG_AUTRE),
+        ("origine", MSG_AUTRE),
     ],
 )
 def test_patch_champs_refuses(api_client: APIClient, admin: User, champ: str, message: str) -> None:
@@ -156,7 +129,7 @@ def test_patch_profil(api_client: APIClient, admin: User) -> None:
     )
     assert r.status_code == 200
     assert r.json()["direction_libelle"] == "Direction audit"
-    assert r.json()["profil_gere_localement"] is True
+    assert r.json()["matricule"] == "M1"
     bad = api_client.patch(f"{BASE}{cible.id}/", {"direction_code": "ZZZ"}, format="json")
     assert bad.status_code == 422
 
@@ -170,24 +143,19 @@ def test_direction_inconnue_inchangee_acceptee(api_client: APIClient, admin: Use
     assert r.status_code == 200 and r.json()["direction_libelle"] is None
 
 
-def test_desactivation_effective_au_prochain_appel(
-    api_client: APIClient, admin: User, fake_keycloak: FakeKeycloakAdmin
-) -> None:
-    sub = uuid.uuid4()
-    cible = make_user(Role.RAI, keycloak_id=sub)
-    api_client.force_authenticate(admin)
+def test_desactivation_effective_au_prochain_appel(api_client: APIClient, admin: User) -> None:
+    cible = make_user(Role.RAI)
+    session_cible = connecter(APIClient(), cible)
+    assert session_cible.get("/api/v1/me/").status_code == 200
+    connecter(api_client, admin)
     r = api_client.post(f"{BASE}{cible.id}/deactivate/", {"motif": "Départ"}, format="json")
     assert r.status_code == 200
-    api_client.force_authenticate(None)
-    with mock.patch.object(OneaOIDCBackend, "get_userinfo", return_value=claims(sub=str(sub))):
-        r = _bearer(api_client).get("/api/v1/me/")
-        assert r.status_code == 403
-        assert r.json() == {"detail": "Compte désactivé.", "errors": {}}
-    api_client.force_authenticate(admin)
+    r = session_cible.get("/api/v1/me/")
+    assert r.status_code == 401 and set(r.json()) == {"detail", "errors"}
     assert api_client.post(f"{BASE}{cible.id}/reactivate/").status_code == 200
-    api_client.force_authenticate(None)
-    with mock.patch.object(OneaOIDCBackend, "get_userinfo", return_value=claims(sub=str(sub))):
-        assert _bearer(api_client).get("/api/v1/me/").status_code == 200
+    # The session ended with the deactivation: a reactivation does not revive it.
+    assert session_cible.get("/api/v1/me/").status_code == 401
+    assert connecter(APIClient(), cible).get("/api/v1/me/").status_code == 200
 
 
 def test_desactiver_soi_meme_422(api_client: APIClient, admin: User) -> None:
@@ -211,7 +179,6 @@ def test_filtres_et_tri(api_client: APIClient, admin: User) -> None:
         username="zed",
         last_name="Zongo",
         origine="CSV",
-        keycloak_sync_statut="ECHEC",
         matricule="M-9",
         email="zed@onea.bf",
         first_name="Zoe",
@@ -225,7 +192,7 @@ def test_filtres_et_tri(api_client: APIClient, admin: User) -> None:
     def ids(qs: str) -> list[int]:
         return [x["id"] for x in api_client.get(BASE + qs).json()["results"]]
 
-    assert ids("?en_attente_connexion=true&origine=CSV&keycloak_sync=ECHEC") == [a.id]
+    assert ids("?en_attente_connexion=true&origine=CSV") == [a.id]
     assert ids("?role=RAI") == [b.id]
     for terme in ("zon", "ZED", "m-9", "zed@onea", "Zo"):
         assert ids(f"?q={terme}") == [a.id], terme
@@ -256,12 +223,17 @@ def test_actions_dans_le_detail(api_client: APIClient, admin: User) -> None:
         "changer_role": False,
         "desactiver": False,
         "reactiver": False,
-        "resynchroniser_profil": False,
-        "relancer_synchro_keycloak": False,
         "reinitialiser_mot_de_passe": False,
         "desactiver_otp": False,
     }
-    assert r["keycloak_lie"] is False
+    retires = {
+        "keycloak_lie",
+        "keycloak_sync",
+        "keycloak_sync_statut",
+        "role_provisoire",
+        "profil_gere_localement",
+    }
+    assert not retires & set(r)
 
 
 def test_id_inconnu_404_et_non_numerique_404(api_client: APIClient, admin: User) -> None:
@@ -298,137 +270,3 @@ def test_page_size_plafonne_a_200(api_client: APIClient, admin: User) -> None:
     api_client.force_authenticate(admin)
     r = api_client.get(BASE + "?page_size=1000")
     assert r.status_code == 200 and len(r.json()["results"]) <= 200
-
-
-def test_retry_keycloak_sync(
-    api_client: APIClient, admin: User, fake_keycloak: FakeKeycloakAdmin
-) -> None:
-    cible = make_user(
-        Role.AUDITEUR,
-        keycloak_id=fake_keycloak.add_user("x"),
-        keycloak_sync_statut="ECHEC",
-        keycloak_sync_manuel=True,
-    )
-    api_client.force_authenticate(admin)
-    r = api_client.post(f"{BASE}{cible.id}/retry-keycloak-sync/")
-    assert r.status_code == 200 and r.json()["keycloak_sync"]["statut"] == "A_JOUR"
-    assert r.json()["keycloak_sync"]["manuel"] is False
-    r = api_client.post(f"{BASE}{cible.id}/retry-keycloak-sync/")
-    assert r.status_code == 422 and "déjà synchronisé" in r.json()["detail"]
-
-
-@pytest.mark.parametrize("q", ["", "a", "x" * 101])
-def test_directory_search_q_invalide_400(
-    api_client: APIClient, admin: User, fake_keycloak: FakeKeycloakAdmin, q: str
-) -> None:
-    api_client.force_authenticate(admin)
-    r = api_client.get(BASE + "directory-search/", {"q": q})
-    assert r.status_code == 400 and "q" in r.json()["errors"]
-
-
-def test_directory_search(
-    api_client: APIClient, admin: User, fake_keycloak: FakeKeycloakAdmin
-) -> None:
-    fake_keycloak.add_user("auditeur9", email="a9@onea.bf", firstName="A", lastName="Neuf")
-    api_client.force_authenticate(admin)
-    r = api_client.get(BASE + "directory-search/?q=auditeur")
-    assert r.status_code == 200 and r.json()[0]["username"] == "auditeur9"
-
-
-def test_directory_search_503(
-    api_client: APIClient, admin: User, fake_keycloak: FakeKeycloakAdmin
-) -> None:
-    fake_keycloak.fail_with(KeycloakIndisponible("down", 503))
-    api_client.force_authenticate(admin)
-    r = api_client.get(BASE + "directory-search/?q=aud")
-    assert r.status_code == 503
-    assert r.json() == {
-        "detail": "L'annuaire (Keycloak) est momentanément indisponible. Réessayez plus tard.",
-        "errors": {},
-    }
-
-
-def test_import_directory_plus_de_50_400(api_client: APIClient, admin: User) -> None:
-    api_client.force_authenticate(admin)
-    ids = [str(uuid.uuid4()) for _ in range(51)]
-    assert (
-        api_client.post(
-            BASE + "import-directory/", {"keycloak_ids": ids}, format="json"
-        ).status_code
-        == 400
-    )
-    assert (
-        api_client.post(BASE + "import-directory/", {"keycloak_ids": []}, format="json").status_code
-        == 400
-    )
-
-
-def test_import_directory_rapport(
-    api_client: APIClient, admin: User, fake_keycloak: FakeKeycloakAdmin
-) -> None:
-    kid = fake_keycloak.add_user(
-        "nouveau", email="n@onea.bf", firstName="N", lastName="O", roles={"AUDITEUR"}
-    )
-    api_client.force_authenticate(admin)
-    r = api_client.post(BASE + "import-directory/", {"keycloak_ids": [str(kid)]}, format="json")
-    assert r.status_code == 200
-    assert r.json() == {
-        "dry_run": False,
-        "crees": ["nouveau"],
-        "mis_a_jour": [],
-        "ignores": [],
-        "fichier_mots_de_passe_id": None,
-    }
-    assert User.objects.get(username="nouveau").origine == "ANNUAIRE"
-
-
-def test_import_directory_503(
-    api_client: APIClient, admin: User, fake_keycloak: FakeKeycloakAdmin
-) -> None:
-    fake_keycloak.fail_with(KeycloakIndisponible("down", 503), times=5)
-    api_client.force_authenticate(admin)
-    r = api_client.post(
-        BASE + "import-directory/", {"keycloak_ids": [str(uuid.uuid4())]}, format="json"
-    )
-    assert r.status_code == 503
-
-
-@pytest.mark.parametrize(
-    "exc,statut,detail",
-    [
-        (KeycloakIndisponible("down", 503), 503, ANNUAIRE_503),
-        (
-            KeycloakRefus("Keycloak a refusé l'opération (HTTP 403) : vérifiez les droits.", 403),
-            502,
-            "Keycloak a refusé l'opération (HTTP 403) : vérifiez les droits.",
-        ),
-        (
-            KeycloakIntrouvable("Compte introuvable dans Keycloak.", 404),
-            502,
-            "Compte introuvable dans Keycloak.",
-        ),
-        (KeycloakAdminError("Erreur Keycloak."), 502, "Erreur Keycloak."),
-    ],
-)
-def test_annuaire_erreurs_formatees(
-    api_client: APIClient,
-    admin: User,
-    fake_keycloak: FakeKeycloakAdmin,
-    settings: Any,
-    exc: KeycloakAdminError,
-    statut: int,
-    detail: str,
-) -> None:
-    settings.KEYCLOAK_ADMIN_API_CLIENT_SECRET = "s3cr3t-de-test"  # noqa: S105
-    api_client.force_authenticate(admin)
-    fake_keycloak.fail_with(exc)
-    r = api_client.get(BASE + "directory-search/?q=aud")
-    assert r.status_code == statut and r.json() == {"detail": detail, "errors": {}}
-    if isinstance(exc, KeycloakIntrouvable):
-        return  # an import reports a missing directory entry as an ignored line (T4)
-    fake_keycloak.fail_with(exc, times=5)
-    r = api_client.post(
-        BASE + "import-directory/", {"keycloak_ids": [str(uuid.uuid4())]}, format="json"
-    )
-    assert r.status_code == statut and r.json() == {"detail": detail, "errors": {}}
-    assert "s3cr3t" not in r.content.decode()

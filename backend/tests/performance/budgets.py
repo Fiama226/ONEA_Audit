@@ -134,7 +134,6 @@ BUDGETS_REQUETES: dict[str, int] = {
     "/api/v1/test-sheets/": 7,
     "/api/v1/test-sheets/{id}/": 8,
     "/api/v1/user-accounts/": 5,
-    "/api/v1/user-accounts/directory-search/": 5,
     "/api/v1/user-accounts/{id}/": 5,
     "/api/v1/users/": 5,
     "/api/v1/work-programs/": 7,
@@ -144,11 +143,10 @@ BUDGETS_REQUETES: dict[str, int] = {
     "/api/v1/work-programs/{id}/": 5,
 }
 
-# Routes dont le temps de reponse depend d'un service externe (conversion Gotenberg, Keycloak) :
+# Routes dont le temps de reponse depend d'un service externe (conversion Gotenberg) :
 # exclues du p95 de test_est_temps_reponse mais pas du budget de requetes.
 EXCLUES_TEMPS: frozenset[str] = frozenset(
     {
         "/api/v1/templates/{id}/preview/",
-        "/api/v1/user-accounts/directory-search/",
     }
 )
