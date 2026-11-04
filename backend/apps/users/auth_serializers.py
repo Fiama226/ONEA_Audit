@@ -51,6 +51,10 @@ class ChangementMotDePasseSerializer(serializers.Serializer[None]):
     nouveau = _mot_de_passe()
 
 
+class ConfirmationMotDePasseSerializer(serializers.Serializer[None]):
+    mot_de_passe = _mot_de_passe()
+
+
 class MessageSerializer(serializers.Serializer[None]):
     detail = serializers.CharField()
 

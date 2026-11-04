@@ -74,6 +74,10 @@ def _change(client: APIClient, ancien: str = MDP, nouveau: str = NOUVEAU) -> Any
     return client.post(CHANGE, {"ancien": ancien, "nouveau": nouveau}, format="json")
 
 
+def _desactiver(client: APIClient, mot_de_passe: str = MDP) -> Any:
+    return client.post(OTP_OFF, {"mot_de_passe": mot_de_passe}, format="json")
+
+
 def _code_du_courriel() -> str:
     trouve = re.search(r"\b(\d{6})\b", str(mail.outbox[-1].body))
     assert trouve is not None
@@ -186,6 +190,12 @@ def test_forgot_is_throttled_per_identifier_without_storing_it(agent: User) -> N
         assert _forgot("personne@onea.bf").status_code == 429
         # Other identifiers are not affected.
         assert _forgot("awa.ouedraogo").status_code == 202
+        # A JSON number is the same identifier as its text (no bypass of the bucket).
+        assert _forgot("123456").status_code == 202
+        nombre = APIClient().post(FORGOT, {"identifiant": 123456}, format="json")
+        assert nombre.status_code == 202
+        assert _forgot(" 123456 ").status_code == 429
+        assert APIClient().post(FORGOT, {"identifiant": 123456}, format="json").status_code == 429
 
     from apps.users.auth_throttles import MotDePasseOublieParIdentifiantThrottle
 
@@ -357,9 +367,13 @@ def test_reset_cancels_a_pending_login_code(agent: User) -> None:
     attaquant = APIClient()
     assert _login(attaquant).json()["etape"] == "OTP"
     code_connexion = _code_du_courriel()
+    cle_en_attente = attaquant.session.session_key
+    assert Session.objects.filter(session_key=cle_en_attente).exists()
 
     _forgot("awa.ouedraogo")
     assert _reset("awa.ouedraogo", _code_du_courriel()).status_code == 204
+    # The half-open session (password step passed, code pending) is deleted outright.
+    assert not Session.objects.filter(session_key=cle_en_attente).exists()
     # The password step was passed with the old password: that pending login is over.
     assert attaquant.post(LOGIN_OTP, {"code": code_connexion}, format="json").status_code == 401
 
@@ -389,6 +403,10 @@ def test_change_requires_old_password(agent: User) -> None:
     faible = _change(client, nouveau="123456789012345")
     assert faible.status_code == 400
     assert set(faible.json()["errors"]) == {"nouveau"}
+    for proche in ("awa.ouedraogo-2026", "Awa.Ouedraogo@onea.bf1"):  # username, email
+        similaire = _change(client, nouveau=proche)
+        assert similaire.status_code == 400, proche
+        assert set(similaire.json()["errors"]) == {"nouveau"}, proche
     agent.refresh_from_db()
     assert agent.check_password(MDP)
 
@@ -505,19 +523,62 @@ def test_otp_enable_and_disable_by_owner(agent: User) -> None:
     assert entree.actor == agent
     assert "otp_connexion_actif" in entree.changes_dict
 
-    r = client.post(OTP_OFF)
+    r = _desactiver(client)
     assert r.status_code == 200
     assert r.json() == {"otp_connexion_actif": False}
     agent.refresh_from_db()
     assert agent.otp_connexion_actif is False
     # Disabling stays possible without email (the way out of a blocked OTP).
     with override_settings(**SANS_SMTP):
-        assert client.post(OTP_OFF).status_code == 200
+        assert _desactiver(client).status_code == 200
+
+
+def test_otp_disable_requires_current_password(agent: User) -> None:
+    agent.otp_connexion_actif = True
+    agent.save()
+    client = APIClient()
+    _login(client)
+    client.post(LOGIN_OTP, {"code": _code_du_courriel()}, format="json")
+    assert client.get(SESSION).status_code == 200
+
+    sans = client.post(OTP_OFF, {}, format="json")
+    assert sans.status_code == 400
+    assert set(sans.json()["errors"]) == {"mot_de_passe"}
+    faux = _desactiver(client, "pas-le-bon-mot-de-passe")
+    assert faux.status_code == 400
+    assert faux.json() == {
+        "detail": "Données invalides.",
+        "errors": {"mot_de_passe": ["Mot de passe actuel incorrect."]},
+    }
+    agent.refresh_from_db()
+    assert agent.otp_connexion_actif is True
+    assert agent.echecs_connexion == 1  # counted like a wrong password at login or change
+
+    for _ in range(4):
+        assert _desactiver(client, "pas-le-bon-mot-de-passe").status_code == 400
+    agent.refresh_from_db()
+    assert agent.verrouille_jusqu_a is not None
+    # Locked: the right password is refused too, with the same answer.
+    verrouille = _desactiver(client)
+    assert verrouille.status_code == 400
+    assert verrouille.json() == faux.json()
+    agent.refresh_from_db()
+    assert agent.otp_connexion_actif is True
+
+
+def test_me_exposes_login_code_state(agent: User) -> None:
+    client = _connecte()
+    assert client.get("/api/v1/me/").json()["otp_connexion_actif"] is False
+    assert client.post(OTP_ON).status_code == 200
+    assert client.get("/api/v1/me/").json()["otp_connexion_actif"] is True
+    assert client.get(SESSION).json()["me"]["otp_connexion_actif"] is True
+    assert _desactiver(client).status_code == 200
+    assert client.get("/api/v1/me/").json()["otp_connexion_actif"] is False
 
 
 def test_otp_endpoints_anonymous_401() -> None:
     assert APIClient().post(OTP_ON).status_code == 401
-    assert APIClient().post(OTP_OFF).status_code == 401
+    assert _desactiver(APIClient()).status_code == 401
 
 
 def test_login_requires_otp_when_enabled(agent: User) -> None:
@@ -564,7 +625,7 @@ def test_password_events_are_logged_without_secrets(
         client = _connecte(mot_de_passe=NOUVEAU)
         _change(client, ancien=NOUVEAU, nouveau="Troisieme-phrase-secrete-99")
         client.post(OTP_ON)
-        client.post(OTP_OFF)
+        _desactiver(client, "Troisieme-phrase-secrete-99")
     messages = [r.getMessage() for r in caplog.records if r.name == "onea.securite"]
     texte = "\n".join(messages)
     for secret in (MDP, NOUVEAU, "Troisieme-phrase-secrete-99", code, "awa.ouedraogo"):

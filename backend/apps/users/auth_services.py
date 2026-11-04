@@ -406,48 +406,53 @@ def _journaliser_reinitialisation_refusee(
     )
 
 
+def _reconfirmer(
+    compte: User, mot_de_passe: str, *, motif: str, adresse: str | None
+) -> User | None:
+    """Re-check the password of a logged-in account before a sensitive change.
+
+    Returns the row-locked account (call inside ``transaction.atomic`` to keep the lock for
+    the change), or None. A wrong password counts as a login failure (5 lock the account for
+    15 min) and a locked account is refused even with the right one: an open session cannot
+    be used to guess the password.
+    """
+    mot_de_passe_ok = _verifier_mot_de_passe(compte, mot_de_passe)
+    return _conclure(
+        compte.pk,
+        mot_de_passe_ok,
+        motif_echec=motif,
+        etape_de=etape_apres_second_facteur,
+        adresse=adresse,
+    ).user
+
+
 def changer_mot_de_passe(
     compte: User, ancien: str, nouveau: str, *, adresse: str | None = None
 ) -> User | None:
     """Change the password of a logged-in account. None = current password refused.
 
-    The new password is validated first (``ValidationError``, no hash spent). A wrong current
-    password counts as a login failure (5 lock the account for 15 min), and a locked account
-    is refused even with the right one: an open session cannot be used to guess the
-    password. The caller ends the other sessions and keeps the current one.
+    The new password is validated first (``ValidationError``, no hash spent), then the
+    current one re-checked (``_reconfirmer``). The caller ends the other sessions and keeps
+    the current one.
     """
     if nouveau == ancien:
         raise ValidationError(MEME_MOT_DE_PASSE, code="password_unchanged")
     validate_password(nouveau, compte)
-    ancien_ok = _verifier_mot_de_passe(compte, ancien)
     with transaction.atomic():
-        resultat = _conclure(
-            compte.pk,
-            ancien_ok,
-            motif_echec="ancien_mot_de_passe",
-            etape_de=etape_apres_second_facteur,
-            adresse=adresse,
-        )
-        if resultat.user is None:
+        verrou = _reconfirmer(compte, ancien, motif="ancien_mot_de_passe", adresse=adresse)
+        if verrou is None:
             return None
-        _appliquer_mot_de_passe(resultat.user, nouveau)
+        _appliquer_mot_de_passe(verrou, nouveau)
     logger_securite.info(
         "Mot de passe changé par son titulaire : compte=%s adresse=%s",
-        resultat.user.pk,
+        verrou.pk,
         adresse or "inconnue",
     )
-    return resultat.user
+    return verrou
 
 
-def changer_otp_connexion(compte: User, actif: bool, *, adresse: str | None = None) -> None:
-    """Turn the login code on or off for the caller's own account (audit trail via auditlog).
-
-    Turning it on needs a working email: the account would otherwise be locked out.
-    """
-    if actif and not envoi_courriel_actif():
-        raise OtpImpossible(ENVOI_COURRIEL_NON_CONFIGURE)
-    if actif and not compte.email:
-        raise OtpImpossible(COMPTE_SANS_COURRIEL)
+def _enregistrer_otp_connexion(compte: User, actif: bool, adresse: str | None) -> None:
+    """Save the flag (the audit trail records it through auditlog) and log the event."""
     if compte.otp_connexion_actif != actif:
         compte.otp_connexion_actif = actif
         compte.save(update_fields=["otp_connexion_actif"])
@@ -457,6 +462,36 @@ def changer_otp_connexion(compte: User, actif: bool, *, adresse: str | None = No
         compte.pk,
         adresse or "inconnue",
     )
+
+
+def activer_otp_connexion(compte: User, *, adresse: str | None = None) -> None:
+    """Turn the login code on for the caller's own account.
+
+    It needs a working email (and an address on the account): the account would otherwise be
+    locked out at its next login.
+    """
+    if not envoi_courriel_actif():
+        raise OtpImpossible(ENVOI_COURRIEL_NON_CONFIGURE)
+    if not compte.email:
+        raise OtpImpossible(COMPTE_SANS_COURRIEL)
+    _enregistrer_otp_connexion(compte, True, adresse)
+
+
+def desactiver_otp_connexion(
+    compte: User, mot_de_passe: str, *, adresse: str | None = None
+) -> User | None:
+    """Turn the login code off for the caller's own account, on its current password.
+
+    A stolen session must not be enough to remove the second factor: the password is
+    re-checked like for a password change (``_reconfirmer``). None = password refused.
+    Works without email (the way out of a login code that no longer arrives).
+    """
+    with transaction.atomic():
+        verrou = _reconfirmer(compte, mot_de_passe, motif="confirmation_otp", adresse=adresse)
+        if verrou is None:
+            return None
+        _enregistrer_otp_connexion(verrou, False, adresse)
+    return verrou
 
 
 def purger_codes_expires() -> int:

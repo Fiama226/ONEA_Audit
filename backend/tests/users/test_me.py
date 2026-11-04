@@ -16,6 +16,7 @@ def test_me_returns_profile(auth_client: APIClient, user: User) -> None:
         "direction_code": "DAI",
         "fonction": "Auditeur interne",
         "tutoriel": {"version_vue": None, "termine_le": None},
+        "otp_connexion_actif": False,
     }
 
 

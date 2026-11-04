@@ -60,8 +60,16 @@ class MotDePasseOublieParIdentifiantThrottle(ConnexionParIpThrottle):
     def get_cache_key(self, request: Request, view: "APIView") -> str | None:
         donnees = request.data
         identifiant = donnees.get("identifiant") if hasattr(donnees, "get") else None
-        if not isinstance(identifiant, str) or not identifiant.strip():
-            return None  # refused by the serializer anyway; the per-IP limit still applies
-        normalise = unicodedata.normalize("NFKC", identifiant.strip()).casefold()
-        empreinte = salted_hmac("onea.throttle.identifiant", normalise).hexdigest()
+        # Same inputs as the serializer's CharField: a JSON number is its text (123456 and
+        # "123456" share one bucket); anything else is refused by the serializer anyway and
+        # the per-IP limit still applies.
+        if isinstance(identifiant, bool) or not isinstance(identifiant, str | int | float):
+            return None
+        texte = str(identifiant).strip()
+        if not texte:
+            return None
+        normalise = unicodedata.normalize("NFKC", texte).casefold()
+        empreinte = salted_hmac(
+            "onea.throttle.identifiant", normalise, algorithm="sha256"
+        ).hexdigest()
         return f"throttle_{self.scope}_{empreinte}"

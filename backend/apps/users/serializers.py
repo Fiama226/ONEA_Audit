@@ -34,6 +34,7 @@ class MeSerializer(serializers.ModelSerializer[User]):
             "direction_code",
             "fonction",
             "tutoriel",
+            "otp_connexion_actif",
         )
         read_only_fields = fields
 

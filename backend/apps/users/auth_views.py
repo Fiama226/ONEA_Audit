@@ -30,6 +30,7 @@ from . import auth_services
 from .auth_serializers import (
     ChangementMotDePasseSerializer,
     CodeConnexionSerializer,
+    ConfirmationMotDePasseSerializer,
     ConnexionSerializer,
     EtatOtpSerializer,
     EtatSessionSerializer,
@@ -297,20 +298,10 @@ class ChangementMotDePasseView(APIView):
         return Response(_etat(auth_services.etape_apres_second_facteur(compte), compte))
 
 
-class _OtpConnexionView(APIView):
+class ActivationOtpView(APIView):
     """Acts on the caller's own account only: no route or field names another account."""
 
     permission_classes = [IsAuthenticated]
-    actif: bool
-
-    def _basculer(self, request: Request) -> Response:
-        compte = cast(User, request.user)
-        auth_services.changer_otp_connexion(compte, self.actif, adresse=adresse_client(request))
-        return Response({"otp_connexion_actif": compte.otp_connexion_actif})
-
-
-class ActivationOtpView(_OtpConnexionView):
-    actif = True
 
     @extend_schema(
         tags=["Authentification"],
@@ -319,17 +310,31 @@ class ActivationOtpView(_OtpConnexionView):
         responses={200: EtatOtpSerializer, **ERROR_409, **ERROR_RESPONSES},
     )
     def post(self, request: Request) -> Response:
-        return self._basculer(request)
+        compte = cast(User, request.user)
+        auth_services.activer_otp_connexion(compte, adresse=adresse_client(request))
+        return Response({"otp_connexion_actif": compte.otp_connexion_actif})
 
 
-class DesactivationOtpView(_OtpConnexionView):
-    actif = False
+class DesactivationOtpView(APIView):
+    """Own account only, on the current password (a wrong one counts as a login failure)."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ConnexionParIpThrottle]
 
     @extend_schema(
         tags=["Authentification"],
         summary="Désactiver le code de connexion par courriel (son propre compte)",
-        request=None,
-        responses={200: EtatOtpSerializer, **ERROR_RESPONSES},
+        request=ConfirmationMotDePasseSerializer,
+        responses={200: EtatOtpSerializer, **ERROR_400, **ERROR_429, **ERROR_RESPONSES},
     )
     def post(self, request: Request) -> Response:
-        return self._basculer(request)
+        serializer = ConfirmationMotDePasseSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        compte = auth_services.desactiver_otp_connexion(
+            cast(User, request.user),
+            serializer.validated_data["mot_de_passe"],
+            adresse=adresse_client(request),
+        )
+        if compte is None:
+            raise ValidationError({"mot_de_passe": [ANCIEN_INCORRECT]})
+        return Response({"otp_connexion_actif": compte.otp_connexion_actif})
