@@ -5,7 +5,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from rest_framework.fields import empty
 
-from .models import DelegationGestionComptes, KeycloakSyncStatut, Role, User
+from .models import DelegationGestionComptes, Role, User
 from .provisioning import CSV_MAX_BYTES, LigneIgnoree, RapportImport
 from .services import PROFILE_FIELDS, ROLE_INVALIDE, ROLE_OBLIGATOIRE, actions_compte
 
@@ -42,24 +42,6 @@ class UserRefSerializer(serializers.ModelSerializer[User]):
         read_only_fields = fields
 
 
-class SyncKeycloakSerializer(serializers.Serializer[User]):
-    """État de la propagation du compte vers Keycloak."""
-
-    statut = serializers.ChoiceField(
-        choices=KeycloakSyncStatut.choices, source="keycloak_sync_statut", read_only=True
-    )
-    erreur = serializers.CharField(source="keycloak_sync_erreur", read_only=True)
-    derniere_tentative_le = serializers.DateTimeField(
-        source="keycloak_sync_le", read_only=True, allow_null=True
-    )
-    tentatives = serializers.IntegerField(source="keycloak_sync_tentatives", read_only=True)
-    manuel = serializers.BooleanField(
-        source="keycloak_sync_manuel",
-        read_only=True,
-        help_text="Échec permanent : seule une relance manuelle peut le résoudre.",
-    )
-
-
 class ActionsCompteSerializer(serializers.Serializer[dict[str, bool]]):
     """Actions que l'utilisateur connecté (administrateur ou délégué) peut effectuer sur le
     compte."""
@@ -94,16 +76,13 @@ class CompteUtilisateurListeSerializer(serializers.ModelSerializer[User]):
             "is_active",
             "origine",
             "en_attente_connexion",
-            "keycloak_sync_statut",
             "date_joined",
         )
         read_only_fields = fields
 
 
 class CompteUtilisateurSerializer(CompteUtilisateurListeSerializer):
-    keycloak_lie = serializers.SerializerMethodField()
     desactive_par = UserRefSerializer(read_only=True, allow_null=True)
-    keycloak_sync = SyncKeycloakSerializer(source="*", read_only=True)
     actions = serializers.SerializerMethodField()
 
     class Meta(CompteUtilisateurListeSerializer.Meta):
@@ -111,10 +90,7 @@ class CompteUtilisateurSerializer(CompteUtilisateurListeSerializer):
             *CompteUtilisateurListeSerializer.Meta.fields,
             "first_name",
             "last_name",
-            "keycloak_lie",
-            "role_provisoire",
             "premiere_connexion_le",
-            "profil_gere_localement",
             "desactive_le",
             "desactive_par",
             "motif_desactivation",
@@ -122,14 +98,9 @@ class CompteUtilisateurSerializer(CompteUtilisateurListeSerializer):
             "mot_de_passe_expire_le",
             "verrouille_jusqu_a",
             "otp_connexion_actif",
-            "keycloak_sync",
             "actions",
         )
         read_only_fields = fields
-
-    @extend_schema_field(serializers.BooleanField())
-    def get_keycloak_lie(self, obj: User) -> bool:
-        return obj.keycloak_id is not None
 
     @extend_schema_field(ActionsCompteSerializer)
     def get_actions(self, obj: User) -> dict[str, bool]:

@@ -21,26 +21,20 @@ class ActionTutoriel(models.TextChoices):
 
 
 class OrigineCompte(models.TextChoices):
+    # CONNEXION and ANNUAIRE are historical: accounts created by a first login through the
+    # former identity provider, or by its directory import. Kept so that existing rows (and
+    # the origin filter) stay valid; no account is created with them any more.
     CONNEXION = "CONNEXION", "Première connexion"
     ANNUAIRE = "ANNUAIRE", "Import annuaire"
     CSV = "CSV", "Import CSV"
     ADMINISTRATION = "ADMINISTRATION", "Création par l'administration"
 
 
-class KeycloakSyncStatut(models.TextChoices):
-    A_JOUR = "A_JOUR", "À jour"
-    EN_ATTENTE = "EN_ATTENTE", "En attente"
-    ECHEC = "ECHEC", "Échec"
-
-
 class User(AbstractUser):
     role = models.CharField(max_length=16, choices=Role.choices, default=Role.AUDITE)
-    keycloak_id = models.UUIDField(null=True, blank=True, unique=True)
     matricule = models.CharField(max_length=32, blank=True)
     fonction = models.CharField(max_length=128, blank=True)
     direction_code = models.CharField(max_length=16, blank=True)
-
-    profil_gere_localement = models.BooleanField(default=False)
 
     desactive_le = models.DateTimeField(null=True, blank=True)
     desactive_par = models.ForeignKey(
@@ -49,25 +43,16 @@ class User(AbstractUser):
     motif_desactivation = models.TextField(blank=True)
 
     origine = models.CharField(
-        max_length=16, choices=OrigineCompte.choices, default=OrigineCompte.CONNEXION
+        max_length=16, choices=OrigineCompte.choices, default=OrigineCompte.ADMINISTRATION
     )
+    # First successful login (null: the account has never been used).
     premiere_connexion_le = models.DateTimeField(null=True, blank=True)
-    role_provisoire = models.BooleanField(default=False)
-
-    keycloak_sync_statut = models.CharField(
-        max_length=16, choices=KeycloakSyncStatut.choices, default=KeycloakSyncStatut.A_JOUR
-    )
-    keycloak_sync_erreur = models.TextField(blank=True)
-    keycloak_sync_le = models.DateTimeField(null=True, blank=True)
-    keycloak_sync_tentatives = models.PositiveIntegerField(default=0)
-    # Permanent failure (404, refused): no automatic retry, manual relaunch only.
-    keycloak_sync_manuel = models.BooleanField(default=False)
 
     # Tutoriel d'accueil guidé : dernière version du parcours vue ou ignorée (null = jamais).
     tutoriel_version_vue = models.PositiveIntegerField(null=True, blank=True)
     tutoriel_termine_le = models.DateTimeField(null=True, blank=True)
 
-    # In-app authentication (replaces Keycloak; legacy fields above are removed later).
+    # In-app authentication.
     doit_changer_mot_de_passe = models.BooleanField(default=False)
     mot_de_passe_expire_le = models.DateTimeField(null=True, blank=True)
     echecs_connexion = models.PositiveIntegerField(default=0)

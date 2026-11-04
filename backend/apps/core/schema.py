@@ -118,4 +118,3 @@ class SessionCookieAuthenticationScheme(OpenApiAuthenticationExtension):  # type
                 "d'écriture joignent l'en-tête X-CSRFToken (GET /api/v1/auth/csrf/)."
             ),
         }
-

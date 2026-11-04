@@ -11,15 +11,6 @@ class UsersConfig(AppConfig):
 
         from .models import DelegationGestionComptes, User
 
-        # Never log credentials, login timestamps or technical retry counters.
-        auditlog.register(
-            User,
-            exclude_fields=[
-                "password",
-                "last_login",
-                "keycloak_sync_le",
-                "keycloak_sync_tentatives",
-                "echecs_connexion",
-            ],
-        )
+        # Never log credentials, login timestamps or technical counters.
+        auditlog.register(User, exclude_fields=["password", "last_login", "echecs_connexion"])
         auditlog.register(DelegationGestionComptes)

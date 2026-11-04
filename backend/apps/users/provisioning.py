@@ -245,7 +245,6 @@ def _creer_compte(
     user = User(
         **donnees,
         origine=OrigineCompte.CSV,
-        profil_gere_localement=bool(donnees.get("direction_code") or donnees.get("fonction")),
         is_active=True,
         is_staff=False,
         is_superuser=False,

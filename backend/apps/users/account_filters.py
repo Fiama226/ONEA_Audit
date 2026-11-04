@@ -4,7 +4,7 @@ import django_filters
 from django import forms
 from django.db.models import Q, QuerySet
 
-from .models import KeycloakSyncStatut, OrigineCompte, Role, User
+from .models import OrigineCompte, Role, User
 
 Q_AIDE = (
     "Recherche insensible à la casse sur l'identifiant, le prénom, le nom, l'e-mail "
@@ -39,9 +39,6 @@ class UserAccountFilter(django_filters.FilterSet):
     origine = django_filters.ChoiceFilter(choices=OrigineCompte.choices)
     en_attente_connexion = StrictBooleanFilter(
         method="filter_en_attente", help_text="Compte qui ne s'est jamais connecté."
-    )
-    keycloak_sync = django_filters.ChoiceFilter(
-        field_name="keycloak_sync_statut", choices=KeycloakSyncStatut.choices
     )
     q = django_filters.CharFilter(method="filter_q", max_length=100, help_text=Q_AIDE)
 
