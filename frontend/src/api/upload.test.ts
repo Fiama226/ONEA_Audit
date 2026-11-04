@@ -1,8 +1,13 @@
 import { http, HttpResponse } from "msw";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { fr } from "@/i18n/fr";
 import { API_URL, server, TEST_CSRF } from "@/test/msw";
-import { resetCsrfToken } from "./client";
+import {
+  ensureCsrfToken,
+  resetCsrfToken,
+  setSessionUser,
+  setUnauthorizedHandler,
+} from "./client";
 import { isApiError } from "./errors";
 import { uploadWithProgress } from "./upload";
 
@@ -31,6 +36,8 @@ beforeEach(() =>
     ),
   ),
 );
+
+const REFUS_CSRF = { detail: "Jeton CSRF absent ou invalide : rechargez la page.", errors: {} };
 
 function form(): FormData {
   const data = new FormData();
@@ -110,6 +117,84 @@ describe("uploadWithProgress", () => {
       (e: unknown) => e,
     );
     expect(isApiError(error) && error.detail).toBe(fr.errors.fileTooLarge);
+  });
+
+  it("401 (session expirée pendant l'envoi) : gestionnaire de session appelé, message dédié", async () => {
+    let expirees = 0;
+    setUnauthorizedHandler(() => {
+      expirees += 1;
+    });
+    onTestFinished(() => setUnauthorizedHandler(null));
+    server.use(
+      http.post(
+        `${API_URL}/api/v1/evidence/`,
+        () => new HttpResponse("<html>401</html>", { status: 401, headers: CORS }),
+      ),
+    );
+    const error = await uploadWithProgress("/api/v1/evidence/", form(), () => {}).catch(
+      (e: unknown) => e,
+    );
+    expect(isApiError(error) && error.status).toBe(401);
+    expect(isApiError(error) && error.detail).toBe(fr.errors.unauthorized);
+    expect(expirees).toBe(1);
+  });
+
+  it("jeton CSRF périmé : jeton oublié, redemandé, envoi rejoué une seule fois", async () => {
+    let emis = 0;
+    const recus: (string | null)[] = [];
+    server.use(
+      http.get(`${API_URL}/api/v1/auth/csrf/`, () => {
+        emis += 1;
+        return HttpResponse.json({ csrf_token: `jeton-${emis}` });
+      }),
+      http.post(`${API_URL}/api/v1/evidence/`, ({ request }) => {
+        const jeton = request.headers.get("X-CSRFToken");
+        recus.push(jeton);
+        return jeton === "jeton-1"
+          ? HttpResponse.json(REFUS_CSRF, { status: 403, headers: CORS })
+          : HttpResponse.json({ id: "p2" }, { status: 201, headers: CORS });
+      }),
+    );
+    const result = await uploadWithProgress<{ id: string }>("/api/v1/evidence/", form(), () => {});
+    expect(result.id).toBe("p2");
+    expect(recus).toEqual(["jeton-1", "jeton-2"]);
+    // Le jeton neuf est gardé pour les écritures suivantes.
+    expect(await ensureCsrfToken()).toBe("jeton-2");
+  });
+
+  it("second refus CSRF : erreur remontée sans boucle", async () => {
+    let envois = 0;
+    server.use(
+      http.post(`${API_URL}/api/v1/evidence/`, () => {
+        envois += 1;
+        return HttpResponse.json(REFUS_CSRF, { status: 403, headers: CORS });
+      }),
+    );
+    const error = await uploadWithProgress("/api/v1/evidence/", form(), () => {}).catch(
+      (e: unknown) => e,
+    );
+    expect(isApiError(error) && error.status).toBe(403);
+    expect(envois).toBe(2);
+  });
+
+  it("refus CSRF après connexion d'un autre agent : pas de rejeu", async () => {
+    let envois = 0;
+    setSessionUser(7);
+    onTestFinished(() => setSessionUser(null));
+    server.use(
+      http.get(`${API_URL}/api/v1/auth/session/`, () =>
+        HttpResponse.json({ etape: "OK", me: { id: 9 } }),
+      ),
+      http.post(`${API_URL}/api/v1/evidence/`, () => {
+        envois += 1;
+        return HttpResponse.json(REFUS_CSRF, { status: 403, headers: CORS });
+      }),
+    );
+    const error = await uploadWithProgress("/api/v1/evidence/", form(), () => {}).catch(
+      (e: unknown) => e,
+    );
+    expect(isApiError(error) && error.detail).toBe(fr.auth.sessionChanged);
+    expect(envois).toBe(1);
   });
 
   it("annulation : AbortError", async () => {

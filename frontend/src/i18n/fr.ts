@@ -685,7 +685,7 @@ export const fr = {
       roles: "Changer les rôles et la direction",
       desactiver: "Désactiver et réactiver des comptes",
       warning:
-        "Attention : un délégué qui peut « créer des comptes » ou « réinitialiser les mots de passe » reçoit des mots de passe temporaires ; il peut ainsi obtenir l'accès à n'importe quel compte non administrateur.",
+        "Attention : un délégué qui peut « créer des comptes » ou « réinitialiser les mots de passe » reçoit des mots de passe temporaires ; il peut ainsi obtenir l'accès à n'importe quel compte Auditeur ou Audité (jamais à un administrateur, un RAI ou la Direction générale).",
       limits:
         "Un délégué gère uniquement les comptes AUDITEUR et AUDITE : il n'agit jamais sur un administrateur, un RAI, une Direction générale, un autre délégué ni sur son propre compte, et ne peut attribuer que les rôles AUDITEUR et AUDITE.",
       inactive: "Compte désactivé : aucun droit ne peut lui être délégué.",
@@ -740,6 +740,11 @@ export const fr = {
         "Fichier téléchargé. Il n'est plus disponible sur le serveur : ne le perdez pas.",
       passwordsGone:
         "Ce fichier n'est plus disponible : il a déjà été téléchargé ou a expiré. Réinitialisez au besoin le mot de passe des comptes concernés.",
+      // Fermeture demandée alors que le fichier des mots de passe n'est pas téléchargé.
+      passwordsCloseWarning:
+        "Le fichier des mots de passe temporaires n'a pas été téléchargé. Si vous fermez cette fenêtre, il ne pourra plus être téléchargé : il faudra réinitialiser un par un le mot de passe des comptes concernés.",
+      passwordsCloseAnyway: "Fermer sans télécharger",
+      passwordsCloseBack: "Revenir au téléchargement",
     },
   },
   programmation: {
@@ -898,6 +903,16 @@ export const fr = {
       "Pour des raisons de sécurité, choisissez un nouveau mot de passe avant d'accéder à la plateforme.",
     changeIntro: "Choisissez un nouveau mot de passe. Vos autres sessions ouvertes seront fermées.",
     changeSubmit: "Changer le mot de passe",
+    changeCancel: "Annuler et revenir",
+    // Confirmation (message d'état) après un changement de mot de passe réussi.
+    passwordChanged: "Votre mot de passe a été changé. Vos autres sessions ont été fermées.",
+    loggingIn: "Connexion en cours",
+    // Déconnexion dont la fin de session n'a pas été confirmée par le serveur (délai, réseau).
+    logoutUnconfirmed:
+      "La déconnexion n'a pas pu être confirmée par le serveur : fermez le navigateur si vous quittez le poste.",
+    // Connexion ou déconnexion faite dans un autre onglet pendant une action dans celui-ci.
+    sessionChanged:
+      "La session a changé dans un autre onglet (connexion ou déconnexion) : votre dernière action n'a pas été enregistrée. Reconnectez-vous pour continuer.",
   },
   missionTravaux: {
     meetingsTitle: "Réunions de la mission",

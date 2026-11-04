@@ -9,6 +9,8 @@ import {
   baseUrl,
   ensureCsrfToken,
   resetCsrfToken,
+  setSessionChangedHandler,
+  setSessionUser,
   setUnauthorizedHandler,
 } from "./client";
 import { ApiError, isApiError } from "./errors";
@@ -489,6 +491,82 @@ describe("jeton CSRF", () => {
     );
     await Promise.all([ensureCsrfToken(), ensureCsrfToken(), ensureCsrfToken()]);
     expect(emis).toBe(1);
+  });
+
+  describe("rejeu sous la même identité seulement", () => {
+    afterEach(() => {
+      setSessionUser(null);
+      setSessionChangedHandler(null);
+      setUnauthorizedHandler(null);
+    });
+
+    function refusPuisSucces(envois: { n: number }) {
+      return http.post(`${API_URL}/api/x/`, () => {
+        envois.n += 1;
+        return envois.n === 1
+          ? HttpResponse.json(REFUS_CSRF, { status: 403 })
+          : HttpResponse.json({ ok: true });
+      });
+    }
+
+    it("même agent : la session est sondée puis l'écriture rejouée", async () => {
+      const envois = { n: 0 };
+      let sondes = 0;
+      setSessionUser(7);
+      server.use(
+        refusPuisSucces(envois),
+        http.get(`${API_URL}/api/v1/auth/session/`, () => {
+          sondes += 1;
+          return HttpResponse.json({ etape: "OK", me: { id: 7 } });
+        }),
+      );
+      await expect(apiFetch("/api/x/", { method: "POST", json: {} })).resolves.toEqual({
+        ok: true,
+      });
+      expect(sondes).toBe(1);
+      expect(envois.n).toBe(2);
+    });
+
+    it("autre agent connecté entre-temps : pas de rejeu, changement de session signalé", async () => {
+      const envois = { n: 0 };
+      let signale = 0;
+      setSessionUser(7);
+      setSessionChangedHandler(() => {
+        signale += 1;
+      });
+      server.use(
+        refusPuisSucces(envois),
+        http.get(`${API_URL}/api/v1/auth/session/`, () =>
+          HttpResponse.json({ etape: "OK", me: { id: 8 } }),
+        ),
+      );
+      const error = await apiFetch("/api/x/", { method: "POST", json: {} }).catch(
+        (e: unknown) => e,
+      );
+      expect(isApiError(error) && error.detail).toBe(fr.auth.sessionChanged);
+      expect(envois.n).toBe(1);
+      expect(signale).toBe(1);
+    });
+
+    it("session terminée entre-temps (401 à la sonde) : pas de rejeu, session expirée", async () => {
+      const envois = { n: 0 };
+      let expirees = 0;
+      setSessionUser(7);
+      setUnauthorizedHandler(() => {
+        expirees += 1;
+      });
+      server.use(
+        refusPuisSucces(envois),
+        http.get(`${API_URL}/api/v1/auth/session/`, () =>
+          HttpResponse.json({ detail: "x", errors: {} }, { status: 401 }),
+        ),
+      );
+      await expect(apiFetch("/api/x/", { method: "POST", json: {} })).rejects.toMatchObject({
+        status: 401,
+      });
+      expect(envois.n).toBe(1);
+      expect(expirees).toBe(1);
+    });
   });
 
   it("échec de la demande de jeton : ApiError réseau, sans envoyer l'écriture", async () => {

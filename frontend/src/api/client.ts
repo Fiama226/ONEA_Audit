@@ -60,25 +60,48 @@ async function loadCsrfToken(): Promise<string> {
   return token;
 }
 
-type UnauthorizedHandler = () => void;
+type SessionHandler = () => void;
 
-let onUnauthorized: UnauthorizedHandler | null = null;
+let onUnauthorized: SessionHandler | null = null;
+let onSessionChanged: SessionHandler | null = null;
+/** Agent dont l'écran est affiché (null : anonyme) ; tenu à jour par AuthProvider. */
+let sessionUserId: number | null = null;
 
 /**
  * Enregistre la réaction à un 401 reçu en cours d'utilisation (session expirée ou terminée
  * ailleurs) : l'application ramène alors vers la connexion au lieu d'afficher des erreurs.
  */
-export function setUnauthorizedHandler(fn: UnauthorizedHandler | null): void {
+export function setUnauthorizedHandler(fn: SessionHandler | null): void {
   onUnauthorized = fn;
+}
+
+/**
+ * Enregistre la réaction à un changement d'identité découvert avant le rejeu d'une écriture
+ * (un autre agent s'est connecté dans un autre onglet du même navigateur).
+ */
+export function setSessionChangedHandler(fn: SessionHandler | null): void {
+  onSessionChanged = fn;
+}
+
+/** Identifiant de l'agent affiché, comparé à celui de la session avant tout rejeu CSRF. */
+export function setSessionUser(id: number | null): void {
+  sessionUserId = id;
+}
+
+/** Signale un 401 au gestionnaire de session, sauf pour les appels où il n'a pas ce sens. */
+export function notifyUnauthorized(path: string): void {
+  if (!SANS_REDIRECTION_401.has(path)) onUnauthorized?.();
 }
 
 /**
  * Appels pour lesquels un 401 ne signifie pas « session expirée » : sonde de session d'un
  * anonyme, échec de connexion ou de code, déconnexion, mot de passe oublié.
  */
+export const SESSION_PATH = "/api/v1/auth/session/";
+
 const SANS_REDIRECTION_401 = new Set([
   CSRF_PATH,
-  "/api/v1/auth/session/",
+  SESSION_PATH,
   "/api/v1/auth/login/",
   "/api/v1/auth/login/otp/",
   "/api/v1/auth/logout/",
@@ -146,8 +169,40 @@ async function toApiError(response: Response): Promise<ApiError> {
  */
 const CSRF_REFUSE_PREFIX = "Jeton CSRF";
 
-function isCsrfFailure(error: ApiError): boolean {
+export function isCsrfFailure(error: ApiError): boolean {
   return error.status === 403 && error.detail.startsWith(CSRF_REFUSE_PREFIX);
+}
+
+/**
+ * À appeler avant de rejouer une écriture refusée pour jeton CSRF périmé : oublie le jeton,
+ * puis vérifie que la session est toujours celle de l'agent affiché. Le jeton change quand
+ * une connexion a lieu dans un autre onglet : rejouer sans ce contrôle exécuterait l'écriture
+ * sous l'identité d'un autre agent. Rejette (sans rejeu possible) si la session a pris fin
+ * (401) ou appartient à un autre agent.
+ */
+export async function prepareCsrfReplay(): Promise<void> {
+  resetCsrfToken();
+  const expected = sessionUserId;
+  if (expected === null) return; // anonyme (connexion, mot de passe oublié) : rien à comparer
+  let response: Response;
+  try {
+    response = await send(SESSION_PATH, {}, "application/json");
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) onUnauthorized?.();
+    throw e;
+  }
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+  const me = isRecord(body) ? body.me : undefined;
+  const id = isRecord(me) ? me.id : undefined;
+  if (id !== expected) {
+    onSessionChanged?.();
+    throw new ApiError(403, fr.auth.sessionChanged);
+  }
 }
 
 /**
@@ -185,10 +240,10 @@ async function send(
   }
 
   if (!response.ok) {
-    if (response.status === 401 && !SANS_REDIRECTION_401.has(path)) onUnauthorized?.();
+    if (response.status === 401) notifyUnauthorized(path);
     const error = await toApiError(response);
     if (!SAFE_METHODS.has(method) && !csrfRetried && isCsrfFailure(error)) {
-      resetCsrfToken();
+      await prepareCsrfReplay();
       return send(path, init, accept, true);
     }
     throw error;

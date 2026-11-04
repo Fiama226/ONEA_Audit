@@ -1,6 +1,12 @@
 import { fr } from "@/i18n/fr";
-import { baseUrl, ensureCsrfToken } from "./client";
-import { ApiError } from "./errors";
+import {
+  baseUrl,
+  ensureCsrfToken,
+  isCsrfFailure,
+  notifyUnauthorized,
+  prepareCsrfReplay,
+} from "./client";
+import { ApiError, isApiError } from "./errors";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -18,6 +24,12 @@ function fieldErrors(body: Record<string, unknown>): Record<string, string[]> {
   return out;
 }
 
+const STATUS_DETAIL: Record<number, string> = {
+  401: fr.errors.unauthorized,
+  403: fr.errors.forbidden,
+  429: fr.errors.tooManyRequests,
+};
+
 function toError(xhr: XMLHttpRequest): ApiError {
   if (xhr.status === 413) return new ApiError(413, fr.errors.fileTooLarge);
   let body: Record<string, unknown> = {};
@@ -27,12 +39,7 @@ function toError(xhr: XMLHttpRequest): ApiError {
   } catch {
     // corps non JSON (page HTML d'un proxy) : message générique
   }
-  const fallback =
-    xhr.status === 403
-      ? fr.errors.forbidden
-      : xhr.status === 429
-        ? fr.errors.tooManyRequests
-        : fr.errors.generic;
+  const fallback = STATUS_DETAIL[xhr.status] ?? fr.errors.generic;
   const detail = typeof body.detail === "string" ? body.detail : fallback;
   return new ApiError(xhr.status, detail, fieldErrors(body));
 }
@@ -40,9 +47,27 @@ function toError(xhr: XMLHttpRequest): ApiError {
 /**
  * Envoi multipart avec progression (XHR : `fetch` n'expose pas la progression d'envoi).
  * `onProgress` reçoit un ratio entre 0 et 1 ; l'annulation par `signal` rejette en `AbortError`.
- * Même session que `apiFetch` : cookie de session et en-tête X-CSRFToken.
+ * Même session et mêmes règles que `apiFetch` : cookie de session, en-tête X-CSRFToken, 401
+ * signalé au gestionnaire de session, et un seul rejeu après un refus pour jeton CSRF périmé
+ * (jeton redemandé, session vérifiée : même agent).
  */
 export async function uploadWithProgress<T>(
+  url: string,
+  form: FormData,
+  onProgress: (ratio: number) => void,
+  signal?: AbortSignal,
+): Promise<T> {
+  try {
+    return await sendOnce<T>(url, form, onProgress, signal);
+  } catch (e) {
+    if (!isApiError(e) || !isCsrfFailure(e)) throw e;
+    await prepareCsrfReplay();
+    onProgress(0);
+    return sendOnce<T>(url, form, onProgress, signal);
+  }
+}
+
+async function sendOnce<T>(
   url: string,
   form: FormData,
   onProgress: (ratio: number) => void,
@@ -62,6 +87,7 @@ export async function uploadWithProgress<T>(
     };
     xhr.onload = () => {
       if (xhr.status < 200 || xhr.status >= 300) {
+        if (xhr.status === 401) notifyUnauthorized(url);
         reject(toError(xhr));
         return;
       }
