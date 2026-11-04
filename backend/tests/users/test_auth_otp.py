@@ -130,6 +130,17 @@ def test_envoyer_bienvenue_contains_password_and_url(user: User, caplog) -> None
     assert "Mdp-Temporaire-123" not in caplog.text
 
 
+def test_courriels_texte_sans_echappement_html(user: User) -> None:
+    """Plain-text emails: « N'Diaye », never « N&#x27;Diaye » (final review M7)."""
+    user.first_name, user.last_name = "Aïcha", "N'Diaye & Fils <x>"
+    user.save()
+    assert envoyer_bienvenue(user, "Mdp-Temporaire-123") is True
+    assert envoyer_code(user, "123456", ObjetOtp.RESET) is True
+    for message in mail.outbox:
+        assert "N'Diaye & Fils <x>" in message.body
+        assert "&#x27;" not in message.body and "&amp;" not in message.body
+
+
 def test_envoyer_code_mentions_code_and_validity(user: User) -> None:
     assert envoyer_code(user, "123456", ObjetOtp.LOGIN) is True
     corps = mail.outbox[0].body

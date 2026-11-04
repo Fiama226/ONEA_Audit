@@ -4,7 +4,8 @@ import logging
 
 from django.conf import settings
 from django.core.mail import send_mail
-from django.template.loader import render_to_string
+
+from apps.core.mail import _render_text
 
 from .auth_services import envoi_courriel_actif
 from .models import ObjetOtp, User
@@ -20,7 +21,8 @@ _OBJETS = {
 def _envoyer(user: User, sujet: str, template: str, contexte: dict[str, object]) -> bool:
     if not user.email or not envoi_courriel_actif():
         return False
-    corps = render_to_string(f"email/{template}.txt", contexte)
+    # Plain text: no HTML escaping (« N'Diaye », never « N&#x27;Diaye »).
+    corps = _render_text(f"email/{template}.txt", contexte)
     try:
         send_mail(f"[ONEA Audit] {sujet}", corps, settings.DEFAULT_FROM_EMAIL, [user.email])
     except Exception as exc:  # noqa: BLE001 - SMTP failures must not break the caller
