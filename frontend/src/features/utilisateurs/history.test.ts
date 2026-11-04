@@ -50,7 +50,7 @@ describe("describeChanges", () => {
 
   it("translates roles", () => {
     expect(describeChanges(entry({ role: ["AUDITE", "AUDITEUR"] }))).toEqual([
-      { field: "role", label: "Rôle (annuaire)", before: "Audité", after: "Auditeur" },
+      { field: "role", label: "Rôle", before: "Audité", after: "Auditeur" },
     ]);
   });
 
@@ -108,6 +108,50 @@ describe("describeChanges — création d'un compte", () => {
     expect(describeChanges(e)).toEqual([
       { field: "username", label: "Identifiant", before: "—", after: "qa-adm-u1" },
       { field: "role_provisoire", label: "Rôle provisoire", before: "—", after: "Oui" },
+    ]);
+  });
+});
+
+describe("describeChanges — authentification interne", () => {
+  it("traduit l'origine, le code de connexion, le mot de passe temporaire et les dates", () => {
+    const e = entry({
+      origine: ["None", "ADMINISTRATION"],
+      otp_connexion_actif: ["False", "True"],
+      doit_changer_mot_de_passe: ["True", "False"],
+      mot_de_passe_expire_le: ["None", "2026-11-07 08:00:00+00:00"],
+      verrouille_jusqu_a: ["2026-11-04 10:15:00+00:00", "None"],
+    });
+    expect(describeChanges(e)).toEqual([
+      {
+        field: "origine",
+        label: "Origine du compte",
+        before: "—",
+        after: "Création par l'administration",
+      },
+      {
+        field: "otp_connexion_actif",
+        label: "Code de connexion par courriel",
+        before: "Non",
+        after: "Oui",
+      },
+      {
+        field: "doit_changer_mot_de_passe",
+        label: "Mot de passe temporaire à changer",
+        before: "Oui",
+        after: "Non",
+      },
+      {
+        field: "mot_de_passe_expire_le",
+        label: "Expiration du mot de passe temporaire",
+        before: "—",
+        after: "07/11/2026 08:00",
+      },
+      {
+        field: "verrouille_jusqu_a",
+        label: "Connexion bloquée jusqu'au",
+        before: "04/11/2026 10:15",
+        after: "—",
+      },
     ]);
   });
 });

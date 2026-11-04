@@ -93,12 +93,25 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-/** Groupes visibles pour un rôle ; un groupe sans entrée visible disparaît avec son titre. */
-export function navFor(role: Role | null): NavGroup[] {
+/**
+ * Administration des comptes : ouverte à l'ADMIN (ROUTE_ROLES) et, quel que soit son rôle, à
+ * l'agent qui détient au moins un droit délégué (gestion_comptes). Gardée par
+ * RequireAccountManager dans routes.tsx.
+ */
+export const ACCOUNT_ADMINISTRATION_PATH = "/administration";
+
+/**
+ * Groupes visibles pour un rôle ; un groupe sans entrée visible disparaît avec son titre.
+ * `accountManager` : l'utilisateur détient au moins un droit de gestion des comptes.
+ */
+export function navFor(role: Role | null, accountManager = false): NavGroup[] {
   if (role === null) return [];
+  const visible = (to: string) =>
+    (to === ACCOUNT_ADMINISTRATION_PATH && accountManager) ||
+    (rolesFor(to)?.includes(role) ?? true);
   return NAV_GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter((i) => rolesFor(i.to)?.includes(role) ?? true),
+    items: g.items.filter((i) => visible(i.to)),
   })).filter((g) => g.items.length > 0);
 }
 

@@ -24,6 +24,8 @@ export type AuthContextValue = {
   logout(): Promise<void>;
   /** Relance la sonde de session (bouton « Réessayer »). */
   retry(): Promise<void>;
+  /** Applique au profil chargé un changement confirmé par le serveur (ex. code de connexion). */
+  updateMe(changes: Partial<Me>): void;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

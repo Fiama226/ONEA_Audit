@@ -3,6 +3,7 @@ import { Link, Outlet, createBrowserRouter, type RouteObject } from "react-route
 import { ChangePasswordPage } from "@/auth/ChangePasswordPage";
 import { ForgotPasswordPage } from "@/auth/ForgotPasswordPage";
 import { LoginPage } from "@/auth/LoginPage";
+import { RequireAccountManager } from "@/auth/RequireAccountManager";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
 import { ResetPasswordPage } from "@/auth/ResetPasswordPage";
@@ -135,8 +136,13 @@ export const appRoutes: RouteObject[] = [
           },
           { path: "/documents", children: documentRoutes, element: guardedOutlet("/documents") },
           {
+            // Comptes : l'ADMIN et tout agent qui détient un droit délégué de gestion des comptes.
             path: "/administration",
-            element: guarded("/administration", <Outlet />),
+            element: (
+              <RequireAccountManager>
+                <Outlet />
+              </RequireAccountManager>
+            ),
             children: administrationRoutes,
           },
           // Gabarits et numérotation : lecture ADMIN et RAI (garde propre, hors de la garde ADMIN du parent).

@@ -88,6 +88,28 @@ describe("Sidebar", () => {
     expect(nav.getByRole("link", { name: fr.nav.dashboard })).not.toHaveAttribute("aria-current");
   });
 
+  it.each(["creer", "reinitialiser", "roles", "desactiver"] as const)(
+    "shows Administration to a delegate holding only the %s right",
+    (droit) => {
+      const gestion_comptes = {
+        creer: false,
+        reinitialiser: false,
+        roles: false,
+        desactiver: false,
+        [droit]: true,
+      };
+      renderWithAuth(<Sidebar collapsed={false} onToggle={() => {}} />, "AUDITEUR", "/", {
+        gestion_comptes,
+      });
+      const nav = within(screen.getByRole("navigation", { name: fr.nav.primary }));
+      expect(nav.getByRole("link", { name: fr.nav.administration })).toHaveAttribute(
+        "href",
+        "/administration",
+      );
+      expect(nav.queryByRole("link", { name: fr.nav.documentTemplates })).toBeNull();
+    },
+  );
+
   it("keeps accessible labels when collapsed and exposes the state once", () => {
     renderWithAuth(<Sidebar collapsed onToggle={() => {}} />, "RAI");
     expect(screen.getByRole("link", { name: fr.nav.missions })).toBeInTheDocument();

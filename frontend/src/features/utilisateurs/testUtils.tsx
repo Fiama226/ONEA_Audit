@@ -1,17 +1,57 @@
 import type { components } from "@/api/schema";
-import type { Role } from "@/auth/types";
+import type { DroitsGestionComptes, Me, Role } from "@/auth/types";
 import { appRoutes } from "@/routes";
 import { renderRoutes } from "@/test/shell";
-import type { CompteUtilisateur, CompteUtilisateurListe, RapportImport } from "./types";
+import type {
+  ActionsCompte,
+  CompteUtilisateur,
+  CompteUtilisateurListe,
+  Delegation,
+  MotDePasseTemporaire,
+  RapportImport,
+} from "./types";
 
 type S = components["schemas"];
 
-/** Rend l'application complète sur `path` pour un rôle donné. */
-export function renderAdministration(path: string, role: Role = "ADMIN") {
-  return renderRoutes(appRoutes, role, { path });
+/** Rend l'application complète sur `path` pour un rôle donné (et un profil `me` complété). */
+export function renderAdministration(path: string, role: Role = "ADMIN", me: Partial<Me> = {}) {
+  return renderRoutes(appRoutes, role, { path, me });
 }
 
-/** Compte complet : JSON gelé de `test_contrat_compte_utilisateur` (backend). */
+/** Droits délégués d'un agent non administrateur (aucun par défaut). */
+export function rights(overrides: Partial<DroitsGestionComptes> = {}): DroitsGestionComptes {
+  return { creer: false, reinitialiser: false, roles: false, desactiver: false, ...overrides };
+}
+
+/** Toutes les actions permises (administrateur sur un compte actif d'un autre agent). */
+export const ALL_ACTIONS: ActionsCompte = {
+  modifier_profil: true,
+  desactiver: true,
+  reactiver: false,
+  resynchroniser_profil: false,
+  relancer_synchro_keycloak: false,
+  reinitialiser_mot_de_passe: true,
+  desactiver_otp: false,
+  modifier_courriel: true,
+  modifier_direction: true,
+  changer_role: true,
+};
+
+/** Aucune action permise (ex. délégué sans droit sur ce compte). */
+export const NO_ACTIONS: ActionsCompte = {
+  modifier_profil: false,
+  desactiver: false,
+  reactiver: false,
+  resynchroniser_profil: false,
+  relancer_synchro_keycloak: false,
+  reinitialiser_mot_de_passe: false,
+  desactiver_otp: false,
+  modifier_courriel: false,
+  modifier_direction: false,
+  changer_role: false,
+};
+
+/** Compte complet, au format de `CompteUtilisateurSerializer` (backend). */
 export function anAccount(overrides: Partial<CompteUtilisateur> = {}): CompteUtilisateur {
   return {
     id: 7,
@@ -23,34 +63,32 @@ export function anAccount(overrides: Partial<CompteUtilisateur> = {}): CompteUti
     direction_libelle: null,
     fonction: "Auditeur",
     matricule: "M-042",
-    is_active: false,
-    origine: "CSV",
+    is_active: true,
+    origine: "ADMINISTRATION",
     en_attente_connexion: true,
-    keycloak_sync_statut: "ECHEC",
+    keycloak_sync_statut: "A_JOUR",
     date_joined: "2026-10-28T08:00:00Z",
     first_name: "Landry",
     last_name: "Kabore",
-    keycloak_lie: true,
-    role_provisoire: true,
+    keycloak_lie: false,
+    role_provisoire: false,
     premiere_connexion_le: null,
-    profil_gere_localement: true,
-    desactive_le: "2026-10-28T09:00:00Z",
-    desactive_par: { id: 1, username: "admin", nom_complet: "Admin ONEA" },
-    motif_desactivation: "Départ",
+    profil_gere_localement: false,
+    desactive_le: null,
+    desactive_par: null,
+    motif_desactivation: "",
+    doit_changer_mot_de_passe: true,
+    mot_de_passe_expire_le: "2026-10-31T08:00:00Z",
+    verrouille_jusqu_a: null,
+    otp_connexion_actif: false,
     keycloak_sync: {
-      statut: "ECHEC",
-      erreur: "Keycloak a refusé l'opération (HTTP 403).",
-      derniere_tentative_le: "2026-10-28T09:00:01Z",
-      tentatives: 1,
-      manuel: true,
+      statut: "A_JOUR",
+      erreur: "",
+      derniere_tentative_le: null,
+      tentatives: 0,
+      manuel: false,
     },
-    actions: {
-      modifier_profil: true,
-      desactiver: false,
-      reactiver: true,
-      resynchroniser_profil: true,
-      relancer_synchro_keycloak: true,
-    },
+    actions: ALL_ACTIONS,
     ...overrides,
   } satisfies S["CompteUtilisateur"];
 }
@@ -79,7 +117,7 @@ export function aListAccount(
   } satisfies S["CompteUtilisateurListe"];
 }
 
-/** Rapport d'import : JSON gelé de `test_contrat_rapport_import` (backend). */
+/** Rapport d'import, au format de `RapportImportSerializer` (backend). */
 export function aReport(overrides: Partial<RapportImport> = {}): RapportImport {
   return {
     dry_run: true,
@@ -89,9 +127,35 @@ export function aReport(overrides: Partial<RapportImport> = {}): RapportImport {
       {
         ligne: 3,
         identifiant: "chef",
-        motif: "Le rôle ADMIN ne s'attribue que dans l'annuaire (Keycloak).",
+        motif: "Le rôle Administrateur ne peut pas être attribué par import.",
       },
     ],
+    fichier_mots_de_passe_id: null,
     ...overrides,
   } satisfies S["RapportImport"];
+}
+
+/** Réponse d'une création ou d'une réinitialisation (`MotDePasseTemporaireSerializer`). */
+export function aTemporaryPassword(
+  overrides: Partial<MotDePasseTemporaire> = {},
+): MotDePasseTemporaire {
+  return {
+    compte: anAccount(),
+    courriel_envoye: false,
+    mot_de_passe_temporaire: "Tmp-9f3K-q7Lm-2xWz",
+    ...overrides,
+  } satisfies S["MotDePasseTemporaire"];
+}
+
+/** Délégation (`DelegationGestionComptesSerializer`) : aucune par défaut. */
+export function aDelegation(overrides: Partial<Delegation> = {}): Delegation {
+  return {
+    creer: false,
+    reinitialiser: false,
+    roles: false,
+    desactiver: false,
+    accorde_par: null,
+    accorde_le: null,
+    ...overrides,
+  } satisfies S["DelegationGestionComptes"];
 }

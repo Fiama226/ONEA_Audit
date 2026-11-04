@@ -122,6 +122,27 @@ describe("administration routes", () => {
     renderRoutes(appRoutes, role, { path: "/administration/utilisateurs/7" });
     expect(screen.getByText(fr.errors.forbiddenTitle)).toBeInTheDocument();
   });
+
+  it("opens the users list to a delegate holding an account-management right", async () => {
+    server.use(
+      http.get(`${API_URL}/api/v1/user-accounts/`, () =>
+        HttpResponse.json({ count: 0, next: null, previous: null, results: [] }),
+      ),
+      http.get(`${API_URL}/api/v1/directions/`, () =>
+        HttpResponse.json({ count: 0, next: null, previous: null, results: [] }),
+      ),
+    );
+    renderRoutes(appRoutes, "AUDITE", {
+      path: "/administration",
+      me: {
+        gestion_comptes: { creer: false, reinitialiser: true, roles: false, desactiver: false },
+      },
+    });
+    expect(
+      await screen.findByRole("heading", { level: 1, name: fr.utilisateurs.title }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(fr.errors.forbiddenTitle)).not.toBeInTheDocument();
+  });
 });
 
 describe("referentiel risk map routes", () => {

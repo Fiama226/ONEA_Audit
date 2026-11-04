@@ -12,7 +12,7 @@ describe("ImportReport", () => {
     const row = screen.getByRole("row", { name: /chef/ });
     expect(within(row).getByText("3")).toBeInTheDocument();
     expect(
-      within(row).getByText("Le rôle ADMIN ne s'attribue que dans l'annuaire (Keycloak)."),
+      within(row).getByText("Le rôle Administrateur ne peut pas être attribué par import."),
     ).toBeInTheDocument();
     const results = await axe(container, { rules: { "color-contrast": { enabled: false } } });
     expect(results.violations).toEqual([]);

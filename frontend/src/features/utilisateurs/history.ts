@@ -3,6 +3,8 @@ import { apiFetch } from "@/api/client";
 import { toQuery } from "@/api/query";
 import type { components } from "@/api/schema";
 import { fr } from "@/i18n/fr";
+import { formatDateTime } from "@/lib/dates";
+import { ORIGINE_LABELS } from "./labels";
 
 type S = components["schemas"];
 type AuditLog = S["AuditLog"];
@@ -39,7 +41,11 @@ export const FIELD_LABELS: Record<string, string> = {
   last_name: "Nom",
   email: "E-mail",
   username: "Identifiant",
-  role: "Rôle (annuaire)",
+  role: "Rôle",
+  otp_connexion_actif: "Code de connexion par courriel",
+  doit_changer_mot_de_passe: "Mot de passe temporaire à changer",
+  mot_de_passe_expire_le: "Expiration du mot de passe temporaire",
+  verrouille_jusqu_a: "Connexion bloquée jusqu'au",
   role_provisoire: "Rôle provisoire",
   matricule: "Matricule",
   direction_code: "Direction",
@@ -75,7 +81,7 @@ const HIDDEN_FIELDS = new Set([
 const ENUM_VALUES: Record<string, Record<string, string>> = {
   role: fr.roles,
   role_provisoire: fr.roles,
-  origine: { CONNEXION: "Première connexion", ANNUAIRE: "Import annuaire", CSV: "Import CSV" },
+  origine: ORIGINE_LABELS,
   keycloak_sync_statut: { A_JOUR: "À jour", EN_ATTENTE: "En attente", ECHEC: "Échec" },
   is_active: { True: "Actif", False: "Désactivé" },
 };
@@ -85,7 +91,17 @@ const BOOLEAN_FIELDS = new Set([
   "is_staff",
   "is_superuser",
   "role_provisoire",
+  "otp_connexion_actif",
+  "doit_changer_mot_de_passe",
 ]);
+
+/** Dates enregistrées par django-auditlog (« 2026-11-07 08:00:00+00:00 »), affichées en heure locale. */
+const DATE_FIELDS = new Set(["mot_de_passe_expire_le", "verrouille_jusqu_a"]);
+
+function formatAuditDate(text: string): string {
+  const iso = text.includes("T") ? text : text.replace(" ", "T");
+  return Number.isNaN(new Date(iso).getTime()) ? text : formatDateTime(iso);
+}
 
 function formatValue(field: string, value: unknown): string {
   if (value === null || value === undefined) return EMPTY_VALUE;
@@ -94,6 +110,7 @@ function formatValue(field: string, value: unknown): string {
   if (BOOLEAN_FIELDS.has(field) && (text === "True" || text === "False")) {
     return text === "True" ? fr.common.yes : fr.common.no;
   }
+  if (DATE_FIELDS.has(field)) return formatAuditDate(text);
   return ENUM_VALUES[field]?.[text] ?? text;
 }
 

@@ -41,7 +41,6 @@ describe("UserListPage", () => {
         role: "AUDITE",
         direction_code: "DEX",
         is_active: false,
-        keycloak_sync_statut: "ECHEC",
         en_attente_connexion: false,
       }),
     ]);
@@ -49,18 +48,30 @@ describe("UserListPage", () => {
     const link = await findRow();
     expect(link).toHaveAttribute("href", "/administration/utilisateurs/7");
     expect(screen.getByRole("heading", { name: "Utilisateurs", level: 1 })).toBeInTheDocument();
-    expect(screen.getByText(/Les comptes et les rôles proviennent/)).toBeInTheDocument();
+    expect(screen.getByText(/Les comptes sont créés et administrés/)).toBeInTheDocument();
     expect(within(screen.getByRole("table")).getByText("Audité")).toBeInTheDocument();
     expect(screen.getByText("DEX (inconnue du référentiel)")).toBeInTheDocument();
     expect(screen.getByText("Désactivé")).toBeInTheDocument();
-    expect(screen.getByText("Keycloak : échec")).toBeInTheDocument();
     expect(screen.getByText("28/10/2026")).toBeInTheDocument();
   });
 
-  it("marks the role of a pending CSV account as provisional", async () => {
-    mockList([aListAccount({ en_attente_connexion: true, origine: "CSV" })]);
+  it("shows no provisional role nor any Keycloak notion", async () => {
+    mockList([
+      aListAccount({ en_attente_connexion: true, origine: "CSV", keycloak_sync_statut: "ECHEC" }),
+    ]);
     renderAdministration("/administration/utilisateurs");
-    expect(await screen.findByText("Auditeur (provisoire)")).toBeInTheDocument();
+    await findRow();
+    expect(document.body).not.toHaveTextContent(/provisoire|keycloak|annuaire|synchronisation/i);
+  });
+
+  it("offers Nouvel agent to a delegate allowed to create, without the CSV import", async () => {
+    mockList();
+    renderAdministration("/administration/utilisateurs", "AUDITEUR", {
+      gestion_comptes: { creer: true, reinitialiser: false, roles: false, desactiver: false },
+    });
+    await findRow();
+    expect(screen.getByRole("button", { name: "Nouvel agent" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Importer un fichier CSV" })).toBeNull();
   });
 
   it("filters on deactivated accounts and goes back to page 1", async () => {
@@ -80,15 +91,6 @@ describe("UserListPage", () => {
     await findRow();
     await user.selectOptions(screen.getByLabelText("Statut"), "En attente de première connexion");
     await waitFor(() => expect(urls.at(-1)?.searchParams.get("en_attente_connexion")).toBe("true"));
-  });
-
-  it("filters on failed Keycloak synchronisation", async () => {
-    const urls = mockList();
-    const user = userEvent.setup();
-    renderAdministration("/administration/utilisateurs");
-    await findRow();
-    await user.selectOptions(screen.getByLabelText("Synchronisation Keycloak"), "En échec");
-    await waitFor(() => expect(urls.at(-1)?.searchParams.get("keycloak_sync")).toBe("ECHEC"));
   });
 
   it("sends the search term once after the debounce", async () => {
@@ -115,10 +117,24 @@ describe("UserListPage", () => {
     renderAdministration("/administration/utilisateurs");
     expect(await screen.findByText("Aucun compte pour le moment.")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Les comptes apparaissent à la première connexion ou par import depuis l'annuaire ou un fichier CSV.",
-      ),
+      screen.getByText("Créez un compte avec « Nouvel agent » ou importez un fichier CSV."),
     ).toBeInTheDocument();
+  });
+
+  it("only mentions the actions a delegate can see in the empty state", async () => {
+    mockList([]);
+    const { unmount } = renderAdministration("/administration/utilisateurs", "AUDITEUR", {
+      gestion_comptes: { creer: true, reinitialiser: false, roles: false, desactiver: false },
+    });
+    expect(await screen.findByText("Créez un compte avec « Nouvel agent ».")).toBeInTheDocument();
+    unmount();
+    renderAdministration("/administration/utilisateurs", "AUDITEUR", {
+      gestion_comptes: { creer: false, reinitialiser: true, roles: false, desactiver: false },
+    });
+    expect(
+      await screen.findByText("Les comptes créés dans la plateforme apparaîtront ici."),
+    ).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/Nouvel agent|CSV/);
   });
 
   it("offers to clear filters when nothing matches", async () => {

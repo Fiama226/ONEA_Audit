@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,29 +8,60 @@ import { fr } from "@/i18n/fr";
 import { ALERT_CLASS, FormField } from "@/components/form/FormField";
 import { NativeSelect } from "@/components/form/NativeSelect";
 import { applyApiErrors } from "@/api/formErrors";
-import { useAccountAction, useDirectionOptions, useUpdateProfile } from "../api";
+import { useDirectionOptions, useUpdateProfile } from "../api";
 import { directionLabel } from "../labels";
 import { profileSchema, type ProfileFormValues } from "../schemas";
 import type { CompteUtilisateur, ProfilInput } from "../types";
 
 const t = fr.utilisateurs.fiche;
-const FIELDS = ["matricule", "fonction", "direction_code"] as const;
+const FIELDS = [
+  "first_name",
+  "last_name",
+  "email",
+  "matricule",
+  "fonction",
+  "direction_code",
+] as const;
+type Field = (typeof FIELDS)[number];
 
 function valuesOf(account: CompteUtilisateur): ProfileFormValues {
   return {
+    first_name: account.first_name,
+    last_name: account.last_name,
+    email: account.email,
     matricule: account.matricule,
     fonction: account.fonction,
     direction_code: account.direction_code,
   };
 }
 
-/** Profil modifiable (matricule, fonction, direction) ; n'envoie que les champs modifiés. */
+/**
+ * Droit requis par champ (le serveur le vérifie de nouveau) : courriel = réinitialiser les mots
+ * de passe ; direction = changer les rôles ; autres champs = créer des comptes.
+ */
+function editableFields(account: CompteUtilisateur): Record<Field, boolean> {
+  const { modifier_profil, modifier_courriel, modifier_direction } = account.actions;
+  return {
+    first_name: modifier_profil,
+    last_name: modifier_profil,
+    matricule: modifier_profil,
+    fonction: modifier_profil,
+    email: modifier_courriel,
+    direction_code: modifier_direction,
+  };
+}
+
+/** Profil modifiable champ par champ selon les droits ; n'envoie que les champs modifiés. */
 export function ProfileForm({ account }: { account: CompteUtilisateur }) {
   const update = useUpdateProfile();
-  const action = useAccountAction();
   const directions = useDirectionOptions();
   const [formError, setFormError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const editable = editableFields(account);
+  const schema = useMemo(
+    () => profileSchema({ emailEditable: editable.email, initialEmail: account.email }),
+    [editable.email, account.email],
+  );
   const {
     register,
     control,
@@ -39,20 +70,19 @@ export function ProfileForm({ account }: { account: CompteUtilisateur }) {
     setError,
     formState: { errors, isDirty, dirtyFields },
   } = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
+    resolver: zodResolver(schema),
     defaultValues: valuesOf(account),
   });
 
-  // Une valeur rafraîchie côté serveur (enregistrement, rétablissement) devient la nouvelle référence.
+  const { first_name, last_name, email, matricule, fonction, direction_code } = account;
+  // Une valeur rafraîchie côté serveur devient la nouvelle référence.
   useEffect(() => {
-    reset({
-      matricule: account.matricule,
-      fonction: account.fonction,
-      direction_code: account.direction_code,
-    });
-  }, [account.matricule, account.fonction, account.direction_code, reset]);
+    reset({ first_name, last_name, email, matricule, fonction, direction_code });
+  }, [first_name, last_name, email, matricule, fonction, direction_code, reset]);
 
-  const canEdit = account.actions.modifier_profil;
+  const anyEditable = FIELDS.some((f) => editable[f]);
+  // Au moins un champ grisé (y compris tous) : la raison est donnée.
+  const restricted = FIELDS.some((f) => !editable[f]);
   const known = directions.options.some((d) => d.code === account.direction_code);
 
   async function onSubmit(values: ProfileFormValues) {
@@ -60,7 +90,7 @@ export function ProfileForm({ account }: { account: CompteUtilisateur }) {
     setSaved(false);
     const data: ProfilInput = {};
     for (const field of FIELDS) {
-      if (dirtyFields[field]) data[field] = values[field];
+      if (dirtyFields[field] && editable[field]) data[field] = values[field];
     }
     try {
       await update.mutateAsync({ id: account.id, data });
@@ -71,15 +101,19 @@ export function ProfileForm({ account }: { account: CompteUtilisateur }) {
     }
   }
 
-  async function resync() {
-    setFormError(null);
-    setSaved(false);
-    try {
-      await action.mutateAsync({ id: account.id, action: "resync-profile" });
-    } catch (e) {
-      setFormError(applyApiErrors(e, setError, []));
-    }
-  }
+  const text = (field: Exclude<Field, "direction_code">, label: string, type = "text") => (
+    <FormField label={label} error={errors[field]?.message}>
+      {(p) => (
+        <Input
+          {...p}
+          type={type}
+          autoComplete="off"
+          disabled={!editable[field]}
+          {...register(field)}
+        />
+      )}
+    </FormField>
+  );
 
   return (
     <Card>
@@ -97,16 +131,11 @@ export function ProfileForm({ account }: { account: CompteUtilisateur }) {
             <p className="text-sm text-warning-text">{t.directionsIncomplete}</p>
           )}
           <div className="grid gap-4 sm:grid-cols-2">
-            <FormField label={t.matricule} error={errors.matricule?.message}>
-              {(p) => (
-                <Input {...p} autoComplete="off" disabled={!canEdit} {...register("matricule")} />
-              )}
-            </FormField>
-            <FormField label={t.fonction} error={errors.fonction?.message}>
-              {(p) => (
-                <Input {...p} autoComplete="off" disabled={!canEdit} {...register("fonction")} />
-              )}
-            </FormField>
+            {text("first_name", t.firstName)}
+            {text("last_name", t.lastName)}
+            {text("email", t.email, "email")}
+            {text("matricule", t.matricule)}
+            {text("fonction", t.fonction)}
             <FormField label={t.direction} error={errors.direction_code?.message}>
               {(p) => (
                 <Controller
@@ -115,7 +144,7 @@ export function ProfileForm({ account }: { account: CompteUtilisateur }) {
                   render={({ field }) => (
                     <NativeSelect
                       {...p}
-                      disabled={!canEdit}
+                      disabled={!editable.direction_code}
                       name={field.name}
                       ref={field.ref}
                       value={field.value}
@@ -139,27 +168,15 @@ export function ProfileForm({ account }: { account: CompteUtilisateur }) {
               )}
             </FormField>
           </div>
-          <p className="text-sm text-text-muted">
-            {account.profil_gere_localement ? t.profileLocal : t.profileFromDirectory}
-          </p>
+          {restricted && <p className="text-sm text-text-muted">{t.profilePartial}</p>}
           <p role="status" className="text-sm text-success-text">
             {saved && !isDirty ? t.profileSaved : ""}
           </p>
-          {canEdit && (
+          {anyEditable && (
             <div className="flex flex-wrap gap-2 print:hidden">
               <Button type="submit" disabled={!isDirty || update.isPending}>
                 {update.isPending ? t.saving : t.saveProfile}
               </Button>
-              {account.profil_gere_localement && account.actions.resynchroniser_profil && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={action.isPending}
-                  onClick={() => void resync()}
-                >
-                  {t.resyncProfile}
-                </Button>
-              )}
             </div>
           )}
         </form>

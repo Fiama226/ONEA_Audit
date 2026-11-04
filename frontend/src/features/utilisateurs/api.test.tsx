@@ -4,7 +4,7 @@ import { http, HttpResponse } from "msw";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { API_URL, server } from "@/test/msw";
-import { useAccountAction, useDirectionOptions, useDirectorySearch, useImportCsv } from "./api";
+import { useAccountAction, useDirectionOptions, useImportCsv } from "./api";
 import { useUserHistory } from "./history";
 import { directionLabel } from "./labels";
 import { aReport, anAccount } from "./testUtils";
@@ -43,11 +43,11 @@ describe("useAccountAction", () => {
     await waitFor(() => expect(historyCalls).toBe(2));
   });
 
-  it("sends retry-keycloak-sync as a POST without body", async () => {
+  it("sends disable-otp as a POST without body", async () => {
     let method = "";
     let text = "x";
     server.use(
-      http.post(`${API_URL}/api/v1/user-accounts/7/retry-keycloak-sync/`, async ({ request }) => {
+      http.post(`${API_URL}/api/v1/user-accounts/7/disable-otp/`, async ({ request }) => {
         method = request.method;
         text = await request.text();
         return HttpResponse.json(anAccount());
@@ -55,7 +55,7 @@ describe("useAccountAction", () => {
     );
     const { Wrapper } = wrapper();
     const { result } = renderHook(() => useAccountAction(), { wrapper: Wrapper });
-    await act(() => result.current.mutateAsync({ id: 7, action: "retry-keycloak-sync" }));
+    await act(() => result.current.mutateAsync({ id: 7, action: "disable-otp" }));
     expect(method).toBe("POST");
     expect(text).toBe("");
   });
@@ -76,30 +76,14 @@ describe("useImportCsv", () => {
     client.setQueryData(["utilisateurs", "list", {}], { count: 0 });
     const { result } = renderHook(() => useImportCsv(), { wrapper: Wrapper });
     const file = new File(["a;b"], "c.csv", { type: "text/csv" });
-    await act(() => result.current.mutateAsync({ file, dryRun: true }));
+    await act(() => result.current.mutateAsync({ file, dryRun: true, sendEmail: true }));
     expect(contentType).toMatch(/^multipart\/form-data/);
     expect(form?.get("dry_run")).toBe("true");
+    expect(form?.get("envoyer_courriel")).toBe("true");
     expect(form?.get("fichier")).toMatchObject({ size: 3, type: "text/csv" });
     expect(client.getQueryState(["utilisateurs", "list", {}])?.isInvalidated).toBe(false);
-    await act(() => result.current.mutateAsync({ file, dryRun: false }));
+    await act(() => result.current.mutateAsync({ file, dryRun: false, sendEmail: false }));
     expect(client.getQueryState(["utilisateurs", "list", {}])?.isInvalidated).toBe(true);
-  });
-});
-
-describe("useDirectorySearch", () => {
-  it("does not query below two characters", async () => {
-    let calls = 0;
-    server.use(
-      http.get(`${API_URL}/api/v1/user-accounts/directory-search/`, () => {
-        calls += 1;
-        return HttpResponse.json([]);
-      }),
-    );
-    const { Wrapper } = wrapper();
-    const { result } = renderHook(() => useDirectorySearch("a"), { wrapper: Wrapper });
-    await new Promise((r) => setTimeout(r, 50));
-    expect(result.current.fetchStatus).toBe("idle");
-    expect(calls).toBe(0);
   });
 });
 
