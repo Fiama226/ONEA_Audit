@@ -382,10 +382,11 @@ def test_role_cannot_be_forced_by_request(api_client: APIClient) -> None:
 
 
 @pytest.mark.django_db
-def test_anonymous_401_french_body_and_bearer_challenge(api_client: APIClient) -> None:
+def test_anonymous_401_french_body_and_session_challenge(api_client: APIClient) -> None:
     r = api_client.get("/api/v1/me/")
     assert r.status_code == 401
-    assert r.headers["WWW-Authenticate"] == 'Bearer realm="onea"'
+    # The first authentication class (session) gives the challenge since the in-app login.
+    assert r.headers["WWW-Authenticate"] == "Session"
     body = r.json()
     assert body["errors"] == {}
     assert body["detail"] == "Informations d'authentification non fournies."
@@ -417,7 +418,7 @@ def test_invalid_token_never_500(api_client: APIClient, error: Exception) -> Non
         r = _bearer(api_client).get("/api/v1/me/")
     assert r.status_code == 401
     assert r.json() == SESSION_EXPIRED
-    assert r.headers["WWW-Authenticate"] == 'Bearer realm="onea"'
+    assert r.headers["WWW-Authenticate"] == "Session"
 
 
 @pytest.mark.django_db
@@ -484,9 +485,9 @@ def test_claims_with_bad_sub_rejected(api_client: APIClient, sub: Any) -> None:
 
 
 @pytest.mark.django_db
-def test_session_auth_no_longer_authenticates_the_api(api_client: APIClient, user: User) -> None:
+def test_session_auth_authenticates_the_api(api_client: APIClient, user: User) -> None:
     api_client.force_login(user)
-    assert api_client.get("/api/v1/me/").status_code == 401
+    assert api_client.get("/api/v1/me/").status_code == 200
 
 
 # --- audience (azp) -------------------------------------------------------------

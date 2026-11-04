@@ -114,9 +114,12 @@ def test_prod_cookies_are_host_prefixed_secure_httponly() -> None:
     assert data["session_age"] == 8 * 3600
 
 
-def test_prod_auth_is_bearer_only_and_cache_is_redis() -> None:
+def test_prod_auth_is_session_first_and_cache_is_redis() -> None:
     data = probe({**PROD_ENV, "REDIS_URL": "redis://:pw@redis:6379/0"})
-    assert data["auth"] == ["apps.users.authentication.OIDCBearerAuthentication"]
+    assert data["auth"] == [
+        "apps.users.authentication.SessionAuthentication401",
+        "apps.users.authentication.OIDCBearerAuthentication",
+    ]
     cache = data["cache"]
     assert isinstance(cache, dict)
     assert cache["BACKEND"] == "django.core.cache.backends.redis.RedisCache"

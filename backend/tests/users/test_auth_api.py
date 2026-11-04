@@ -1,4 +1,4 @@
-"""API authentication is Keycloak bearer only; the Django session is reserved to /admin."""
+"""API authentication: in-app session (CSRF on writes), Keycloak bearer kept until removal."""
 
 from typing import Any
 from unittest import mock
@@ -37,26 +37,25 @@ def _userinfo_401() -> requests.HTTPError:
     return requests.HTTPError(response=mock.Mock(status_code=401))
 
 
-def test_session_cookie_alone_does_not_authenticate_api_read(session_client: Client) -> None:
-    r = session_client.get("/api/v1/me/")
-    assert r.status_code == 401
-    assert set(r.json()) == {"detail", "errors"}
+def test_session_cookie_authenticates_api_read(session_client: Client) -> None:
+    assert session_client.get("/api/v1/me/").status_code == 200
 
 
-def test_session_cookie_without_bearer_cannot_upload_template(session_client: Client) -> None:
+def test_anonymous_cannot_upload_template_and_body_is_not_parsed(db: None) -> None:
     with mock.patch.object(MultiPartParser, "parse") as parse:
-        r = session_client.post(TEMPLATES, depot())
+        r = Client().post(TEMPLATES, depot())
     assert r.status_code == 401
     assert set(r.json()) == {"detail", "errors"}
     parse.assert_not_called()
 
 
-def test_session_cookie_with_csrf_check_cannot_write(admin: User) -> None:
+def test_session_write_without_csrf_token_is_refused(admin: User) -> None:
     client = APIClient(enforce_csrf_checks=True)
     client.force_login(admin)
     with mock.patch.object(MultiPartParser, "parse") as parse:
         r = client.post(TEMPLATES, depot(), format="multipart")
-    assert r.status_code == 401
+    assert r.status_code == 403
+    assert r.json()["detail"] == "Jeton CSRF absent ou invalide : rechargez la page."
     parse.assert_not_called()
 
 
@@ -76,7 +75,7 @@ def test_missing_token_is_401_in_project_format(api_client: APIClient, db: None)
     r = api_client.get("/api/v1/me/")
     assert r.status_code == 401
     assert set(r.json()) == {"detail", "errors"}
-    assert r["WWW-Authenticate"].startswith("Bearer")
+    assert r["WWW-Authenticate"] == "Session"
 
 
 def test_expired_token_is_401_in_project_format(api_client: APIClient, db: None) -> None:

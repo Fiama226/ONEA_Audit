@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from django.conf import settings
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from drf_spectacular.settings import spectacular_settings
 from drf_spectacular.utils import extend_schema, extend_schema_view
@@ -99,6 +100,24 @@ class SchemaAccess(BasePermission):
         return all(
             cls().has_permission(request, view) for cls in spectacular_settings.SERVE_PERMISSIONS
         )
+
+
+class SessionCookieAuthenticationScheme(OpenApiAuthenticationExtension):  # type: ignore[no-untyped-call]
+    """Document the in-app session login (cookie + CSRF header on writes) in the schema."""
+
+    target_class = "apps.users.authentication.SessionAuthentication401"
+    name = "cookieAuth"
+
+    def get_security_definition(self, auto_schema: object) -> dict[str, str]:
+        return {
+            "type": "apiKey",
+            "in": "cookie",
+            "name": settings.SESSION_COOKIE_NAME,
+            "description": (
+                "Cookie de session ouvert par POST /api/v1/auth/login/ ; les requêtes "
+                "d'écriture joignent l'en-tête X-CSRFToken (GET /api/v1/auth/csrf/)."
+            ),
+        }
 
 
 class OIDCBearerAuthenticationScheme(OpenApiAuthenticationExtension):  # type: ignore[no-untyped-call]

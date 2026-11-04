@@ -1,12 +1,99 @@
+import time
 from collections.abc import Callable
 from typing import Any, cast
 
 from auditlog.middleware import AuditlogMiddleware
-from django.http import HttpRequest, HttpResponse
+from django.conf import settings
+from django.contrib.auth import SESSION_KEY, logout
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.http.response import HttpResponseBase
 from django.utils.functional import SimpleLazyObject, empty
 
 from apps.core.reseau import PROXY_META, adresse_reelle
+
+# Session keys (epoch seconds) written at login by apps.users.auth_views.
+CLE_CONNEXION = "onea_connexion_le"
+CLE_ACTIVITE = "onea_activite_le"
+# The last-activity stamp is rewritten at most once a minute (one session write per minute).
+ACTIVITE_PRECISION_SECONDES = 60
+
+CHANGEMENT_OBLIGATOIRE = "Vous devez changer votre mot de passe avant de continuer."
+# Paths a session flagged `doit_changer_mot_de_passe` may still call.
+CHEMINS_AUTORISES_AVANT_CHANGEMENT = frozenset(
+    f"/api/v1/auth/{suffixe}"
+    for suffixe in (
+        "login/",
+        "login/otp/",
+        "logout/",
+        "session/",
+        "csrf/",
+        "password/change/",
+    )
+)
+
+
+def _horodatage(valeur: object) -> float | None:
+    return float(valeur) if isinstance(valeur, int | float) else None
+
+
+class SessionLimiteeMiddleware:
+    """Ends an authenticated session after 8 h (absolute) or 30 min without a request.
+
+    The absolute limit does not slide: it counts from the login stamp kept in the session
+    (the session expiry itself is also set to a fixed date at login). A session opened
+    without the stamps (Django admin, ``force_login``) gets them on its first request.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponseBase]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponseBase:
+        session = getattr(request, "session", None)
+        if session is not None and SESSION_KEY in session:
+            self._controler(request)
+        return self.get_response(request)
+
+    @staticmethod
+    def _controler(request: HttpRequest) -> None:
+        session = request.session
+        maintenant = time.time()
+        debut = _horodatage(session.get(CLE_CONNEXION))
+        activite = _horodatage(session.get(CLE_ACTIVITE))
+        if debut is None:
+            debut = session[CLE_CONNEXION] = maintenant
+        if activite is None:
+            activite = maintenant
+        if (
+            maintenant - debut > settings.SESSION_COOKIE_AGE
+            or maintenant - activite > settings.SESSION_INACTIVITE_SECONDES
+        ):
+            logout(request)  # flushes the session row and makes request.user anonymous
+            return
+        if maintenant - activite >= ACTIVITE_PRECISION_SECONDES or CLE_ACTIVITE not in session:
+            session[CLE_ACTIVITE] = maintenant
+
+
+class MotDePasseAChangerMiddleware:
+    """While the session user must change their password, only the auth endpoints answer.
+
+    A middleware rather than a DRF permission: many views set their own
+    ``permission_classes``, which would silently drop a default permission. Bearer requests
+    are not concerned (the Django user of the request is the session user only).
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponseBase]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponseBase:
+        session = getattr(request, "session", None)
+        if (
+            session is not None
+            and SESSION_KEY in session
+            and request.path_info not in CHEMINS_AUTORISES_AVANT_CHANGEMENT
+            and getattr(request.user, "doit_changer_mot_de_passe", False)
+        ):
+            return JsonResponse({"detail": CHANGEMENT_OBLIGATOIRE, "errors": {}}, status=403)
+        return self.get_response(request)
 
 
 class AdresseClientMiddleware:

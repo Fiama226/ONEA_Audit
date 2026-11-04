@@ -110,6 +110,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.core.middleware.SessionLimiteeMiddleware",
+    "apps.core.middleware.MotDePasseAChangerMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.AdresseClientMiddleware",
@@ -260,8 +262,12 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.FormParser",
         "rest_framework.parsers.MultiPartParser",
     ],
-    # Bearer-only (D4): the Django session authenticates /admin/ and the schema views only.
-    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.users.authentication.OIDCBearerAuthentication"],
+    # In-app session login (CSRF enforced on writes). The Keycloak bearer class stays second
+    # until Keycloak is removed; bearer requests are never subject to CSRF.
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.users.authentication.SessionAuthentication401",
+        "apps.users.authentication.OIDCBearerAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.StandardPagination",
@@ -283,6 +289,8 @@ REST_FRAMEWORK = {
             "anonyme": "30/min",
             "annuaire": "60/min",
             "recherche": "60/min",
+            # per client IP on the login endpoints (the per-account limit is the lockout)
+            "connexion": "20/min",
         }.items()
     },
 }
@@ -474,10 +482,13 @@ OIDC_USERINFO_CACHE_SECONDES: int = env.int("OIDC_USERINFO_CACHE_SECONDES", defa
 OIDC_DRF_AUTH_BACKEND = "apps.users.oidc.OneaOIDCBackend"
 AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
 
-# --- T5: cookies, cache ---
+# --- T5: cookies, cache. Sessions in the database (no Redis needed to log in). ---
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True
+# Absolute maximum (not sliding, see SessionLimiteeMiddleware) and idle timeout.
 SESSION_COOKIE_AGE = 8 * 3600
+SESSION_INACTIVITE_SECONDES = 30 * 60
 CSRF_COOKIE_SAMESITE = "Lax"
 
 

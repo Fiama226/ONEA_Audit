@@ -15,6 +15,7 @@ _SCHEMA_ACCESS = {
 
 urlpatterns = [
     path("api/v1/", include("apps.core.urls")),
+    path("api/v1/", include("apps.users.auth_urls")),
     path("api/v1/", include("apps.users.urls")),
     path("api/v1/", include("apps.users.account_urls")),
     path("api/v1/", include("apps.referentiel.urls")),

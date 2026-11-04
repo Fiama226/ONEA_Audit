@@ -25,11 +25,26 @@ class AuthServiceUnavailable(APIException):
     default_code = "auth_unavailable"
 
 
+CSRF_REFUSE = "Jeton CSRF absent ou invalide : rechargez la page."
+
+
 class SessionAuthentication401(SessionAuthentication):
-    """Session auth that makes DRF answer 401 (not 403) to anonymous requests."""
+    """Session auth (the API's own login) answering 401, not 403, to anonymous requests.
+
+    DRF turns a 401 into a 403 when the first authentication class has no challenge, hence
+    `authenticate_header`. CSRF is enforced on unsafe methods of session-authenticated
+    requests (stock DRF behaviour), with a French message; Bearer requests never reach it.
+    A disabled account is anonymous here: Django's ModelBackend.get_user drops inactive users.
+    """
 
     def authenticate_header(self, request: Request) -> str:
         return "Session"
+
+    def enforce_csrf(self, request: Request) -> None:
+        try:
+            super().enforce_csrf(request)
+        except PermissionDenied:
+            raise PermissionDenied(CSRF_REFUSE) from None
 
 
 def _authorized_party(token: str) -> str | None:

@@ -95,9 +95,10 @@ def test_docs_page_loads_assets_locally(api_client: APIClient) -> None:
     assert finders.find(relative), f"{relative} not found by staticfiles finders"
 
 
-def test_schema_documents_bearer_only(api_client: APIClient) -> None:
+def test_schema_documents_session_cookie(api_client: APIClient) -> None:
     schemes = _schema(api_client)["components"]["securitySchemes"]
-    assert "cookieAuth" not in schemes
+    assert schemes["cookieAuth"]["type"] == "apiKey"
+    assert schemes["cookieAuth"]["in"] == "cookie"
 
 
 def test_bearer_auth_extension_targets_existing_class(api_client: APIClient) -> None:

@@ -19,6 +19,7 @@ class UsersConfig(AppConfig):
                 "last_login",
                 "keycloak_sync_le",
                 "keycloak_sync_tentatives",
+                "echecs_connexion",
             ],
         )
         auditlog.register(DelegationGestionComptes)
