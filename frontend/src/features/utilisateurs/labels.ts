@@ -13,6 +13,7 @@ export const ORIGINE_LABELS: Record<OrigineCompte, string> = {
   CONNEXION: "Première connexion",
   ANNUAIRE: "Import annuaire",
   CSV: "Import CSV",
+  ADMINISTRATION: "Création par l'administration",
 };
 
 export const SYNC_LABELS: Record<KeycloakSyncStatut, string> = {

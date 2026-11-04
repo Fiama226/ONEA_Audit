@@ -37,6 +37,10 @@ export function anAccount(overrides: Partial<CompteUtilisateur> = {}): CompteUti
     desactive_le: "2026-10-28T09:00:00Z",
     desactive_par: { id: 1, username: "admin", nom_complet: "Admin ONEA" },
     motif_desactivation: "Départ",
+    doit_changer_mot_de_passe: true,
+    mot_de_passe_expire_le: null,
+    verrouille_jusqu_a: null,
+    otp_connexion_actif: false,
     keycloak_sync: {
       statut: "ECHEC",
       erreur: "Keycloak a refusé l'opération (HTTP 403).",
@@ -50,6 +54,11 @@ export function anAccount(overrides: Partial<CompteUtilisateur> = {}): CompteUti
       reactiver: true,
       resynchroniser_profil: true,
       relancer_synchro_keycloak: true,
+      reinitialiser_mot_de_passe: false,
+      desactiver_otp: false,
+      modifier_courriel: true,
+      modifier_direction: true,
+      changer_role: true,
     },
     ...overrides,
   } satisfies S["CompteUtilisateur"];
@@ -92,6 +101,7 @@ export function aReport(overrides: Partial<RapportImport> = {}): RapportImport {
         motif: "Le rôle ADMIN ne s'attribue que dans l'annuaire (Keycloak).",
       },
     ],
+    fichier_mots_de_passe_id: null,
     ...overrides,
   } satisfies S["RapportImport"];
 }

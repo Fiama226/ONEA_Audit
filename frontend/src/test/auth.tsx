@@ -21,6 +21,7 @@ export function fakeMe(overrides: Partial<Record<keyof Me, unknown>> = {}) {
     fonction: "Responsable audit interne",
     tutoriel: { version_vue: 1, termine_le: null },
     otp_connexion_actif: false,
+    gestion_comptes: { creer: false, reinitialiser: false, roles: false, desactiver: false },
     ...overrides,
   };
 }

@@ -26,6 +26,12 @@ describe("generated OpenAPI types", () => {
       | "direction_code"
       | "fonction"
       | "tutoriel"
+      | "otp_connexion_actif"
+      | "gestion_comptes"
+    >();
+    expectTypeOf<Me["otp_connexion_actif"]>().toEqualTypeOf<boolean>();
+    expectTypeOf<keyof Me["gestion_comptes"]>().toEqualTypeOf<
+      "creer" | "reinitialiser" | "roles" | "desactiver"
     >();
   });
 

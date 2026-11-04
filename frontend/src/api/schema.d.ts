@@ -565,6 +565,209 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/csrf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Jeton CSRF à joindre aux requêtes d'écriture (en-tête X-CSRFToken)
+         * @description Sets the CSRF cookie and returns the token (the cookie is HttpOnly in production).
+         */
+        get: operations["v1_auth_csrf_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/login/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Connexion par identifiant (ou courriel) et mot de passe
+         * @description DRF checks CSRF only for session-authenticated requests; here anonymous POSTs too.
+         */
+        post: operations["v1_auth_login_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/login/otp/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Connexion : vérification du code reçu par courriel
+         * @description DRF checks CSRF only for session-authenticated requests; here anonymous POSTs too.
+         */
+        post: operations["v1_auth_login_otp_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Déconnexion (fin de la session)
+         * @description DRF checks CSRF only for session-authenticated requests; here anonymous POSTs too.
+         */
+        post: operations["v1_auth_logout_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/otp/disable/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Désactiver le code de connexion par courriel (son propre compte)
+         * @description Own account only, on the current password (a wrong one counts as a login failure).
+         */
+        post: operations["v1_auth_otp_disable_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/otp/enable/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Activer le code de connexion par courriel (son propre compte)
+         * @description Acts on the caller's own account only: no route or field names another account.
+         */
+        post: operations["v1_auth_otp_enable_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/password/change/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Changement de son mot de passe
+         * @description Change by the logged-in agent (also the forced change of a temporary password).
+         *
+         *     The current session stays open under a new key (login stamps and fixed expiry kept);
+         *     every other session of the agent ends.
+         */
+        post: operations["v1_auth_password_change_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/password/forgot/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mot de passe oublié : demande d'un code par courriel
+         * @description Always 202 with the same body: whether an account exists is never told.
+         *
+         *     The request only looks the account up and queues the task, for every identifier; the
+         *     code is issued and emailed by the worker, to an active account only.
+         */
+        post: operations["v1_auth_password_forgot_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/password/reset/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mot de passe oublié : nouveau mot de passe avec le code reçu
+         * @description DRF checks CSRF only for session-authenticated requests; here anonymous POSTs too.
+         */
+        post: operations["v1_auth_password_reset_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/session/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** État de la session courante */
+        get: operations["v1_auth_session_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/corrective-actions/": {
         parameters: {
             query?: never;
@@ -4065,7 +4268,11 @@ export interface paths {
         /** Lister : comptes utilisateurs */
         get: operations["v1_user_accounts_list"];
         put?: never;
-        post?: never;
+        /**
+         * Créer un compte
+         * @description Crée un compte local avec un mot de passe temporaire (72 h, à changer à la première connexion). Le rôle est obligatoire. Le mot de passe n'est renvoyé qu'une fois, et seulement s'il n'a pas pu partir par courriel.
+         */
+        post: operations["v1_user_accounts_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4086,8 +4293,31 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Modifier le profil d'un compte */
+        /**
+         * Modifier le profil d'un compte
+         * @description Droit requis par champ modifié : nom, prénom, matricule et fonction = « créer des comptes » ; courriel = « réinitialiser les mots de passe » (il sert à la récupération du compte) ; direction = « changer les rôles ». Un champ renvoyé inchangé ne demande aucun droit. Un délégué ne modifie ni un administrateur, ni un autre délégué, ni son propre compte.
+         */
         patch: operations["v1_user_accounts_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/user-accounts/{id}/change-role/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Changer le rôle d'un compte
+         * @description Seul un administrateur attribue le rôle Administrateur ; personne ne change son propre rôle ; le dernier administrateur actif garde le sien.
+         */
+        post: operations["v1_user_accounts_change_role_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/user-accounts/{id}/deactivate/": {
@@ -4107,6 +4337,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/user-accounts/{id}/delegation/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Délégation de gestion des comptes d'un agent
+         * @description Administrateur seulement (un délégué ne lit pas les délégations).
+         */
+        get: operations["v1_user_accounts_delegation_retrieve"];
+        /**
+         * Définir la délégation de gestion des comptes d'un agent
+         * @description Administrateur seulement. Les quatre droits sont obligatoires ; tout à faux révoque la délégation. Effet immédiat ; refusé sur un compte administrateur.
+         */
+        put: operations["v1_user_accounts_delegation_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/{id}/disable-otp/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Désactiver le code de connexion par courriel d'un compte
+         * @description Seul le titulaire peut l'activer ; refusé sur son propre compte.
+         */
+        post: operations["v1_user_accounts_disable_otp_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/user-accounts/{id}/reactivate/": {
         parameters: {
             query?: never;
@@ -4118,6 +4392,26 @@ export interface paths {
         put?: never;
         /** Réactiver un compte */
         post: operations["v1_user_accounts_reactivate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/{id}/reset-password/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Réinitialiser le mot de passe d'un compte
+         * @description Nouveau mot de passe temporaire (72 h, à changer à la connexion suivante) : le compte est déverrouillé et toutes ses sessions sont fermées. Refusé sur un compte désactivé et sur son propre compte.
+         */
+        post: operations["v1_user_accounts_reset_password_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4184,7 +4478,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Importer des comptes depuis un fichier CSV */
+        /**
+         * Importer des comptes depuis un fichier CSV
+         * @description Crée des comptes locaux (rôle obligatoire, ADMIN exclu), chacun avec un mot de passe temporaire (72 h, à changer à la première connexion), envoyé par courriel de bienvenue si l'envoi est actif. Les mots de passe qui ne partent pas vont dans un fichier à télécharger une seule fois (`fichier_mots_de_passe_id`).
+         */
         post: operations["v1_user_accounts_import_csv_create"];
         delete?: never;
         options?: never;
@@ -4203,6 +4500,26 @@ export interface paths {
         put?: never;
         /** Importer des comptes depuis l'annuaire Keycloak */
         post: operations["v1_user_accounts_import_directory_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-accounts/import-passwords/{fichier_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Télécharger le fichier des mots de passe d'un import (une seule fois)
+         * @description Fichier CSV des mots de passe temporaires qu'aucun courriel n'a portés. Réservé à l'auteur de l'import ; détruit dès ce téléchargement, et au plus tard 24 h après l'import (404 ensuite).
+         */
+        get: operations["v1_user_accounts_import_passwords_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4448,13 +4765,21 @@ export interface components {
          * @enum {string}
          */
         ActionTutorielEnum: "terminer" | "ignorer" | "reinitialiser";
-        /** @description Actions que l'administrateur connecté peut effectuer sur le compte. */
+        /**
+         * @description Actions que l'utilisateur connecté (administrateur ou délégué) peut effectuer sur le
+         *     compte.
+         */
         ActionsCompte: {
             modifier_profil: boolean;
             desactiver: boolean;
             reactiver: boolean;
             resynchroniser_profil: boolean;
             relancer_synchro_keycloak: boolean;
+            reinitialiser_mot_de_passe: boolean;
+            desactiver_otp: boolean;
+            modifier_courriel: boolean;
+            modifier_direction: boolean;
+            changer_role: boolean;
         };
         Affectation: {
             /** Format: uuid */
@@ -4686,6 +5011,25 @@ export interface components {
             description: string;
             readonly enfants: components["schemas"]["ChampContrat"][];
         };
+        ChangementMotDePasseRequest: {
+            ancien: string;
+            nouveau: string;
+        };
+        ChangementRoleRequest: {
+            /**
+             * @description Seul un administrateur attribue le rôle Administrateur.
+             *
+             *     * `ADMIN` - Administrateur
+             *     * `RAI` - Responsable de l'audit interne
+             *     * `AUDITEUR` - Auditeur interne
+             *     * `AUDITE` - Audité
+             *     * `DG` - Direction générale
+             */
+            role: components["schemas"]["RoleEnum"];
+        };
+        CodeConnexionRequest: {
+            code: string;
+        };
         CommentaireObligatoireRequestRequest: {
             commentaire: string;
         };
@@ -4754,6 +5098,12 @@ export interface components {
             readonly desactive_le: string | null;
             readonly desactive_par: components["schemas"]["UserRef"] | null;
             readonly motif_desactivation: string;
+            readonly doit_changer_mot_de_passe: boolean;
+            /** Format: date-time */
+            readonly mot_de_passe_expire_le: string | null;
+            /** Format: date-time */
+            readonly verrouille_jusqu_a: string | null;
+            readonly otp_connexion_actif: boolean;
             readonly keycloak_sync: components["schemas"]["SyncKeycloak"];
             readonly actions: components["schemas"]["ActionsCompte"];
         };
@@ -4796,6 +5146,9 @@ export interface components {
          * @enum {string}
          */
         ConclusionTestEnum: "SATISFAISANT" | "POINT_FORT" | "ANOMALIE";
+        ConfirmationMotDePasseRequest: {
+            mot_de_passe: string;
+        };
         ConfirmationRequest: {
             /** @description Doit être vrai : la confirmation explicite de l'utilisateur. */
             confirme: boolean;
@@ -4823,6 +5176,10 @@ export interface components {
             readonly confirme_le: string;
             /** Empreinte SHA-256 */
             readonly empreinte: string;
+        };
+        ConnexionRequest: {
+            identifiant: string;
+            mot_de_passe: string;
         };
         Constat: {
             /** Format: uuid */
@@ -4947,6 +5304,27 @@ export interface components {
          * @enum {string}
          */
         CouvertureOrdreEnum: "EXACTE" | "ELARGIE" | "PARTIELLE";
+        /** @description Nouvel agent : le rôle est obligatoire ; le mot de passe est toujours généré. */
+        CreationCompteRequest: {
+            username: string;
+            email?: string;
+            /** @default  */
+            first_name: string;
+            /** @default  */
+            last_name: string;
+            role: components["schemas"]["RoleEnum"];
+            /** @default  */
+            matricule: string;
+            /** @default  */
+            direction_code: string;
+            /** @default  */
+            fonction: string;
+            /**
+             * @description Envoyer le courriel de bienvenue avec le mot de passe temporaire. Sinon (ou si l'envoi échoue), le mot de passe est renvoyé une seule fois dans la réponse.
+             * @default true
+             */
+            envoyer_courriel: boolean;
+        };
         Cumul: {
             tache: string;
             acteur: string;
@@ -4989,6 +5367,31 @@ export interface components {
             levee: boolean;
             /** Format: date-time */
             confirmee_le: string | null;
+        };
+        /** @description Droits de gestion des comptes délégués à un agent (lecture et écriture : ADMIN). */
+        DelegationGestionComptes: {
+            /** @description Créer des comptes. */
+            creer: boolean;
+            /** @description Réinitialiser les mots de passe et désactiver le code de connexion. */
+            reinitialiser: boolean;
+            /** @description Changer les rôles (et la direction). */
+            roles: boolean;
+            /** @description Désactiver et réactiver des comptes. */
+            desactiver: boolean;
+            readonly accorde_par: components["schemas"]["UserRef"] | null;
+            /** Format: date-time */
+            readonly accorde_le: string | null;
+        };
+        /** @description Droits de gestion des comptes délégués à un agent (lecture et écriture : ADMIN). */
+        DelegationGestionComptesRequest: {
+            /** @description Créer des comptes. */
+            creer: boolean;
+            /** @description Réinitialiser les mots de passe et désactiver le code de connexion. */
+            reinitialiser: boolean;
+            /** @description Changer les rôles (et la direction). */
+            roles: boolean;
+            /** @description Désactiver et réactiver des comptes. */
+            desactiver: boolean;
         };
         DemandeReport: {
             /** Format: uuid */
@@ -5302,6 +5705,13 @@ export interface components {
             voir_referentiel: boolean;
             contribuer_vii: boolean;
         };
+        /** @description Droits effectifs de gestion des comptes (tous pour un administrateur). */
+        DroitsGestionComptes: {
+            creer: boolean;
+            reinitialiser: boolean;
+            roles: boolean;
+            desactiver: boolean;
+        };
         DroitsMission: {
             modifier: boolean;
             planifier: boolean;
@@ -5492,12 +5902,27 @@ export interface components {
             en_retard: boolean;
         };
         /**
+         * @description * `OK` - OK
+         *     * `OTP` - OTP
+         *     * `CHANGER_MOT_DE_PASSE` - CHANGER_MOT_DE_PASSE
+         * @enum {string}
+         */
+        EtapeEnum: "OK" | "OTP" | "CHANGER_MOT_DE_PASSE";
+        /**
          * @description * `CONFIRME` - Confirmé
          *     * `A_RENOUVELER` - À renouveler
          *     * `NON_CONFIRME` - Non confirmé
          * @enum {string}
          */
         EtatEngagementEnum: "CONFIRME" | "A_RENOUVELER" | "NON_CONFIRME";
+        EtatOtp: {
+            otp_connexion_actif: boolean;
+        };
+        /** @description Answer of login, login OTP and session: next step and the `me` profile (null at OTP). */
+        EtatSession: {
+            etape: components["schemas"]["EtapeEnum"];
+            me: components["schemas"]["Me"] | null;
+        };
         /**
          * @description * `ADEQUATE` - Conception adéquate — risque maîtrisé
          *     * `INSUFFISANTE` - Conception insuffisante
@@ -5897,6 +6322,11 @@ export interface components {
              * @default true
              */
             dry_run: boolean;
+            /**
+             * @description Envoyer à chaque compte créé son courriel de bienvenue avec son mot de passe temporaire (par défaut). Les mots de passe qui ne partent pas par courriel vont dans un fichier téléchargeable une seule fois.
+             * @default true
+             */
+            envoyer_courriel: boolean;
         };
         Instantane: {
             /** Format: uuid */
@@ -5938,6 +6368,9 @@ export interface components {
             libelle: string;
             /** Format: date-time */
             terminee_le: string | null;
+        };
+        JetonCsrf: {
+            csrf_token: string;
         };
         JustificationRequestRequest: {
             justification: string;
@@ -6187,6 +6620,11 @@ export interface components {
             readonly direction_code: string;
             readonly fonction: string;
             readonly tutoriel: components["schemas"]["Tutoriel"];
+            readonly otp_connexion_actif: boolean;
+            readonly gestion_comptes: components["schemas"]["DroitsGestionComptes"];
+        };
+        Message: {
+            detail: string;
         };
         /**
          * @description * `EXHAUSTIF` - Exhaustif
@@ -6398,6 +6836,16 @@ export interface components {
             en_retard: boolean;
             jours_retard: number | null;
         };
+        MotDePasseOublieRequest: {
+            identifiant: string;
+        };
+        /** @description Résultat d'une création ou d'une réinitialisation (réponse `Cache-Control: no-store`). */
+        MotDePasseTemporaire: {
+            compte: components["schemas"]["CompteUtilisateur"];
+            courriel_envoye: boolean;
+            /** @description Affiché une seule fois, jamais relisible ensuite ; null quand il est parti par courriel. */
+            mot_de_passe_temporaire: string | null;
+        };
         MotifDesactivationRequest: {
             motif: string;
         };
@@ -6536,9 +6984,10 @@ export interface components {
          * @description * `CONNEXION` - Première connexion
          *     * `ANNUAIRE` - Import annuaire
          *     * `CSV` - Import CSV
+         *     * `ADMINISTRATION` - Création par l'administration
          * @enum {string}
          */
-        OrigineCompteEnum: "CONNEXION" | "ANNUAIRE" | "CSV";
+        OrigineCompteEnum: "CONNEXION" | "ANNUAIRE" | "CSV" | "ADMINISTRATION";
         PaginatedAcceptationRisqueList: {
             /** @example 123 */
             count: number;
@@ -7608,11 +8057,20 @@ export interface components {
             /** @description Identifiants des directions (type DIRECTION uniquement) rattachées (écriture). */
             directions?: string[];
         };
-        /** @description Champs de profil modifiables ; tout autre champ est refusé explicitement. */
+        /**
+         * @description Champs de profil modifiables ; tout autre champ est refusé explicitement.
+         *
+         *     Droit requis par champ modifié (administrateur ou délégué) : nom, prénom, matricule et
+         *     fonction = « créer des comptes » ; courriel = « réinitialiser les mots de passe » ;
+         *     direction = « changer les rôles ».
+         */
         PatchedProfilUtilisateurRequest: {
             matricule?: string;
             direction_code?: string;
             fonction?: string;
+            email?: string;
+            first_name?: string;
+            last_name?: string;
         };
         PatchedProgrammeAnnuelRequest: {
             /** @description Écriture à la création seulement : l'année est ensuite immuable. */
@@ -8097,6 +8555,11 @@ export interface components {
             crees: string[];
             mis_a_jour: string[];
             ignores: components["schemas"]["LigneImportIgnoree"][];
+            /**
+             * Format: uuid
+             * @description Import CSV appliqué : fichier des mots de passe temporaires non envoyés par courriel, à télécharger une seule fois, sous 24 h, par l'auteur de l'import (`GET /user-accounts/import-passwords/{id}/`) ; null sinon.
+             */
+            fichier_mots_de_passe_id: string | null;
         };
         RapportLecture: components["schemas"]["Rapport"] | components["schemas"]["RapportDiffuse"];
         /** @description Base des sérialiseurs qui exposent `etape_close` : statuts lus une fois par mission. */
@@ -8214,6 +8677,18 @@ export interface components {
             validation_verifiee: boolean;
             avis: components["schemas"]["AvisAudite"][];
             mes_droits: components["schemas"]["DroitsAnalyse"];
+        };
+        ReinitialisationCompteRequest: {
+            /**
+             * @description Envoyer le nouveau mot de passe temporaire par courriel. Sinon (ou si l'envoi échoue), il est renvoyé une seule fois dans la réponse.
+             * @default true
+             */
+            envoyer_courriel: boolean;
+        };
+        ReinitialisationRequest: {
+            identifiant: string;
+            code: string;
+            nouveau_mot_de_passe: string;
         };
         Relance: {
             /** Format: uuid */
@@ -11823,6 +12298,462 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auth_csrf_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JetonCsrf"];
+                };
+            };
+        };
+    };
+    v1_auth_login_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnexionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ConnexionRequest"];
+                "multipart/form-data": components["schemas"]["ConnexionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatSession"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auth_login_otp_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeConnexionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CodeConnexionRequest"];
+                "multipart/form-data": components["schemas"]["CodeConnexionRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatSession"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auth_logout_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auth_otp_disable_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmationMotDePasseRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ConfirmationMotDePasseRequest"];
+                "multipart/form-data": components["schemas"]["ConfirmationMotDePasseRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatOtp"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auth_otp_enable_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatOtp"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auth_password_change_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangementMotDePasseRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ChangementMotDePasseRequest"];
+                "multipart/form-data": components["schemas"]["ChangementMotDePasseRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatSession"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auth_password_forgot_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotDePasseOublieRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MotDePasseOublieRequest"];
+                "multipart/form-data": components["schemas"]["MotDePasseOublieRequest"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auth_password_reset_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReinitialisationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReinitialisationRequest"];
+                "multipart/form-data": components["schemas"]["ReinitialisationRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auth_session_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtatSession"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -25621,8 +26552,9 @@ export interface operations {
                  * @description * `CONNEXION` - Première connexion
                  *     * `ANNUAIRE` - Import annuaire
                  *     * `CSV` - Import CSV
+                 *     * `ADMINISTRATION` - Création par l'administration
                  */
-                origine?: "ANNUAIRE" | "CONNEXION" | "CSV";
+                origine?: "ADMINISTRATION" | "ANNUAIRE" | "CONNEXION" | "CSV";
                 /** @description Un numéro de page de l'ensemble des résultats. */
                 page?: number;
                 /** @description Nombre de résultats à retourner par page. */
@@ -25669,6 +26601,71 @@ export interface operations {
                 };
             };
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreationCompteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CreationCompteRequest"];
+                "multipart/form-data": components["schemas"]["CreationCompteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MotDePasseTemporaire"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -25790,6 +26787,73 @@ export interface operations {
             };
         };
     };
+    v1_user_accounts_change_role_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangementRoleRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ChangementRoleRequest"];
+                "multipart/form-data": components["schemas"]["ChangementRoleRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_user_accounts_deactivate_create: {
         parameters: {
             query?: never;
@@ -25857,6 +26921,187 @@ export interface operations {
             };
         };
     };
+    v1_user_accounts_delegation_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelegationGestionComptes"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_delegation_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DelegationGestionComptesRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DelegationGestionComptesRequest"];
+                "multipart/form-data": components["schemas"]["DelegationGestionComptesRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelegationGestionComptes"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_disable_otp_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompteUtilisateur"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_user_accounts_reactivate_create: {
         parameters: {
             query?: never;
@@ -25901,6 +27146,81 @@ export interface operations {
                 };
             };
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_reset_password_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ReinitialisationCompteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReinitialisationCompteRequest"];
+                "multipart/form-data": components["schemas"]["ReinitialisationCompteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MotDePasseTemporaire"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -26205,6 +27525,51 @@ export interface operations {
                 };
             };
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_user_accounts_import_passwords_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fichier_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

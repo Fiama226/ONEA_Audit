@@ -18,6 +18,13 @@ export function meFor(role: Role, overrides: Partial<Me> = {}): Me {
     fonction: "Fonction",
     tutoriel: { version_vue: 1, termine_le: null },
     otp_connexion_actif: false,
+    // An active ADMIN holds every account-management right; other roles none by default.
+    gestion_comptes: {
+      creer: role === "ADMIN",
+      reinitialiser: role === "ADMIN",
+      roles: role === "ADMIN",
+      desactiver: role === "ADMIN",
+    },
     ...overrides,
   };
 }
