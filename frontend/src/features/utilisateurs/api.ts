@@ -153,6 +153,8 @@ export type ImportCsvVars = { file: File; dryRun: boolean; sendEmail: boolean };
 export function useImportCsv() {
   const client = useQueryClient();
   return useMutation({
+    // Le rapport porte l'identifiant du fichier des mots de passe : pas de rétention en cache.
+    ...ONE_TIME_SECRET,
     mutationFn: ({ file, dryRun, sendEmail }: ImportCsvVars) => {
       const body = new FormData();
       body.append("fichier", file);

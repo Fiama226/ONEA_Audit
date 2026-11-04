@@ -606,7 +606,7 @@ export const fr = {
       roleChanged: "Rôle modifié.",
       roleConfirmTitle: "Changer le rôle de ",
       roleConfirmText:
-        "Le rôle passe de « {from} » à « {to} ». Les accès de l'agent changent dès sa prochaine action.",
+        "Le rôle passe de « {from} » à « {to} ». Le serveur applique les nouveaux accès dès sa prochaine action ; ses menus changent au rechargement de sa page ou à sa prochaine connexion.",
       roleConfirmAdmin:
         "Attention : le rôle Administrateur donne tous les droits sur la plateforme, dont la création, la réinitialisation et la désactivation de tous les comptes et la gestion des délégations.",
       roleConfirm: "Confirmer le changement",
@@ -678,7 +678,7 @@ export const fr = {
     delegation: {
       title: "Délégation de la gestion des comptes",
       intro:
-        "Droits de gestion des comptes confiés à cet agent. Ils prennent effet immédiatement et se retirent à tout moment.",
+        "Droits de gestion des comptes confiés à cet agent. Le serveur les applique immédiatement ; ses menus les affichent au rechargement de sa page ou à sa prochaine connexion. Ils se retirent à tout moment.",
       legend: "Droits délégués",
       creer: "Créer des comptes",
       reinitialiser: "Réinitialiser les mots de passe et désactiver le code de connexion",

@@ -251,9 +251,12 @@ function CreatedAccount({
       )}
       {mot_de_passe_temporaire && <TemporaryPassword value={mot_de_passe_temporaire} />}
       <DialogFooter>
-        <Button asChild variant="outline">
-          <Link to={`/administration/utilisateurs/${compte.id}`}>{c.openRecord}</Link>
-        </Button>
+        {/* Pas de lien vers la fiche tant qu'un mot de passe est affiché : le suivre le perdrait. */}
+        {!mot_de_passe_temporaire && (
+          <Button asChild variant="outline">
+            <Link to={`/administration/utilisateurs/${compte.id}`}>{c.openRecord}</Link>
+          </Button>
+        )}
         <Button type="button" onClick={onClose}>
           {mot_de_passe_temporaire ? fr.utilisateurs.motDePasse.acknowledge : fr.common.close}
         </Button>

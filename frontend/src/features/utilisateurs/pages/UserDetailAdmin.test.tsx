@@ -102,7 +102,8 @@ describe("UserDetailPage — délégation", () => {
     expect(box("Changer les rôles et la direction")).not.toBeChecked();
     expect(box("Désactiver et réactiver des comptes")).not.toBeChecked();
     expect(
-      screen.getByText(/peut ainsi obtenir l'accès à n'importe quel compte non administrateur/),
+      // Restreint aux comptes Auditeur et Audité (AUTH-03), comme la ligne des limites.
+      screen.getByText(/peut ainsi obtenir l'accès à n'importe quel compte Auditeur ou Audité/),
     ).toBeVisible();
     expect(
       screen.getByText(/Un délégué gère uniquement les comptes AUDITEUR et AUDITE/),

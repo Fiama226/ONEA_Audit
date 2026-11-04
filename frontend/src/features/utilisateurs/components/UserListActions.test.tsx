@@ -113,9 +113,8 @@ describe("UserListActions — Nouvel agent", () => {
     ]);
     expect(within(dialog).getByText(PASSWORD)).toBeVisible();
     expect(within(dialog).getByText(/il ne sera plus jamais affiché/)).toBeVisible();
-    expect(
-      within(dialog).getByRole("link", { name: "Ouvrir la fiche de l'agent" }),
-    ).toHaveAttribute("href", "/administration/utilisateurs/7");
+    // Pas de lien vers la fiche tant que le mot de passe est affiché (il serait perdu).
+    expect(within(dialog).queryByRole("link", { name: "Ouvrir la fiche de l'agent" })).toBeNull();
 
     await user.click(within(dialog).getByRole("button", { name: "Copier le mot de passe" }));
     expect(await navigator.clipboard.readText()).toBe(PASSWORD);
@@ -170,6 +169,9 @@ describe("UserListActions — Nouvel agent", () => {
       await within(dialog).findByText(/a été mis en file d'envoi pour l\.kabore@onea\.bf/),
     ).toBeInTheDocument();
     expect(within(dialog).queryByText("Mot de passe temporaire")).toBeNull();
+    expect(
+      within(dialog).getByRole("link", { name: "Ouvrir la fiche de l'agent" }),
+    ).toHaveAttribute("href", "/administration/utilisateurs/7");
   });
 
   it("shows the password when the email was asked but could not be sent", async () => {
