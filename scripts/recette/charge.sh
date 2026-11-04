@@ -1,6 +1,10 @@
 #!/bin/sh
 # Test de charge de la recette (lot 9, T26) : 40 utilisateurs, montee 2/s, 20 min, seuils D10.
-# Usage : sh scripts/recette/charge.sh   (apres up.sh, realm.sh et peupler_demo --profil volumetrie)
+# Comptes : $RECETTE_COMPTES (defaut .recette/comptes.txt), lignes `identifiant:mot_de_passe`, comptes chargeNN
+# connectes par session (voir loadtest/locustfile.py). Aucune commande du depot ne cree ces comptes avec
+# un mot de passe : l'administration des comptes de l'application les cree (mot de passe temporaire
+# change ensuite, sinon la connexion renvoie CHANGER_MOT_DE_PASSE) ; le fichier est tenu a la main.
+# Usage : sh scripts/recette/charge.sh   (apres up.sh et peupler_demo --profil volumetrie)
 # Code de sortie : 0 si tous les seuils D10 sont tenus ET la file Celery est vide 2 min apres la fin.
 # Variables : CHARGE_USERS (40), CHARGE_RATE (2), CHARGE_DUREE (20m), CHARGE_ATTENTE_FILE (120 s),
 #             SEUIL_* (voir loadtest/locustfile.py). Tout seuil releve doit etre consigne.
@@ -16,7 +20,7 @@ OUT="$RECETTE_DIR/charge/$(date +%Y%m%d-%H%M%S)"
 VENV="$RECETTE_DIR/venv-charge"
 mkdir -p "$OUT"
 
-[ -f "$RECETTE_DIR/comptes.txt" ] || { echo "comptes.txt absent : lancer realm.sh" >&2; exit 2; }
+[ -f "$RECETTE_COMPTES" ] || { echo "$RECETTE_COMPTES absent : une ligne identifiant:mot_de_passe par compte de charge (charge01:..., voir loadtest/locustfile.py)" >&2; exit 2; }
 [ -f "$RECETTE_DIR/certs/ca.pem" ] || { echo "ca.pem absent : lancer certs.sh" >&2; exit 2; }
 
 # Locust (MIT) dans un environnement isole, installe avec empreintes (aucune dependance non verifiee).
@@ -41,9 +45,8 @@ trap 'kill $STATS_PID 2>/dev/null || true' EXIT INT TERM
 
 # Les noms d'hote de recette sont fictifs : resolution locale sans DNS ni /etc/hosts.
 set +e
-CHARGE_COMPTES="$RECETTE_DIR/comptes.txt" CHARGE_PREFIXE=charge CHARGE_CLIENT_ID=onea-charge \
-CHARGE_TOKEN_URL="https://$SSO_HOST/realms/onea/protocol/openid-connect/token" \
-CHARGE_RESOLVE="$PUBLIC_HOST,$SSO_HOST=127.0.0.1" CHARGE_RESULTATS="$OUT" \
+CHARGE_COMPTES="$RECETTE_COMPTES" CHARGE_PREFIXE=charge \
+CHARGE_RESOLVE="$PUBLIC_HOST=127.0.0.1" CHARGE_RESULTATS="$OUT" \
 REQUESTS_CA_BUNDLE="$RECETTE_DIR/certs/ca.pem" \
     "$VENV/bin/locust" -f "$REPO_ROOT/loadtest/locustfile.py" --headless \
     --host "https://$PUBLIC_HOST" -u "$CHARGE_USERS" -r "$CHARGE_RATE" -t "$CHARGE_DUREE" \

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Obtention et renouvellement du certificat TLS par Let's Encrypt (defi ACME http-01, webroot).
-# Voie B de docs/deploy.md section 2. Prerequis : DNS public pour PUBLIC_HOST et SSO_HOST,
-# port 80 joignable depuis Internet. Un seul certificat (deux noms) est emis.
+# Voie B de docs/deploy.md section 2. Prerequis : DNS public pour PUBLIC_HOST,
+# port 80 joignable depuis Internet. Un seul certificat (un nom) est emis.
 #
 #   sh scripts/tls/certbot.sh --dry-run      essai a blanc (serveur de test Let's Encrypt, rien n'est ecrit)
 #   sh scripts/tls/certbot.sh --staging      certificat de TEST reel (non reconnu par les navigateurs)
@@ -9,7 +9,7 @@
 # Aucun mode par defaut : un appel sans option affiche cette aide et ne contacte personne.
 #
 # Variables (fichier ENV_FILE, defaut ./.env.prod, ou environnement) :
-#   PUBLIC_HOST, SSO_HOST, TLS_CERT_DIR, ACME_WEBROOT (obligatoires)
+#   PUBLIC_HOST, TLS_CERT_DIR, ACME_WEBROOT (obligatoires)
 #   LETSENCRYPT_EMAIL (obligatoire, alertes d'expiration) ; CERTBOT_DIR (defaut /etc/onea/letsencrypt)
 #   CERTBOT_IMAGE (defaut certbot/certbot:v2.11.0)
 # Apres emission, fullchain.pem et privkey.pem sont copies dans TLS_CERT_DIR (remplacement
@@ -39,14 +39,13 @@ lire() { # lire NOM : valeur de l'environnement, sinon du fichier d'environnemen
     printf '%s' "$_v"
 }
 PUBLIC_HOST=$(lire PUBLIC_HOST)
-SSO_HOST=$(lire SSO_HOST)
 TLS_CERT_DIR=$(lire TLS_CERT_DIR)
 ACME_WEBROOT=$(lire ACME_WEBROOT)
 EMAIL=$(lire LETSENCRYPT_EMAIL)
 CERTBOT_DIR=$(lire CERTBOT_DIR); CERTBOT_DIR=${CERTBOT_DIR:-/etc/onea/letsencrypt}
 CERTBOT_IMAGE=$(lire CERTBOT_IMAGE); CERTBOT_IMAGE=${CERTBOT_IMAGE:-certbot/certbot:v2.11.0}
 
-for v in PUBLIC_HOST SSO_HOST TLS_CERT_DIR ACME_WEBROOT EMAIL; do
+for v in PUBLIC_HOST TLS_CERT_DIR ACME_WEBROOT EMAIL; do
     eval "val=\$$v"
     [ -n "$val" ] || { echo "Variable obligatoire absente : $v (LETSENCRYPT_EMAIL pour EMAIL ; voir $ENV_FILE)" >&2; exit 1; }
 done
@@ -55,7 +54,7 @@ case "$EMAIL" in *@*.*) ;; *) echo "LETSENCRYPT_EMAIL invalide." >&2; exit 1 ;; 
 mkdir -p "$ACME_WEBROOT" "$CERTBOT_DIR"
 chmod 0755 "$ACME_WEBROOT"   # nginx (autre utilisateur) doit lire le defi
 
-set -- certonly --webroot -w /webroot -d "$PUBLIC_HOST" -d "$SSO_HOST" \
+set -- certonly --webroot -w /webroot -d "$PUBLIC_HOST" \
     --cert-name onea --email "$EMAIL" --agree-tos --no-eff-email \
     --keep-until-expiring --non-interactive
 case "$MODE" in
@@ -63,7 +62,7 @@ case "$MODE" in
     --staging) set -- "$@" --staging ;;
 esac
 
-echo "Certbot ($MODE) pour $PUBLIC_HOST et $SSO_HOST..."
+echo "Certbot ($MODE) pour $PUBLIC_HOST..."
 docker run --rm -v "$CERTBOT_DIR:/etc/letsencrypt" -v "$ACME_WEBROOT:/webroot" \
     "$CERTBOT_IMAGE" "$@"
 

@@ -1,7 +1,7 @@
 # ONEA audit platform - base infrastructure services (no dev-only material here).
 # Secrets are REQUIRED (no defaults): provide them through the repo-root .env
 # (docker compose --env-file .env ...). Dev values live in .env.example.
-# Host ports, Keycloak and Mailpit are defined in docker/compose.dev.yml.
+# Host ports and Mailpit are defined in docker/compose.dev.yml.
 name: ${COMPOSE_PROJECT_NAME:-onea}
 
 services:

@@ -51,7 +51,7 @@ check-api:
 
 images:
 	docker build -f docker/backend.Dockerfile -t onea-backend:local .
-	docker build -f docker/frontend.Dockerfile -t onea-frontend:local --build-arg VITE_API_URL=https://audit.example.org --build-arg VITE_OIDC_AUTHORITY=https://sso.example.org/realms/onea .
+	docker build -f docker/frontend.Dockerfile -t onea-frontend:local --build-arg VITE_API_URL=https://audit.example.org .
 
 # Validate the production compose file against the placeholder env file.
 prod-config:

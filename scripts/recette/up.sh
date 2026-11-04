@@ -8,8 +8,6 @@ mkdir -p "$RECETTE_DIR" "$RECETTE_DIR/acme"
 chmod 0755 "$RECETTE_DIR/acme"
 sh "$RECETTE_LIB_DIR/certs.sh"
 
-rand() { openssl rand -hex 24; }
-
 if [ ! -f "$RECETTE_ENV" ]; then
     docs="$RECETTE_DIR/documents"
     mkdir -p "$docs"
@@ -24,10 +22,7 @@ if [ ! -f "$RECETTE_ENV" ]; then
     if ! chown 10001:10001 "$RECETTE_SECRETS"/* 2>/dev/null; then
         docker run --rm -v "$RECETTE_SECRETS:/s" alpine:3.20 sh -c "chown 10001:10001 /s/*"
     fi
-    # Les deux secrets de Keycloak restent des variables (Keycloak ne lit pas de fichier).
     sed -e "s|@SECRETS_DIR@|$RECETTE_SECRETS|" \
-        -e "s|@KC_ADMIN_PASSWORD@|$(rand)|" \
-        -e "s|@KC_DB_PASSWORD@|$(rand)|" \
         -e "s|@DOCUMENTS_HOST_DIR@|$docs|" \
         -e "s|@TLS_CERT_DIR@|$RECETTE_DIR/certs|" \
         -e "s|@ACME_WEBROOT@|$RECETTE_DIR/acme|" \
@@ -47,5 +42,4 @@ until curl_recette -fs "https://$PUBLIC_HOST/api/v1/health/" >/dev/null 2>&1; do
     fi
     sleep 5
 done
-echo "Pile de recette prete : https://$PUBLIC_HOST (SSO : https://$SSO_HOST)."
-echo "Etape suivante : sh scripts/recette/realm.sh"
+echo "Pile de recette prete : https://$PUBLIC_HOST."

@@ -93,8 +93,8 @@ test("a signed-in user can log out and is asked to sign in again", async ({ page
   await page.goto("/missions");
   await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
   // (4) l'ancien jeton d'accès n'ouvre plus l'API
-  const apiUrl = process.env.VITE_API_URL ?? "http://localhost:8000";
-  const reponse = await page.request.get(`${apiUrl}/api/v1/me/`, {
+  // Même origine : l'API est jointe via l'origine de Vite (baseURL), qui relaie /api.
+  const reponse = await page.request.get("/api/v1/me/", {
     headers: { Authorization: `Bearer ${ancienJeton}` },
   });
   expect(reponse.status()).toBe(401);

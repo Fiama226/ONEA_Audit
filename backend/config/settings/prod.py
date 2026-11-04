@@ -36,20 +36,9 @@ EMAIL_USE_SSL = _email.get("EMAIL_USE_SSL", False) or env("EMAIL_URL").startswit
 EMAIL_USE_TLS = _email.get("EMAIL_USE_TLS", False) and not EMAIL_USE_SSL
 EMAIL_TIMEOUT = 10  # seconds; a dead relay must not hang a worker
 
-if not env("OIDC_OP_BASE_URL").startswith("https://"):  # required in production, no default
-    raise ImproperlyConfigured("OIDC_OP_BASE_URL must be an https:// URL in production")
 _plateforme = urlsplit(PLATEFORME_URL)  # noqa: F405
 if _plateforme.scheme != "https" or not _plateforme.hostname or _plateforme.username:
     raise ImproperlyConfigured("PLATEFORME_URL must be an https:// URL in production")
-if not env.bool("OIDC_VERIFY_SSL", default=True):
-    raise ImproperlyConfigured("OIDC_VERIFY_SSL must not be disabled in production")
-_kc_sync_secret = KEYCLOAK_ADMIN_API_CLIENT_SECRET  # noqa: F405 (KEYCLOAK_..._FILE first)
-if not _kc_sync_secret:  # required in production
-    raise ImproperlyConfigured("KEYCLOAK_ADMIN_API_CLIENT_SECRET must be set in production")
-if _kc_sync_secret.startswith("CHANGE_ME") or _kc_sync_secret == "onea-dev-sync-secret":  # noqa: S105
-    raise ImproperlyConfigured(
-        "KEYCLOAK_ADMIN_API_CLIENT_SECRET is still a placeholder or the dev default"
-    )
 
 # --- Documents storage: explicit, absolute, outside the code (D2). ---
 if DOCUMENTS_STORAGE == "filesystem":  # noqa: F405
@@ -83,7 +72,9 @@ _SECRETS_A_CONTROLER = {
     ),
     "mot de passe Redis (REDIS_URL / REDIS_PASSWORD_FILE)": urlsplit(REDIS_URL).password or "",  # noqa: F405
     "mot de passe SMTP (EMAIL_URL / EMAIL_PASSWORD_FILE)": EMAIL_HOST_PASSWORD or "",
+    # Legacy OIDC secrets: optional now (no Keycloak in the stack), still refused if a placeholder.
     "OIDC_RP_CLIENT_SECRET": OIDC_RP_CLIENT_SECRET,  # noqa: F405
+    "KEYCLOAK_ADMIN_API_CLIENT_SECRET": KEYCLOAK_ADMIN_API_CLIENT_SECRET,  # noqa: F405
     "MEILI_MASTER_KEY": RECHERCHE["CLE"],  # noqa: F405
     "METRICS_TOKEN": METRICS_TOKEN,  # noqa: F405
     **{f"SECRET_KEY_FALLBACKS[{i}]": v for i, v in enumerate(SECRET_KEY_FALLBACKS)},  # noqa: F405
@@ -112,7 +103,11 @@ SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SESSION_COOKIE_SECURE = True
+# Same origin behind nginx: the session cookie MUST be Secure. The variable is required and
+# cannot be turned off (a misconfigured deployment fails at start-up instead of leaking cookies).
+SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE")  # required
+if not SESSION_COOKIE_SECURE:
+    raise ImproperlyConfigured("SESSION_COOKIE_SECURE must be true in production")
 CSRF_COOKIE_SECURE = True
 # `__Host-` prefix: Secure, Path=/, no Domain; only valid over HTTPS, hence production only.
 SESSION_COOKIE_NAME = "__Host-onea-session"

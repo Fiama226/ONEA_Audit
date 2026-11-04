@@ -30,7 +30,8 @@ export default defineConfig({
     : {
         command: `npm run dev -- --port ${WEB_PORT}`,
         url: WEB_URL,
-        env: { VITE_API_URL: API_URL },
+        // Same origin: the SPA calls /api on the Vite origin, Vite proxies it to Django.
+        env: { VITE_API_URL: "", ONEA_API_URL: API_URL },
         reuseExistingServer: false,
         timeout: 120_000,
       },
