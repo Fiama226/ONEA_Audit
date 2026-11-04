@@ -1,6 +1,6 @@
 # Passation — plateforme d'audit interne ONEA
 
-Dernière mise à jour : **2026-11-03**. Rien n'est poussé : tout est local (Git). Sources de vérité de cet
+Dernière mise à jour : **2026-11-04**. Rien n'est poussé : tout est local (Git). Sources de vérité de cet
 état : `git log --oneline` et `git branch --merged develop` (le texte précédent de ce fichier, daté du
 2026-10-30, était périmé).
 
@@ -9,7 +9,8 @@ Dernière mise à jour : **2026-11-03**. Rien n'est poussé : tout est local (Gi
 - **Aucune fonction IA/LLM dans le produit.** Logiciels **100 % open source** (liste des licences dans
   `CLAUDE.md`, décisions du 2026-11-02 incluses : MIT-0, PSF-2.0, ZPL-2.1, ClamAV en conteneur séparé).
 - Stack : Django 5.2 + DRF (`backend/`), React 19 + TypeScript + Vite + Tailwind + shadcn (`frontend/`),
-  PostgreSQL 16, Celery + Redis, docxtpl + Gotenberg, Keycloak (OIDC), Meilisearch.
+  PostgreSQL 16, Celery + Redis, docxtpl + Gotenberg, Meilisearch ; authentification interne (sessions Django,
+  Argon2id, code à usage unique par courriel) : Keycloak a été retiré.
 - Rôles : ADMIN, RAI, AUDITEUR, AUDITE, DG. Méthode IFACI en 18 étapes ; matrice des risques 5×5.
 
 ## 2. Ce qui est fait (dans `develop`)
@@ -28,12 +29,33 @@ Dernière mise à jour : **2026-11-03**. Rien n'est poussé : tout est local (Gi
 - La branche `preview` (160bbd0) a un commit de retard sur `develop` (export PDF du programme).
 - Versions affichées : encore `0.6.0` (backend, frontend) ; `0.9.0` est posée par la tâche T36.
 
+### 2bis. Authentification interne (branche `feat/auth-interne`, **non fusionnée dans `develop`**)
+Keycloak est remplacé par une authentification dans l'application : sessions Django (8 h au plus, 30 min
+d'inactivité), mots de passe Argon2id, comptes créés par l'administrateur avec mot de passe temporaire (72 h,
+changement obligatoire), « mot de passe oublié » par code envoyé par courriel, code de connexion par courriel
+facultatif (activé par le titulaire seul), délégation de la gestion des comptes (créer, réinitialiser, rôles,
+désactiver), import CSV avec fichier des mots de passe à téléchargement unique. Conception :
+`docs/superpowers/specs/2026-11-03-authentification-interne-design.md` ; modèle de sécurité :
+`docs/securite/auth-interne-modele.md` ; procédures : `docs/deploy.md` §5, `docs/exploitation/runbook.md`.
+Le conteneur, la base, le thème, les secrets et les variables Keycloak/OIDC/SSO sont supprimés de la pile.
+**Ce qui a été vérifié** (voir les comptes rendus de `.superpowers/sdd/2026-11-04-authentification-interne/`) : tests
+du backend lancés **application par application** (le disque disponible ne permettait pas une exécution
+unique de la suite complète), tests du frontend ciblés sur les dossiers touchés, `tsc`, `eslint`, `ruff`, `mypy`.
+**Ce qui n'a pas été fait** : une suite complète back et front en une seule exécution, les specs Playwright
+(`frontend/e2e/`, vérifiées au typage mais **non exécutées**), le parcours manuel sur le site de test, le
+rejeu de l'audit ASVS niveau 2 sur la nouvelle authentification, l'essai avec un vrai relais SMTP.
+
 ## 3. Décisions déjà prises (ne plus les redemander)
 - Licences MIT-0, PSF-2.0 et ClamAV (conteneur séparé, GPL-2.0) autorisées : commit 6c982ec. ZPL-2.1 : 120ee1b.
 - SEC-07 (confirmation horodatée en SHA-256 sans clé) : risque **accepté**, commit 52a5aba.
 - Hypothèses métier des lots : toutes confirmées (2026-10-29) ; gabarits Word vierges provisoires acceptés.
 
 ## 4. Ce qui reste à faire (équipe projet)
+0. **Authentification interne** : revue de sécurité et corrections, rejeu de l'audit ASVS L2 (`asvs-l2.md` décrit
+   encore l'ancienne authentification), suites complètes, e2e Playwright à exécuter, parcours manuel sur le
+   site de test (création, première connexion, oubli, code, délégation), puis fusion dans `develop` après
+   accord (ni `develop` ni `preview` ne sont touchées à ce jour). À la mise à jour du site de test : donner un
+   mot de passe temporaire aux comptes existants (`donner_mots_de_passe_temporaires`, `docs/deploy.md` §5.4).
 1. **Lot 6 T14**, **lot 7 T17**, **lot 8 T17** : tests e2e Playwright (`frontend/e2e/` ne contient que
    connexion, référentiel, missions, accessibilité, clavier, impression), documentation de fin de lot.
 2. **Lot 9** : T22 (revue
@@ -50,27 +72,31 @@ Dernière mise à jour : **2026-11-03**. Rien n'est poussé : tout est local (Gi
 | Sujet | Détail | Comportement par défaut |
 |---|---|---|
 | Sauvegarde hors serveur (U1) | destination (SFTP, NAS, disque chiffré, S3 interne) et détenteurs du mot de passe restic | sauvegardes locales seules ; `backup.sh --hors-serveur` refuse sans `RESTIC_REPOSITORY` |
-| Hébergement, DNS, TLS (U2) | VPS ou site, deux noms (application, SSO), autorité interne ou Let's Encrypt | recette avec AC jetable |
-| SMTP (U3) | hôte, port, mode, compte, expéditeur, SPF/DKIM | la production refuse de démarrer sans `EMAIL_URL` |
-| Réseau ONEA (U5) | proxy amont, réseau d'administration, supervision | aucun proxy, console Keycloak fermée |
+| Hébergement, DNS, TLS (U2) | VPS ou site, **un seul nom** (application), autorité interne ou Let's Encrypt | recette avec AC jetable |
+| SMTP (U3) | hôte, port, mode, compte, expéditeur, SPF/DKIM ; **désormais aussi nécessaire à l'authentification** (codes de connexion et « mot de passe oublié », courriel de bienvenue) | la production refuse de démarrer sans `EMAIL_URL` ; sans relais fonctionnel, repli : l'administrateur réinitialise les mots de passe (`docs/deploy.md` §5.5) |
+| Réseau ONEA (U5) | proxy amont, réseau d'administration, supervision | aucun proxy |
 | Formation (U6) | participants, dates, salle, postes | supports prêts, calendrier à fixer |
 | 22 gabarits Word réels | `docs/documents/gabarits-manquants.md` | gabarits provisoires générés |
 | Abréviations ONEA à confirmer | QPC, GST, QCI, MARC, FF, RO, PT, FCT, FDT, FIT, FO | libellés actuels conservés |
-| Rôles OTP (D19) | quels comptes à privilèges exigent un second facteur ; liste de mots de passe interdits | documenté dans `deploy.md` §5 étape 8 |
+| Rôles OTP (D19) | quels comptes à privilèges devraient avoir le code de connexion par courriel obligatoire (aujourd'hui facultatif pour tous) | facultatif, activé par le titulaire (`docs/securite/auth-interne-modele.md`) |
 | Libellé de la direction des participants | formulation sur l'ordre de mission | à trancher |
 | Clôture de l'antivirus | réseau sortant vers `database.clamav.net` ou miroir local | contrôle des signatures d'octets seul si ClamAV non livré |
 
 ## 6. Lancer / tester en local
-- Docker Desktop : conteneurs `onea-db-1`, `onea-keycloak-1`, `onea-redis-1`.
+- Docker Desktop : conteneurs `onea-db-1`, `onea-redis-1` (et `mailpit`, http://127.0.0.1:8025, pour lire les codes
+  envoyés par courriel). Plus de conteneur Keycloak.
 - API : `cd backend`, Python `C:\v\onea\Scripts\python.exe manage.py runserver 127.0.0.1:8000` avec
   `DATABASE_URL=postgres://onea:onea-dev-password@127.0.0.1:5432/onea`.
-- Web : `cd frontend && npm run dev` (http://localhost:5173, utiliser `localhost`). Keycloak
-  http://127.0.0.1:8180. Clé `KEYCLOAK_ADMIN_API_CLIENT_SECRET` à placer dans `.env` pour la synchronisation.
-- Comptes de développement et de recette (mot de passe `onea2026`) : `admin`, `rai`, `auditeur1`,
-  `auditeur2`, `audite1`, `dg`. Jamais en production.
+- Web : `cd frontend && npm run dev` (http://localhost:5173, utiliser `localhost`).
+- Comptes de développement et de recette : `admin`, `rai`, `auditeur1`, `auditeur2`, `audite1`, `dg`. Il n'y a plus
+  de mot de passe commun : `python manage.py creer_administrateur --identifiant admin --courriel admin@example.org`
+  crée l'administrateur (mot de passe temporaire affiché une fois), et `donner_mots_de_passe_temporaires`
+  en donne un aux comptes existants sans mot de passe ; chacun le change à sa première connexion. Jamais en
+  production.
 - Tests back : `unset DJANGO_SETTINGS_MODULE`, base dédiée (jamais `onea`), `pytest` ciblé. Tests front :
   `npx vitest run --maxWorkers=2 --testTimeout=30000`. Une suite complète prend 15 à 30 minutes.
-- Données de démonstration : `python manage.py peupler_demo --profil formation --recette` sur base vide.
+- Données de démonstration : `python manage.py peupler_demo --profil formation --recette` sur base vide (comptes
+  locaux à mot de passe temporaire ; le profil `volumetrie` affiche une fois celui des six comptes de test).
 
 ## 7. Méthode
 - Une tâche à la fois, dans un worktree court, un commit par tâche, tests ciblés ; suite complète à l'intégration.

@@ -28,7 +28,7 @@ produits par le script : `sbom-backend.cdx.json`, `sbom-frontend.cdx.json`.
 | django-fsm 5.0.1 | AGPL-3.0-or-later WITH viewflow-library-exception | Autorisee (AGPL) | Conserver. AGPL : si l'application est offerte a des tiers via le reseau, la source complete (y compris modifications de django-fsm) doit etre disponible ; usage interne ONEA sans modification de la bibliotheque : pas d'obligation de publication. Documenter dans le dossier de livraison. |
 | docxtpl 0.20.2 | LGPL-2.1-only | Autorisee (LGPL) | Conserver ; utilisation par import sans modification de la bibliotheque. |
 | psycopg / psycopg-binary 3.3.6 | LGPL-3.0-only | Autorisee (LGPL) | Conserver ; liaison dynamique, wheels non modifiees. |
-| mozilla-django-oidc 5.0.2, certifi | MPL-2.0 | Autorisee | Conserver. |
+| mozilla-django-oidc 5.0.2 (retire le 2026-11-04 avec Keycloak), certifi | MPL-2.0 | Autorisee | Conserver certifi ; argon2-cffi (MIT) a ete ajoute pour l'authentification interne. |
 | cffi 2.1.1 | MIT-0 | Hors liste litterale, equivalent permissif (MIT sans condition d'attribution) | Proposer d'ajouter MIT-0 a la liste de CLAUDE.md. |
 | typing_extensions 4.16.0 | PSF-2.0 | Equivalent de Python-2.0 | Accepter (meme famille que Python-2.0). |
 | cryptography, packaging, python-dateutil, uritemplate | doubles licences (Apache-2.0 OR BSD) | Autorisees | Rien. |

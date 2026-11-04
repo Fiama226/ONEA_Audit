@@ -1,6 +1,7 @@
 # Prêt à livrer — liste de contrôle go / no-go (T36 « vérification finale »)
 
-Établie le 2026-11-03 d'après le dépôt (branche `develop`). Légende du statut :
+Établie le 2026-11-03 d'après le dépôt (branche `develop`) ; mise à jour le 2026-11-04 pour le remplacement de
+Keycloak par l'authentification interne (branche `feat/auth-interne`, non fusionnée). Légende du statut :
 **OK** = preuve lue dans le dépôt (le fichier cité) ; **à vérifier** = non exécuté ni constaté par l'auteur de
 cette liste, à rejouer ; **à faire** = travail restant de l'équipe ; **bloqué par ONEA** = dépend d'une
 décision ou d'une information de l'ONEA (voir `docs/HANDOFF.md` §5). Aucune commande n'a été exécutée pour
@@ -14,9 +15,9 @@ bloquent la mise en production (pas la livraison du logiciel), chacune avec son 
 | # | Critère | Comment vérifier | Statut |
 |---|---|---|---|
 | A1 | Lint et typage back et front | `make lint` | à vérifier |
-| A2 | Tests back et front (une seule exécution complète) | `make test` (backend : `pytest`, couverture ≥ 80 % en CI) | à vérifier |
+| A2 | Tests back et front (une seule exécution complète) | `make test` (backend : `pytest`, couverture ≥ 80 % en CI). Sur `feat/auth-interne` les tests du backend ont été lancés **application par application** (disque insuffisant pour une exécution complète unique) et ceux du frontend ciblés ; aucune exécution complète unique n'a eu lieu | à vérifier |
 | A3 | Schéma d'API à jour | `sh scripts/check-api-fresh.sh` (ou `make check-api`) | à vérifier |
-| A4 | Tests e2e | `sh scripts/e2e.sh` (Playwright, base jetable) ; couvrent aujourd'hui connexion, référentiel, missions, accessibilité, clavier, impression | à vérifier |
+| A4 | Tests e2e | `sh scripts/e2e.sh` (Playwright, base jetable, comptes créés par `creer_comptes_e2e`) ; couvrent aujourd'hui connexion par formulaire, référentiel, missions, accessibilité, clavier, impression. Les specs ont été vérifiées par `tsc` mais **n'ont pas été exécutées** depuis le remplacement de Keycloak | à vérifier |
 | A5 | e2e des lots 6 (T14), 7 (T17), 8 (T17) | aucune spec dans `frontend/e2e/` pour accomplissement, communication, suivi | à faire |
 | A6 | Accessibilité stricte sur toutes les zones | `A11Y_STRICT=1` avec `scripts/e2e.sh` ; rapport `docs/qualite/audit-accessibilite.md` | à vérifier |
 | A7 | Budget frontend | `cd frontend && npm run build && npm run budget` (`scripts/verifier-budget-frontend.mjs`) | à vérifier |
@@ -27,7 +28,8 @@ bloquent la mise en production (pas la livraison du logiciel), chacune avec son 
 
 | # | Critère | Comment vérifier | Statut |
 |---|---|---|---|
-| B1 | Revue ASVS niveau 2 : aucun constat critique, élevé ou moyen ouvert | `docs/securite/asvs-l2.md` : SEC-01 corrigé, SEC-02 résolu, SEC-03 corrigé, SEC-04 résolu ; SEC-05 à SEC-09 faibles corrigés ou acceptés (SEC-07 accepté par l'utilisateur) | OK |
+| B1 | Revue ASVS niveau 2 : aucun constat critique, élevé ou moyen ouvert | `docs/securite/asvs-l2.md` : SEC-01 corrigé, SEC-02 résolu, SEC-03 corrigé, SEC-04 résolu ; SEC-05 à SEC-09 faibles corrigés ou acceptés (SEC-07 accepté par l'utilisateur). **Cette revue portait sur Keycloak** : elle doit être rejouée sur l'authentification interne (V2, V3, V4) | OK pour l'ancienne version ; à refaire |
+| B8 | Revue de sécurité de l'authentification interne, constats critiques et élevés corrigés | `docs/securite/auth-interne-modele.md` ; scénarios S4-29 à S4-37 de `docs/recette/scenarios-de-test.md` | à faire (revue statique en cours, scénarios non joués) |
 | B2 | Licences : aucune hors liste, SBOM produit | `bash scripts/audit-dependances.sh` ; rapport daté du 2026-10-30 dans `docs/securite/licences.md` (0 bloquant) à rejouer, la liste ayant évolué le 2026-11-02 | à vérifier |
 | B3 | Vulnérabilités connues | même script (pip-audit, npm audit) ; 0 au 2026-10-30 | à vérifier |
 | B4 | Images et dépendances épinglées | `sh scripts/verifier-epinglage.sh` | à vérifier |
@@ -40,8 +42,8 @@ bloquent la mise en production (pas la livraison du logiciel), chacune avec son 
 | # | Critère | Comment vérifier | Statut |
 |---|---|---|---|
 | C1 | Configuration de production valide | `make prod-config` | à vérifier |
-| C2 | Recette depuis zéro selon `docs/deploy.md` et `docs/exploitation/mise-en-production.md` | `sh scripts/recette/up.sh`, `sh scripts/recette/realm.sh` ; checklist rejouée par un tiers (statut « non consigné » dans la checklist) | à vérifier |
-| C3 | Bancs de la recette : périphérie, réseaux, TLS, journaux, secrets, restauration | `sh scripts/recette/tests/{edge,reseaux,tls,journaux,secrets,restauration}.sh` (+ `realm.sh`) | à vérifier |
+| C2 | Recette depuis zéro selon `docs/deploy.md` et `docs/exploitation/mise-en-production.md` | `sh scripts/recette/up.sh`, puis `creer_administrateur` et création des comptes (`docs/recette.md`) ; checklist rejouée par un tiers (statut « non consigné » dans la checklist) | à vérifier |
+| C3 | Bancs de la recette : périphérie, réseaux, TLS, journaux, secrets, restauration | `sh scripts/recette/tests/{edge,reseaux,tls,journaux,secrets,restauration}.sh` | à vérifier |
 | C4 | Restauration en moins de 30 minutes, documents identiques à l'octet | `sh scripts/recette/tests/restauration.sh` | à vérifier |
 | C5 | Test de charge : 40 utilisateurs simultanés dans les budgets | `sh scripts/recette/charge.sh` ; résultats locaux du 2026-11-02 dans `docs/qualite/charge/2026-11-02-local/` (le fichier d'échecs y contient des 401, 403 et 429 à interpréter) | à vérifier |
 | C6 | Budgets de requêtes de l'API | `cd backend && python -m pytest tests/performance --create-db` | à vérifier |
@@ -56,7 +58,7 @@ bloquent la mise en production (pas la livraison du logiciel), chacune avec son 
 | D2 | Manuels rejoués sur l'application (10 procédures par manuel), rubrique « À confirmer » levée | relecture sur la recette « formation » | à faire |
 | D3 | Manuels accessibles depuis l'application (menu « Aide »), PDF et captures | `docs/manuels/README.md` : non réalisé (tâche T30) | à faire |
 | D4 | Kit de formation présent | `docs/formation/` | OK (présent) |
-| D5 | Kit de formation rejoué sur un environnement neuf, réinitialisation < 15 min | `sh scripts/recette/down.sh` puis `up.sh`, `realm.sh`, `peupler_demo --profil formation --recette` ; suivre les fiches | à faire |
+| D5 | Kit de formation rejoué sur un environnement neuf, réinitialisation < 15 min | `sh scripts/recette/down.sh` puis `up.sh`, création des comptes (`docs/formation/guide-formateur.md` §1.1), `peupler_demo --profil formation --recette` ; suivre les fiches | à faire |
 | D6 | Document de passage `docs/exploitation/passage-0.9.0.md` (résultats, constats acceptés, conditions de la 1.0.0) | fichier absent | à faire |
 | D7 | Revue visuelle de tous les écrans et corrections d'interface (T22, T24, T25) | rapports de QA design dans `docs/recette/` partiels | à faire |
 
@@ -65,15 +67,23 @@ bloquent la mise en production (pas la livraison du logiciel), chacune avec son 
 | # | Décision | Statut |
 |---|---|---|
 | E1 | Destination de la copie hors serveur des sauvegardes et détenteurs du mot de passe restic (U1) | bloqué par ONEA |
-| E2 | Hébergement, noms DNS, source du certificat TLS (U2) | bloqué par ONEA |
-| E3 | SMTP (U3) : sans `EMAIL_URL`, la production refuse de démarrer | bloqué par ONEA |
+| E2 | Hébergement, nom DNS (un seul : plus de nom pour un serveur d'identité), source du certificat TLS (U2) | bloqué par ONEA |
+| E3 | SMTP (U3) : sans `EMAIL_URL`, la production refuse de démarrer ; il porte aussi les codes de connexion, le « mot de passe oublié » et le courriel de bienvenue (repli sans courriel : réinitialisation par un administrateur) | bloqué par ONEA |
 | E4 | Réseau : proxy amont, réseau d'administration, supervision (U5) | bloqué par ONEA |
 | E5 | 22 gabarits Word réels (provisoires acceptés pour la livraison, pas pour l'usage final) | bloqué par ONEA |
-| E6 | Abréviations QPC, GST, QCI, MARC, FF, RO, PT, FCT, FDT, FIT, FO ; rôles OTP (D19) ; libellé de la direction des participants sur l'ordre de mission | bloqué par ONEA |
+| E6 | Abréviations QPC, GST, QCI, MARC, FF, RO, PT, FCT, FDT, FIT, FO ; rôles pour lesquels le code de connexion par courriel deviendrait obligatoire (D19, aujourd'hui facultatif) ; libellé de la direction des participants sur l'ordre de mission | bloqué par ONEA |
 | E7 | Formation (U6) : participants, dates, salle, postes | bloqué par ONEA |
 | E8 | ClamAV : accepté (6c982ec) ; reste l'accès sortant vers les signatures ou un miroir local | bloqué par ONEA |
 
-## Synthèse au 2026-11-03
+## Synthèse au 2026-11-04
 Logiciel : fonctionnellement intégré dans `develop` jusqu'au lot 8 et au lot 9 (T1 à T21, T23, T26 à T29, T31) ; **no-go
 aujourd'hui** pour la livraison finale, faute des critères A5, A8, D2, D3, D5, D6, D7 (travail restant) et des
 vérifications « à vérifier » non rejouées. Mise en production : en plus, E1 à E4 à lever par l'ONEA.
+
+Authentification interne (`feat/auth-interne`, non fusionnée dans `develop`) : le remplacement de Keycloak est
+écrit, documenté (`docs/deploy.md` §5, runbook, manuels, scénarios) et ses tests ont été lancés par application ;
+**ne sont pas faits** : suite complète en une exécution, specs Playwright (typage vérifié, exécution non faite),
+parcours manuel sur le site de test, revue de sécurité (B8) et rejeu de l'audit ASVS (B1). Ce qui reste à
+fournir par l'ONEA pour l'authentification : le relais SMTP (E3), le certificat TLS réel, le nom DNS et
+l'hébergement (E2), la copie hors serveur des sauvegardes (E1), et, hors authentification, les 22 gabarits Word
+réels (E5). Verdict inchangé tant que ces points ne sont pas levés : on ne peut pas dire « prêt à livrer ».
