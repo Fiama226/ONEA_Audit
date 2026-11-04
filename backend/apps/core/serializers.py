@@ -76,6 +76,7 @@ class AuditLogSerializer(serializers.Serializer[LogEntry]):
     object_id = serializers.CharField(source="object_pk", read_only=True)
     object_repr = serializers.CharField(read_only=True)
     changes = serializers.SerializerMethodField()
+    action_metier = serializers.SerializerMethodField()
 
     @extend_schema_field(
         serializers.ChoiceField(choices=["create", "update", "delete", "access", "unknown"])
@@ -98,6 +99,24 @@ class AuditLogSerializer(serializers.Serializer[LogEntry]):
         if self._masque(instance):
             data["object_repr"] = MASQUE
         return data
+
+    @extend_schema_field(
+        serializers.CharField(
+            allow_null=True,
+            help_text=(
+                "Business action named by the service that wrote the entry "
+                "(additional_data.action), e.g. creation_compte, reinitialisation_mot_de_passe, "
+                "changement_mot_de_passe, reinitialisation_par_code, activation_otp; "
+                "null when none."
+            ),
+        )
+    )
+    def get_action_metier(self, obj: LogEntry) -> str | None:
+        if self._masque(obj):
+            return None
+        donnees = obj.additional_data
+        action = donnees.get("action") if isinstance(donnees, dict) else None
+        return action if isinstance(action, str) else None
 
     @extend_schema_field(CHANGES_SCHEMA)
     def get_changes(self, obj: LogEntry) -> dict[str, Any]:

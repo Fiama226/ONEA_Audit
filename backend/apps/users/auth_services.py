@@ -1,13 +1,18 @@
 """In-app authentication: password login with lockout, one-time codes, temporary passwords."""
 
+import copy
 import logging
 import secrets
 import string
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
 
+from auditlog.context import disable_auditlog
+from auditlog.diff import model_instance_diff
+from auditlog.models import LogEntry
 from django.conf import settings
 from django.contrib.auth import SESSION_KEY
 from django.contrib.auth.hashers import check_password, make_password
@@ -44,6 +49,13 @@ CODES_CONNEXION_FENETRE = timedelta(minutes=15)
 CODES_REMPLACES_VERIFIES = 3
 # Session key of a login waiting for its OTP step: the account id.
 CLE_OTP_COMPTE = "onea_otp_compte"
+
+# Values of `additional_data["action"]` on the audit entries of the owner's own actions.
+ACTION_CHANGEMENT_MOT_DE_PASSE = "changement_mot_de_passe"
+ACTION_CHANGEMENT_IMPOSE = "changement_mot_de_passe_impose"
+ACTION_REINITIALISATION_PAR_CODE = "reinitialisation_par_code"
+ACTION_ACTIVATION_OTP = "activation_otp"
+ACTION_DESACTIVATION_OTP = "desactivation_otp"  # same label as the administration's
 
 MEME_MOT_DE_PASSE = "Le nouveau mot de passe doit être différent de l'actuel."
 ENVOI_COURRIEL_NON_CONFIGURE = "Envoi de courriels non configuré"
@@ -505,27 +517,57 @@ def terminer_sessions(compte_id: int, *, sauf: str | None = None) -> int:
     return supprimees
 
 
-def _appliquer_mot_de_passe(verrou: User, nouveau: str) -> None:
+@contextmanager
+def _action_du_titulaire(compte: User, action: str) -> Iterator[None]:
+    """Write ONE audit entry naming an action of the owner on its own account.
+
+    django-auditlog only logs a save that changes a tracked field, and the password is
+    never tracked: a plain change or a reset by code would leave no trace (final review I1).
+    The saves of the block are not logged on their own; a single entry carries their
+    tracked changes (never the password), the action and the owner as actor, in the same
+    transaction as the change.
+    """
+    avant = copy.copy(compte)
+    with transaction.atomic():
+        with disable_auditlog():
+            yield
+        changements = model_instance_diff(
+            avant,
+            compte,
+            use_json_for_changes=getattr(settings, "AUDITLOG_STORE_JSON_CHANGES", False),
+        )
+        LogEntry.objects.log_create(
+            compte,
+            force_log=True,
+            action=LogEntry.Action.UPDATE,
+            changes=changements or {},
+            actor=compte,
+            additional_data={"action": action},
+        )
+
+
+def _appliquer_mot_de_passe(verrou: User, nouveau: str, *, action: str) -> None:
     """Set the password on the row-locked account and lift every login hindrance.
 
     Codes still pending were issued under the old password (a login waiting for its OTP
     step, an earlier reset request): they are dropped. The account's active flag is never
-    touched here.
+    touched here. One audit entry names ``action`` (`_action_du_titulaire`).
     """
-    verrou.set_password(nouveau)
-    verrou.doit_changer_mot_de_passe = False
-    verrou.mot_de_passe_expire_le = None
-    verrou.echecs_connexion = 0
-    verrou.verrouille_jusqu_a = None
-    verrou.save(
-        update_fields=[
-            "password",
-            "doit_changer_mot_de_passe",
-            "mot_de_passe_expire_le",
-            "echecs_connexion",
-            "verrouille_jusqu_a",
-        ]
-    )
+    with _action_du_titulaire(verrou, action):
+        verrou.set_password(nouveau)
+        verrou.doit_changer_mot_de_passe = False
+        verrou.mot_de_passe_expire_le = None
+        verrou.echecs_connexion = 0
+        verrou.verrouille_jusqu_a = None
+        verrou.save(
+            update_fields=[
+                "password",
+                "doit_changer_mot_de_passe",
+                "mot_de_passe_expire_le",
+                "echecs_connexion",
+                "verrouille_jusqu_a",
+            ]
+        )
     CodeOtp.objects.filter(user=verrou, utilise_le__isnull=True).delete()
 
 
@@ -609,7 +651,7 @@ def _reinitialiser_sous_verrou(
             _journaliser_reinitialisation_refusee("code", verrou, adresse)
             return (None, Comptage.SECRET_FAUX, verrou.pk), dette
         validate_password(nouveau, verrou)  # raising rolls back the code consumption
-        _appliquer_mot_de_passe(verrou, nouveau)
+        _appliquer_mot_de_passe(verrou, nouveau, action=ACTION_REINITIALISATION_PAR_CODE)
         if verrou.echecs_reinitialisation or verrou.echecs_reinitialisation_depuis:
             verrou.echecs_reinitialisation = 0
             verrou.echecs_reinitialisation_depuis = None
@@ -665,7 +707,9 @@ def changer_mot_de_passe(
         verrou = _reconfirmer(compte, ancien, motif="ancien_mot_de_passe", adresse=adresse)
         if verrou is None:
             return None
-        _appliquer_mot_de_passe(verrou, nouveau)
+        impose = verrou.doit_changer_mot_de_passe  # temporary password at its first login
+        action = ACTION_CHANGEMENT_IMPOSE if impose else ACTION_CHANGEMENT_MOT_DE_PASSE
+        _appliquer_mot_de_passe(verrou, nouveau, action=action)
     logger_securite.info(
         "Mot de passe changé par son titulaire : compte=%s adresse=%s",
         verrou.pk,
@@ -675,10 +719,13 @@ def changer_mot_de_passe(
 
 
 def _enregistrer_otp_connexion(compte: User, actif: bool, adresse: str | None) -> None:
-    """Save the flag (the audit trail records it through auditlog) and log the event."""
+    """Save the flag (one audit entry naming the action, the owner as actor) and log the
+    event. Setting the flag to its current value changes nothing and writes no entry."""
     if compte.otp_connexion_actif != actif:
-        compte.otp_connexion_actif = actif
-        compte.save(update_fields=["otp_connexion_actif"])
+        action = ACTION_ACTIVATION_OTP if actif else ACTION_DESACTIVATION_OTP
+        with _action_du_titulaire(compte, action):
+            compte.otp_connexion_actif = actif
+            compte.save(update_fields=["otp_connexion_actif"])
     logger_securite.info(
         "Code de connexion par courriel %s : compte=%s adresse=%s",
         "activé" if actif else "désactivé",

@@ -50,6 +50,7 @@ def test_rai_lists_entries_with_changes(rai_client: APIClient, modified_user: Us
         "object_id",
         "object_repr",
         "changes",
+        "action_metier",
     }
     assert item["action"] == "update"
     assert item["model"] == "users.user"
