@@ -140,3 +140,42 @@ def test_envoi_without_email_returns_false(user: User) -> None:
     user.email = ""
     assert envoyer_code(user, "123456", ObjetOtp.RESET) is False
     assert mail.outbox == []
+
+
+def test_second_emission_leaves_one_active_code_and_rejects_older(user: User) -> None:
+    premier = emettre_otp(user, ObjetOtp.RESET)
+    second = emettre_otp(user, ObjetOtp.RESET)
+    assert CodeOtp.objects.filter(user=user, objet=ObjetOtp.RESET, utilise_le=None).count() == 1
+    if premier != second:
+        assert verifier_otp(user, ObjetOtp.RESET, premier) is False
+    assert verifier_otp(user, ObjetOtp.RESET, second) is True
+
+
+def test_emission_locks_user_row(user: User, monkeypatch: pytest.MonkeyPatch) -> None:
+    appels: list[bool] = []
+    original = User.objects.select_for_update
+
+    def espion(*args: object, **kwargs: object):  # type: ignore[no-untyped-def]
+        appels.append(True)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(type(User.objects), "select_for_update", lambda self, *a, **k: espion())
+    emettre_otp(user, ObjetOtp.RESET)
+    assert appels
+
+
+def test_send_failure_logs_without_secrets(
+    user: User, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def boom(*args: object, **kwargs: object) -> None:
+        raise OSError("smtp down 654321 Mdp-Secret-XYZ")
+
+    monkeypatch.setattr("apps.users.courriels.send_mail", boom)
+    with caplog.at_level(logging.DEBUG):
+        assert envoyer_code(user, "654321", ObjetOtp.RESET) is False
+        assert envoyer_bienvenue(user, "Mdp-Secret-XYZ") is False
+    assert "failed" in caplog.text
+    assert "654321" not in caplog.text and "Mdp-Secret-XYZ" not in caplog.text
+    for record in caplog.records:
+        assert "654321" not in record.getMessage() and "Mdp-Secret-XYZ" not in record.getMessage()
+        assert record.exc_info is None

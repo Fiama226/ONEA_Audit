@@ -29,6 +29,9 @@ def emettre_otp(user: User, objet: str) -> str:
     """
     code = "".join(secrets.choice(string.digits) for _ in range(6))
     with transaction.atomic():
+        # Lock the user row so concurrent issuances for the same user serialize
+        # (otherwise both delete, both insert, and the unique active slot raises).
+        User.objects.select_for_update().get(pk=user.pk)
         CodeOtp.objects.filter(user=user, objet=objet, utilise_le__isnull=True).delete()
         CodeOtp.objects.create(
             user=user,
