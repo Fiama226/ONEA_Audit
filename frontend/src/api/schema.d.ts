@@ -2607,7 +2607,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Démarrer l'étape
+         * Démarrer l'étape (motif facultatif : dérogation du RAI à l'ordre des étapes)
          * @description Base : accès par rôle, pas de PUT, adresse IP et acteur.
          */
         post: operations["v1_mission_steps_start_create"];
@@ -5410,6 +5410,10 @@ export interface components {
             /** @default  */
             commentaire: string;
         };
+        DerogationRequest: {
+            /** @description Motif d'une dérogation du RAI à l'ordre des étapes (journalisé). */
+            motif?: string;
+        };
         /** @description Base des sérialiseurs qui exposent `etape_close` : statuts lus une fois par mission. */
         DescriptionProcessus: {
             /** Format: uuid */
@@ -5794,6 +5798,7 @@ export interface components {
             /** Motif « non applicable » */
             readonly motif_non_applicable: string;
             readonly actions_possibles: components["schemas"]["ActionEtapeEnum"][];
+            readonly predecesseurs_ouverts: string[];
             readonly livrables_manquants: string[];
             readonly evenements: components["schemas"]["Evenement"][];
         };
@@ -19735,7 +19740,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DerogationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DerogationRequest"];
+                "multipart/form-data": components["schemas"]["DerogationRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -19743,6 +19754,14 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Etape"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             401: {

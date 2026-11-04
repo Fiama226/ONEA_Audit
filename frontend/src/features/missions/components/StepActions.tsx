@@ -50,7 +50,16 @@ export function StepActions({ step }: { step: Etape }) {
   const [dialog, setDialog] = useState<ActionEtape | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
   const actions = ORDER.filter((a) => step.actions_possibles.includes(a));
-  if (actions.length === 0) return null;
+  const outOfOrder = step.predecesseurs_ouverts.length > 0;
+  const waiting = outOfOrder
+    ? m.mustCloseFirst.replace("{romain}", step.predecesseurs_ouverts.join(" et ")).replace(
+        "{cible}",
+        step.romain,
+      )
+    : null;
+  if (actions.length === 0) {
+    return waiting ? <p className="text-sm text-text-muted print:hidden">{waiting}</p> : null;
+  }
 
   async function direct(action: StepAction) {
     setFailure(null);
@@ -65,7 +74,13 @@ export function StepActions({ step }: { step: Etape }) {
     }
   }
 
-  const motif = dialog ? WITH_MOTIF[dialog] : undefined;
+  const motif =
+    dialog === "DEMARRER"
+      ? { action: "start" as const, title: m.startOutOfOrderTitle, text: m.startOutOfOrderText }
+      : dialog
+        ? WITH_MOTIF[dialog]
+        : undefined;
+  const motifLabel = dialog === "DEMARRER" ? m.startOutOfOrderConfirm : dialog && ACTION_LABELS[dialog];
 
   return (
     <div className="grid gap-3 print:hidden">
@@ -80,13 +95,20 @@ export function StepActions({ step }: { step: Etape }) {
                 a === "VALIDER" || a === "TERMINER" || a === "DEMARRER" ? "default" : "outline"
               }
               disabled={run.isPending}
-              onClick={() => (action ? void direct(action) : setDialog(a))}
+              onClick={() =>
+                a === "DEMARRER" && outOfOrder
+                  ? setDialog(a)
+                  : action
+                    ? void direct(action)
+                    : setDialog(a)
+              }
             >
               {ACTION_LABELS[a]}
             </Button>
           );
         })}
       </div>
+      {waiting && <p className="text-sm text-text-muted">{waiting}</p>}
       {failure && (
         <div role="alert" className={ALERT_CLASS}>
           <p>{failure.livrables.length > 0 ? m.livrablesError : failure.detail}</p>
@@ -113,7 +135,7 @@ export function StepActions({ step }: { step: Etape }) {
           onOpenChange={(open) => !open && setDialog(null)}
           title={motif.title}
           description={motif.text}
-          confirmLabel={ACTION_LABELS[dialog]}
+          confirmLabel={motifLabel ?? ACTION_LABELS[dialog]}
           onSubmit={(text) => run.mutateAsync({ id: step.id, action: motif.action, motif: text })}
         />
       )}

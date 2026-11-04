@@ -175,6 +175,11 @@ export const fr = {
     colRecommendations: "Recomm.",
   },
   missionEtapes: {
+    mustCloseFirst: "L'étape {romain} doit être terminée avant de commencer l'étape {cible}.",
+    startOutOfOrderTitle: "Démarrer hors ordre",
+    startOutOfOrderText:
+      "Les étapes précédentes ne sont pas closes. Seul le RAI peut déroger à l'ordre des étapes ; le motif est conservé dans le journal de l'étape.",
+    startOutOfOrderConfirm: "Démarrer par dérogation",
     notFound: "Étape introuvable.",
     workTitle: "Travaux de l'étape",
     stepTitle: "Étape {romain} — {titre}",

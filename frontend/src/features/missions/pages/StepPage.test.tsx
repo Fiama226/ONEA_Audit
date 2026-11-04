@@ -116,6 +116,37 @@ describe("StepPage", () => {
     await waitFor(() => expect(calls).toEqual(["validate"]));
   });
 
+  it("tells an auditor which earlier step must close before starting", async () => {
+    render(
+      3,
+      "AUDITEUR",
+      allSteps((n) => (n === 3 ? { predecesseurs_ouverts: ["II"], actions_possibles: [] } : {})),
+    );
+    expect(await screen.findByText(/L'étape II doit être terminée avant de commencer/)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Commencer l'étape" })).not.toBeInTheDocument();
+  });
+
+  it("lets the RAI start out of order with a recorded reason", async () => {
+    const user = userEvent.setup();
+    const bodies: unknown[] = [];
+    const steps = allSteps((n) =>
+      n === 3 ? { predecesseurs_ouverts: ["II"], actions_possibles: ["DEMARRER"] } : {},
+    );
+    render(3, "RAI", steps, {
+      handlers: [
+        http.post(`${API_URL}/api/v1/mission-steps/${stepId(3)}/start/`, async ({ request }) => {
+          bodies.push(await request.json());
+          return HttpResponse.json({ ...steps[2], statut: "EN_COURS", actions_possibles: [] });
+        }),
+      ],
+    });
+    await user.click(await screen.findByRole("button", { name: "Commencer l'étape" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.type(within(dialog).getByRole("textbox"), "Urgence du terrain.");
+    await user.click(within(dialog).getByRole("button", { name: "Démarrer par dérogation" }));
+    await waitFor(() => expect(bodies).toEqual([{ motif: "Urgence du terrain." }]));
+  });
+
   it("lists the three missing deliverables when « Terminer l'étape » is refused (422)", async () => {
     const user = userEvent.setup();
     render(

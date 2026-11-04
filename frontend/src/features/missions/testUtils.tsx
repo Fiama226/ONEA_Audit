@@ -95,6 +95,7 @@ export function aStep(overrides: Partial<Etape> = {}): Etape {
     validee_le: null,
     motif_non_applicable: "",
     actions_possibles: [],
+    predecesseurs_ouverts: [],
     livrables_manquants: [],
     evenements: [],
     ...overrides,
