@@ -23,6 +23,11 @@ urlpatterns = [
         auth_views.ChangementMotDePasseView.as_view(),
         name="auth-password-change",
     ),
+    path(
+        "auth/otp/enable/code/",
+        auth_views.DemandeCodeActivationOtpView.as_view(),
+        name="auth-otp-enable-code",
+    ),
     path("auth/otp/enable/", auth_views.ActivationOtpView.as_view(), name="auth-otp-enable"),
     path("auth/otp/disable/", auth_views.DesactivationOtpView.as_view(), name="auth-otp-disable"),
 ]

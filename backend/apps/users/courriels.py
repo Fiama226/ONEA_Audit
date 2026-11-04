@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 _OBJETS = {
     ObjetOtp.RESET: "réinitialisation de votre mot de passe",
     ObjetOtp.LOGIN: "confirmation de votre connexion",
+    ObjetOtp.ACTIVATION: "activation du code de connexion par courriel",
 }
 
 

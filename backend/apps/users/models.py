@@ -101,6 +101,7 @@ class User(AbstractUser):
 class ObjetOtp(models.TextChoices):
     RESET = "RESET", "Réinitialisation du mot de passe"
     LOGIN = "LOGIN", "Connexion"
+    ACTIVATION = "ACTIVER", "Activation du code de connexion"
 
 
 class CodeOtp(models.Model):

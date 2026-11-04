@@ -105,6 +105,37 @@ def envoyer_code_connexion(compte_id: int) -> bool:
     return True
 
 
+@shared_task(name="users.envoyer_code_activation_otp")  # type: ignore[untyped-decorator]
+def envoyer_code_activation_otp(compte_id: int) -> bool:
+    """Issue and email the ACTIVATION code the owner asked for in "Mon compte".
+
+    Same rules as the login code (issued in the worker, per-account cap); nothing is
+    issued once the option is on.
+    """
+    from .auth_services import (
+        emettre_otp,
+        envoi_courriel_actif,
+        logger_securite,
+        quota_codes_connexion,
+    )
+    from .courriels import envoyer_code
+    from .models import ObjetOtp
+
+    compte = User.objects.filter(pk=compte_id, is_active=True, otp_connexion_actif=False).first()
+    if compte is None or not compte.email or not envoi_courriel_actif():
+        return False
+    if not quota_codes_connexion(compte.pk):
+        logger_securite.warning(
+            "Code d'activation non émis, plafond par compte atteint : compte=%s", compte.pk
+        )
+        return False
+    code = emettre_otp(compte, ObjetOtp.ACTIVATION)
+    if not envoyer_code(compte, code, ObjetOtp.ACTIVATION):
+        logger.warning("Code d'activation non envoyé : compte=%s", compte.pk)
+        return False
+    return True
+
+
 @shared_task(name="users.envoyer_mot_de_passe_temporaire")  # type: ignore[untyped-decorator]
 def envoyer_mot_de_passe_temporaire(envoi_id: str, compte_id: int | None = None) -> bool:
     """Email a temporary password queued by `envois.mettre_en_file_mot_de_passe` (AUTH-01).

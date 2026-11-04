@@ -32,6 +32,7 @@ FORGOT = "/api/v1/auth/password/forgot/"
 RESET = "/api/v1/auth/password/reset/"
 CHANGE = "/api/v1/auth/password/change/"
 OTP_ON = "/api/v1/auth/otp/enable/"
+OTP_CODE = "/api/v1/auth/otp/enable/code/"
 OTP_OFF = "/api/v1/auth/otp/disable/"
 MDP = "Mot-de-passe-solide-2026"
 NOUVEAU = "Nouvelle-phrase-secrete-77"
@@ -72,6 +73,12 @@ def _reset(identifiant: str, code: str, nouveau: str = NOUVEAU) -> Any:
 
 def _change(client: APIClient, ancien: str = MDP, nouveau: str = NOUVEAU) -> Any:
     return client.post(CHANGE, {"ancien": ancien, "nouveau": nouveau}, format="json")
+
+
+def _activer(client: APIClient) -> Any:
+    """Turn the login code on the way the page does: ask for a code, type it."""
+    assert client.post(OTP_CODE).status_code == 202
+    return client.post(OTP_ON, {"code": _code_du_courriel()}, format="json")
 
 
 def _desactiver(client: APIClient, mot_de_passe: str = MDP) -> Any:
@@ -505,7 +512,7 @@ def test_change_requires_csrf(agent: User) -> None:
 def test_otp_enable_refused_without_email(agent: User) -> None:
     client = _connecte()
     with override_settings(**SANS_SMTP):
-        r = client.post(OTP_ON)
+        r = client.post(OTP_CODE)
     assert r.status_code == 409
     assert r.json() == {"detail": "Envoi de courriels non configuré", "errors": {}}
     agent.refresh_from_db()
@@ -514,15 +521,59 @@ def test_otp_enable_refused_without_email(agent: User) -> None:
 
 def test_otp_enable_refused_when_account_has_no_email() -> None:
     sans = make_user(username="sans.courriel", email="", password=MDP)
-    r = _connecte("sans.courriel").post(OTP_ON)
+    r = _connecte("sans.courriel").post(OTP_CODE)
     assert r.status_code == 409
     sans.refresh_from_db()
     assert sans.otp_connexion_actif is False
 
 
+def test_otp_enable_needs_the_mailed_code(agent: User) -> None:
+    client = _connecte()
+    sans_code = client.post(OTP_ON)
+    assert sans_code.status_code == 400
+    assert set(sans_code.json()["errors"]) == {"code"}
+    avant = len(mail.outbox)
+    assert client.post(OTP_CODE).status_code == 202
+    assert len(mail.outbox) == avant + 1
+    assert mail.outbox[-1].to == ["Awa.Ouedraogo@onea.bf"]
+    code = _code_du_courriel()
+    faux = client.post(OTP_ON, {"code": _faux(code)}, format="json")
+    assert faux.status_code == 400
+    assert faux.json()["errors"] == {"code": ["Code invalide ou expiré."]}
+    agent.refresh_from_db()
+    assert agent.otp_connexion_actif is False
+    assert client.post(OTP_ON, {"code": code}, format="json").status_code == 200
+    agent.refresh_from_db()
+    assert agent.otp_connexion_actif is True
+    # The code is single-use; turning on what is already on needs none.
+    assert client.post(OTP_ON, {"code": code}, format="json").status_code == 200
+    assert client.post(OTP_ON).status_code == 200
+
+
+def test_otp_enable_refuses_a_login_code(agent: User) -> None:
+    """A code mailed for another purpose (the login step) never turns the option on."""
+    client = _connecte()
+    code = auth_services.emettre_otp(agent, ObjetOtp.LOGIN)
+    r = client.post(OTP_ON, {"code": code}, format="json")
+    assert r.status_code == 400
+    agent.refresh_from_db()
+    assert agent.otp_connexion_actif is False
+
+
+def test_otp_enable_code_expires_and_is_replaced(agent: User) -> None:
+    client = _connecte()
+    assert client.post(OTP_CODE).status_code == 202
+    ancien = _code_du_courriel()
+    CodeOtp.objects.update(expire_le=timezone.now() - timedelta(minutes=1))
+    r = client.post(OTP_ON, {"code": ancien}, format="json")
+    assert r.status_code == 400
+    assert client.post(OTP_CODE).status_code == 202
+    assert client.post(OTP_ON, {"code": _code_du_courriel()}, format="json").status_code == 200
+
+
 def test_otp_enable_and_disable_by_owner(agent: User) -> None:
     client = _connecte()
-    r = client.post(OTP_ON)
+    r = _activer(client)
     assert r.status_code == 200
     assert r.json() == {"otp_connexion_actif": True}
     agent.refresh_from_db()
@@ -578,7 +629,7 @@ def test_otp_disable_requires_current_password(agent: User) -> None:
 def test_me_exposes_login_code_state(agent: User) -> None:
     client = _connecte()
     assert client.get("/api/v1/me/").json()["otp_connexion_actif"] is False
-    assert client.post(OTP_ON).status_code == 200
+    assert _activer(client).status_code == 200
     assert client.get("/api/v1/me/").json()["otp_connexion_actif"] is True
     assert client.get(SESSION).json()["me"]["otp_connexion_actif"] is True
     assert _desactiver(client).status_code == 200
@@ -587,12 +638,13 @@ def test_me_exposes_login_code_state(agent: User) -> None:
 
 def test_otp_endpoints_anonymous_401() -> None:
     assert APIClient().post(OTP_ON).status_code == 401
+    assert APIClient().post(OTP_CODE).status_code == 401
     assert _desactiver(APIClient()).status_code == 401
 
 
 def test_login_requires_otp_when_enabled(agent: User) -> None:
     client = _connecte()
-    assert client.post(OTP_ON).status_code == 200
+    assert _activer(client).status_code == 200
     client.post("/api/v1/auth/logout/")
 
     r = _login(client)
@@ -609,6 +661,8 @@ def test_otp_cannot_be_enabled_by_admin_for_other_user(agent: User) -> None:
     make_user(Role.ADMIN, username="chef", email="chef@onea.bf", password=MDP)
     admin = _connecte("chef")
     for corps in ({"user": agent.pk}, {"id": agent.pk}, {"username": "awa.ouedraogo"}):
+        assert admin.post(OTP_CODE, corps, format="json").status_code == 202
+        corps = {**corps, "code": _code_du_courriel()}
         assert admin.post(OTP_ON, corps, format="json").status_code == 200
     agent.refresh_from_db()
     assert agent.otp_connexion_actif is False  # only the caller's own account changed
@@ -633,7 +687,7 @@ def test_password_events_are_logged_without_secrets(
         _reset("awa.ouedraogo", code)
         client = _connecte(mot_de_passe=NOUVEAU)
         _change(client, ancien=NOUVEAU, nouveau="Troisieme-phrase-secrete-99")
-        client.post(OTP_ON)
+        _activer(client)
         _desactiver(client, "Troisieme-phrase-secrete-99")
     messages = [r.getMessage() for r in caplog.records if r.name == "onea.securite"]
     texte = "\n".join(messages)

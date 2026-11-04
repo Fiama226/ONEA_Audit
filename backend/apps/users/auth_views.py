@@ -54,12 +54,17 @@ from .auth_throttles import (
 from .authentication import SessionAuthentication401
 from .models import User
 from .serializers import MeSerializer
-from .tasks import envoyer_code_connexion, envoyer_code_reinitialisation
+from .tasks import (
+    envoyer_code_activation_otp,
+    envoyer_code_connexion,
+    envoyer_code_reinitialisation,
+)
 
 logger = logging.getLogger(__name__)
 
 ECHEC_CONNEXION = "Identifiant ou mot de passe incorrect."
 CODE_INVALIDE = "Code invalide ou expiré."
+DEMANDE_CODE_ACTIVATION = "Un code de confirmation a été envoyé à votre adresse."
 DEMANDE_CODE = (
     "Si un compte actif correspond à cet identifiant, un code de vérification vient d'être "
     "envoyé à son adresse de courriel. Il est valable 10 minutes."
@@ -343,20 +348,59 @@ class ChangementMotDePasseView(APIView):
         return Response(_etat(auth_services.etape_apres_second_facteur(compte), compte))
 
 
-class ActivationOtpView(APIView):
-    """Acts on the caller's own account only: no route or field names another account."""
+class DemandeCodeActivationOtpView(APIView):
+    """Mails a confirmation code to the caller's own account (no route names another)."""
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ChangementMotDePasseParUtilisateurThrottle]
+
+    @extend_schema(
+        tags=["Authentification"],
+        summary="Recevoir par courriel le code qui confirme l'activation du code de connexion",
+        request=None,
+        responses={202: MessageSerializer, **ERROR_409, **ERROR_429, **ERROR_RESPONSES},
+    )
+    def post(self, request: Request) -> Response:
+        compte = cast(User, request.user)
+        if auth_services.demander_code_activation_otp(compte):
+            try:
+                envoyer_code_activation_otp.delay(compte.pk)
+            except Exception as exc:  # noqa: BLE001 - broker down: logged, the owner retries
+                logger.warning("Code d'activation non transmis : %s", type(exc).__name__)
+        return Response({"detail": DEMANDE_CODE_ACTIVATION}, status=202)
+
+
+class ActivationOtpView(APIView):
+    """Acts on the caller's own account only: no route or field names another account.
+
+    On the code mailed by `DemandeCodeActivationOtpView` (proof that the mails arrive).
+    """
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ChangementMotDePasseParUtilisateurThrottle]
 
     @extend_schema(
         tags=["Authentification"],
         summary="Activer le code de connexion par courriel (son propre compte)",
-        request=None,
-        responses={200: EtatOtpSerializer, **ERROR_409, **ERROR_RESPONSES},
+        request=CodeConnexionSerializer,
+        responses={
+            200: EtatOtpSerializer,
+            **ERROR_400,
+            **ERROR_409,
+            **ERROR_429,
+            **ERROR_RESPONSES,
+        },
     )
     def post(self, request: Request) -> Response:
         compte = cast(User, request.user)
-        auth_services.activer_otp_connexion(compte, adresse=adresse_client(request))
+        if compte.otp_connexion_actif:
+            return Response({"otp_connexion_actif": True})
+        serializer = CodeConnexionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if not auth_services.activer_otp_connexion(
+            compte, serializer.validated_data["code"], adresse=adresse_client(request)
+        ):
+            raise ValidationError({"code": [CODE_INVALIDE]})
         return Response({"otp_connexion_actif": compte.otp_connexion_actif})
 
 

@@ -130,7 +130,11 @@ def test_reinitialisation_par_code_refusee_sans_entree(agent: User) -> None:
 def test_activation_et_desactivation_du_code_par_le_titulaire(agent: User) -> None:
     client = _connecte("awa")
     avant = len(_entrees(agent))
-    assert client.post("/api/v1/auth/otp/enable/").status_code == 200
+    assert client.post("/api/v1/auth/otp/enable/code/").status_code == 202
+    code = re.search(r"\b(\d{6})\b", str(mail.outbox[-1].body))
+    assert code is not None
+    activation = client.post("/api/v1/auth/otp/enable/", {"code": code.group(1)}, format="json")
+    assert activation.status_code == 200
     (entree,) = _nouvelles(agent, avant)
     assert _action(entree) == "activation_otp"
     assert entree.actor_id == agent.pk

@@ -130,7 +130,9 @@ def test_connexion_avec_code_puis_desactivation(role_app: str) -> None:
         assert r.status_code == 200, r.content
         r = client.post("/api/v1/auth/otp/disable/", {"mot_de_passe": MDP}, format="json")
         assert r.status_code == 200, r.content
-        assert client.post("/api/v1/auth/otp/enable/").status_code == 200
+        assert client.post("/api/v1/auth/otp/enable/code/").status_code == 202
+        r = client.post("/api/v1/auth/otp/enable/", {"code": _code_du_courriel()}, format="json")
+        assert r.status_code == 200, r.content
 
 
 def test_mot_de_passe_oublie_puis_reinitialisation(role_app: str) -> None:

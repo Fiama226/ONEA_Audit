@@ -689,8 +689,30 @@ export interface paths {
         /**
          * Activer le code de connexion par courriel (son propre compte)
          * @description Acts on the caller's own account only: no route or field names another account.
+         *
+         *     On the code mailed by `DemandeCodeActivationOtpView` (proof that the mails arrive).
          */
         post: operations["v1_auth_otp_enable_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/otp/enable/code/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Recevoir par courriel le code qui confirme l'activation du code de connexion
+         * @description Mails a confirmation code to the caller's own account (no route names another).
+         */
+        post: operations["v1_auth_otp_enable_code_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12442,7 +12464,13 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeConnexionRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CodeConnexionRequest"];
+                "multipart/form-data": components["schemas"]["CodeConnexionRequest"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -12450,6 +12478,14 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EtatOtp"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
                 };
             };
             401: {
@@ -12469,6 +12505,65 @@ export interface operations {
                 };
             };
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_auth_otp_enable_code_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Message"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

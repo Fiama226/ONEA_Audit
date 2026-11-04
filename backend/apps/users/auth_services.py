@@ -748,17 +748,42 @@ def _enregistrer_otp_connexion(compte: User, actif: bool, adresse: str | None) -
     )
 
 
-def activer_otp_connexion(compte: User, *, adresse: str | None = None) -> None:
-    """Turn the login code on for the caller's own account.
-
-    It needs a working email (and an address on the account): the account would otherwise be
-    locked out at its next login.
-    """
+def _exiger_courriel_operationnel(compte: User) -> None:
     if not envoi_courriel_actif():
         raise OtpImpossible(ENVOI_COURRIEL_NON_CONFIGURE)
     if not compte.email:
         raise OtpImpossible(COMPTE_SANS_COURRIEL)
+
+
+def demander_code_activation_otp(compte: User) -> bool:
+    """Check that a code can be mailed to the caller's own account, before queuing it.
+
+    The code proves that the address receives the mails: without it, a wrong address would
+    lock the agent out at his next login. Raises `OtpImpossible` when no email can go out.
+    Returns False when the option is already on (nothing to confirm).
+    """
+    _exiger_courriel_operationnel(compte)
+    return not compte.otp_connexion_actif
+
+
+def activer_otp_connexion(compte: User, code: str, *, adresse: str | None = None) -> bool:
+    """Turn the login code on for the caller's own account, on the code mailed to it.
+
+    It needs a working email (and an address on the account) and the proof that the address
+    receives the mails (the ACTIVATION code): the account would otherwise be locked out at
+    its next login. Already on: nothing to confirm. False = code refused (a wrong code
+    spends one of the 5 attempts of the active code).
+    """
+    if compte.otp_connexion_actif:
+        return True
+    _exiger_courriel_operationnel(compte)
+    if not verifier_otp(compte, ObjetOtp.ACTIVATION, code):
+        logger_securite.info(
+            "Code d'activation refusé : compte=%s adresse=%s", compte.pk, adresse or "inconnue"
+        )
+        return False
     _enregistrer_otp_connexion(compte, True, adresse)
+    return True
 
 
 def desactiver_otp_connexion(
