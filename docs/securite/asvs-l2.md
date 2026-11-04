@@ -344,7 +344,7 @@ Statuts :
 
 | Exigence | Statut | Preuve | Action |
 |---|---|---|---|
-| 1.2.1 Comptes de service à moindre privilège | C | conteneurs `cap_drop: ALL`, `no-new-privileges` (`compose.prod.yml:31-35`), `USER onea` (`backend.Dockerfile:51`) ; rôle PostgreSQL applicatif sans DELETE/TRUNCATE (`deploy.md` §7bis) ; seul `worker` reçoit le secret `email_password` et la route SMTP (`compose.prod.yml:155-182`). Rejoué le 2026-11-04 : le compte de service Keycloak `onea-admin-sync` n'existe plus | — |
+| 1.2.1 Comptes de service à moindre privilège | C | conteneurs `cap_drop: ALL`, `no-new-privileges` (`compose.prod.yml:31-35`), `USER onea` (`backend.Dockerfile:51`) ; rôle PostgreSQL applicatif sans TRUNCATE ni DELETE sur les tables métier (DELETE limité aux liaisons, aux sessions et aux trois tables des données d'identification transitoires, `deploy.md` §7bis) ; seuls `worker` et `worker-auth` reçoivent le secret `email_password` et la route SMTP (`compose.prod.yml:155-182`). Rejoué le 2026-11-04 : le compte de service Keycloak `onea-admin-sync` n'existe plus | — |
 | 1.2.2 Communications authentifiées entre composants | C | Redis protégé par mot de passe, Meilisearch par clé maîtresse exigée (`prod.py:73-74`), réseaux `internal` (`deploy.md`, tableau des réseaux) ; `scripts/recette/tests/reseaux.sh` | — |
 | 1.4.1 Contrôle d'accès appliqué côté serveur | C, sauf SEC-01 | `DEFAULT_PERMISSION_CLASSES = IsAuthenticated` (`base.py:278`), permissions par app | SEC-01 (corrigé depuis) |
 | 1.4.4 Un mécanisme unique de contrôle d'accès | NC | gardes avant sérialiseur dupliquées dans 7 apps (`_uuid`, `mission_du_corps`) | SEC-01 (fonction partagée, corrigé depuis) |

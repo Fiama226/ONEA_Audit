@@ -67,6 +67,15 @@ TABLES_AJOUT_SEUL: frozenset[str] = frozenset(
     }
 )
 
+# (c) Données d'identification transitoires (authentification interne) : DELETE accordé au rôle
+# applicatif. Codes à usage unique, mots de passe temporaires en attente d'envoi, fichiers de
+# mots de passe d'un import : supprimés à l'usage et par la purge quotidienne, par conception.
+# Aucune n'est un `BaseModel` (aucun déclencheur de suppression ne les vise : contrôlé par
+# `tables_transitoires`).
+TABLES_TRANSITOIRES: frozenset[str] = frozenset(
+    {"users.codeotp", "users.envoimotdepasse", "users.fichiermotsdepasse"}
+)
+
 NOM_SUPPRESSION = "onea_refuser_suppression"
 NOM_MODIFICATION = "onea_refuser_modification"
 NOM_IMMUABLES = "onea_colonnes_immuables"
@@ -486,6 +495,25 @@ def tables_m2m() -> list[str]:
     )
 
 
+def tables_transitoires() -> list[str]:
+    """Tables des données d'identification transitoires (DELETE autorisé, catégorie c)."""
+    modeles = _modeles()
+    tables: list[str] = []
+    for label in sorted(TABLES_TRANSITOIRES):
+        modele = modeles.get(label)
+        if modele is None:
+            raise LookupError(f"Modèle {label} introuvable pour les tables transitoires.")
+        if issubclass(modele, BaseModel) or label in TABLES_AJOUT_SEUL:
+            raise ValueError(f"{label} est gelé en base : il ne peut pas être transitoire.")
+        tables.append(modele._meta.db_table)
+    return tables
+
+
+def tables_avec_delete() -> list[str]:
+    """Tables où le rôle applicatif a le droit DELETE : liaisons, sessions, transitoires."""
+    return sorted({*tables_m2m(), "django_session", *tables_transitoires()})
+
+
 # --- Installation --------------------------------------------------------------------------
 
 
@@ -602,7 +630,7 @@ def _installer_droits(connexion: BaseDatabaseWrapper, schema: str, role: str) ->
         c.execute(f"REVOKE ALL ON ALL TABLES IN SCHEMA {s} FROM {r}")
         c.execute(f"GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA {s} TO {r}")
         presentes = _tables_presentes(connexion, schema)
-        avec_delete = [t for t in [*tables_m2m(), "django_session"] if t in presentes]
+        avec_delete = [t for t in tables_avec_delete() if t in presentes]
         if avec_delete:
             tables = ", ".join(f"{s}.{q(t)}" for t in avec_delete)
             c.execute(f"GRANT DELETE ON {tables} TO {r}")
@@ -715,7 +743,7 @@ def _verifier_role(
         )
         if c.fetchone()[0]:
             problemes.append(f"rôle {role} : droit TRUNCATE ou TRIGGER sur des tables")
-        autorises = {*tables_m2m(), "django_session"}
+        autorises = set(tables_avec_delete())
         c.execute(
             "SELECT cl.relname FROM pg_catalog.pg_class cl "
             "JOIN pg_catalog.pg_namespace n ON n.oid = cl.relnamespace "

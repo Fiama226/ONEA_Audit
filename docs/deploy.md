@@ -665,7 +665,7 @@ contrôle. Restauration d'un seul document : extraire son fichier de `documents-
 | Rôle | Usage | Droits |
 |---|---|---|
 | `POSTGRES_USER` (propriétaire, défaut `onea`) | service `migrate`, sauvegardes, maintenance | propriétaire des tables |
-| `POSTGRES_APP_USER` (défaut `onea_app`) | `web`, `worker`, `worker-auth`, `beat` | `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT`, jamais propriétaire ; `SELECT`, `INSERT`, `UPDATE` sur les tables ; `DELETE` uniquement sur les tables de liaison générées et `django_session` ; ni `TRUNCATE`, ni `TRIGGER`, ni `CREATE` ; `USAGE`, `SELECT` sur les séquences |
+| `POSTGRES_APP_USER` (défaut `onea_app`) | `web`, `worker`, `worker-auth`, `beat` | `LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT`, jamais propriétaire ; `SELECT`, `INSERT`, `UPDATE` sur les tables ; `DELETE` uniquement sur les tables de liaison générées, `django_session` et les trois tables des données d'identification transitoires (`users_codeotp`, `users_envoimotdepasse`, `users_fichiermotsdepasse` : codes à usage unique, mots de passe temporaires en attente d'envoi, fichiers de mots de passe d'un import, détruits à l'usage et par la purge quotidienne) ; ni `TRUNCATE`, ni `TRIGGER`, ni `CREATE` ; `USAGE`, `SELECT` sur les séquences |
 
 Le mot de passe du propriétaire n'est présent que dans le service `migrate` ; `web`, `worker`, `worker-auth` et `beat`
 reçoivent l'URL du rôle applicatif. Les droits sont réappliqués après chaque migration.
