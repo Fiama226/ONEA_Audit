@@ -3933,27 +3933,6 @@ export interface paths {
         patch: operations["v1_segregation_grids_partial_update"];
         trace?: never;
     };
-    "/api/v1/session/fin/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Fin de session : purge le cache userinfo du jeton
-         * @description Fin de session (D5) : purge l'entree de cache userinfo du jeton presente, avant la
-         *     deconnexion Keycloak. Sans jeton valide : 401.
-         */
-        post: operations["v1_session_fin_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/signature-settings/": {
         parameters: {
             query?: never;
@@ -4418,57 +4397,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/user-accounts/{id}/resync-profile/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Rendre direction et fonction à l'annuaire */
-        post: operations["v1_user_accounts_resync_profile_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/user-accounts/{id}/retry-keycloak-sync/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Relancer la synchronisation avec Keycloak */
-        post: operations["v1_user_accounts_retry_keycloak_sync_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/user-accounts/directory-search/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Rechercher dans l'annuaire Keycloak */
-        get: operations["v1_user_accounts_directory_search_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/user-accounts/import-csv/": {
         parameters: {
             query?: never;
@@ -4483,23 +4411,6 @@ export interface paths {
          * @description Crée des comptes locaux (rôle obligatoire, ADMIN exclu), chacun avec un mot de passe temporaire (72 h, à changer à la première connexion), envoyé par courriel de bienvenue si l'envoi est actif. Les mots de passe qui ne partent pas vont dans un fichier à télécharger une seule fois (`fichier_mots_de_passe_id`).
          */
         post: operations["v1_user_accounts_import_csv_create"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/user-accounts/import-directory/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Importer des comptes depuis l'annuaire Keycloak */
-        post: operations["v1_user_accounts_import_directory_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4773,8 +4684,6 @@ export interface components {
             modifier_profil: boolean;
             desactiver: boolean;
             reactiver: boolean;
-            resynchroniser_profil: boolean;
-            relancer_synchro_keycloak: boolean;
             reinitialiser_mot_de_passe: boolean;
             desactiver_otp: boolean;
             modifier_courriel: boolean;
@@ -5079,7 +4988,6 @@ export interface components {
             readonly is_active: boolean;
             readonly origine: components["schemas"]["OrigineCompteEnum"];
             readonly en_attente_connexion: boolean;
-            readonly keycloak_sync_statut: components["schemas"]["KeycloakSyncStatutEnum"];
             /**
              * Date d’inscription
              * Format: date-time
@@ -5089,11 +4997,8 @@ export interface components {
             readonly first_name: string;
             /** Nom */
             readonly last_name: string;
-            readonly keycloak_lie: boolean;
-            readonly role_provisoire: boolean;
             /** Format: date-time */
             readonly premiere_connexion_le: string | null;
-            readonly profil_gere_localement: boolean;
             /** Format: date-time */
             readonly desactive_le: string | null;
             readonly desactive_par: components["schemas"]["UserRef"] | null;
@@ -5104,7 +5009,6 @@ export interface components {
             /** Format: date-time */
             readonly verrouille_jusqu_a: string | null;
             readonly otp_connexion_actif: boolean;
-            readonly keycloak_sync: components["schemas"]["SyncKeycloak"];
             readonly actions: components["schemas"]["ActionsCompte"];
         };
         CompteUtilisateurListe: {
@@ -5132,7 +5036,6 @@ export interface components {
             readonly is_active: boolean;
             readonly origine: components["schemas"]["OrigineCompteEnum"];
             readonly en_attente_connexion: boolean;
-            readonly keycloak_sync_statut: components["schemas"]["KeycloakSyncStatutEnum"];
             /**
              * Date d’inscription
              * Format: date-time
@@ -5758,16 +5661,6 @@ export interface components {
             /** Libellé */
             readonly libelle: string;
         };
-        EntreeAnnuaire: {
-            /** Format: uuid */
-            keycloak_id: string;
-            username: string;
-            email: string;
-            nom_complet: string;
-            direction: string;
-            fonction: string;
-            compte_id: number | null;
-        };
         Entretien: {
             /** Format: uuid */
             readonly id: string;
@@ -6311,9 +6204,6 @@ export interface components {
             version: string;
             stockage_documents: string;
         };
-        ImportAnnuaireRequest: {
-            keycloak_ids: string[];
-        };
         ImportCsvRequest: {
             /** Format: binary */
             fichier: string;
@@ -6375,13 +6265,6 @@ export interface components {
         JustificationRequestRequest: {
             justification: string;
         };
-        /**
-         * @description * `A_JOUR` - À jour
-         *     * `EN_ATTENTE` - En attente
-         *     * `ECHEC` - Échec
-         * @enum {string}
-         */
-        KeycloakSyncStatutEnum: "A_JOUR" | "EN_ATTENTE" | "ECHEC";
         LigneAuditeurProgramme: {
             utilisateur: components["schemas"]["UtilisateurResume"];
             nb_tests: number;
@@ -6399,7 +6282,7 @@ export interface components {
             abandonnees: number;
         };
         LigneImportIgnoree: {
-            ligne: number | null;
+            ligne: number;
             identifiant: string;
             motif: string;
         };
@@ -8553,7 +8436,6 @@ export interface components {
         RapportImport: {
             dry_run: boolean;
             crees: string[];
-            mis_a_jour: string[];
             ignores: components["schemas"]["LigneImportIgnoree"][];
             /**
              * Format: uuid
@@ -9254,16 +9136,6 @@ export interface components {
              */
             readonly derniere_activite_le: string;
             readonly actions_possibles: string[];
-        };
-        /** @description État de la propagation du compte vers Keycloak. */
-        SyncKeycloak: {
-            readonly statut: components["schemas"]["KeycloakSyncStatutEnum"];
-            readonly erreur: string;
-            /** Format: date-time */
-            readonly derniere_tentative_le: string | null;
-            readonly tentatives: number;
-            /** @description Échec permanent : seule une relance manuelle peut le résoudre. */
-            readonly manuel: boolean;
         };
         SynthesePlan: {
             recommandations: components["schemas"]["LigneRecommandation"][];
@@ -18358,14 +18230,6 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
         };
     };
     v1_me_tutoriel_create: {
@@ -18408,14 +18272,6 @@ export interface operations {
                 };
             };
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -25190,48 +25046,6 @@ export interface operations {
             };
         };
     };
-    v1_session_fin_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No response body */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
     v1_signature_settings_list: {
         parameters: {
             query?: never;
@@ -26540,12 +26354,6 @@ export interface operations {
                 /** @description Compte qui ne s'est jamais connecté. */
                 en_attente_connexion?: boolean;
                 is_active?: boolean;
-                /**
-                 * @description * `A_JOUR` - À jour
-                 *     * `EN_ATTENTE` - En attente
-                 *     * `ECHEC` - Échec
-                 */
-                keycloak_sync?: "A_JOUR" | "ECHEC" | "EN_ATTENTE";
                 /** @description Quel champ utiliser pour classer les résultats. */
                 ordering?: string;
                 /**
@@ -27230,182 +27038,6 @@ export interface operations {
             };
         };
     };
-    v1_user_accounts_resync_profile_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CompteUtilisateur"];
-                };
-            };
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    v1_user_accounts_retry_keycloak_sync_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CompteUtilisateur"];
-                };
-            };
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    v1_user_accounts_directory_search_list: {
-        parameters: {
-            query: {
-                /** @description 2 à 100 caractères. */
-                q: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EntreeAnnuaire"][];
-                };
-            };
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
     v1_user_accounts_import_csv_create: {
         parameters: {
             query?: never;
@@ -27452,79 +27084,6 @@ export interface operations {
                 };
             };
             429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    v1_user_accounts_import_directory_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ImportAnnuaireRequest"];
-                "application/x-www-form-urlencoded": components["schemas"]["ImportAnnuaireRequest"];
-                "multipart/form-data": components["schemas"]["ImportAnnuaireRequest"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RapportImport"];
-                };
-            };
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-            503: {
                 headers: {
                     [name: string]: unknown;
                 };
