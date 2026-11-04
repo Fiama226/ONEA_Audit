@@ -34,6 +34,7 @@ from apps.users.models import Role, User
 from apps.users.serializers import UtilisateurResumeSerializer
 
 from . import acces
+from .etapes import romain
 from .gardes import STATUTS_ETAPE_CLOSE
 from .models import (
     AffectationMission,
@@ -407,6 +408,15 @@ class MotifSerializer(serializers.Serializer[Any]):
     motif = serializers.CharField(min_length=1, max_length=2000)
 
 
+class DerogationSerializer(serializers.Serializer[Any]):
+    motif = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=2000,
+        help_text="Motif d'une dérogation du RAI à l'ordre des étapes (journalisé).",
+    )
+
+
 class ConfirmationSerializer(serializers.Serializer[Any]):
     confirme = serializers.BooleanField(
         help_text="Doit être vrai : la confirmation explicite de l'utilisateur."
@@ -594,6 +604,7 @@ class EtapeSerializer(serializers.ModelSerializer[EtapeMission]):
     terminee_par = UtilisateurResumeSerializer(read_only=True, allow_null=True)
     validee_par = UtilisateurResumeSerializer(read_only=True, allow_null=True)
     actions_possibles = serializers.SerializerMethodField()
+    predecesseurs_ouverts = serializers.SerializerMethodField()
     livrables_manquants = serializers.SerializerMethodField()
     evenements = serializers.SerializerMethodField()
 
@@ -622,6 +633,7 @@ class EtapeSerializer(serializers.ModelSerializer[EtapeMission]):
             "validee_le",
             "motif_non_applicable",
             "actions_possibles",
+            "predecesseurs_ouverts",
             "livrables_manquants",
             "evenements",
         )
@@ -638,6 +650,14 @@ class EtapeSerializer(serializers.ModelSerializer[EtapeMission]):
     def _detail(self) -> bool:
         return bool(self.context.get("detail"))
 
+    def to_representation(self, instance: EtapeMission) -> dict[str, Any]:
+        data = dict(super().to_representation(instance))
+        if self.context["request"].user.role == Role.AUDITE:
+            # Les charges (jours) sont internes à l'équipe d'audit : comme `budget_jours`.
+            data["charge_prevue_jours"] = None
+            data["charge_reelle_jours"] = None
+        return data
+
     @extend_schema_field(
         serializers.ListField(child=serializers.ChoiceField(choices=ActionEtape.choices))
     )
@@ -645,6 +665,15 @@ class EtapeSerializer(serializers.ModelSerializer[EtapeMission]):
         user = self.context["request"].user
         contexte: ContexteActions | None = self.context.get("contexte_actions")
         return svc_etapes.actions_possibles(obj, user, contexte=contexte)
+
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
+    def get_predecesseurs_ouverts(self, obj: EtapeMission) -> list[str]:
+        """Chiffres romains des étapes à clore avant de démarrer celle-ci (vide si démarrée)."""
+        if obj.statut != StatutEtape.A_FAIRE:
+            return []
+        contexte: ContexteActions | None = self.context.get("contexte_actions")
+        statuts = contexte.etapes_statuts if contexte is not None else None
+        return [romain(n) for n in svc_etapes.predecesseurs_ouverts(obj, statuts=statuts)]
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_livrables_manquants(self, obj: EtapeMission) -> list[str]:

@@ -164,3 +164,25 @@ def test_audite_non_affecte_ne_voit_pas_les_etapes(
     m, users = equipe_complete
     api_client.force_authenticate(users["auditeur_non_affecte"])
     assert api_client.get(f"/api/v1/mission-steps/?mission={m.id}").status_code == 404
+
+
+def test_api_demarrage_hors_ordre_422_puis_derogation_du_rai(
+    api_client: APIClient, equipe_complete: Equipe
+) -> None:
+    m, users = equipe_complete
+    DeclarationIndependance.objects.update(statut=StatutDeclaration.CONFIRMEE)
+    EtapeMission.objects.filter(mission=m, numero=1).update(statut=StatutEtape.TERMINEE)
+    e3 = EtapeMission.objects.get(mission=m, numero=3)
+    api_client.force_authenticate(users["chef"])
+    r = api_client.post(f"/api/v1/mission-steps/{e3.id}/start/")
+    assert r.status_code == 422
+    assert r.json()["errors"]["predecesseurs"] == ["II"]
+    api_client.force_authenticate(users["rai"])
+    liste = api_client.get(f"/api/v1/mission-steps/?mission={m.id}").json()
+    assert liste[2]["predecesseurs_ouverts"] == ["II"]
+    assert liste[1]["predecesseurs_ouverts"] == []
+    r = api_client.post(
+        f"/api/v1/mission-steps/{e3.id}/start/", {"motif": "Urgence."}, format="json"
+    )
+    assert r.status_code == 200, r.json()
+    assert r.json()["statut"] == "EN_COURS"
