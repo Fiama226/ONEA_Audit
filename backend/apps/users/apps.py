@@ -9,7 +9,7 @@ class UsersConfig(AppConfig):
     def ready(self) -> None:
         from auditlog.registry import auditlog
 
-        from .models import User
+        from .models import DelegationGestionComptes, User
 
         # Never log credentials, login timestamps or technical retry counters.
         auditlog.register(
@@ -21,3 +21,4 @@ class UsersConfig(AppConfig):
                 "keycloak_sync_tentatives",
             ],
         )
+        auditlog.register(DelegationGestionComptes)

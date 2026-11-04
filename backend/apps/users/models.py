@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models import Q
@@ -63,6 +64,13 @@ class User(AbstractUser):
     tutoriel_version_vue = models.PositiveIntegerField(null=True, blank=True)
     tutoriel_termine_le = models.DateTimeField(null=True, blank=True)
 
+    # In-app authentication (replaces Keycloak; legacy fields above are removed later).
+    doit_changer_mot_de_passe = models.BooleanField(default=False)
+    mot_de_passe_expire_le = models.DateTimeField(null=True, blank=True)
+    echecs_connexion = models.PositiveIntegerField(default=0)
+    verrouille_jusqu_a = models.DateTimeField(null=True, blank=True)
+    otp_connexion_actif = models.BooleanField(default=False)
+
     class Meta(AbstractUser.Meta):
         constraints = [
             models.UniqueConstraint(
@@ -82,3 +90,48 @@ class User(AbstractUser):
 
     def has_role(self, *roles: str) -> bool:
         return self.role in roles
+
+
+class ObjetOtp(models.TextChoices):
+    RESET = "RESET", "Réinitialisation du mot de passe"
+    LOGIN = "LOGIN", "Connexion"
+
+
+class CodeOtp(models.Model):
+    """One-time code, stored hashed. A transient credential: never soft-deleted.
+
+    At most one *active* (unused) code per (user, objet); used codes are kept as history.
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    objet = models.CharField(max_length=8, choices=ObjetOtp.choices)
+    code_hash = models.CharField(max_length=255)
+    expire_le = models.DateTimeField()
+    essais = models.PositiveSmallIntegerField(default=0)
+    utilise_le = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "objet"],
+                condition=Q(utilise_le__isnull=True),
+                name="users_codeotp_un_actif_par_objet",
+            )
+        ]
+
+
+class DelegationGestionComptes(models.Model):
+    """Account-management rights delegated by an admin to a non-admin user."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="delegation_comptes"
+    )
+    creer = models.BooleanField(default=False)
+    reinitialiser = models.BooleanField(default=False)
+    roles = models.BooleanField(default=False)
+    desactiver = models.BooleanField(default=False)
+    accorde_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    accorde_le = models.DateTimeField(auto_now_add=True)
