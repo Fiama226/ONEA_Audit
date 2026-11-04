@@ -42,10 +42,9 @@ from .auth_serializers import (
 from .auth_services import CLE_OTP_COMPTE, Etape, Resultat
 from .auth_throttles import ConnexionParIpThrottle, MotDePasseOublieParIdentifiantThrottle
 from .authentication import SessionAuthentication401
-from .courriels import envoyer_code
-from .models import ObjetOtp, User
+from .models import User
 from .serializers import MeSerializer
-from .tasks import envoyer_code_reinitialisation
+from .tasks import envoyer_code_connexion, envoyer_code_reinitialisation
 
 logger = logging.getLogger(__name__)
 
@@ -110,9 +109,15 @@ class ConnexionView(_CsrfObligatoireMixin, APIView):
             logout(request._request)  # flush: also a fresh session key
             request.session[CLE_OTP_COMPTE] = user.pk
             request.session[CLE_OTP_LE] = time.time()
-            code = auth_services.emettre_otp(user, ObjetOtp.LOGIN)
-            if not envoyer_code(user, code, ObjetOtp.LOGIN):
-                logger.warning("Code de connexion non envoyé : compte=%s", user.pk)
+            # Issued and emailed by the worker: web cannot reach the SMTP relay (AUTH-01).
+            try:
+                envoyer_code_connexion.delay(user.pk)
+            except Exception as exc:  # noqa: BLE001 - broker down: same answer, logged
+                logger.warning(
+                    "Code de connexion non mis en file : compte=%s (%s)",
+                    user.pk,
+                    type(exc).__name__,
+                )
             return Response(_etat(Etape.OTP, None))
         _ouvrir_session(request, user)
         return Response(_etat(resultat.etape, user))

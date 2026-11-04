@@ -6,8 +6,9 @@ himself, never assigns the ADMIN role, never changes a delegation). Every right 
 from the database under the transaction, after the target row is locked.
 
 Every write runs in a transaction, under the audit actor, on a row re-read with
-`select_for_update`. No network call is made inside a transaction: the emails go out after
-the commit, and a temporary password never reaches the audit trail or the logs.
+`select_for_update`. No network call is made inside a transaction: the emails are queued
+after the commit and sent by the worker (`envois`, AUTH-01), and a temporary password never
+reaches the audit trail, the logs or the broker.
 """
 
 from collections.abc import Iterator, Mapping
@@ -27,7 +28,6 @@ from apps.core.exceptions import RegleMetierError
 from apps.referentiel.models import Direction
 
 from .auth_services import generer_mot_de_passe_temporaire, logger_securite, terminer_sessions
-from .courriels import envoyer_bienvenue, envoyer_mot_de_passe_reinitialise
 from .delegation import (
     ACTIONS,
     DROIT_REFUSE,
@@ -37,9 +37,11 @@ from .delegation import (
     exiger_administrateur,
     exiger_attribution_role,
 )
+from .envois import mettre_en_file_mot_de_passe
 from .models import (
     CodeOtp,
     DelegationGestionComptes,
+    NatureEnvoi,
     ObjetOtp,
     OrigineCompte,
     Role,
@@ -370,8 +372,9 @@ def creer_compte(
     """Create an active local account with a temporary password; the role is mandatory.
 
     The welcome email carries the password when ``envoyer_courriel`` is set, sending is
-    configured, the account has an address and the send succeeds. Only otherwise is the
-    password returned, for a single display: it is stored hashed and never readable again.
+    configured, the account has an address and the email could be queued for the worker
+    (``envois``). Only otherwise is the password returned, for a single display: it is
+    stored hashed and never readable again.
     """
     exiger(par, "creer")
     valeurs = _valeurs_creation(donnees)
@@ -391,9 +394,11 @@ def creer_compte(
                     user.save()
             except IntegrityError as exc:
                 raise RegleMetierError(CREATION_CONCURRENTE) from exc
-    envoye = envoyer_courriel and envoyer_bienvenue(user, mot_de_passe)
+    envoye = envoyer_courriel and mettre_en_file_mot_de_passe(
+        user, mot_de_passe, NatureEnvoi.BIENVENUE
+    )
     logger_securite.info(
-        "Compte créé par l'administration : compte=%s par=%s role=%s courriel_envoye=%s",
+        "Compte créé par l'administration : compte=%s par=%s role=%s courriel_en_file=%s",
         user.pk,
         par.pk,
         user.role,
@@ -407,11 +412,12 @@ def reinitialiser_mot_de_passe(
 ) -> tuple[str, bool]:
     """Give the account a new temporary password. Returns ``(mot_de_passe, courriel_envoye)``.
 
-    ``mot_de_passe`` is ``""`` when the email went out (the caller never sees it) and the
-    clear password otherwise, for a single display. The account is unlocked, pending
-    one-time codes are dropped and every open session ends. A disabled account is refused
-    (reactivate it first), and so is the caller's own account: changing one's own password
-    goes through the current password, which a hijacked session does not know.
+    ``mot_de_passe`` is ``""`` when the email was queued for the worker (the caller never
+    sees it) and the clear password otherwise, for a single display. The account is
+    unlocked, pending one-time codes are dropped and every open session ends. A disabled
+    account is refused (reactivate it first), and so is the caller's own account: changing
+    one's own password goes through the current password, which a hijacked session does
+    not know.
     """
     if compte.pk == par.pk:
         raise RegleMetierError(PROPRE_MOT_DE_PASSE)
@@ -426,10 +432,12 @@ def reinitialiser_mot_de_passe(
             user.save(update_fields=champs)
         CodeOtp.objects.filter(user=user, utilise_le__isnull=True).delete()
     sessions = terminer_sessions(user.pk)
-    envoye = envoyer_courriel and envoyer_mot_de_passe_reinitialise(user, mot_de_passe)
+    envoye = envoyer_courriel and mettre_en_file_mot_de_passe(
+        user, mot_de_passe, NatureEnvoi.REINITIALISATION
+    )
     logger_securite.info(
         "Mot de passe réinitialisé par l'administration : compte=%s par=%s "
-        "courriel_envoye=%s sessions_terminees=%s",
+        "courriel_en_file=%s sessions_terminees=%s",
         user.pk,
         par.pk,
         envoye,

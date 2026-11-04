@@ -171,7 +171,8 @@ class UserAccountViewSet(
         description=(
             "Crée un compte local avec un mot de passe temporaire (72 h, à changer à la "
             "première connexion). Le rôle est obligatoire. Le mot de passe n'est renvoyé "
-            "qu'une fois, et seulement s'il n'a pas pu partir par courriel."
+            "qu'une fois, et seulement s'il n'a pas pu être confié au service d'envoi des "
+            "courriels."
         ),
         request=CreationCompteSerializer,
         responses={

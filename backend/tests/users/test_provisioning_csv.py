@@ -5,6 +5,7 @@ import logging
 import re
 from dataclasses import replace
 from datetime import timedelta
+from typing import Any
 from unittest import mock
 from uuid import UUID
 
@@ -17,7 +18,7 @@ from django.http import Http404
 from django.test import Client, override_settings
 from django.utils import timezone
 
-from apps.users import provisioning
+from apps.users import provisioning, tasks
 from apps.users.delegation import acteur_systeme
 from apps.users.models import FichierMotsDePasse, Role, User
 from apps.users.provisioning import (
@@ -358,8 +359,15 @@ def test_import_without_smtp_puts_everyone_in_the_file(admin: User) -> None:
     assert set(_lignes_fichier(rapport, admin)) == {"awa"}
 
 
-def test_import_send_failure_goes_to_the_file(admin: User) -> None:
-    with mock.patch("apps.users.courriels.send_mail", side_effect=OSError("smtp down")):
+def _file_en_panne(side_effect: Any) -> Any:
+    """The broker cannot take the welcome-email tasks (AUTH-01: the worker sends them)."""
+    return mock.patch.object(
+        tasks.envoyer_mot_de_passe_temporaire, "delay", side_effect=side_effect
+    )
+
+
+def test_import_queue_failure_goes_to_the_file(admin: User) -> None:
+    with _file_en_panne(side_effect=OSError("broker down")):
         rapport = _importer(
             "identifiant;email;role\nawa;awa@onea.bf;AUDITEUR\n", admin, envoyer_courriel=True
         )
@@ -503,8 +511,8 @@ def test_crash_between_commit_and_send_keeps_every_password(
     _verifier_mots_de_passe(lignes)
 
 
-def test_smtp_down_stops_at_first_failure(admin: User) -> None:
-    with mock.patch("apps.users.courriels.send_mail", side_effect=OSError("smtp down")) as envoi:
+def test_broker_down_stops_at_first_failure(admin: User) -> None:
+    with _file_en_panne(side_effect=OSError("broker down")) as envoi:
         rapport = _importer(TROIS, admin, envoyer_courriel=True)
     assert envoi.call_count == 1  # no waiting for a timeout per remaining account
     lignes = _lignes_fichier(rapport, admin)
@@ -512,14 +520,12 @@ def test_smtp_down_stops_at_first_failure(admin: User) -> None:
     _verifier_mots_de_passe(lignes)
 
 
-def test_smtp_failure_midway_keeps_the_unsent_ones(admin: User) -> None:
-    with mock.patch(
-        "apps.users.courriels.send_mail", side_effect=[1, OSError("smtp down")]
-    ) as envoi:
+def test_queue_failure_midway_keeps_the_unqueued_ones(admin: User) -> None:
+    with _file_en_panne(side_effect=[None, OSError("broker down")]) as envoi:
         rapport = _importer(TROIS, admin, envoyer_courriel=True)
     assert envoi.call_count == 2
     lignes = _lignes_fichier(rapport, admin)
-    assert set(lignes) == {"sali", "moussa"}  # awa got hers by email
+    assert set(lignes) == {"sali", "moussa"}  # awa's email is queued for the worker
     _verifier_mots_de_passe(lignes)
 
 

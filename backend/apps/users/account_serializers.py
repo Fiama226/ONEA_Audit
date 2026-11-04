@@ -156,8 +156,9 @@ class CreationCompteSerializer(serializers.Serializer[dict[str, Any]]):
     envoyer_courriel = serializers.BooleanField(
         default=True,
         help_text=(
-            "Envoyer le courriel de bienvenue avec le mot de passe temporaire. Sinon (ou si "
-            "l'envoi échoue), le mot de passe est renvoyé une seule fois dans la réponse."
+            "Confier au service d'envoi le courriel de bienvenue avec le mot de passe "
+            "temporaire. Sinon (ou si l'envoi n'est pas configuré ou pas disponible), le mot "
+            "de passe est renvoyé une seule fois dans la réponse."
         ),
     )
 
@@ -198,8 +199,9 @@ class ReinitialisationCompteSerializer(serializers.Serializer[dict[str, bool]]):
     envoyer_courriel = serializers.BooleanField(
         default=True,
         help_text=(
-            "Envoyer le nouveau mot de passe temporaire par courriel. Sinon (ou si l'envoi "
-            "échoue), il est renvoyé une seule fois dans la réponse."
+            "Confier au service d'envoi le courriel du nouveau mot de passe temporaire. Sinon "
+            "(ou si l'envoi n'est pas configuré ou pas disponible), il est renvoyé une seule "
+            "fois dans la réponse."
         ),
     )
 
@@ -208,12 +210,16 @@ class MotDePasseTemporaireSerializer(serializers.Serializer[dict[str, Any]]):
     """Résultat d'une création ou d'une réinitialisation (réponse `Cache-Control: no-store`)."""
 
     compte = CompteUtilisateurSerializer()
-    courriel_envoye = serializers.BooleanField()
+    courriel_envoye = serializers.BooleanField(
+        help_text=(
+            "Vrai : le courriel est confié au service d'envoi (il part en différé ; un échec "
+            "d'envoi est journalisé et demande une nouvelle réinitialisation)."
+        )
+    )
     mot_de_passe_temporaire = serializers.CharField(
         allow_null=True,
         help_text=(
-            "Affiché une seule fois, jamais relisible ensuite ; null quand il est parti par "
-            "courriel."
+            "Affiché une seule fois, jamais relisible ensuite ; null quand il part par courriel."
         ),
     )
 

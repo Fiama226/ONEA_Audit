@@ -2,7 +2,9 @@
 
 import re
 from pathlib import Path
+from typing import Any
 
+import yaml
 from django.conf import settings
 
 RACINE = Path(__file__).resolve().parents[2]
@@ -107,3 +109,50 @@ def test_bundle_ca_interne_lu_par_ssl_et_requests() -> None:
     # smtplib (relais SMTP) lit SSL_CERT_FILE, requests lit REQUESTS_CA_BUNDLE (CA_BUNDLE_PATH).
     assert "SSL_CERT_FILE: ${CA_BUNDLE_PATH:-/etc/ssl/certs/ca-certificates.crt}" in COMPOSE_PROD
     assert "REQUESTS_CA_BUNDLE: ${CA_BUNDLE_PATH:-}" in COMPOSE_PROD
+
+
+# --- AUTH-01 : les courriels d'authentification atteignent le relais SMTP par le worker ---
+
+
+def _reseaux(services: dict[str, Any], nom: str) -> set[str]:
+    reseaux = services[nom]["networks"]
+    return set(reseaux if isinstance(reseaux, list) else reseaux.keys())
+
+
+def test_courriels_d_authentification_ont_un_chemin_vers_le_relais_smtp() -> None:
+    """`web` n'a aucune sortie réseau (choix délibéré) : il confie chaque courriel
+    d'authentification au worker par le broker, et seul le worker atteint le relais."""
+    compose = yaml.safe_load(COMPOSE_PROD)
+    services, reseaux = compose["services"], compose["networks"]
+    # Le worker atteint le relais : réseau `mail-out` (non interne) et mot de passe SMTP.
+    assert "mail-out" in _reseaux(services, "worker")
+    assert not (reseaux["mail-out"] or {}).get("internal", False)
+    assert "email_password" in services["worker"]["secrets"]
+    fichier = services["worker"]["environment"]["EMAIL_PASSWORD_FILE"]
+    assert fichier == "/run/secrets/email_password"  # noqa: S105 - a path, not a secret
+    # web atteint le worker par le broker (redis) : réseau `backend` commun aux trois.
+    commun = _reseaux(services, "web") & _reseaux(services, "worker") & _reseaux(services, "redis")
+    assert "backend" in commun
+    assert (
+        services["web"]["environment"]["REDIS_URL"]
+        == services["worker"]["environment"]["REDIS_URL"]
+    )
+    # web lui-même reste sans route sortante et sans mot de passe SMTP.
+    assert all((reseaux[n] or {}).get("internal") for n in _reseaux(services, "web"))
+    assert "email_password" not in services["web"]["secrets"]
+    # Le worker consomme la file par défaut, celle des tâches d'envoi.
+    commande = services["worker"]["command"]
+    assert "worker" in commande and "-Q" not in commande and "--queues" not in commande
+
+
+def test_le_code_web_n_envoie_aucun_courriel_d_authentification_lui_meme() -> None:
+    """Les modules exécutés dans `web` mettent en file ; seul le worker appelle `courriels`."""
+    users = RACINE / "backend" / "apps" / "users"
+    for module in ("auth_views.py", "services.py", "provisioning.py", "account_views.py"):
+        texte = (users / module).read_text(encoding="utf-8")
+        assert "from .courriels import" not in texte, module
+        assert "send_mail" not in texte, module
+    from apps.users import tasks
+
+    noms = {t.name for t in (tasks.envoyer_code_connexion, tasks.envoyer_mot_de_passe_temporaire)}
+    assert noms == {"users.envoyer_code_connexion", "users.envoyer_mot_de_passe_temporaire"}

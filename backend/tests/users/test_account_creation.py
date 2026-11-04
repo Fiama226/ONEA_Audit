@@ -18,7 +18,7 @@ from rest_framework.test import APIClient
 
 from apps.core.exceptions import RegleMetierError
 from apps.referentiel.models import Direction, TypeEntite
-from apps.users import services
+from apps.users import services, tasks
 from apps.users.models import CodeOtp, ObjetOtp, OrigineCompte, Role, User
 
 from ..factories import make_user
@@ -161,12 +161,30 @@ def test_create_without_address_returns_password(admin_client: APIClient) -> Non
     assert r.json()["courriel_envoye"] is False and r.json()["mot_de_passe_temporaire"]
 
 
-def test_create_send_failure_returns_password(admin: User) -> None:
-    with mock.patch("apps.users.courriels.send_mail", side_effect=OSError("smtp down")):
+def test_create_broker_down_returns_password(admin: User) -> None:
+    """Nothing could be queued for the worker: the password is shown once (AUTH-01)."""
+    with mock.patch.object(
+        tasks.envoyer_mot_de_passe_temporaire, "delay", side_effect=OSError("broker down")
+    ):
         compte, mdp = services.creer_compte(
             donnees=dict(NOUVEL_AGENT), par=admin, envoyer_courriel=True
         )
     assert mdp is not None and compte.check_password(mdp)
+
+
+def test_create_worker_send_failure_is_logged_not_shown(
+    admin: User, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The worker sends the email (AUTH-01): web only knows it was queued. A later SMTP
+    failure is logged as an error by the worker; the operator then resets with display."""
+    with mock.patch("apps.users.courriels.send_mail", side_effect=OSError("smtp down")):
+        compte, mdp = services.creer_compte(
+            donnees=dict(NOUVEL_AGENT), par=admin, envoyer_courriel=True
+        )
+    assert mdp is None
+    assert any(
+        r.levelname == "ERROR" and f"compte={compte.pk}" in r.getMessage() for r in caplog.records
+    )
 
 
 def test_create_service_hides_password_when_sent(admin: User) -> None:

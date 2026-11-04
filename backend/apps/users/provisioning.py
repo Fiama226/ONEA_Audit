@@ -7,8 +7,9 @@ Every created account is a local one, with a temporary password (72 h, to be
 changed at the first login), validated like the creation form (`services`: role required,
 no "@" in the username, neither the username nor the email may shadow another account's).
 Every password is first stored, encrypted, in a `FichierMotsDePasse` in the transaction
-that creates the accounts; after the commit each one goes out in a welcome email when
-sending is on, and the file keeps only the ones no email carried. Only the importer may
+that creates the accounts; after the commit each one is queued for a welcome email sent by
+the worker when sending is on (`envois`, AUTH-01: no secret in the broker), and the file
+keeps only the ones no email was queued for. Only the importer may
 download it, once, within 24 h. A dry run creates, sends and stores nothing. A CSV never
 creates an `ADMIN` (create the account, then change its role) nor `is_staff` /
 `is_superuser` accounts. A password never reaches the audit trail or the logs.
@@ -42,9 +43,9 @@ from .auth_services import (
     generer_mot_de_passe_temporaire,
     logger_securite,
 )
-from .courriels import envoyer_bienvenue
 from .delegation import DROIT_REFUSE, exiger_administrateur
-from .models import FichierMotsDePasse, OrigineCompte, Role, User
+from .envois import mettre_en_file_mot_de_passe
+from .models import FichierMotsDePasse, NatureEnvoi, OrigineCompte, Role, User
 from .services import (
     ACTION_CREATION,
     MATRICULE_PRIS,
@@ -70,8 +71,8 @@ CSV_CARACTERES_INTERDITS = "Caractères non autorisés dans la colonne « {colon
 FICHIER_AUTRE_AUTEUR = "Seul l'auteur de l'import peut télécharger ce fichier."
 
 CSV_MAX_BYTES = 1024 * 1024
-# Bounded so that hashing (about 60 ms per password) and the emails (time budget
-# `DUREE_MAX_ENVOIS`) fit well within the 120 s request timeout (see `importer_csv`).
+# Bounded so that hashing (about 60 ms per password) and the queueing of the emails (time
+# budget `DUREE_MAX_ENVOIS`) fit well within the 120 s request timeout (see `importer_csv`).
 CSV_MAX_ROWS = 300
 CSV_TROP_DE_LIGNES = (
     f"Le fichier dépasse {CSV_MAX_ROWS} lignes : découpez-le en plusieurs fichiers."
@@ -140,7 +141,7 @@ _CHAMP_COMPTE = {
 }
 CSV_COLONNES = tuple(_CHAMP_COMPTE)
 DUREE_FICHIER_MOTS_DE_PASSE = timedelta(hours=24)
-# Time budget for the welcome emails of one import; the rest go to the password file.
+# Time budget for queueing the welcome emails of one import; the rest go to the password file.
 DUREE_MAX_ENVOIS = timedelta(seconds=60)
 _SEL_FICHIER = "apps.users.provisioning.FichierMotsDePasse"
 # Spreadsheet formula triggers (CSV injection): in the password file such a cell is
@@ -274,10 +275,12 @@ def _verifier_importateur(by: User) -> None:
 
 
 def _envoyer_courriels(crees: list[tuple[User, str]], envoyer: bool) -> set[int]:
-    """Send the welcome emails; returns the pks of the accounts actually emailed.
+    """Queue the welcome emails (sent by the worker); returns the pks of the accounts queued.
 
-    Stops at the first failed send (SMTP down: every later one would wait for its timeout
-    too) and once the time budget is spent: the remaining passwords stay in the file.
+    Stops at the first failure to queue (broker down: every later one would wait for its
+    timeout too) and once the time budget is spent: the remaining passwords stay in the
+    file. A send that later fails in the worker is logged there (error): that account needs
+    a reset with display.
     """
     envoyes: set[int] = set()
     if not envoyer or not envoi_courriel_actif():
@@ -291,9 +294,9 @@ def _envoyer_courriels(crees: list[tuple[User, str]], envoyer: bool) -> set[int]
                 "Import CSV : courriels de bienvenue arrêtés (durée maximale atteinte)."
             )
             break
-        if not envoyer_bienvenue(user, mot_de_passe):
+        if not mettre_en_file_mot_de_passe(user, mot_de_passe, NatureEnvoi.BIENVENUE):
             logger_securite.warning(
-                "Import CSV : courriels de bienvenue arrêtés au premier échec d'envoi."
+                "Import CSV : courriels de bienvenue arrêtés au premier échec de mise en file."
             )
             break
         envoyes.add(user.pk)
@@ -307,10 +310,11 @@ def importer_csv(
     are still created. ``by`` is required for a real run (audit actor, file owner) and must
     be an active ADMIN (or the system actor of a command).
 
-    No password can be lost: every one goes, encrypted, into the one-time file in the very
-    transaction that creates the accounts. The welcome emails go out after the commit; the
-    file is then cut down to the passwords no email carried (deleted when none remain). A
-    crash, a timeout or an SMTP failure while emailing leaves the full file behind.
+    Every password goes, encrypted, into the one-time file in the very transaction that
+    creates the accounts. The welcome emails are queued after the commit; the file is then
+    cut down to the passwords no email was queued for (deleted when none remain). A crash, a
+    timeout or a broker failure while queueing leaves the full file behind; a send that
+    fails later in the worker is logged there (the account then needs a reset).
     """
     if by is None and not dry_run:
         raise ValueError("A real CSV import needs an actor")
@@ -366,7 +370,7 @@ def importer_csv(
             _reduire_fichier(fichier_id, restants) if envoyes else fichier_id
         )
     logger_securite.info(
-        "Import CSV de comptes : par=%s comptes_crees=%s courriels_envoyes=%s fichier=%s",
+        "Import CSV de comptes : par=%s comptes_crees=%s courriels_en_file=%s fichier=%s",
         by.pk,
         len(crees),
         len(envoyes),

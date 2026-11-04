@@ -158,3 +158,29 @@ class FichierMotsDePasse(models.Model):
 
     def __str__(self) -> str:
         return f"Fichier de mots de passe {self.pk}"
+
+
+class NatureEnvoi(models.TextChoices):
+    BIENVENUE = "BIENVENUE", "Courriel de bienvenue"
+    REINITIALISATION = "REINITIALISATION", "Mot de passe réinitialisé par l'administration"
+
+
+class EnvoiMotDePasse(models.Model):
+    """A temporary password waiting for the worker to email it (AUTH-01).
+
+    `web` cannot reach the SMTP relay in production, and a secret never travels through the
+    broker: the task receives this row's id only, reads the row once and deletes it. A
+    transient credential, like `FichierMotsDePasse`: the content is encrypted (key derived
+    from `SECRET_KEY`), it lives one hour at most (daily purge), it is never audited nor
+    soft-deleted.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    nature = models.CharField(max_length=16, choices=NatureEnvoi.choices)
+    contenu = models.BinaryField()
+    cree_le = models.DateTimeField(auto_now_add=True)
+    expire_le = models.DateTimeField()
+
+    def __str__(self) -> str:
+        return f"Envoi {self.nature} #{self.user_id}"
