@@ -69,6 +69,7 @@ def test_anonyme_401_sur_toutes_les_routes(api_client: APIClient, user: User) ->
         assert set(r.json()) == {"detail", "errors"}, (methode, url)
 
 
+# Regression guard: the routes of the former identity provider (Keycloak) stay removed.
 @pytest.mark.parametrize(
     "methode,suffixe",
     [
@@ -226,6 +227,7 @@ def test_actions_dans_le_detail(api_client: APIClient, admin: User) -> None:
         "reinitialiser_mot_de_passe": False,
         "desactiver_otp": False,
     }
+    # Regression guard: the fields of the former identity provider (Keycloak) stay removed.
     retires = {
         "keycloak_lie",
         "keycloak_sync",

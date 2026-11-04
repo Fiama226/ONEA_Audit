@@ -77,9 +77,11 @@ def test_audit_log_endpoints_reference_api_error(api_client: APIClient) -> None:
         assert ref("/api/v1/audit-log/{id}/", code) == expected
 
 
-def test_me_documents_auth_service_unavailable(api_client: APIClient) -> None:
+def test_me_documents_no_auth_service_outage(api_client: APIClient) -> None:
+    """The session login needs no external service: /me no longer documents a 503."""
     responses = _schema(api_client)["paths"]["/api/v1/me/"]["get"]["responses"]
-    ref = responses["503"]["content"]["application/json"]["schema"]["$ref"]
+    assert "503" not in responses
+    ref = responses["401"]["content"]["application/json"]["schema"]["$ref"]
     assert ref == "#/components/schemas/ApiError"
 
 
