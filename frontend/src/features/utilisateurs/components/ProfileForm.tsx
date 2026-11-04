@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,6 +57,11 @@ export function ProfileForm({ account }: { account: CompteUtilisateur }) {
   const directions = useDirectionOptions();
   const [formError, setFormError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const editable = editableFields(account);
+  const schema = useMemo(
+    () => profileSchema({ emailEditable: editable.email, initialEmail: account.email }),
+    [editable.email, account.email],
+  );
   const {
     register,
     control,
@@ -65,7 +70,7 @@ export function ProfileForm({ account }: { account: CompteUtilisateur }) {
     setError,
     formState: { errors, isDirty, dirtyFields },
   } = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
+    resolver: zodResolver(schema),
     defaultValues: valuesOf(account),
   });
 
@@ -75,9 +80,9 @@ export function ProfileForm({ account }: { account: CompteUtilisateur }) {
     reset({ first_name, last_name, email, matricule, fonction, direction_code });
   }, [first_name, last_name, email, matricule, fonction, direction_code, reset]);
 
-  const editable = editableFields(account);
   const anyEditable = FIELDS.some((f) => editable[f]);
-  const partial = anyEditable && FIELDS.some((f) => !editable[f]);
+  // Au moins un champ grisé (y compris tous) : la raison est donnée.
+  const restricted = FIELDS.some((f) => !editable[f]);
   const known = directions.options.some((d) => d.code === account.direction_code);
 
   async function onSubmit(values: ProfileFormValues) {
@@ -163,7 +168,7 @@ export function ProfileForm({ account }: { account: CompteUtilisateur }) {
               )}
             </FormField>
           </div>
-          {partial && <p className="text-sm text-text-muted">{t.profilePartial}</p>}
+          {restricted && <p className="text-sm text-text-muted">{t.profilePartial}</p>}
           <p role="status" className="text-sm text-success-text">
             {saved && !isDirty ? t.profileSaved : ""}
           </p>

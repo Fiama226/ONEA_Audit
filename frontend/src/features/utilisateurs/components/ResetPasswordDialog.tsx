@@ -26,10 +26,17 @@ type Props = {
 
 /** Confirmation, puis nouveau mot de passe temporaire affiché une fois s'il n'est pas parti par courriel. */
 export function ResetPasswordDialog({ account, open, onOpenChange }: Props) {
+  // Verrou : réinitialisation en cours, ou mot de passe affiché. Seul le bouton explicite ferme
+  // alors la fenêtre (pas Échap) : le mot de passe ne se perd pas par mégarde.
+  const [locked, setLocked] = useState(false);
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <ResetPasswordBody account={account} onClose={() => onOpenChange(false)} />
+    <AlertDialog open={open} onOpenChange={(next) => (next || !locked) && onOpenChange(next)}>
+      <AlertDialogContent onEscapeKeyDown={(event) => locked && event.preventDefault()}>
+        <ResetPasswordBody
+          account={account}
+          onLockChange={setLocked}
+          onClose={() => onOpenChange(false)}
+        />
       </AlertDialogContent>
     </AlertDialog>
   );
@@ -39,9 +46,11 @@ export function ResetPasswordDialog({ account, open, onOpenChange }: Props) {
 function ResetPasswordBody({
   account,
   onClose,
+  onLockChange,
 }: {
   account: CompteUtilisateur;
   onClose: () => void;
+  onLockChange: (locked: boolean) => void;
 }) {
   const mutation = useResetPassword();
   const hasEmail = account.email !== "";
@@ -49,6 +58,8 @@ function ResetPasswordBody({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<MotDePasseTemporaire | null>(null);
   const helpId = useId();
+  const locked = mutation.isPending || Boolean(result?.mot_de_passe_temporaire);
+  useEffect(() => onLockChange(locked), [locked, onLockChange]);
 
   async function confirm() {
     setError(null);
@@ -127,7 +138,7 @@ function ResetResult({ result, onClose }: { result: MotDePasseTemporaire; onClos
       )}
       <AlertDialogFooter>
         <Button type="button" onClick={onClose}>
-          {t.close}
+          {result.mot_de_passe_temporaire ? fr.utilisateurs.motDePasse.acknowledge : t.close}
         </Button>
       </AlertDialogFooter>
     </div>

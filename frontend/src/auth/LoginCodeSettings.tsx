@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { isApiError } from "@/api/errors";
@@ -42,6 +42,17 @@ export function LoginCodeSettings() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [confirming, setConfirming] = useState(false);
+  const reasonRef = useRef<HTMLParagraphElement>(null);
+  const focusReason = useRef(false);
+
+  // L'interrupteur devient inactif (et perd le focus) : le focus va à l'explication.
+  useEffect(() => {
+    if (blocked && focusReason.current) {
+      focusReason.current = false;
+      reasonRef.current?.focus();
+    }
+  }, [blocked]);
+
   if (!me) return null;
 
   const active = me.otp_connexion_actif;
@@ -58,6 +69,7 @@ export function LoginCodeSettings() {
       setNotice(T.otpEnabled);
     } catch (e) {
       if (isApiError(e) && e.status === 409) {
+        focusReason.current = true;
         setBlocked(e.detail === ENVOI_COURRIEL_NON_CONFIGURE ? T.otpEmailNotConfigured : e.detail);
       } else {
         setError(isApiError(e) ? e.detail : fr.errors.generic);
@@ -91,7 +103,9 @@ export function LoginCodeSettings() {
           role="switch"
           className="size-5 accent-primary disabled:cursor-not-allowed"
           checked={active}
-          disabled={pending || reason !== null}
+          // Pas de `disabled` pendant l'appel : le focus resterait perdu ; onToggle l'ignore.
+          disabled={reason !== null}
+          aria-busy={pending || undefined}
           aria-describedby={reason ? reasonId : undefined}
           onChange={onToggle}
         />
@@ -102,11 +116,16 @@ export function LoginCodeSettings() {
           {active ? T.otpStateOn : T.otpStateOff}
         </span>
       </div>
-      {reason && (
-        <p id={reasonId} className="mt-2 text-sm text-warning-text">
-          {reason}
-        </p>
-      )}
+      {/* Région annoncée rendue d'emblée : l'explication d'un refus (409) y est lue dès qu'elle arrive. */}
+      <p
+        id={reasonId}
+        ref={reasonRef}
+        tabIndex={-1}
+        role="status"
+        className="mt-2 text-sm text-warning-text outline-none"
+      >
+        {reason ?? ""}
+      </p>
       {error && (
         <p role="alert" className={`mt-2 ${ALERT_CLASS}`}>
           {error}

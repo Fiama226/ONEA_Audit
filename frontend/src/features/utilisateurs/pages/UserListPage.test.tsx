@@ -121,6 +121,22 @@ describe("UserListPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("only mentions the actions a delegate can see in the empty state", async () => {
+    mockList([]);
+    const { unmount } = renderAdministration("/administration/utilisateurs", "AUDITEUR", {
+      gestion_comptes: { creer: true, reinitialiser: false, roles: false, desactiver: false },
+    });
+    expect(await screen.findByText("Créez un compte avec « Nouvel agent ».")).toBeInTheDocument();
+    unmount();
+    renderAdministration("/administration/utilisateurs", "AUDITEUR", {
+      gestion_comptes: { creer: false, reinitialiser: true, roles: false, desactiver: false },
+    });
+    expect(
+      await screen.findByText("Les comptes créés dans la plateforme apparaîtront ici."),
+    ).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/Nouvel agent|CSV/);
+  });
+
   it("offers to clear filters when nothing matches", async () => {
     mockList([]);
     const user = userEvent.setup();

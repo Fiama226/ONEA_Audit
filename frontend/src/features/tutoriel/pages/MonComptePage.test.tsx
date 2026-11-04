@@ -67,13 +67,19 @@ describe("MonComptePage — code de connexion", () => {
     const user = userEvent.setup();
     openAccount();
     const toggle = await findSwitch();
+    // Régions annoncées présentes (vides) avant le refus : leur remplissage sera lu.
+    const emptyStatuses = screen.getAllByRole("status").filter((el) => el.textContent === "");
     await user.click(toggle);
     await waitFor(() => expect(toggle).toBeDisabled());
     expect(toggle).not.toBeChecked();
     expect(toggle).toHaveAccessibleDescription(
       /L'envoi de courriels n'est pas configuré sur la plateforme/,
     );
-    expect(screen.getByText(/L'envoi de courriels n'est pas configuré/)).toBeVisible();
+    const explanation = screen.getByText(/L'envoi de courriels n'est pas configuré/);
+    expect(explanation).toBeVisible();
+    expect(emptyStatuses).toContain(explanation);
+    // L'interrupteur désactivé a perdu le focus : il passe à l'explication.
+    expect(explanation).toHaveFocus();
   });
 
   it("disables the switch upfront when the account has no email address", async () => {

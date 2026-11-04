@@ -55,19 +55,39 @@ type Props = { open: boolean; onOpenChange: (open: boolean) => void };
 
 /** « Nouvel agent » : formulaire, puis résultat (courriel parti ou mot de passe affiché une fois). */
 export function NewAccountDialog({ open, onOpenChange }: Props) {
+  // Verrou : création en cours, ou mot de passe affiché. Seul le bouton explicite ferme alors la
+  // fenêtre (ni Échap, ni clic à l'extérieur) : le mot de passe ne se perd pas par mégarde.
+  const [locked, setLocked] = useState(false);
+  const guard = (event: Event) => {
+    if (locked) event.preventDefault();
+  };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent showCloseButton={false} className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <NewAccount onClose={() => onOpenChange(false)} />
+    <Dialog open={open} onOpenChange={(next) => (next || !locked) && onOpenChange(next)}>
+      <DialogContent
+        showCloseButton={false}
+        className="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
+        onEscapeKeyDown={guard}
+        onPointerDownOutside={guard}
+        onInteractOutside={guard}
+      >
+        <NewAccount onLockChange={setLocked} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function NewAccount({ onClose }: { onClose: () => void }) {
+function NewAccount({
+  onClose,
+  onLockChange,
+}: {
+  onClose: () => void;
+  onLockChange: (locked: boolean) => void;
+}) {
   const mutation = useCreateAccount();
   /** Résultat tenu par ce seul composant (démonté à la fermeture), jamais par un cache. */
   const [result, setResult] = useState<MotDePasseTemporaire | null>(null);
+  const locked = mutation.isPending || Boolean(result?.mot_de_passe_temporaire);
+  useEffect(() => onLockChange(locked), [locked, onLockChange]);
 
   async function create(data: CreationCompteInput): Promise<void> {
     const response = await mutation.mutateAsync(data);
@@ -193,7 +213,7 @@ function NewAccountForm({
         </p>
       </div>
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
           {fr.common.cancel}
         </Button>
         <Button type="submit" disabled={pending}>
@@ -235,7 +255,7 @@ function CreatedAccount({
           <Link to={`/administration/utilisateurs/${compte.id}`}>{c.openRecord}</Link>
         </Button>
         <Button type="button" onClick={onClose}>
-          {fr.utilisateurs.securite.close}
+          {mot_de_passe_temporaire ? fr.utilisateurs.motDePasse.acknowledge : fr.common.close}
         </Button>
       </DialogFooter>
     </div>

@@ -541,6 +541,8 @@ export const fr = {
       noValue: "-",
       emptyTitle: "Aucun compte pour le moment.",
       emptyText: "Créez un compte avec « Nouvel agent » ou importez un fichier CSV.",
+      emptyTextCreate: "Créez un compte avec « Nouvel agent ».",
+      emptyTextNone: "Les comptes créés dans la plateforme apparaîtront ici.",
       emptyFiltered: "Aucun utilisateur ne correspond aux filtres.",
       clearFilters: "Effacer les filtres",
       loadError: "Impossible de charger les comptes utilisateurs.",
@@ -578,6 +580,7 @@ export const fr = {
       copy: "Copier le mot de passe",
       copied: "Mot de passe copié dans le presse-papiers.",
       copyFailed: "La copie a échoué : sélectionnez le mot de passe et copiez-le manuellement.",
+      acknowledge: "J'ai noté le mot de passe, fermer",
     },
     fiche: {
       notFound: "Utilisateur introuvable.",
@@ -599,6 +602,12 @@ export const fr = {
       changeRole: "Changer le rôle",
       changingRole: "Changement en cours",
       roleChanged: "Rôle modifié.",
+      roleConfirmTitle: "Changer le rôle de ",
+      roleConfirmText:
+        "Le rôle passe de « {from} » à « {to} ». Les accès de l'agent changent dès sa prochaine action.",
+      roleConfirmAdmin:
+        "Attention : le rôle Administrateur donne tous les droits sur la plateforme, dont la création, la réinitialisation et la désactivation de tous les comptes et la gestion des délégations.",
+      roleConfirm: "Confirmer le changement",
       profileTitle: "Profil",
       matricule: "Matricule",
       fonction: "Fonction",

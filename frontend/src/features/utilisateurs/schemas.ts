@@ -15,16 +15,37 @@ const email = z
 const matricule = z.string().trim().max(32, t.matriculeMax);
 const fonction = z.string().trim().max(128, t.fonctionMax);
 
-export const profileSchema = z.object({
-  first_name: name,
-  last_name: name,
-  email,
-  matricule,
-  fonction,
-  direction_code: z.string().trim(),
-});
+/**
+ * Profil d'un compte. Le courriel n'est validé que s'il est modifiable et modifié : une
+ * adresse déjà enregistrée (ou un champ grisé) ne bloque jamais l'enregistrement des autres.
+ */
+export function profileSchema({
+  emailEditable,
+  initialEmail,
+}: {
+  emailEditable: boolean;
+  initialEmail: string;
+}) {
+  return z.object({
+    first_name: name,
+    last_name: name,
+    email: z.string().superRefine((value, ctx) => {
+      if (!emailEditable || value.trim() === initialEmail.trim()) return;
+      const result = email.safeParse(value);
+      if (!result.success) {
+        ctx.addIssue({
+          code: "custom",
+          message: result.error.issues[0]?.message ?? t.emailInvalid,
+        });
+      }
+    }),
+    matricule,
+    fonction,
+    direction_code: z.string().trim(),
+  });
+}
 
-export type ProfileFormValues = z.infer<typeof profileSchema>;
+export type ProfileFormValues = z.infer<ReturnType<typeof profileSchema>>;
 
 export const deactivateSchema = z.object({
   motif: z.string().trim().min(1, t.reasonRequired).max(2000, t.reasonMax),

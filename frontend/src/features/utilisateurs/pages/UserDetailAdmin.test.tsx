@@ -147,7 +147,13 @@ describe("UserDetailPage — mot de passe et code de connexion", () => {
     expect(within(dialog).getByText(/il ne sera plus jamais affiché/)).toBeVisible();
     expect((await axe(dialog, NO_CONTRAST)).violations).toEqual([]);
 
-    await user.click(within(dialog).getByRole("button", { name: "Fermer" }));
+    // Échap ne ferme pas la fenêtre tant que le mot de passe est affiché.
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(within(dialog).getByText(PASSWORD)).toBeVisible();
+    await user.click(
+      within(dialog).getByRole("button", { name: "J'ai noté le mot de passe, fermer" }),
+    );
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
     expect(document.body).not.toHaveTextContent(PASSWORD);
     expect(
@@ -246,7 +252,16 @@ describe("UserDetailPage — rôle et profil", () => {
     expect(screen.getByRole("button", { name: "Changer le rôle" })).toBeDisabled();
     await user.selectOptions(select, "RAI");
     await user.click(screen.getByRole("button", { name: "Changer le rôle" }));
+    // Confirmation explicite avant d'appliquer.
+    const confirm = await screen.findByRole("alertdialog", {
+      name: "Changer le rôle de Landry Kabore ?",
+    });
+    expect(confirm).toHaveTextContent(/passe de « Auditeur » à « Responsable de l'audit interne »/);
+    expect(within(confirm).queryByText(/donne tous les droits/)).toBeNull();
+    expect(state.sent).toHaveLength(0);
+    await user.click(within(confirm).getByRole("button", { name: "Confirmer le changement" }));
     expect(await screen.findByText("Rôle modifié.")).toBeVisible();
+    expect(select).toHaveFocus();
     expect(state.sent).toEqual([
       { method: "POST", url: "/api/v1/user-accounts/7/change-role/", body: { role: "RAI" } },
     ]);
@@ -267,10 +282,59 @@ describe("UserDetailPage — rôle et profil", () => {
     const select = await screen.findByRole("combobox", { name: "Nouveau rôle" });
     await user.selectOptions(select, "RAI");
     await user.click(screen.getByRole("button", { name: "Changer le rôle" }));
+    await user.click(await screen.findByRole("button", { name: "Confirmer le changement" }));
     expect(
       await screen.findByText("Le dernier administrateur actif garde son rôle."),
     ).toBeVisible();
     expect(select).toHaveAccessibleDescription(/Le dernier administrateur actif garde son rôle\./);
+  });
+
+  it("warns explicitly before granting Administrateur, and cancelling sends nothing", async () => {
+    const { state } = serve(anAccount());
+    const user = userEvent.setup();
+    open();
+    const select = await screen.findByRole("combobox", { name: "Nouveau rôle" });
+    await user.selectOptions(select, "ADMIN");
+    await user.click(screen.getByRole("button", { name: "Changer le rôle" }));
+    const confirm = await screen.findByRole("alertdialog");
+    expect(within(confirm).getByText(/le rôle Administrateur donne tous les droits/)).toBeVisible();
+    expect((await axe(confirm, NO_CONTRAST)).violations).toEqual([]);
+    await user.click(within(confirm).getByRole("button", { name: "Annuler" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    expect(state.sent).toHaveLength(0);
+    expect(select).toHaveValue("ADMIN");
+  });
+
+  it("explains why every profile field is greyed for a delegate with no profile right", async () => {
+    serve(anAccount({ actions: { ...NO_ACTIONS, desactiver: true } }));
+    open("RAI", DELEGATE({ desactiver: true }));
+    const first = await screen.findByRole("textbox", { name: "Prénom" });
+    expect(first).toBeDisabled();
+    expect(screen.getByText(/Les champs grisés demandent un droit/)).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Enregistrer le profil" })).toBeNull();
+  });
+
+  it("does not validate an unchanged or greyed email", async () => {
+    const { state, record } = serve(
+      anAccount({
+        email: "ancienne-adresse@",
+        actions: { ...NO_ACTIONS, modifier_profil: true, modifier_courriel: false },
+      }),
+    );
+    server.use(
+      http.patch(ACCOUNT_URL, async ({ request }) => {
+        await record(request);
+        return HttpResponse.json(state.account);
+      }),
+    );
+    const user = userEvent.setup();
+    open("RAI", DELEGATE({ creer: true }));
+    const fonction = await screen.findByRole("textbox", { name: "Fonction" });
+    await user.type(fonction, " principal");
+    await user.click(screen.getByRole("button", { name: "Enregistrer le profil" }));
+    await screen.findByText("Profil enregistré.");
+    expect(screen.queryByText("Saisissez une adresse de courriel valide.")).toBeNull();
+    expect(state.sent[0]?.body).toEqual({ fonction: "Auditeur principal" });
   });
 
   it("edits names and email per right and sends only what changed", async () => {

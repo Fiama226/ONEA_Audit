@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom";
+import { useAccountRights, type AccountRights } from "@/auth/useAccountRights";
 import { DataTable, type DataTableColumn } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
@@ -87,7 +88,14 @@ function toApiParams(f: UserFilterValues, page: number, ordering: string): UserA
   return params;
 }
 
+/** Texte de la liste vide : ne mentionne que les actions affichées (UserListActions). */
+function emptyText({ isAdmin, rights }: AccountRights): string {
+  if (isAdmin) return t.emptyText;
+  return rights.creer ? t.emptyTextCreate : t.emptyTextNone;
+}
+
 export function UserListPage() {
+  const accountRights = useAccountRights();
   const [search, setSearch] = useSearchParams();
   const filters: UserFilterValues = {
     q: (search.get("q") ?? "").trim().slice(0, SEARCH_MAX_LENGTH),
@@ -165,7 +173,11 @@ export function UserListPage() {
               </Button>
             </EmptyState>
           ) : (
-            <EmptyState title={t.emptyTitle} description={t.emptyText} illustration={false} />
+            <EmptyState
+              title={t.emptyTitle}
+              description={emptyText(accountRights)}
+              illustration={false}
+            />
           )
         }
       />
