@@ -21,7 +21,7 @@ affirmer ".env.recette ne contient aucune valeur de secret applicatif" \
     '! grep -qFf "$MOTIFS" "$RECETTE_ENV"'
 
 # docker inspect : Config.Env, Cmd, Entrypoint, Healthcheck, Labels... (tout le JSON).
-for service in web worker beat migrate db redis meilisearch; do
+for service in web worker worker-auth beat migrate db redis meilisearch; do
     ids=$(compose_recette ps -a -q "$service")
     affirmer "$service : conteneur trouve" '[ -n "$ids" ]'
     for id in $ids; do

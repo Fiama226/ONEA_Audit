@@ -228,3 +228,38 @@ def test_reglages_d_authentification_transmis_et_documentes() -> None:
             "echecs_reinitialisation",
         }:
             assert variable in modele, variable
+
+
+# --- D4 : les scripts d'exploitation connaissent worker-auth ---
+
+
+def _workers_celery() -> list[str]:
+    services = yaml.safe_load(COMPOSE_PROD)["services"]
+    return [
+        nom
+        for nom, service in services.items()
+        if isinstance(service.get("command"), list)
+        and service["command"][:4] == ["celery", "-A", "config", "worker"]
+    ]
+
+
+def test_restauration_arrete_tous_les_workers() -> None:
+    texte = (RACINE / "scripts" / "restore.sh").read_text(encoding="utf-8")
+    arret = next(ligne for ligne in texte.splitlines() if ligne.startswith("compose stop "))
+    assert set(_workers_celery()) == {"worker", "worker-auth"}
+    for nom in [*_workers_celery(), "web", "beat"]:
+        assert nom in arret.split(), nom
+
+
+def test_banc_des_secrets_inspecte_tous_les_workers() -> None:
+    texte = (RACINE / "scripts" / "recette" / "tests" / "secrets.sh").read_text(encoding="utf-8")
+    boucle = next(ligne for ligne in texte.splitlines() if ligne.startswith("for service in "))
+    for nom in _workers_celery():
+        assert nom in boucle.split(), nom
+
+
+def test_commentaire_des_reseaux_a_jour() -> None:
+    ligne = next(
+        ligne for ligne in COMPOSE_PROD.splitlines() if ligne.startswith("#   backend  internal")
+    )
+    assert "worker-auth" in ligne

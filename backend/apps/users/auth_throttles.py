@@ -79,6 +79,11 @@ def cle_adresse(request: HttpRequest | Request) -> str:
     return adresse
 
 
+def _normaliser(identifiant: object) -> str:
+    """Letter case, width and surrounding spaces do not make a new identifier."""
+    return unicodedata.normalize("NFKC", str(identifiant or "").strip()).casefold()
+
+
 class _LimiteAuth(SimpleRateThrottle):
     """Rate read from the settings on each request; fails open when the cache is down."""
 
@@ -154,7 +159,7 @@ class MotDePasseOublieParIdentifiantThrottle(_LimiteAuth):
         texte = str(identifiant).strip()
         if not texte:
             return None
-        normalise = unicodedata.normalize("NFKC", texte).casefold()
+        normalise = _normaliser(texte)
         empreinte = salted_hmac(
             "onea.throttle.identifiant", normalise, algorithm="sha256"
         ).hexdigest()
@@ -225,6 +230,65 @@ class _EchecsParIp(_LimiteAuth):
 
     def wait(self) -> float | None:
         return getattr(self, "_attente", None)
+
+    # At most this many refusals counted per (address, unknown identifier, window).
+    INCONNUS_PAR_IDENTIFIANT = 5
+
+    def compter_refus(
+        self,
+        request: Any,
+        comptage: Any,
+        *,
+        compte_id: int | None = None,
+        identifiant: object = None,
+    ) -> None:
+        """Count a refusal by its kind (`auth_services.Comptage`), never by whether the
+        secret typed was right (D1):
+
+        - wrong secret on a usable account: every refusal;
+        - unusable account (locked, disabled, expired, blocked): once per (address, account,
+          window), right or wrong secret alike; a site behind one NAT address retrying a
+          locked account costs one unit;
+        - unknown identifier: every refusal, at most 5 per (address, identifier, window);
+        - a replaced code (``AUCUN``): nothing.
+        """
+        from .auth_services import Comptage
+
+        if comptage is Comptage.SECRET_FAUX:
+            self.enregistrer_echec(request)
+        elif comptage is Comptage.COMPTE_INUTILISABLE:
+            if self._dans_la_limite(request, f"compte:{compte_id}", 1):
+                self.enregistrer_echec(request)
+        elif comptage is Comptage.INCONNU:
+            sujet = f"identifiant:{_normaliser(identifiant)}"
+            if self._dans_la_limite(request, sujet, self.INCONNUS_PAR_IDENTIFIANT):
+                self.enregistrer_echec(request)
+
+    def _dans_la_limite(self, request: Any, sujet: str, maximum: int) -> bool:
+        """Count one refusal for (address, subject) in the window; True while <= maximum.
+
+        The key is a keyed hash (HMAC with SECRET_KEY): the cache never holds an account id
+        next to an address, nor a typed identifier.
+        """
+        if self.rate is None:
+            return False
+        _, duree = analyser_taux(self.rate)
+        empreinte = salted_hmac(
+            "onea.throttle.refus",
+            f"{self.scope}|{cle_adresse(request)}|{sujet}",
+            algorithm="sha256",
+        ).hexdigest()
+        cle = f"throttle_{self.scope}_refus_{empreinte}"
+        try:
+            self.cache.add(cle, 0, duree)
+            try:
+                nombre = int(self.cache.incr(cle))
+            except ValueError:  # expired between add and incr
+                self.cache.set(cle, 1, duree)
+                nombre = 1
+        except (RedisError, OSError):
+            return True  # the counter itself will fail open with a warning
+        return nombre <= maximum
 
     def enregistrer_echec(self, request: Any) -> None:
         if self.rate is None or self.get_cache_key(request, None) is None:

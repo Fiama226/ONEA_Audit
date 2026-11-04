@@ -179,7 +179,8 @@ def test_blocked_refusal_costs_one_hash(agent: User, monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(auth_services, "make_password", hachages)
     monkeypatch.setattr(auth_services, "check_password", verifications)
     assert auth_services.reinitialiser_mot_de_passe("awa", code, NOUVEAU) is None
-    assert hachages.call_count + verifications.call_count == 1
+    attendu = 1 + auth_services.CODES_REMPLACES_VERIFIES  # the same work as any refusal (D2)
+    assert hachages.call_count + verifications.call_count == attendu
 
 
 def test_issuing_quota_survives_a_cache_flush(agent: User) -> None:

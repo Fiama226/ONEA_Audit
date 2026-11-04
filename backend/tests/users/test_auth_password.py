@@ -358,7 +358,9 @@ def test_reset_failure_costs_one_hash(
     monkeypatch.setattr(auth_services, "make_password", hachages)
     monkeypatch.setattr(auth_services, "check_password", verifications)
     assert auth_services.reinitialiser_mot_de_passe(identifiant, saisi, NOUVEAU) is None
-    assert hachages.call_count + verifications.call_count == 1
+    # Every refusal: the same work (D2), padded up to the replaced codes a wrong code meets.
+    attendu = 1 + auth_services.CODES_REMPLACES_VERIFIES
+    assert hachages.call_count + verifications.call_count == attendu
 
 
 def test_reset_cancels_a_pending_login_code(agent: User) -> None:

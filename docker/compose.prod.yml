@@ -17,7 +17,7 @@
 #            worker. The only client address web/gunicorn trusts is nginx's.
 #   front    internal: nginx, frontend
 #   mail-out standard: worker and worker-auth only (SMTP egress; web has no route out)
-#   backend  internal: web, worker, beat, migrate, db, redis, meilisearch, gotenberg
+#   backend  internal: web, worker, worker-auth, beat, migrate, db, redis, meilisearch, gotenberg
 #   av       internal: clamav, web, worker (clamd 3310 is reachable from these three only)
 #   av-out   standard: clamav only (freshclam signature update; clamd itself accepts no one there)
 name: ${COMPOSE_PROJECT_NAME:-onea-prod}

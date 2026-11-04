@@ -64,18 +64,31 @@ class Etape(StrEnum):
     CHANGER_MOT_DE_PASSE = "CHANGER_MOT_DE_PASSE"
 
 
+class Comptage(StrEnum):
+    """How a refusal counts in the per-address failure caps (never shown to the client).
+
+    The decision never depends on whether the secret was right when the account cannot be
+    used anyway (D1): otherwise the counter would tell an attacker which password is right.
+    """
+
+    SECRET_FAUX = "SECRET_FAUX"  # noqa: S105 - a label. Usable account, wrong secret: each
+    COMPTE_INUTILISABLE = "COMPTE_INUTILISABLE"  # locked, disabled, expired, blocked: once
+    INCONNU = "INCONNU"  # unknown identifier: each one, up to 5 per identifier
+    AUCUN = "AUCUN"  # a code replaced by a newer one: not counted
+
+
 @dataclass(frozen=True)
 class Resultat:
     """Outcome of `authentifier`. `etape is None` means refused (the reason is never exposed).
 
-    ``secret_faux`` (refusals only, never shown to the client): the password or code typed
-    was wrong, or the account unknown. The per-address failure caps count these refusals
-    only, never the refusal of a right secret (locked, disabled, expired account: N1).
+    ``comptage`` and ``compte_id`` (refusals only, never shown to the client) tell the
+    per-address failure caps how to count the refusal (`Comptage`).
     """
 
     user: User | None = None
     etape: Etape | None = None
-    secret_faux: bool = False
+    comptage: Comptage | None = None
+    compte_id: int | None = None
 
 
 class VerificationCode(StrEnum):
@@ -85,9 +98,6 @@ class VerificationCode(StrEnum):
     FAUX = "FAUX"  # wrong code against a live one: an attempt is spent
     AUCUN = "AUCUN"  # no live code (none, expired, exhausted): nothing could match
     REMPLACE = "REMPLACE"  # a code replaced by a newer one: refused, not a wrong attempt
-
-
-_REFUS = Resultat()
 
 
 def trouver_compte(identifiant: str) -> User | None:
@@ -180,22 +190,24 @@ def _conclure(
     ``select_for_update``: deciding on the row read before the hash would let a concurrent
     request clear a lock set meanwhile, or count a right password as a failure when the lock
     ended meanwhile. An unusable account gets the uniform refusal without counting or
-    resetting anything (a failure while locked never extends the lock). A wrong secret on a
-    usable account counts; a right one resets the counter, except when the next step is the
-    OTP (the counter is then kept until the code is checked).
+    resetting anything (a failure while locked never extends the lock), and the same
+    ``Comptage`` whatever the secret (D1). A wrong secret on a usable account counts; a
+    right one resets the counter, except when the next step is the OTP (the counter is then
+    kept until the code is checked).
     """
+    inutilisable = Resultat(comptage=Comptage.COMPTE_INUTILISABLE, compte_id=compte_id)
     with transaction.atomic():
         verrou = User.objects.select_for_update(no_key=True).filter(pk=compte_id).first()
         if verrou is None:
-            return _REFUS
+            return inutilisable
         now = timezone.now()
         motif = compte_utilisable(verrou, now)
         if motif is not None:
             _journaliser_refus(motif, verrou, adresse)
-            return _REFUS
+            return inutilisable
         if not secret_ok:
             _compter_echec(verrou, now, motif_echec, adresse)
-            return _REFUS
+            return Resultat(comptage=Comptage.SECRET_FAUX, compte_id=compte_id)
         etape = etape_de(verrou)
         if etape is not Etape.OTP:
             verrou.echecs_connexion = 0
@@ -218,17 +230,14 @@ def authentifier(identifiant: str, mot_de_passe: str, *, adresse: str | None = N
     mot_de_passe_ok = _verifier_mot_de_passe(compte, mot_de_passe)
     if compte is None:
         _journaliser_refus("compte_inconnu", None, adresse)
-        return Resultat(secret_faux=True)
-    resultat = _conclure(
+        return Resultat(comptage=Comptage.INCONNU)
+    return _conclure(
         compte.pk,
         mot_de_passe_ok,
         motif_echec="mot_de_passe",
         etape_de=etape_apres_mot_de_passe,
         adresse=adresse,
     )
-    if resultat.etape is None and not mot_de_passe_ok:
-        return Resultat(secret_faux=True)
-    return resultat
 
 
 def authentifier_code(user_id: int, code: str, *, adresse: str | None = None) -> Resultat:
@@ -236,7 +245,7 @@ def authentifier_code(user_id: int, code: str, *, adresse: str | None = None) ->
     code replaced by a newer one (refused, but the agent only typed the older email's code)."""
     compte = User.objects.filter(pk=user_id).first()
     if compte is None:
-        return _REFUS
+        return Resultat(comptage=Comptage.COMPTE_INUTILISABLE, compte_id=user_id)
     # An account already unusable burns no code attempt; _conclure re-checks in any case.
     if compte_utilisable(compte) is not None:
         return _conclure(
@@ -249,17 +258,14 @@ def authentifier_code(user_id: int, code: str, *, adresse: str | None = None) ->
     etat = _verifier_otp(compte, ObjetOtp.LOGIN, code)
     if etat is VerificationCode.REMPLACE:
         _journaliser_refus("code_remplace", compte, adresse)
-        return _REFUS
-    resultat = _conclure(
+        return Resultat(comptage=Comptage.AUCUN, compte_id=compte.pk)
+    return _conclure(
         compte.pk,
         etat is VerificationCode.JUSTE,
         motif_echec="code_otp",
         etape_de=etape_apres_second_facteur,
         adresse=adresse,
     )
-    if resultat.etape is None and etat is not VerificationCode.JUSTE:
-        return Resultat(secret_faux=True)
-    return resultat
 
 
 # No look-alike characters (0/O, 1/l/I) since the password is read from an email.
@@ -292,18 +298,37 @@ def emettre_otp(user: User, objet: str) -> str:
     return code
 
 
+HACHAGES_PAR_REFUS = 1 + CODES_REMPLACES_VERIFIES
+
+
+def _hachages_factices(code: str, nombre: int) -> None:
+    """The same work as real checks (D2): every refusal of a code costs as many hashes."""
+    for _ in range(nombre):
+        make_password(code)
+
+
 def _code_remplace(user: User, objet: str, code: str, now: datetime) -> bool:
-    """The code matches one of the latest codes replaced by a newer one, still unexpired."""
-    remplaces = CodeOtp.objects.filter(
-        user=user, objet=objet, remplace_le__isnull=False, expire_le__gt=now
-    ).order_by("-created_at")[:CODES_REMPLACES_VERIFIES]
-    return any(check_password(code, ancien.code_hash) for ancien in remplaces)
+    """The code matches one of the latest codes replaced by a newer one, still unexpired.
+
+    Always ``CODES_REMPLACES_VERIFIES`` hashes, whatever the number of replaced codes and
+    wherever the match is (no short-circuit): the time tells nothing (D2).
+    """
+    remplaces = list(
+        CodeOtp.objects.filter(
+            user=user, objet=objet, remplace_le__isnull=False, expire_le__gt=now
+        ).order_by("-created_at")[:CODES_REMPLACES_VERIFIES]
+    )
+    trouve = False
+    for ancien in remplaces:
+        trouve = check_password(code, ancien.code_hash) or trouve
+    _hachages_factices(code, CODES_REMPLACES_VERIFIES - len(remplaces))
+    return trouve
 
 
 def _verifier_otp(user: User, objet: str, code: str) -> VerificationCode:
     """Check the active code (consumed when right). An attempt is spent only on a live code
-    (not expired, not exhausted) and not by a replaced code; every check costs one hash at
-    least."""
+    (not expired, not exhausted) and not by a replaced code. Every refusal costs exactly
+    ``HACHAGES_PAR_REFUS`` hashes (D2); a right code costs one."""
     with transaction.atomic():
         actif = (
             CodeOtp.objects.select_for_update()
@@ -312,7 +337,8 @@ def _verifier_otp(user: User, objet: str, code: str) -> VerificationCode:
         )
         now = timezone.now()
         if actif is None or actif.expire_le <= now or actif.essais >= OTP_ESSAIS_MAX:
-            make_password(code)  # same work as a real check: "no pending code" is no oracle
+            # The same work as a real refusal: "no pending code" is no oracle.
+            _hachages_factices(code, HACHAGES_PAR_REFUS)
             return VerificationCode.AUCUN
         if check_password(code, actif.code_hash):
             actif.essais += 1
@@ -502,15 +528,16 @@ def reinitialiser_mot_de_passe(
 
 def reinitialiser_mot_de_passe_detail(
     identifiant: str, code: str, nouveau: str, *, adresse: str | None = None
-) -> tuple[User | None, bool]:
-    """Reset a forgotten password with the RESET code: ``(account or None, secret_faux)``.
+) -> tuple[User | None, Comptage | None, int | None]:
+    """Reset a forgotten password with the RESET code: ``(account or None, comptage,
+    account id)``.
 
     Refused alike: unknown or ambiguous identifier, disabled account, no code, wrong,
     expired, used, exhausted or replaced code, and an account whose wrong codes reached the
-    24 h cap (AUTH-02: no code is accepted then). Every refusal costs one hash at least. A
-    wrong code checked against a live one counts towards that cap; a success clears the
-    count. ``secret_faux`` (never shown to the client) tells the per-address failure cap
-    whether the refusal came from a wrong code or an unknown account (N1).
+    24 h cap (AUTH-02: no code is accepted then). Every refusal costs exactly
+    ``HACHAGES_PAR_REFUS`` hashes (D2). A wrong code checked against a live one counts
+    towards that cap; a success clears the count. ``comptage`` (never shown to the client)
+    tells the per-address failure cap how to count the refusal (`Comptage`, D1/D3).
 
     The new password is checked first without the account (raises ``ValidationError``: the
     answer cannot depend on the account), then against the account once the code is right;
@@ -521,29 +548,30 @@ def reinitialiser_mot_de_passe_detail(
     validate_password(nouveau)
     compte = trouver_compte(identifiant)
     if compte is None:
-        make_password(code)
+        _hachages_factices(code, HACHAGES_PAR_REFUS)
         _journaliser_reinitialisation_refusee("compte_inconnu", None, adresse)
-        return None, True
+        return None, Comptage.INCONNU, None
+    inutilisable = (None, Comptage.COMPTE_INUTILISABLE, compte.pk)
     with transaction.atomic():
         verrou = User.objects.select_for_update(no_key=True).filter(pk=compte.pk).first()
         if verrou is None or not verrou.is_active:
-            make_password(code)
+            _hachages_factices(code, HACHAGES_PAR_REFUS)
             _journaliser_reinitialisation_refusee("desactive", compte, adresse)
-            return None, False
+            return inutilisable
         now = timezone.now()
         if reinitialisation_bloquee(verrou, now):
-            make_password(code)
+            _hachages_factices(code, HACHAGES_PAR_REFUS)
             _journaliser_reinitialisation_refusee("bloque", verrou, adresse)
-            return None, False
+            return inutilisable
         etat = _verifier_otp(verrou, ObjetOtp.RESET, code)
         if etat is VerificationCode.REMPLACE:
             _journaliser_reinitialisation_refusee("code_remplace", verrou, adresse)
-            return None, False
+            return None, Comptage.AUCUN, verrou.pk
         if etat is not VerificationCode.JUSTE:
             if etat is VerificationCode.FAUX:
                 _compter_echec_reinitialisation(verrou, now, adresse)
             _journaliser_reinitialisation_refusee("code", verrou, adresse)
-            return None, True
+            return None, Comptage.SECRET_FAUX, verrou.pk
         validate_password(nouveau, verrou)  # raising rolls back the code consumption
         _appliquer_mot_de_passe(verrou, nouveau)
         if verrou.echecs_reinitialisation or verrou.echecs_reinitialisation_depuis:
@@ -557,7 +585,7 @@ def reinitialiser_mot_de_passe_detail(
         adresse or "inconnue",
         sessions,
     )
-    return verrou, False
+    return verrou, None, verrou.pk
 
 
 def _journaliser_reinitialisation_refusee(

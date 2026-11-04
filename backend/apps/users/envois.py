@@ -165,6 +165,14 @@ def envoyer_mot_de_passe_en_attente(envoi_id: str, compte_id: int | None = None)
 
 
 def purger_envois_expires() -> int:
-    """Delete the rows past their expiry (a worker down for an hour). Returns the count."""
-    supprimes, _ = EnvoiMotDePasse.objects.filter(expire_le__lte=timezone.now()).delete()
+    """Delete the rows past their expiry (a worker down for an hour). Returns the count.
+
+    Each one is a password that never left: an ERROR per row, like any other loss (N3).
+    """
+    expires = list(
+        EnvoiMotDePasse.objects.filter(expire_le__lte=timezone.now()).values_list("pk", "user_id")
+    )
+    for envoi_id, compte_id in expires:
+        _perte("purgé sans envoi", compte_id, envoi_id)
+    supprimes, _ = EnvoiMotDePasse.objects.filter(pk__in=[pk for pk, _ in expires]).delete()
     return supprimes

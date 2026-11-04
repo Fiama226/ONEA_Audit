@@ -7,7 +7,7 @@
 # <horodatage> : AAAAMMJJ-HHMMSS (nom des fichiers de backup.sh). Sans --oui, rien n'est modifié.
 # Copie hors serveur : `restic restore latest --target /srv/onea-restauration`, puis
 #   --dossier /srv/onea-restauration/<dossier de sauvegarde d'origine>.
-# Déroulement : contrôle du manifeste SHA-256 (refus au moindre écart) ; arrêt de web, worker et beat ;
+# Déroulement : contrôle du manifeste SHA-256 (refus au moindre écart) ; arrêt de web, des workers et beat ;
 # restauration de la base applicative (pg_restore --clean --if-exists --single-transaction) ; ré-installation des déclencheurs de gel et des droits
 # (installer_gardes_sql, que pg_restore ne rétablit pas de façon sûre) ; dossier des documents
 # déplacé en <dossier>-avant-restauration-<horodatage> puis archive extraite (10001:10001, 0750) ;
@@ -83,8 +83,8 @@ DOCS_AVANT="$DOCS_REAL-avant-restauration-$STAMP"
 [ ! -e "$DOCS_AVANT" ] || { echo "ERREUR : $DOCS_AVANT existe déjà." >&2; exit 1; }
 
 # --- 2. Arrêt des services qui écrivent -------------------------------------------------------------
-echo "Arrêt de web, worker, beat..."
-compose stop web worker beat
+echo "Arrêt de web, worker, worker-auth, beat..."
+compose stop web worker worker-auth beat
 
 # --- 3. Bases PostgreSQL ----------------------------------------------------------------------------
 restaurer_base() { # <service> <préfixe>

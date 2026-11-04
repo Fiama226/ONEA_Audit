@@ -211,7 +211,7 @@ def test_compose_declare_les_secrets_et_chaque_service_les_monte() -> None:
     for definition in compose["secrets"].values():
         assert definition["file"].startswith("${ONEA_SECRETS_DIR")
     services = compose["services"]
-    for nom in ("web", "worker", "beat", "migrate", "db", "redis", "meilisearch"):
+    for nom in ("web", "worker", "worker-auth", "beat", "migrate", "db", "redis", "meilisearch"):
         env = services[nom].get("environment", {})
         for cle, valeur in env.items():
             if cle.endswith("_FILE") and cle != "SSL_CERT_FILE":  # bundle de CA, pas un secret
@@ -244,7 +244,7 @@ def test_compose_sans_secret_en_clair_dans_l_environnement() -> None:
         if re.search(r"PASSWORD|SECRET|TOKEN|_KEY", ref):
             assert ref == "ONEA_SECRETS_DIR", ref
     # Les URL de connexion ne contiennent plus de mot de passe.
-    for nom in ("web", "worker", "beat", "migrate"):
+    for nom in ("web", "worker", "worker-auth", "beat", "migrate"):
         for cle in ("DATABASE_URL", "REDIS_URL"):
             valeur = re.sub(r"\$\{[^}]*\}", "X", str(services[nom]["environment"][cle]))
             assert not re.search(r"://[^/@]*:[^/@]*@", valeur), f"{nom} : {cle}"

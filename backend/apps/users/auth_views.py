@@ -116,8 +116,13 @@ class ConnexionView(_CsrfObligatoireMixin, APIView):
             adresse=adresse_client(request),
         )
         if resultat.etape is None or resultat.user is None:
-            if resultat.secret_faux:  # never the refusal of a right secret (N1)
-                EchecsConnexionParIpThrottle().enregistrer_echec(request)
+            # Counted by kind of refusal, never by whether the secret was right (D1).
+            EchecsConnexionParIpThrottle().compter_refus(
+                request,
+                resultat.comptage,
+                compte_id=resultat.compte_id,
+                identifiant=serializer.validated_data["identifiant"],
+            )
             raise AuthenticationFailed(ECHEC_CONNEXION)
         user = resultat.user
         if resultat.etape is Etape.OTP:
@@ -164,8 +169,10 @@ class ConnexionCodeView(_CsrfObligatoireMixin, APIView):
             compte_id, serializer.validated_data["code"], adresse=adresse_client(request)
         )
         if resultat.etape is None or resultat.user is None:
-            if resultat.secret_faux:  # never the refusal of a right secret (N1)
-                EchecsConnexionParIpThrottle().enregistrer_echec(request)
+            # Counted by kind of refusal, never by whether the secret was right (D1).
+            EchecsConnexionParIpThrottle().compter_refus(
+                request, resultat.comptage, compte_id=resultat.compte_id, identifiant=None
+            )
             raise AuthenticationFailed(CODE_INVALIDE)
         _ouvrir_session(request, resultat.user)
         return Response(_etat(resultat.etape, resultat.user))
@@ -272,7 +279,7 @@ class ReinitialisationView(_CsrfObligatoireMixin, APIView):
         serializer.is_valid(raise_exception=True)
         donnees = serializer.validated_data
         try:
-            compte, secret_faux = auth_services.reinitialiser_mot_de_passe_detail(
+            compte, comptage, compte_id = auth_services.reinitialiser_mot_de_passe_detail(
                 donnees["identifiant"],
                 donnees["code"],
                 donnees["nouveau_mot_de_passe"],
@@ -281,8 +288,9 @@ class ReinitialisationView(_CsrfObligatoireMixin, APIView):
         except DjangoValidationError as exc:
             raise _erreurs_mot_de_passe("nouveau_mot_de_passe", exc) from None
         if compte is None:
-            if secret_faux:  # not a blocked account nor a replaced code (N1)
-                EchecsReinitialisationParIpThrottle().enregistrer_echec(request)
+            EchecsReinitialisationParIpThrottle().compter_refus(
+                request, comptage, compte_id=compte_id, identifiant=donnees["identifiant"]
+            )
             raise CodeRefuse
         return Response(status=204)
 
