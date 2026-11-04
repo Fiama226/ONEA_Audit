@@ -49,8 +49,6 @@ export function invalidateAccomplissement(
   return Promise.all(keys.map((queryKey) => client.invalidateQueries({ queryKey })));
 }
 
-type Page<T> = { count: number; results: T[] };
-
 // ---- Programmes de travail --------------------------------------------------------------------
 
 export function useWorkPrograms(missionId: string | undefined) {
@@ -93,11 +91,12 @@ export function useProgramSummary(missionId: string | undefined) {
   });
 }
 
+/** Versions validées du programme : la liste n'est pas paginée, l'API renvoie un tableau nu. */
 export function useSnapshots(missionId: string | undefined) {
   return useQuery({
     queryKey: accomplissementKeys.snapshots(missionId),
     queryFn: () =>
-      apiFetch<Page<InstantaneProgramme>>(
+      apiFetch<InstantaneProgramme[]>(
         `${BASE}/work-programs/snapshots/${toQuery({ mission: missionId })}`,
       ),
     enabled: missionId !== undefined,

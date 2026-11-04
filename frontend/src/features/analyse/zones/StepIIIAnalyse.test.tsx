@@ -62,9 +62,7 @@ function open({ contribuer = true, questionnaires, questions, grids, extra = [] 
         const type = new URL(request.url).searchParams.get("type");
         return HttpResponse.json(pageOf((questionnaires ?? []).filter((q) => q.type === type)));
       }),
-      http.get(`${API_URL}/api/v1/analysis-questions/`, () =>
-        HttpResponse.json(pageOf(state.questions)),
-      ),
+      http.get(`${API_URL}/api/v1/analysis-questions/`, () => HttpResponse.json(state.questions)),
       http.patch(`${API_URL}/api/v1/analysis-questions/:id/`, async ({ request, params }) => {
         const body = (await request.json()) as Partial<Question>;
         bodies.patch = body;

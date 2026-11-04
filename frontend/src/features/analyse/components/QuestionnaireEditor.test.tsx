@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
+import type { paths } from "@/api/schema";
 import { fr } from "@/i18n/fr";
 import { API_URL, server } from "@/test/msw";
 import { aQuestionnaire } from "../testUtils";
@@ -10,6 +11,9 @@ import type { Question } from "../types";
 import { QuestionnaireEditor } from "./QuestionnaireEditor";
 
 const t = fr.analyseIII;
+
+type QuestionList =
+  paths["/api/v1/analysis-questions/"]["get"]["responses"][200]["content"]["application/json"];
 
 function q(n: number, overrides: Partial<Question> = {}): Question {
   return {
@@ -28,13 +32,9 @@ function q(n: number, overrides: Partial<Question> = {}): Question {
 function setup(questions: Question[], editable: boolean) {
   const state = { questions };
   server.use(
+    // L'API renvoie un tableau nu (vue non paginée) : le mock suit le contrat OpenAPI.
     http.get(`${API_URL}/api/v1/analysis-questions/`, () =>
-      HttpResponse.json({
-        count: state.questions.length,
-        next: null,
-        previous: null,
-        results: state.questions,
-      }),
+      HttpResponse.json(state.questions satisfies QuestionList),
     ),
   );
   const client = new QueryClient({

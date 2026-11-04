@@ -31,12 +31,12 @@ export function StepXZone({ mission, step }: ZoneProps) {
         {t.loadError}
       </p>
     );
-  } else if (snapshots.data.results.length === 0) {
+  } else if (snapshots.data.length === 0) {
     list = <p className="text-sm text-text-muted">{t.snapshotsNone}</p>;
   } else {
     list = (
       <ul aria-label={t.snapshotsLabel} className="grid gap-1 text-sm">
-        {snapshots.data.results.map((s) => (
+        {snapshots.data.map((s) => (
           <li key={s.id}>
             {t.snapshotLine
               .replace("{date}", formatDate(s.valide_le))
