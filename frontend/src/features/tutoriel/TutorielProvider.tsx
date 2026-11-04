@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/auth/useAuth";
 import { envoyerAction, type TutorielAction } from "./api";
@@ -6,10 +15,14 @@ import { trouverCible } from "./cible";
 import { TutorielContext } from "./context";
 import { etapesPour, TUTORIEL_VERSION, type Etape } from "./etapes";
 import { dejaTraiteEnSession, memoriserEnSession } from "./storage";
-import { TourPopover } from "./components/TourPopover";
 import { WelcomeDialog } from "./components/WelcomeDialog";
 
 type Phase = "repos" | "accueil" | "visite";
+
+/** La bulle de visite n'est utile qu'une fois la visite lancée : hors du JS d'entrée. */
+const TourPopover = lazy(async () => ({
+  default: (await import("./components/TourPopover")).TourPopover,
+}));
 
 const PAGES_PUBLIQUES = [
   "/connexion",
@@ -95,7 +108,11 @@ export function TutorielProvider({ children }: { children: ReactNode }) {
       {phase === "accueil" && role && (
         <WelcomeDialog role={role} onStart={demarrer} onLater={ignorer} />
       )}
-      {phase === "visite" && <TourPopover etapes={etapes} onFinish={terminer} onSkip={ignorer} />}
+      {phase === "visite" && (
+        <Suspense fallback={null}>
+          <TourPopover etapes={etapes} onFinish={terminer} onSkip={ignorer} />
+        </Suspense>
+      )}
     </TutorielContext.Provider>
   );
 }
