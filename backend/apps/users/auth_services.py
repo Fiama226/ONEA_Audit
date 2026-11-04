@@ -14,11 +14,9 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.sessions.backends.db import SessionStore
 from django.contrib.sessions.models import Session
-from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
-from redis.exceptions import RedisError
 
 from apps.core.exceptions import RegleMetierError
 
@@ -37,6 +35,9 @@ DUREE_VERROUILLAGE = timedelta(minutes=15)
 # At most this many RESET codes per account per window (each code allows 5 guesses).
 CODES_REINITIALISATION_MAX = 10
 CODES_REINITIALISATION_FENETRE = timedelta(hours=24)
+# Wrong RESET codes of an account, whatever the code, are capped over this window
+# (settings.AUTH_REINITIALISATION_ECHECS_MAX, 15 by default): AUTH-02.
+ECHECS_REINITIALISATION_FENETRE = timedelta(hours=24)
 # Session key of a login waiting for its OTP step: the account id.
 CLE_OTP_COMPTE = "onea_otp_compte"
 
@@ -250,8 +251,9 @@ def emettre_otp(user: User, objet: str) -> str:
     return code
 
 
-def verifier_otp(user: User, objet: str, code: str) -> bool:
-    """Check and consume the active code. Every failed check counts as an attempt."""
+def _verifier_otp(user: User, objet: str, code: str) -> tuple[bool, bool]:
+    """``(right, attempt_spent)``: an attempt is spent only on a live code (not expired, not
+    exhausted); every check costs one hash all the same."""
     with transaction.atomic():
         actif = (
             CodeOtp.objects.select_for_update()
@@ -261,14 +263,19 @@ def verifier_otp(user: User, objet: str, code: str) -> bool:
         now = timezone.now()
         if actif is None or actif.expire_le <= now or actif.essais >= OTP_ESSAIS_MAX:
             make_password(code)  # same work as a real check: "no pending code" is no oracle
-            return False
+            return False, False
         actif.essais += 1
         if not check_password(code, actif.code_hash):
             actif.save(update_fields=["essais"])
-            return False
+            return False, True
         actif.utilise_le = now
         actif.save(update_fields=["essais", "utilise_le"])
-        return True
+        return True, True
+
+
+def verifier_otp(user: User, objet: str, code: str) -> bool:
+    """Check and consume the active code. Every failed check counts as an attempt."""
+    return _verifier_otp(user, objet, code)[0]
 
 
 def generer_mot_de_passe_temporaire() -> str:
@@ -282,27 +289,70 @@ def envoi_courriel_actif() -> bool:
     return any(nom in settings.EMAIL_BACKEND for nom in _BACKENDS_SANS_SMTP)
 
 
+def _fenetre_ouverte(depuis: datetime | None, fenetre: timedelta, now: datetime) -> bool:
+    return depuis is not None and depuis + fenetre > now
+
+
 def quota_codes_reinitialisation(compte_id: int) -> bool:
     """Count one RESET code for this account; False past the cap of the 24 h window.
 
     Silent server-side cap (the forgot answer never changes): the per-identifier throttle
     keys on the typed text, so an account reachable by username and by email would get
-    twice the codes, and every new code brings 5 fresh guesses. If the cache is down the
-    code is allowed, like the throttles.
+    twice the codes, and every new code brings 5 fresh guesses. Kept on the account row,
+    under its lock (AUTH-02): a cache outage or eviction cannot lift it (fails closed).
     """
-    cle = f"onea_codes_reinitialisation_{compte_id}"
-    try:
-        cache.add(cle, 0, timeout=int(CODES_REINITIALISATION_FENETRE.total_seconds()))
-        return int(cache.incr(cle)) <= CODES_REINITIALISATION_MAX
-    except ValueError:  # the key expired between add and incr: a new window starts
-        cache.set(cle, 1, timeout=int(CODES_REINITIALISATION_FENETRE.total_seconds()))
+    with transaction.atomic():
+        verrou = User.objects.select_for_update(no_key=True).filter(pk=compte_id).first()
+        if verrou is None:
+            return False
+        now = timezone.now()
+        if not _fenetre_ouverte(
+            verrou.codes_reinitialisation_depuis, CODES_REINITIALISATION_FENETRE, now
+        ):
+            verrou.codes_reinitialisation_emis = 0
+            verrou.codes_reinitialisation_depuis = now
+        if verrou.codes_reinitialisation_emis >= CODES_REINITIALISATION_MAX:
+            return False
+        verrou.codes_reinitialisation_emis += 1
+        verrou.save(update_fields=["codes_reinitialisation_emis", "codes_reinitialisation_depuis"])
         return True
-    except (RedisError, OSError) as exc:
-        logger_securite.warning(
-            "Quota des codes de réinitialisation non appliqué : cache indisponible (%s).",
-            type(exc).__name__,
+
+
+def echecs_reinitialisation_max() -> int:
+    return int(settings.AUTH_REINITIALISATION_ECHECS_MAX)
+
+
+def reinitialisation_bloquee(compte: User, now: datetime | None = None) -> bool:
+    """True while the account's wrong RESET codes of the current window reach the cap."""
+    now = now or timezone.now()
+    fenetre = ECHECS_REINITIALISATION_FENETRE
+    return (
+        _fenetre_ouverte(compte.echecs_reinitialisation_depuis, fenetre, now)
+        and compte.echecs_reinitialisation >= echecs_reinitialisation_max()
+    )
+
+
+def _compter_echec_reinitialisation(verrou: User, now: datetime, adresse: str | None) -> None:
+    """Count a wrong RESET code on the row-locked account, whatever the code (AUTH-02).
+
+    Reaching the cap drops the pending RESET code and logs an error: no code is then issued
+    nor accepted for the account until the window ends.
+    """
+    if not _fenetre_ouverte(
+        verrou.echecs_reinitialisation_depuis, ECHECS_REINITIALISATION_FENETRE, now
+    ):
+        verrou.echecs_reinitialisation = 0
+        verrou.echecs_reinitialisation_depuis = now
+    verrou.echecs_reinitialisation += 1
+    verrou.save(update_fields=["echecs_reinitialisation", "echecs_reinitialisation_depuis"])
+    if verrou.echecs_reinitialisation == echecs_reinitialisation_max():
+        CodeOtp.objects.filter(user=verrou, objet=ObjetOtp.RESET, utilise_le__isnull=True).delete()
+        logger_securite.error(
+            "Réinitialisation par code bloquée 24 h après %s codes faux : compte=%s adresse=%s",
+            verrou.echecs_reinitialisation,
+            verrou.pk,
+            adresse or "inconnue",
         )
-        return True
 
 
 def terminer_sessions(compte_id: int, *, sauf: str | None = None) -> int:
@@ -362,7 +412,9 @@ def reinitialiser_mot_de_passe(
     """Reset a forgotten password with the RESET code. None = refused (reason never exposed).
 
     Refused alike: unknown or ambiguous identifier, disabled account, no code, wrong,
-    expired, used or exhausted code. Every refusal costs exactly one hash. The new password
+    expired, used or exhausted code, and an account whose wrong codes reached the 24 h cap
+    (AUTH-02: no code is accepted then). Every refusal costs exactly one hash. A wrong code
+    checked against a live one counts towards that cap; a success clears the count. The new password
     is checked first without the account (raises ``ValidationError``: the answer cannot
     depend on the account), then against the account once the code is right; a password
     refused there rolls the code check back, so the code is not burnt. On success all the
@@ -375,16 +427,28 @@ def reinitialiser_mot_de_passe(
         _journaliser_reinitialisation_refusee("compte_inconnu", None, adresse)
         return None
     with transaction.atomic():
-        verrou = User.objects.select_for_update().filter(pk=compte.pk).first()
+        verrou = User.objects.select_for_update(no_key=True).filter(pk=compte.pk).first()
         if verrou is None or not verrou.is_active:
             make_password(code)
             _journaliser_reinitialisation_refusee("desactive", compte, adresse)
             return None
-        if not verifier_otp(verrou, ObjetOtp.RESET, code):
+        now = timezone.now()
+        if reinitialisation_bloquee(verrou, now):
+            make_password(code)
+            _journaliser_reinitialisation_refusee("bloque", verrou, adresse)
+            return None
+        code_ok, essai = _verifier_otp(verrou, ObjetOtp.RESET, code)
+        if not code_ok:
+            if essai:
+                _compter_echec_reinitialisation(verrou, now, adresse)
             _journaliser_reinitialisation_refusee("code", verrou, adresse)
             return None
         validate_password(nouveau, verrou)  # raising rolls back the code consumption
         _appliquer_mot_de_passe(verrou, nouveau)
+        if verrou.echecs_reinitialisation or verrou.echecs_reinitialisation_depuis:
+            verrou.echecs_reinitialisation = 0
+            verrou.echecs_reinitialisation_depuis = None
+            verrou.save(update_fields=["echecs_reinitialisation", "echecs_reinitialisation_depuis"])
     sessions = terminer_sessions(verrou.pk)
     logger_securite.info(
         "Mot de passe réinitialisé par code : compte=%s adresse=%s sessions_terminees=%s",

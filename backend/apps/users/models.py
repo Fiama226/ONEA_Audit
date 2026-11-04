@@ -58,6 +58,13 @@ class User(AbstractUser):
     echecs_connexion = models.PositiveIntegerField(default=0)
     verrouille_jusqu_a = models.DateTimeField(null=True, blank=True)
     otp_connexion_actif = models.BooleanField(default=False)
+    # Forgotten-password limits (AUTH-02), in the database so that a cache outage or
+    # eviction never lifts them. Each one counts over a 24 h window opened by its first
+    # event: the wrong RESET codes (whatever the code) and the RESET codes issued.
+    echecs_reinitialisation = models.PositiveIntegerField(default=0)
+    echecs_reinitialisation_depuis = models.DateTimeField(null=True, blank=True)
+    codes_reinitialisation_emis = models.PositiveIntegerField(default=0)
+    codes_reinitialisation_depuis = models.DateTimeField(null=True, blank=True)
 
     class Meta(AbstractUser.Meta):
         constraints = [

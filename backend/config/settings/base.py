@@ -286,6 +286,10 @@ REST_FRAMEWORK = {
     },
 }
 
+# AUTH-02: wrong forgotten-password codes accepted per account over 24 h, whatever the code
+# (then no code is issued nor accepted until the window ends; the admin reset remains).
+AUTH_REINITIALISATION_ECHECS_MAX: int = env.int("AUTH_REINITIALISATION_ECHECS_MAX", default=15)
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "API Audit Interne ONEA",
     "DESCRIPTION": (

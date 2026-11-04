@@ -35,7 +35,13 @@ def envoyer_code_reinitialisation(compte_id: int | None) -> bool:
     the answer costs the same work whatever the identifier: only the worker does the hash
     and the SMTP exchange. The code is issued here, never carried by the broker.
     """
-    from .auth_services import emettre_otp, envoi_courriel_actif, quota_codes_reinitialisation
+    from .auth_services import (
+        emettre_otp,
+        envoi_courriel_actif,
+        logger_securite,
+        quota_codes_reinitialisation,
+        reinitialisation_bloquee,
+    )
     from .courriels import envoyer_code
     from .models import ObjetOtp
 
@@ -43,6 +49,13 @@ def envoyer_code_reinitialisation(compte_id: int | None) -> bool:
         return False
     compte = User.objects.filter(pk=compte_id, is_active=True).first()
     if compte is None or not compte.email or not envoi_courriel_actif():
+        return False
+    if reinitialisation_bloquee(compte):
+        # AUTH-02: too many wrong codes in 24 h. The reset by an administrator remains.
+        logger_securite.warning(
+            "Code de réinitialisation non émis, compte bloqué (codes faux) : compte=%s",
+            compte.pk,
+        )
         return False
     if not quota_codes_reinitialisation(compte.pk):
         logger.warning("Quota des codes de réinitialisation atteint : compte=%s", compte.pk)
