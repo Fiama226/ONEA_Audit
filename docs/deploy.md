@@ -10,7 +10,7 @@ Réseaux Docker :
 | Réseau | Type | Services |
 |---|---|---|
 | `edge` | standard | nginx (ports 80/443) |
-| `web` | `internal`, sous-réseau fixe `ONEA_SUBNET_WEB` (défaut `172.30.10.0/28`) | nginx (adresse fixe `ONEA_NGINX_IP`), web |
+| `web` | `internal`, sous-réseau fixe `ONEA_SUBNET_WEB` (défaut `172.30.10.0/28`) | nginx (adresse fixe `ONEA_NGINX_IP`), web, worker |
 | `front` | `internal` | nginx, frontend |
 | `mail-out` | standard | worker seul (sortie SMTP) |
 | `backend` | `internal` | web, worker, beat, migrate, db, redis, meilisearch, gotenberg |
@@ -18,8 +18,13 @@ Réseaux Docker :
 | `av-out` | standard | clamav seul (mise à jour des signatures par freshclam) |
 
 L'authentification est celle de l'application elle-même (sessions Django) : il n'y a plus de
-serveur d'identité ni de second nom DNS. `web` n'a aucune sortie : tout courriel (code à usage
-unique, courriel de bienvenue) part du `worker` (tâche Celery) via `mail-out`. `gotenberg` n'a aucune route sortante.
+serveur d'identité ni de second nom DNS. `web` n'a aucune sortie : tout courriel part du `worker`.
+Chemin d'un courriel d'authentification (code de connexion, code « mot de passe oublié », courriel de
+bienvenue, nouveau mot de passe temporaire) : `web` met une tâche en file dans `redis` (réseau
+`backend`), le `worker` la prend, émet le code ou relit le mot de passe temporaire (chiffré en base,
+1 h au plus) et l'envoie au relais SMTP par `mail-out`. Aucun code ni mot de passe ne passe par
+`redis`. Conséquence : **sans `worker` en marche, aucun courriel d'authentification ne part** (voir
+§5.5). `gotenberg` n'a aucune route sortante.
 ClamAV (SEC-04) est un conteneur séparé : `web` et `worker` l'interrogent sur `av` (protocole
 INSTREAM) ; sa seule route sortante est la mise à jour des signatures (`av-out`, aucun autre
 service). Premier démarrage : téléchargement d'environ 300 Mo de signatures puis chargement en
@@ -120,22 +125,31 @@ Dépannage : « Timeout during connect » = port 80 fermé ou DNS erroné ; « 4
 
 ### 2.3 Courrier sortant (SMTP)
 
-L'application refuse de démarrer sans `EMAIL_URL`. Renseigner dans `.env.prod` :
+L'application refuse de démarrer sans `EMAIL_URL`, et n'accepte en production que les formes
+ci-dessous (toute autre, par exemple `consolemail://`, `filemail://` ou `memorymail://`, est
+refusée au démarrage : ces modes écriraient les codes et les mots de passe temporaires dans les
+journaux ou sur le disque). Renseigner dans `.env.prod` :
 
 | Mode du relais | `EMAIL_URL` |
 |---|---|
 | STARTTLS (port 587) | `smtp+tls://compte@smtp.onea.bf:587` |
 | TLS implicite (port 465) | `smtps://compte@smtp.onea.bf:465` |
-| relais interne en clair (réseau de confiance seulement) | `smtp://smtp.onea.bf:25` |
+| relais interne en clair (réseau de confiance seulement ; codes et mots de passe temporaires en clair sur le réseau) | `smtp://smtp.onea.bf:25` |
+| **pas encore de relais** : aucun courriel n'est envoyé | `dummymail://` |
 
 - Le mot de passe n'est **jamais** dans l'URL : il est dans le fichier de secret `email_password`
   (§3.1). Les caractères spéciaux du compte s'encodent en pourcentage.
+- Avec `dummymail://`, l'application fonctionne **sans courriel** : le code de connexion ne peut
+  pas être activé, « mot de passe oublié » n'envoie rien (même réponse à l'écran), et les mots de
+  passe temporaires (création, réinitialisation, import) s'affichent une fois à l'opérateur (§5.5).
 - L'expéditeur est `audit-interne@onea.bf`. La DSI publie les enregistrements **SPF** (autoriser
   l'adresse du relais pour le domaine `onea.bf`) et **DKIM** (clé du relais) ; sans eux, les
   messages risquent d'être classés indésirables.
-- Test, depuis la pile démarrée (n'envoie qu'un message, au destinataire indiqué) :
+- Test, depuis la pile démarrée (n'envoie qu'un message, au destinataire indiqué). La commande
+  est lancée **dans le `worker`**, seul conteneur qui joint le relais et reçoit le secret
+  `email_password` (depuis `web`, elle échouerait toujours) :
   ```
-  docker compose --env-file .env.prod -f docker/compose.prod.yml exec web \
+  docker compose --env-file .env.prod -f docker/compose.prod.yml exec worker \
     python manage.py envoyer_courriel_test destinataire@onea.bf
   ```
   La commande affiche le relais, le port et le mode de chiffrement (jamais le mot de passe) ; en
@@ -349,15 +363,19 @@ Trois voies, toutes tracées dans la piste d'audit :
 
 1. **Écran *Utilisateurs* > *Nouvel agent*** (administrateur ou délégué ayant le droit de créer
    des comptes) : le rôle est obligatoire ; le compte reçoit un mot de passe temporaire (72 h,
-   changement obligatoire à la première connexion). Le **courriel de bienvenue** est envoyé par
-   défaut ; si l'envoi est décoché, impossible ou en échec, le mot de passe s'affiche **une seule
-   fois** à l'écran.
+   changement obligatoire à la première connexion). Le **courriel de bienvenue** est mis en file
+   d'envoi par défaut (le `worker` l'envoie dans les instants qui suivent) ; si l'envoi est
+   décoché, non configuré (`dummymail://`), si le compte n'a pas d'adresse ou si la file
+   (`redis`) est injoignable, le mot de passe s'affiche **une seule fois** à l'écran. « Mis en
+   file » ne garantit pas la remise : si le `worker` échoue ensuite, voir §5.5.
 2. **Import CSV** (écran *Utilisateurs* > *Importer un fichier CSV*, vérification à blanc puis
    import) : colonnes `identifiant`, `email`, `prenom`, `nom`, `role`, `direction`, `fonction`,
    `matricule` (`identifiant` et `role` obligatoires ; 300 lignes et 1 Mo au plus ; le rôle ADMIN
-   n'est jamais attribué par import). Les mots de passe qu'aucun courriel n'a portés sont réunis
-   dans un fichier (chiffré en base) que **l'importateur télécharge une seule fois**, dans les
-   24 h ; il est ensuite détruit (une tâche quotidienne purge aussi les fichiers non retirés).
+   n'est jamais attribué par import ; l'import est réservé aux administrateurs). Les mots de passe
+   qui n'ont pas été mis en file d'envoi sont réunis dans un fichier (chiffré en base) que
+   **l'importateur télécharge une seule fois**, dans les 24 h ; il est ensuite détruit (une tâche
+   quotidienne purge aussi les fichiers non retirés). Un courriel mis en file puis non remis par le
+   `worker` n'est **pas** dans ce fichier : réinitialiser le compte concerné (§5.5).
 3. **Ligne de commande** (exploitation), équivalente à l'import CSV :
 
    ```
@@ -375,11 +393,14 @@ L'administrateur peut confier à un agent, individuellement et de façon révoca
 quatre droits : créer des comptes, réinitialiser les mots de passe (et désactiver le code de
 connexion), changer les rôles et la direction, désactiver et réactiver des comptes (fiche de
 l'agent, section *Délégation de la gestion des comptes*). Les droits sont relus en base à chaque
-requête : un retrait est immédiat. Un délégué n'agit jamais sur un administrateur, sur un autre
-délégué ni sur son propre compte, ne peut pas attribuer le rôle Administrateur ni déléguer à un
-tiers. **Attention** : un délégué qui peut créer des comptes ou réinitialiser des mots de passe
-reçoit des mots de passe temporaires, donc peut prendre la main sur un compte non
-administrateur ; ne déléguer qu'à des agents de confiance.
+requête : un retrait est immédiat. Un délégué ne gère que les comptes **AUDITEUR et AUDITE** :
+il n'agit jamais sur un administrateur, un RAI, un DG, un autre délégué ni sur son propre compte,
+n'attribue que les rôles Auditeur et Audité (« Seul un administrateur peut attribuer les rôles
+Administrateur, Responsable de l'audit interne et Direction générale. »), ne délègue pas et
+n'importe pas de CSV. Les comptes RAI et DG (validations, signatures) ne sont gérés que par un
+administrateur. **Attention** : un délégué qui peut créer des comptes ou réinitialiser des mots de
+passe peut voir des mots de passe temporaires (envoi décoché), donc prendre la main sur un compte
+AUDITEUR ou AUDITE ; ne déléguer qu'à des agents de confiance.
 
 ### 5.4 Reprise depuis l'ancienne version (comptes existants sans mot de passe)
 
@@ -399,14 +420,33 @@ passe avec `creer_administrateur` ou `changepassword`.
 
 ### 5.5 Sans serveur SMTP, ou administrateur bloqué
 
-Tant que le relais SMTP n'est pas fourni ou que l'envoi échoue, tout fonctionne sans courriel :
+Tant que le relais SMTP n'est pas fourni (`EMAIL_URL=dummymail://`, §2.3), que le `worker` est
+arrêté ou que l'envoi échoue, tout fonctionne sans courriel :
 
 - *mot de passe oublié* : aucun code ne peut partir ; l'agent s'adresse à un administrateur ou
-  à un délégué qui **réinitialise** son mot de passe (nouveau mot de passe temporaire affiché une
-  fois, compte déverrouillé, sessions fermées) ;
+  à un délégué (pour un compte AUDITEUR ou AUDITE ; un administrateur pour un RAI ou un DG) qui
+  **réinitialise** son mot de passe en décochant l'envoi (nouveau mot de passe temporaire affiché
+  une fois, compte déverrouillé, sessions fermées) ;
+- **courriel mis en file mais jamais remis** : `web` ne sait que si le courriel a été confié à la
+  file. Si le `worker` échoue ensuite (relais injoignable, adresse refusée), il écrit dans le
+  journal de sécurité une ligne `ERROR` « Courriel de mot de passe temporaire NON envoyé :
+  compte=<id> … Réinitialisez le mot de passe avec affichage. ». Le mot de passe de ce courriel
+  est perdu (aucun nouvel essai automatique) : l'administrateur refait une **réinitialisation, envoi
+  décoché**, et transmet le mot de passe affiché. Même conduite si le `worker` est resté arrêté
+  plus d'une heure : les mots de passe en attente ont expiré et sont abandonnés (ligne `WARNING`
+  « Courriel de mot de passe temporaire abandonné (expiré ou compte inactif) ») ;
+- **`worker` arrêté** : les demandes restent en file dans `redis` et sont traitées à son
+  redémarrage. Un code est émis au moment où le `worker` traite la demande ; mais une connexion en
+  attente de son code expire 10 minutes après la saisie du mot de passe : l'agent recommence alors
+  sa connexion. Contrôle : `dc ps worker` doit indiquer « healthy » ;
+- *plafond de la réinitialisation par code* : après 15 codes faux en 24 h sur un compte
+  (`AUTH_REINITIALISATION_ECHECS_MAX`), « mot de passe oublié » n'émet plus de code et refuse tout
+  code jusqu'à la fin de la fenêtre (journal `ERROR` « Réinitialisation par code bloquée 24 h ») ;
+  la réinitialisation par un administrateur ou un délégué reste possible ;
 - le **code de connexion par courriel** ne peut être activé que si l'envoi est configuré ; si un
-  agent s'est trouvé bloqué après l'avoir activé, un administrateur (ou un délégué avec le droit
-  de réinitialiser les mots de passe) le **désactive** depuis la fiche du compte (action
+  agent s'est trouvé bloqué après l'avoir activé, un administrateur (ou, pour un compte AUDITEUR
+  ou AUDITE, un délégué avec le droit de réinitialiser les mots de passe) le **désactive** depuis
+  la fiche du compte (action
   journalisée) ; seul le titulaire peut le réactiver, depuis *Mon compte* ;
 - **administrateur bloqué** (code de connexion actif, SMTP en panne, mot de passe perdu) et aucun
   autre administrateur disponible :
@@ -423,11 +463,14 @@ Tant que le relais SMTP n'est pas fourni ou que l'envoi échoue, tout fonctionne
 
 | Réglage | Valeur |
 |---|---|
-| Session | 8 h au plus (durée absolue), 30 min d'inactivité ; stockée en base ; à un changement de mot de passe les autres sessions du compte sont fermées, à une réinitialisation toutes |
+| Session | 8 h au plus (durée absolue), 30 min d'inactivité ; les requêtes automatiques marquées `X-Onea-Arriere-Plan: 1` (rafraîchissement d'un onglet ouvert) ne comptent pas comme activité ; stockée en base ; à un changement de mot de passe les autres sessions du compte sont fermées, à une réinitialisation toutes |
 | Verrouillage d'un compte | 5 échecs consécutifs : 15 min ; réponse identique que le compte existe ou non ; levé par une réinitialisation du mot de passe |
 | Code à usage unique (OTP) | 6 chiffres, haché en base, 10 min, 5 essais, usage unique ; codes expirés purgés après 24 h |
-| Mot de passe temporaire | 16 caractères aléatoires, 72 h, changement obligatoire à la première connexion |
-| Limites de débit | `THROTTLE_RATE_CONNEXION`, `THROTTLE_RATE_MOT_DE_PASSE_OUBLIE`, `THROTTLE_RATE_GESTION_COMPTES` (§8) |
+| Réinitialisation par code (« mot de passe oublié ») | au plus 10 codes émis par compte et par 24 h ; au plus 15 codes faux par compte et par 24 h (`AUTH_REINITIALISATION_ECHECS_MAX`), puis plus aucun code émis ni accepté jusqu'à la fin de la fenêtre ; compteurs en base (une panne du cache ne les lève pas) |
+| Mot de passe temporaire | 16 caractères aléatoires, 72 h, changement obligatoire à la première connexion ; en attente d'envoi, chiffré en base 1 h au plus |
+| Limites de débit par adresse (IPv6 : par /64) | connexion 60/min, code de connexion 30/min, demande de code 20/min, réinitialisation 20/min ; **échecs** : 30 mots de passe ou codes faux par 15 min et 30 réinitialisations refusées par heure, tous comptes confondus (réponse 429 avant tout contrôle du mot de passe) ; `/admin/login/` soumis aux mêmes limites |
+| Limites par identifiant ou par utilisateur | 5 demandes de code par heure et par identifiant saisi ; changement de mot de passe et retrait du code de connexion 10/min par utilisateur ; gestion des comptes 30/h par utilisateur (§8) |
+| CSRF | exigé sur toute écriture, y compris la connexion, et vérifié **avant** les limites de débit (une page tierce ne peut pas épuiser le quota d'une adresse) |
 | Cookies | `__Host-onea-session` et `__Host-onea-csrf`, `Secure` ; `SESSION_COOKIE_SECURE=true` exigé en production |
 
 Conception et correspondance contrôle / fichier : [`docs/securite/auth-interne-modele.md`](securite/auth-interne-modele.md).
@@ -692,7 +735,7 @@ intercepté (ce droit n'est pas accordé au rôle applicatif).
 | `APP_VERSION` | étiquette des images `onea-backend` / `onea-frontend` (obligatoire) |
 | `DJANGO_ADMIN_ENABLED` | `false` par défaut ; `true` expose `/admin/` |
 | `ONEA_SECRETS_DIR` | dossier des fichiers de secrets (root, 0700 ; voir §3.1) : obligatoire |
-| `EMAIL_URL` | relais SMTP **sans mot de passe**, ex. `smtp+tls://compte@smtp.onea.bf:587` (le mot de passe est le fichier `email_password`) ; sert aux codes à usage unique et aux courriels de bienvenue ; délai d'attente de 10 s par envoi (`EMAIL_TIMEOUT`, fixé par `config/settings/prod.py`, non configurable par l'environnement) |
+| `EMAIL_URL` | relais SMTP **sans mot de passe** : `smtp+tls://` (STARTTLS), `smtps://` (TLS implicite) ou `smtp://` (clair, relais interne), ex. `smtp+tls://compte@smtp.onea.bf:587` (le mot de passe est le fichier `email_password`, lu par le `worker` seul) ; ou `dummymail://` pour fonctionner sans courriel ; **toute autre forme est refusée au démarrage** (§2.3). Sert aux codes à usage unique, aux courriels de bienvenue et aux mots de passe temporaires, tous envoyés par le `worker` ; délai d'attente de 10 s par envoi (`EMAIL_TIMEOUT`, fixé par `config/settings/prod.py`, non configurable par l'environnement) |
 | `SESSION_COOKIE_SECURE` | `true` : posé par `docker/compose.prod.yml` ; la production refuse de démarrer si la variable est absente ou fausse |
 | `CSRF_TRUSTED_ORIGINS` | posé par `docker/compose.prod.yml` à `https://${PUBLIC_HOST}` ; obligatoire pour le backend de production |
 | `POSTGRES_DB`, `POSTGRES_USER` | base applicative (mot de passe : fichier `postgres_password`) |
@@ -705,8 +748,15 @@ intercepté (ce droit n'est pas accordé au rôle applicatif).
 | `THROTTLE_RATE_IMPORT` | import (défaut `10/hour`) |
 | `THROTTLE_RATE_EXPORT` | export CSV / Excel (défaut `30/min`) |
 | `THROTTLE_RATE_ANONYME` | appelant non authentifié, par adresse client (défaut `30/min`) |
-| `THROTTLE_RATE_CONNEXION` | connexion, code de connexion, mot de passe oublié et réinitialisation, par adresse client (défaut `20/min`) ; le verrouillage du compte (5 échecs, 15 min) s'y ajoute |
-| `THROTTLE_RATE_MOT_DE_PASSE_OUBLIE` | demandes de code « mot de passe oublié », par identifiant saisi (défaut `5/hour`) ; en plus, au plus 10 codes par compte et par 24 h, sans effet visible sur la réponse |
+| `THROTTLE_RATE_CONNEXION` | connexion (`POST /api/v1/auth/login/` et `/admin/login/`), par adresse client (défaut `60/min`, dimensionné pour un siège derrière une seule adresse NAT) ; le verrouillage du compte (5 échecs, 15 min) s'y ajoute |
+| `THROTTLE_RATE_CONNEXION_CODE` | saisie du code de connexion, par adresse client (défaut `30/min`) |
+| `THROTTLE_RATE_MOT_DE_PASSE_OUBLIE_IP` | demandes de code « mot de passe oublié », par adresse client (défaut `20/min`) |
+| `THROTTLE_RATE_REINITIALISATION` | réinitialisation avec le code reçu, par adresse client (défaut `20/min`) |
+| `THROTTLE_RATE_ECHECS_CONNEXION` | **échecs** de connexion (mot de passe ou code de connexion faux) par adresse client, tous comptes confondus (défaut `30/15min`) ; au-delà, la connexion depuis cette adresse répond 429 jusqu'à la fin de la fenêtre, sans verrouiller de compte. Derrière un NAT, tout le site partage ce budget : l'augmenter (par exemple `60/15min`) si des agents sont gênés |
+| `THROTTLE_RATE_ECHECS_REINITIALISATION` | réinitialisations refusées par adresse client, tous comptes confondus (défaut `30/hour`) |
+| `THROTTLE_RATE_CHANGEMENT_MOT_DE_PASSE` | changement de son mot de passe et retrait de son code de connexion, **par utilisateur** (défaut `10/min`) |
+| `THROTTLE_RATE_MOT_DE_PASSE_OUBLIE` | demandes de code « mot de passe oublié », par identifiant saisi (défaut `5/hour`) ; en plus, au plus 10 codes par compte et par 24 h, comptés en base, sans effet visible sur la réponse |
+| `AUTH_REINITIALISATION_ECHECS_MAX` | codes de réinitialisation faux acceptés par compte et par 24 h (défaut `15`) ; au-delà, plus aucun code émis ni accepté pour ce compte jusqu'à la fin de la fenêtre. **Attention** : cette variable n'est pas encore transmise aux conteneurs par `docker/compose.prod.yml` ; en production, la valeur par défaut `15` s'applique et la renseigner dans `.env.prod` est sans effet |
 | `THROTTLE_RATE_GESTION_COMPTES` | création de compte, réinitialisation de mot de passe et désactivation du code de connexion, par l'administrateur ou un délégué, par utilisateur (défaut `30/hour`) |
 | `ANTIVIRUS_MOTEUR` | `clamav` (défaut en production) ; `aucun` est **refusé** au démarrage sauf `ANTIVIRUS_AUTORISER_AUCUN=true` |
 | `ANTIVIRUS_ECHEC_FERME` | `true` (défaut) : clamd injoignable ou en erreur, téléversement refusé (503, « Analyse antivirus indisponible : réessayez plus tard. ») ; `false` : accepté sans analyse, journalisé en ERROR (déconseillé) |
@@ -722,10 +772,15 @@ La SPA et l'API partagent la **même origine** derrière `nginx` : il n'y a pas 
 identifiants (aucune variable `CORS_*`). `CACHE_URL` (facultatif) désigne le cache partagé entre processus (défaut : `REDIS_URL`,
 base 1 ; la base 0 sert à Celery).
 
-Les `THROTTLE_RATE_*` s'écrivent `N/sec`, `N/min`, `N/hour` ou `N/day` ; une valeur invalide
-empêche le démarrage. Les compteurs sont par utilisateur (indépendants du NAT) ; dépassement :
-réponse 429 « Trop de requêtes : réessayez dans {n} secondes. » avec `Retry-After`. Si le cache
-est indisponible, la limitation est suspendue et un avertissement est journalisé.
+Les `THROTTLE_RATE_*` s'écrivent `N/sec`, `N/min`, `N/hour` ou `N/day` ; ceux de
+l'authentification acceptent aussi un multiple de la période (`30/15min`). Une valeur invalide
+empêche le démarrage. Les compteurs métier (génération, export, gestion des comptes…) sont par
+utilisateur (indépendants du NAT) ; ceux de l'authentification sont par adresse client (IPv6 :
+par /64), sauf `MOT_DE_PASSE_OUBLIE` (par identifiant saisi) et `CHANGEMENT_MOT_DE_PASSE` (par
+utilisateur). Dépassement : réponse 429 « Trop de requêtes : réessayez dans {n} secondes. » avec
+`Retry-After`. Si le cache est indisponible, la limitation est suspendue et un avertissement est
+journalisé ; le verrouillage des comptes et les plafonds de la réinitialisation, en base, restent
+appliqués.
 
 ## 9. Notes de sécurité
 
@@ -752,7 +807,12 @@ antivirus. ». Aucun code GPL dans l'application : ClamAV n'est atteint que par 
   `Cache-Control` propre reçoit `no-store, private`.
 - Limitation de débit : 50 requêtes/s par adresse sur `/api/` (rafale 100, zone `onea_api` de
   `docker/nginx/prod.conf`, réponse 429), puis, dans l'application, les `THROTTLE_RATE_*`
-  (connexion, mot de passe oublié, gestion des comptes) et le verrouillage des comptes (§5.6).
+  (un compteur par point d'entrée de l'authentification, plafonds d'échecs par adresse, gestion
+  des comptes), le verrouillage des comptes et les plafonds de la réinitialisation par code (§5.6).
+- `/admin/` (si `DJANGO_ADMIN_ENABLED=true`) : connexion soumise aux limites de la connexion de
+  l'API ; `/admin/password_change/` répond 404 (un mot de passe se change dans l'application) ;
+  une session admin n'a pas de délai d'inactivité de 30 minutes (constat AUTH-09, ouvert) :
+  laisser l'admin désactivé en production sauf besoin ponctuel.
 - Rôle, désactivation et délégation d'un compte sont relus en base à **chaque requête** (aucun
   cache d'identité) : une désactivation, un changement de rôle ou un retrait de délégation
   prennent effet à la requête suivante.

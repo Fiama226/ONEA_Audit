@@ -2,24 +2,29 @@
 
 Note de conception pour la relecture de sécurité. Elle décrit l'authentification qui remplace
 Keycloak (conception : `docs/superpowers/specs/2026-11-03-authentification-interne-design.md`),
-ce que chaque contrôle protège, et où il se trouve dans le code. Elle **ne remplace pas** la
-revue ASVS niveau 2 (`docs/securite/asvs-l2.md`), qui doit être rejouée sur cette authentification
-(chapitres V2, V3, V4 notamment) : les constats de ce fichier-là datent de l'ancienne version.
+ce que chaque contrôle protège, et où il se trouve dans le code. La correspondance avec l'ASVS
+niveau 2 est dans `docs/securite/asvs-l2.md` (rejouée le 2026-11-04 sur cette authentification).
 
-Statut : rédigée d'après le code de la branche `feat/auth-interne` ; **rien ici n'a été testé
-par un tiers**. La revue de sécurité statique de l'authentification est conduite séparément.
+Statut (2026-11-04) : rédigée d'après le code de la branche `feat/auth-interne`, puis mise à jour
+après la revue de sécurité statique de l'authentification (constats AUTH-01 à AUTH-20) et ses
+corrections (commits `39163e0` à `ccd12f8`). Les corrections ont été **relues**, et leurs tests
+lancés par le développeur sur une sélection (`tests/users` complet et fichiers ciblés) ; leur
+comportement **n'a pas été vérifié sur une pile en fonctionnement** (envoi réel par le `worker`,
+réponses 429 derrière un NAT, navigateur).
 
 ## 1. Périmètre et hypothèses
 
 - Un seul navigateur client (la SPA React), servie sous la **même origine** que l'API par `nginx`
-  (`docker/nginx/prod.conf`) : pas de CORS avec identifiants, pas de jeton Bearer (un en-tête
+  (`docker/nginx/prod.conf`) : pas de CORS, pas de jeton Bearer (un en-tête
   `Authorization: Bearer` n'authentifie rien).
-- Les comptes sont créés par un administrateur (ou un délégué) ; pas d'inscription libre, pas de
-  fédération d'identité, pas de WebAuthn (évolution possible).
+- Les comptes sont créés par un administrateur (ou un délégué, pour les rôles AUDITEUR et AUDITE
+  seulement) ; pas d'inscription libre, pas de fédération d'identité, pas de WebAuthn (évolution
+  possible).
 - Le relais SMTP de l'ONEA n'est pas encore fourni : tout le flux doit rester utilisable sans
-  courriel (repli par un administrateur).
-- Le réseau interne (`web`, `db`, `redis`) n'est pas exposé ; `nginx` est le seul pair de confiance
-  pour l'adresse du client (`TRUSTED_PROXY_CIDRS`).
+  courriel (repli par un administrateur, mode `EMAIL_URL=dummymail://`).
+- Le réseau interne (`web`, `backend`) n'est pas exposé ; `nginx` est le seul pair de confiance
+  pour l'adresse du client (`TRUSTED_PROXY_CIDRS`). `web` n'a **aucune sortie** : seuls les
+  conteneurs `worker` (réseau `mail-out`, secret `email_password`) joignent le relais SMTP.
 
 ## 2. Actifs et menaces
 
@@ -28,59 +33,106 @@ par un tiers**. La revue de sécurité statique de l'authentification est condui
 | Mots de passe | vol de base, rejeu, devinette | C1, C2, C3 |
 | Comptes (existence, état) | énumération par la connexion ou « mot de passe oublié » | C4 |
 | Sessions | vol de cookie, fixation, session trop longue, session d'un compte retiré | C5, C6, C7 |
-| Codes à usage unique | rejeu, force brute, accumulation | C8 |
-| Mots de passe temporaires | fuite par journal, historique ou réponse API, réutilisation | C9, C10 |
-| Droits de gestion des comptes | élévation de privilèges d'un délégué, appropriation d'un compte d'administrateur | C11 |
+| Codes à usage unique | rejeu, force brute (y compris répartie sur plusieurs codes et plusieurs adresses), accumulation | C8, C15 |
+| Mots de passe temporaires | fuite par journal, historique, réponse API ou file de messages ; réutilisation | C9, C10, C16 |
+| Droits de gestion des comptes | élévation de privilèges d'un délégué, appropriation d'un compte d'administrateur, de RAI ou de DG | C11 |
 | Piste d'audit | action de compte non tracée, secret dans l'audit | C12 |
-| Disponibilité | verrouillage volontaire d'un compte, saturation de l'envoi de courriels | C4, C13 |
+| Disponibilité | verrouillage volontaire de comptes en masse, quota partagé derrière un NAT, saturation de l'envoi de courriels, coût du hachage | C4, C13, C15 |
 
 ## 3. Contrôles : ce qui protège contre quoi
+
+Chemins relatifs à `backend/apps/users/` sauf mention contraire.
 
 | Id | Contrôle | Protège contre | Où |
 |---|---|---|---|
 | C1 | Hachage Argon2id (`argon2-cffi`), `PBKDF2` conservé seulement pour relire d'éventuelles anciennes empreintes ; politique : 12 caractères, mots courants, similarité, numérique seul | vol de base, devinette | `config/settings/base.py` (`PASSWORD_HASHERS`, `AUTH_PASSWORD_VALIDATORS`) |
-| C2 | Mot de passe jamais stocké ni journalisé en clair ; mot de passe temporaire renvoyé une seule fois et jamais écrit dans l'audit ni les journaux ; réponses concernées en `Cache-Control: no-store` | fuite par journal, cache, historique | `apps/users/services.py` (`_poser_mot_de_passe_temporaire`), `account_views.py` (`_reponse_mot_de_passe`) |
+| C2 | Mot de passe jamais stocké ni journalisé en clair ; mot de passe temporaire renvoyé une seule fois (et seulement s'il n'a pas été mis en file d'envoi), jamais écrit dans l'audit ni les journaux ; réponses concernées en `Cache-Control: no-store` ; la production refuse les backends courriel console, fichier et mémoire (AUTH-07) | fuite par journal, cache, historique | `services.py` (`_poser_mot_de_passe_temporaire`, `creer_compte`, `reinitialiser_mot_de_passe`), `account_views.py` (`_reponse_mot_de_passe`), `config/settings/prod.py` |
 | C3 | Changement de mot de passe : mot de passe actuel exigé, nouveau différent, toutes les autres sessions fermées ; réinitialisation (code ou administrateur) ferme toutes les sessions | vol de session après compromission, rejeu | `auth_services.py` (`changer_mot_de_passe`, `reinitialiser_mot_de_passe`, `terminer_sessions`) |
-| C4 | Réponse de connexion **uniforme** (compte inconnu, mot de passe faux, verrouillé, désactivé, mot de passe temporaire expiré) ; chaque refus coûte un hachage (pas d'oracle de temps) ; « mot de passe oublié » répond pareil, le traitement (hachage, SMTP) étant mis en file ; verrouillage 15 min après 5 échecs consécutifs ; limites par adresse (`connexion`) et par identifiant saisi (`mot_de_passe_oublie`) | énumération de comptes, force brute | `auth_services.py` (`authentifier`, `_conclure`, `_verifier_mot_de_passe`), `auth_views.py`, `auth_throttles.py`, `tasks.py` (`envoyer_code_reinitialisation`) |
-| C5 | Session Django en base, cookie `HttpOnly`, `SameSite=Lax`, `Secure` et préfixe `__Host-` en production ; CSRF sur toute écriture, jeton lu par `GET /api/v1/auth/csrf/` ; la session est renouvelée à la connexion | vol de cookie, CSRF, fixation | `config/settings/base.py`, `prod.py`, `auth_views.py`, `authentication.py` (`SessionAuthentication401`) |
-| C6 | Durée de session : 8 h au plus (absolue) et 30 min d'inactivité ; une session non ouverte par l'endpoint de connexion est refusée par l'API | session oubliée, session forgée | `apps/core/middleware.py` (`SessionLimiteeMiddleware`), `authentication.py` |
+| C4 | Réponse de connexion **uniforme** (compte inconnu, mot de passe faux, verrouillé, désactivé, mot de passe temporaire expiré) ; chaque refus coûte un hachage (pas d'oracle de temps) ; « mot de passe oublié » répond toujours 202 avec le même texte, le traitement (hachage, envoi) étant fait par le `worker` ; verrouillage 15 min après 5 échecs consécutifs | énumération de comptes, force brute | `auth_services.py` (`authentifier`, `_conclure`, `_verifier_mot_de_passe`), `auth_views.py`, `tasks.py` (`envoyer_code_reinitialisation`) |
+| C5 | Session Django en base, cookie `HttpOnly`, `SameSite=Lax`, `Secure` et préfixe `__Host-` en production ; CSRF sur toute écriture, y compris anonyme, **vérifié avant les limites de débit** (AUTH-05) ; jeton lu par `GET /api/v1/auth/csrf/` ; la session est renouvelée à la connexion | vol de cookie, CSRF, fixation, épuisement du quota d'un site par une page tierce | `config/settings/base.py`, `prod.py`, `auth_views.py` (`_CsrfObligatoireMixin`), `authentication.py` (`SessionAuthentication401`) |
+| C6 | Durée de session : 8 h au plus (absolue) et 30 min d'inactivité ; une requête d'arrière-plan portant `X-Onea-Arriere-Plan: 1` (rafraîchissement automatique) ne compte pas comme activité (AUTH-08) ; une session non ouverte par l'endpoint de connexion est refusée par l'API | session oubliée, poste laissé ouvert, session forgée | `apps/core/middleware.py` (`SessionLimiteeMiddleware`), `authentication.py` |
 | C7 | État du compte relu en base à chaque requête : désactivation, rôle et délégation prennent effet à la requête suivante ; désactivation = sessions fermées, connexion et réinitialisation refusées | compte retiré qui garde l'accès | `authentication.py`, `delegation.py`, `services.py` |
-| C8 | Code à usage unique : 6 chiffres, haché, 10 min, 5 essais, usage unique, un seul code actif par compte et par objet (réinitialisation / connexion) ; plafond de 10 codes de réinitialisation par compte et par 24 h ; purge à 24 h ; OTP de connexion activable **uniquement par le titulaire** et seulement si l'envoi de courriels est configuré | rejeu, force brute du code, abus d'envoi | `auth_services.py` (`emettre_otp`, `verifier_otp`, `quota_codes_reinitialisation`, `activer_otp_connexion`), `tasks.py` (`purger_codes`) |
+| C8 | Code à usage unique : 6 chiffres, haché, 10 min, 5 essais, usage unique, un seul code actif par compte et par objet (réinitialisation / connexion) ; purge à 24 h ; OTP de connexion activable **uniquement par le titulaire** et seulement si l'envoi de courriels est configuré | rejeu, force brute d'un code | `auth_services.py` (`emettre_otp`, `verifier_otp`, `activer_otp_connexion`), `tasks.py` (`purger_codes`) |
 | C9 | Changement de mot de passe obligatoire à la première connexion et après réinitialisation : l'API répond 403 à tout sauf aux endpoints d'authentification tant que ce n'est pas fait ; mot de passe temporaire valable 72 h | usage prolongé d'un secret partagé | `apps/core/middleware.py` (`MotDePasseAChangerMiddleware`), `auth_services.py` (`compte_utilisable`) |
-| C10 | Fichier des mots de passe d'un import : chiffré (Fernet, clé dérivée de `SECRET_KEY`), lisible par l'importateur seul, détruit au premier téléchargement et au plus tard à 24 h ; réponse `no-store` | fuite d'une liste de mots de passe | `provisioning.py` (`lire_fichier_mots_de_passe`, `purger_fichiers_mots_de_passe`), `account_views.py` (`import_passwords`) |
-| C11 | Délégation : quatre droits (créer, réinitialiser, rôles, désactiver) accordés par un administrateur seul ; un délégué n'agit jamais sur un administrateur, un compte `is_staff`/`is_superuser`, un autre délégué ni lui-même, ne donne pas le rôle Administrateur, ne délègue pas ; droits relus en base, rien en cache ; les services répètent les contrôles sous verrou de ligne ; l'import CSV ne crée jamais d'ADMIN | élévation de privilèges, prise de contrôle d'un compte d'administrateur | `delegation.py`, `account_permissions.py`, `services.py`, `provisioning.py` |
-| C12 | Piste d'audit de toute action de compte (création, réinitialisation, rôle, désactivation, délégation, OTP, amorçage) avec l'acteur ; journal de sécurité séparé (échecs, verrouillages) sans mot de passe ni code ; le `correlation_id` relie les lignes | non-répudiation, enquête | `apps/core/audit.py`, `auth_services.py` (`logger_securite`), commandes `creer_administrateur`, `donner_mots_de_passe_temporaires` |
-| C13 | Limites de débit : `THROTTLE_RATE_CONNEXION`, `THROTTLE_RATE_MOT_DE_PASSE_OUBLIE`, `THROTTLE_RATE_GESTION_COMPTES` (créations, réinitialisations, désactivation d'OTP, qui envoient des courriels) ; limite `nginx` 50 requêtes/s par adresse sur `/api/` | saturation, envoi en masse | `config/settings/base.py`, `auth_throttles.py`, `docker/nginx/prod.conf` |
-| C14 | Amorçage et reprise sans interface : `creer_administrateur` (refuse un compte non ADMIN, un compte désactivé, un identifiant ambigu), `donner_mots_de_passe_temporaires` (ignore les comptes staff), `creer_comptes_e2e` (refuse hors `DEBUG`, hors base `onea_e2e_*`, hors hôte local) | blocage de l'exploitation, commande de test détournée en production | `apps/users/management/commands/` |
+| C10 | Fichier des mots de passe d'un import (seulement ceux qui n'ont pas été mis en file d'envoi) : chiffré (Fernet, clé dérivée de `SECRET_KEY`), lisible par l'importateur seul, détruit au premier téléchargement et au plus tard à 24 h ; réponse `no-store` | fuite d'une liste de mots de passe | `provisioning.py` (`lire_fichier_mots_de_passe`, `purger_fichiers_mots_de_passe`), `account_views.py` (`import_passwords`) |
+| C11 | Délégation : quatre droits (créer, réinitialiser, rôles, désactiver) accordés par un administrateur seul ; un délégué n'agit que sur des comptes **AUDITEUR et AUDITE** : jamais sur un administrateur, un RAI, un DG (AUTH-03), un compte `is_staff`/`is_superuser`, un autre délégué ni lui-même ; il n'attribue que les rôles AUDITEUR et AUDITE ; il ne délègue pas et n'importe pas ; droits relus en base, rien en cache ; les services répètent les contrôles sous verrou de ligne ; l'import CSV ne crée jamais d'ADMIN | élévation de privilèges, prise de contrôle d'un compte d'administrateur, de RAI ou de DG (validations et signatures) | `delegation.py` (`ROLES_RESERVES_ADMIN`, `_cible_protegee`, `exiger_attribution_role`), `account_permissions.py`, `services.py`, `provisioning.py` |
+| C12 | Piste d'audit de toute action de compte (création, réinitialisation, rôle, désactivation, délégation, OTP, amorçage) avec l'acteur ; journal de sécurité séparé (`onea.securite` : échecs, verrouillages, blocage de la réinitialisation, plafonds par adresse, échec d'envoi d'un mot de passe temporaire) sans mot de passe ni code ; les compteurs de limites sont exclus de l'audit ; le `correlation_id` relie les lignes, y compris celles du `worker` | non-répudiation, enquête | `apps/core/audit.py`, `apps.py` (`exclude_fields`), `auth_services.py` (`logger_securite`), `envois.py`, commandes `creer_administrateur`, `donner_mots_de_passe_temporaires` |
+| C13 | Limites de débit **par point d'entrée**, par adresse client (IPv6 regroupée par /64, AUTH-12) : connexion 60/min, code de connexion 30/min, demande de code 20/min, réinitialisation 20/min ; par identifiant saisi : 5 demandes de code par heure ; par utilisateur : changement de mot de passe et retrait du code de connexion 10/min, gestion des comptes 30/h ; `/admin/login/` soumis aux limites de la connexion (AUTH-06) ; `nginx` 50 requêtes/s par adresse sur `/api/` | saturation, envoi en masse, quota partagé derrière un NAT | `config/settings/base.py` (`DEFAULT_THROTTLE_RATES`), `auth_throttles.py`, `admin_login.py`, `docker/nginx/prod.conf` |
+| C14 | Amorçage et reprise sans interface : `creer_administrateur` (refuse un compte non ADMIN, un compte désactivé, un identifiant ambigu), `donner_mots_de_passe_temporaires` (ignore les comptes staff), `creer_comptes_e2e` (refuse hors `DEBUG`, hors base `onea_e2e_*`, hors hôte local) ; `/admin/password_change/` fermé (404, AUTH-09) ; identifiants ASCII imposés aux nouveaux comptes (AUTH-11) | blocage de l'exploitation, commande de test détournée en production, comptes sosies | `apps/users/management/commands/`, `config/urls.py`, `account_serializers.py`, `provisioning.py` |
+| C15 | Plafonds d'échecs **en base, par compte** : 15 codes de réinitialisation faux par 24 h (`AUTH_REINITIALISATION_ECHECS_MAX`), puis plus aucun code émis ni accepté jusqu'à la fin de la fenêtre (refus identique, journal `ERROR`) ; 10 codes émis par compte et par 24 h (échec fermé si le cache tombe) (AUTH-02). Plafonds d'**échecs par adresse**, tous comptes confondus, vérifiés avant tout hachage : 30 mots de passe ou codes de connexion faux par 15 min (`echecs_connexion`), 30 réinitialisations refusées par heure (`echecs_reinitialisation`) (AUTH-04) | devinette répartie des codes à 6 chiffres, verrouillage en masse depuis une adresse | `auth_services.py` (`quota_codes_reinitialisation`, `reinitialisation_bloquee`, `_compter_echec_reinitialisation`), `models.py`, `auth_throttles.py` (`_EchecsParIp`) |
+| C16 | Tous les courriels d'authentification partent du **`worker`** (AUTH-01) : `web` met une tâche en file (Redis), sans secret dans le message ; le code (connexion, réinitialisation) est émis par la tâche ; le mot de passe temporaire attend chiffré (Fernet) dans `EnvoiMotDePasse` au plus 1 h, lu une fois puis supprimé, et n'est envoyé que s'il est encore le mot de passe du compte | second facteur inutilisable en production, mot de passe dans la file de messages, envoi d'un mot de passe périmé | `envois.py`, `tasks.py` (`envoyer_code_connexion`, `envoyer_code_reinitialisation`, `envoyer_mot_de_passe_temporaire`), `auth_views.py`, `docker/compose.prod.yml` |
 
 ## 4. Risques résiduels et décisions à connaître
 
-- **Verrouillage volontaire** : quelqu'un qui connaît un identifiant peut le verrouiller 15 minutes
-  en répétant les échecs. C'est le compromis retenu (pas de verrouillage par adresse seule) ; la
-  limite par adresse et l'audit permettent de le détecter ; un administrateur déverrouille par
-  réinitialisation.
-- **Délégué et comptes non administrateurs** : avec « créer des comptes » ou « réinitialiser les
-  mots de passe », un délégué reçoit des mots de passe temporaires et peut donc prendre la main
-  sur un compte non administrateur (RAI, auditeur, audité, DG). Décision de conception, signalée
-  dans l'écran de délégation et dans le manuel de l'administrateur.
-- **Second facteur** : facultatif, par courriel, activable par le titulaire seul. Il n'est pas
-  obligatoire pour les comptes à privilèges (ancienne décision D19 : à reprendre avec l'ONEA).
-  L'OTP par courriel dépend du relais SMTP et du compte de courriel de l'agent.
-- **SMTP absent** : pas de « mot de passe oublié » automatique ; repli par un administrateur ou un
-  délégué ; un administrateur bloqué par son OTP est récupéré par
-  `creer_administrateur --desactiver-otp`.
-- **Sessions en base** : les données de session sont signées par `SECRET_KEY` ; une rotation de la clé
-  sans conserver l'ancienne dans `secret_key_fallbacks` ferme les sessions et rend illisibles les
-  fichiers de mots de passe d'import encore présents (24 h au plus). Procédure : `docs/deploy.md` §3.3.
+- **Codes à 6 chiffres face à un botnet** : les plafonds par adresse ne gênent pas un attaquant
+  réparti sur de nombreuses adresses ; c'est alors le plafond par compte (15 codes faux par 24 h)
+  qui borne la devinette, soit environ 1,5 × 10⁻⁵ de chance par compte et par jour. Passer à
+  8 chiffres diviserait ce taux par 100 : décision produit (spécification, interface, courriel).
+- **Plafond d'échecs partagé derrière un NAT** : tous les agents qui sortent par une même adresse
+  publique partagent le plafond de 30 échecs par 15 minutes. Un initié malveillant (ou beaucoup
+  de fautes de frappe un lundi matin) peut bloquer les connexions **de cette adresse** jusqu'à
+  15 minutes (réponse 429), sans verrouiller de compte ni gêner les autres adresses. Réglable par
+  `THROTTLE_RATE_ECHECS_CONNEXION` (par exemple `60/15min`). Sans effet si les postes arrivent
+  au serveur avec leur propre adresse (déploiement sur site).
+- **Limites par adresse en cache** : si le cache (Redis) tombe, ces limites laissent passer, avec
+  un avertissement ; le verrouillage des comptes, le quota d'émission et le plafond de codes faux,
+  en base, restent appliqués.
+- **Verrouillage volontaire** : quelqu'un qui connaît un identifiant peut toujours le verrouiller
+  15 minutes ; depuis une seule adresse, il ne peut plus en verrouiller qu'une poignée (plafond
+  d'échecs par adresse) ; un administrateur déverrouille par réinitialisation.
+- **Délégués** : ils ne gèrent que les comptes AUDITEUR et AUDITE (AUTH-03). Avec « créer des
+  comptes » ou « réinitialiser les mots de passe », un délégué peut encore choisir de ne pas
+  envoyer le courriel et voir le mot de passe temporaire : il peut donc prendre la main sur un
+  compte AUDITEUR ou AUDITE. Décision de conception, signalée dans l'écran de délégation et dans
+  le manuel de l'administrateur.
+- **Échec d'envoi par le `worker`** : `web` ne peut savoir que si le courriel a été **mis en
+  file**. Si le `worker` échoue ensuite (relais injoignable, adresse refusée), le mot de passe
+  temporaire de ce courriel est perdu : une ligne `ERROR` « Courriel de mot de passe temporaire
+  NON envoyé … Réinitialisez le mot de passe avec affichage » est écrite dans `onea.securite`, et
+  l'administrateur refait une réinitialisation, envoi décoché. Pas de nouvel essai automatique
+  (un mot de passe n'est jamais envoyé deux fois). Un `worker` arrêté plus d'une heure laisse
+  expirer les envois en attente (purge quotidienne). Pour un import, une panne du relais impose
+  une réinitialisation par compte.
+- **Second facteur** : facultatif, par courriel, activable par le titulaire seul ; il n'est
+  obligatoire pour aucun rôle, y compris ADMIN (ancienne décision D19 : à reprendre avec l'ONEA ;
+  ASVS 4.3.1 non conforme tant qu'elle n'est pas prise). L'OTP par courriel dépend du relais SMTP,
+  du `worker` et du compte de courriel de l'agent.
+- **Notifications au titulaire non envoyées (AUTH-10, arbitrage)** : aucune alerte par courriel
+  après une réinitialisation par un administrateur, un changement d'adresse ou la désactivation du
+  code ; à décider (modèles, destinataires dont l'ancienne adresse).
+- **Liste de mots de passe interdits (AUTH-13, arbitrage)** : seule la liste de Django (environ
+  20 000 mots de passe courants) est utilisée ; un corpus hors ligne de mots de passe compromis
+  est à choisir (taille, licence, mise à jour).
+- **Délai d'inactivité de l'admin Django non appliqué (AUTH-09)** : si `DJANGO_ADMIN_ENABLED=true`,
+  une session ouverte par `/admin/login/` n'a pas de délai d'inactivité de 30 minutes (elle expire
+  8 h après sa dernière modification) ; `/admin/password_change/` est fermé. L'admin est désactivé
+  par défaut en production.
+- **Unicité insensible à la casse non garantie en base (AUTH-11)** : les services refusent un
+  identifiant ou une adresse déjà pris (comparaison sans casse), mais aucune contrainte de base
+  ne l'impose ; deux créations simultanées `jdoe` / `JDoe` peuvent passer. Effet : déni de service
+  sur la connexion par adresse (adresse ambiguë refusée), pas de prise de contrôle. Les
+  contraintes demandent d'abord un contrôle des doublons existants.
+- **Rafraîchissement en arrière-plan (AUTH-08)** : l'exclusion de l'activité n'agit que lorsque
+  le frontend envoie l'en-tête `X-Onea-Arriere-Plan: 1` sur ses requêtes automatiques ; sans lui,
+  un onglet laissé ouvert garde la session jusqu'à 8 h.
+- **TLS vers le relais SMTP non exigé (AUTH-18)** : `smtp://` reste accepté pour un relais
+  interne ; codes et mots de passe temporaires passeraient alors en clair sur le réseau.
+- **Sessions en base** : les données de session sont signées par `SECRET_KEY` ; une rotation de la
+  clé sans conserver l'ancienne dans `secret_key_fallbacks` ferme les sessions et rend illisibles
+  les fichiers de mots de passe d'import et les envois en attente (24 h et 1 h au plus).
+  Procédure : `docs/deploy.md` §3.3.
 - **Accès à la base** : les empreintes de mots de passe, les sessions et le journal d'audit sont
   dans la base applicative et ses sauvegardes : protéger les sauvegardes comme la base.
 - **Admin Django** (`/admin/`) : désactivé en production sauf `DJANGO_ADMIN_ENABLED=true` ; sa
-  connexion passe par les mêmes contrôles que l'API (verrouillage, expiration, pas de contournement
-  de l'OTP : `apps/users/admin_login.py`).
+  connexion passe par les mêmes contrôles et les mêmes limites que l'API (verrouillage,
+  expiration, pas de contournement de l'OTP : `apps/users/admin_login.py`).
 
 ## 5. Ce qui reste à vérifier
 
-- Rejeu de l'audit ASVS niveau 2 sur cette authentification (suite de la revue).
-- Scénarios S4-29 à S4-37 de `docs/recette/scenarios-de-test.md`, exécutés sur une recette.
-- Essai réel avec le relais SMTP de l'ONEA (délais, SPF/DKIM, boîtes d'arrivée).
-- Choix éventuel des rôles soumis à un second facteur obligatoire.
+- Scénarios S4-29 à S4-41 de `docs/recette/scenarios-de-test.md`, exécutés sur une recette (pile
+  complète avec `worker`, Redis et Mailpit).
+- Essai réel avec le relais SMTP de l'ONEA depuis le `worker` (délais, TLS, SPF/DKIM, boîtes
+  d'arrivée).
+- Analyse dynamique (ZAP) rejouée avec une session (`docs/securite/asvs-l2.md` §6).
+- Choix éventuel des rôles soumis à un second facteur obligatoire, et des arbitrages AUTH-10 et
+  AUTH-13.
