@@ -20,6 +20,7 @@ PROD_ENV = {
     "DOCUMENTS_ROOT": "/var/lib/onea/documents",
     "MEILI_MASTER_KEY": "prod-meili-key",
     "PLATEFORME_URL": "https://audit.onea.bf",
+    "TRUSTED_PROXY_CIDRS": "172.30.10.2",
 }
 
 PROBE = """
@@ -56,6 +57,7 @@ print(json.dumps({
     "documents_root": settings.DOCUMENTS_ROOT,
     "documents_backend": settings.STORAGES["documents"]["BACKEND"],
     "media_url": getattr(sys.modules[settings.SETTINGS_MODULE], "MEDIA_URL", ""),
+    "proxies": settings.TRUSTED_PROXY_CIDRS,
 }))
 """
 
@@ -246,6 +248,7 @@ def test_prod_admin_can_be_enabled_explicitly() -> None:
         "CSRF_TRUSTED_ORIGINS",
         "SESSION_COOKIE_SECURE",
         "PLATEFORME_URL",
+        "TRUSTED_PROXY_CIDRS",
     ],
 )
 def test_prod_settings_refuse_to_start_without_required_variable(missing: str) -> None:
@@ -332,3 +335,20 @@ def test_prod_refuse_session_cookie_secure_desactive(valeur: str) -> None:
     result = load_prod({**PROD_ENV, "SESSION_COOKIE_SECURE": valeur})
     assert result.returncode != 0
     assert "SESSION_COOKIE_SECURE" in result.stderr
+
+
+def test_prod_lit_les_mandataires_de_confiance() -> None:
+    assert probe(PROD_ENV)["proxies"] == ["172.30.10.2"]
+    assert probe({**PROD_ENV, "TRUSTED_PROXY_CIDRS": "172.30.10.2, 10.0.0.0/8"})["proxies"] == [
+        "172.30.10.2",
+        "10.0.0.0/8",
+    ]
+
+
+@pytest.mark.parametrize("valeur", ["", " ", ",", "nginx", "172.30.10.2,pas-une-adresse"])
+def test_prod_refuse_des_mandataires_de_confiance_vides_ou_invalides(valeur: str) -> None:
+    """Empty, every per-address auth limit would become ONE counter for the whole
+    organisation (30 failures from anyone = 429 for everybody): refuse to start (M6)."""
+    result = load_prod({**PROD_ENV, "TRUSTED_PROXY_CIDRS": valeur})
+    assert result.returncode != 0
+    assert "TRUSTED_PROXY_CIDRS" in result.stderr

@@ -4,6 +4,7 @@ Everything security- or deployment-relevant is REQUIRED from the environment: th
 no localhost/mailpit fallbacks. A missing variable raises ImproperlyConfigured at startup.
 """
 
+import ipaddress
 import os
 from urllib.parse import urlsplit
 
@@ -105,6 +106,22 @@ DJANGO_ADMIN_ENABLED = env.bool("DJANGO_ADMIN_ENABLED", default=False)
 # safe because docker/nginx/prod.conf OVERWRITES that header on every proxied request and
 # the web container publishes no host port. Never expose gunicorn directly.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# M6: X-Real-IP is believed only from these peers (nginx, ONEA_NGINX_IP in the composition).
+# Empty or wrong, every client would be seen as nginx: the per-address limits of the
+# authentication would become ONE counter for the whole organisation (30 failures from
+# anyone and everybody gets 429). Required, every entry an address or a CIDR network.
+TRUSTED_PROXY_CIDRS = [c.strip() for c in env.list("TRUSTED_PROXY_CIDRS") if c.strip()]
+if not TRUSTED_PROXY_CIDRS:
+    raise ImproperlyConfigured(
+        "TRUSTED_PROXY_CIDRS must list the address of nginx (ONEA_NGINX_IP) in production"
+    )
+for _cidr in TRUSTED_PROXY_CIDRS:
+    try:
+        ipaddress.ip_network(_cidr, strict=False)
+    except ValueError as _exc:
+        raise ImproperlyConfigured(
+            "TRUSTED_PROXY_CIDRS must contain IP addresses or CIDR networks only"
+        ) from _exc
 SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True

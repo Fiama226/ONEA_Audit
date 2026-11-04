@@ -50,7 +50,12 @@ Variables de la périphérie :
 - `ONEA_SUBNET_WEB` / `ONEA_NGINX_IP` : sous-réseau du réseau `web` et adresse fixe de `nginx`
   (doit appartenir au sous-réseau). À changer si le sous-réseau entre en conflit avec le réseau
   de l'établissement. `TRUSTED_PROXY_CIDRS` (Django) et `FORWARDED_ALLOW_IPS` (gunicorn)
-  valent `ONEA_NGINX_IP` : `nginx` est le seul pair cru.
+  valent `ONEA_NGINX_IP` : `nginx` est le seul pair cru. La production refuse de démarrer si
+  `TRUSTED_PROXY_CIDRS` est vide ou contient autre chose que des adresses ou réseaux CIDR
+  (`ImproperlyConfigured` dans les journaux de `migrate` et `web`) : sans lui, toutes les
+  limites par adresse de l'authentification deviendraient un seul compteur pour tout
+  l'établissement. Si `ONEA_NGINX_IP` change, recréer tous les services du backend
+  (`dc up -d --force-recreate migrate web worker worker-auth beat nginx`).
 - `TRUSTED_UPSTREAM_CIDRS` : répartiteurs ou proxys placés devant `nginx` (CIDR, séparés par
   des virgules). Vide (défaut) : `nginx` prend le pair TCP comme adresse du client. Renseigné :
   `X-Forwarded-For` n'est cru que si le pair appartient à ces plages (`realip`), et l'adresse
