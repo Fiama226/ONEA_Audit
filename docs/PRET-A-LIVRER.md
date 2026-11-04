@@ -21,7 +21,7 @@ bloquent la mise en production (pas la livraison du logiciel), chacune avec son 
 | A4 | Tests e2e | `sh scripts/e2e.sh` (Playwright, base jetable, comptes créés par `creer_comptes_e2e`) ; couvrent aujourd'hui connexion par formulaire, référentiel, missions, accessibilité, clavier, impression. Les specs ont été vérifiées par `tsc` mais **n'ont pas été exécutées** depuis le remplacement de Keycloak | à vérifier |
 | A5 | e2e des lots 6 (T14), 7 (T17), 8 (T17) | aucune spec dans `frontend/e2e/` pour accomplissement, communication, suivi | à faire |
 | A6 | Accessibilité stricte sur toutes les zones | `A11Y_STRICT=1` avec `scripts/e2e.sh` ; rapport `docs/qualite/audit-accessibilite.md` | à vérifier |
-| A7 | Budget frontend | `cd frontend && npm run build && npm run budget` (`scripts/verifier-budget-frontend.mjs`) | à vérifier |
+| A7 | Budget frontend | `cd frontend && npm run build && npm run budget` (`scripts/verifier-budget-frontend.mjs`). Dernière mesure, 2026-11-04 sur `feat/auth-interne` : JS d'entrée 245,8 Ko gzip pour 250 (302,6 avant le chargement à la demande des pages d'authentification, du tableau de bord et de « Mon compte ») ; marge faible | à vérifier |
 | A8 | Version `0.9.0` posée (backend `__init__.py` et `pyproject.toml`, `package.json`, `package-lock.json`, libellé « Version 0.9 » de `fr.ts`) | lecture des fichiers : encore `0.6.0` | à faire |
 | A9 | Intégration continue verte (GitHub Actions `.github/workflows/ci.yml`, compatibilité Gitea `scripts/ci/gitea-local.sh`) | exécution du pipeline | à vérifier |
 
