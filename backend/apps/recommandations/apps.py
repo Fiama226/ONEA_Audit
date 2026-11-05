@@ -9,9 +9,19 @@ class RecommandationsConfig(AppConfig):
     def ready(self) -> None:
         from apps.core.audit import register
 
-        from .models import AcceptationRisque, Action, EngagementPlanActions
+        from .models import (
+            AcceptationRisque,
+            Action,
+            EngagementPlanActions,
+            ValidationAcceptation,
+        )
 
-        for modele in (Action, AcceptationRisque, EngagementPlanActions):
+        for modele in (
+            Action,
+            AcceptationRisque,
+            EngagementPlanActions,
+            ValidationAcceptation,
+        ):
             register(modele)
 
         from apps.missions.services.livrables import enregistrer_controles

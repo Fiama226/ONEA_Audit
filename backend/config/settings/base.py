@@ -383,6 +383,8 @@ SPECTACULAR_SETTINGS = {
         "StatutProgrammeEnum": "apps.programmation.models.StatutProgramme.choices",
         "NiveauApprobationEnum": "apps.programmation.models.NiveauApprobation.choices",
         "ApprobateurProgrammeEnum": ["NONE", "DG", "DG_AND_BOARD"],
+        "ValidateurAcceptationEnum": "apps.recommandations.models.ValidateurAcceptation.choices",
+        "DecisionAcceptationEnum": "apps.recommandations.models.DecisionAcceptation.choices",
         # programmation.TypeIntervention a les mêmes choix que missions.TypeMission
         # (ASSURANCE / CONSEIL) : drf-spectacular les fusionne sous TypeMissionEnum.
         "StatutGabaritEnum": "apps.documents.models.StatutGabarit.choices",

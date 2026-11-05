@@ -7,7 +7,8 @@ from apps.missions.gardes import STATUTS_ETAPE_CLOSE
 from apps.missions.models import EtapeMission
 from apps.missions.services.livrables import Controle
 
-from .models import AcceptationRisque, Action
+from .models import AcceptationRisque, Action, DecisionAcceptation
+from .services.acceptations import LIBELLE_AUTORITE
 
 MSG_XV = "Terminez l'étape XV avant de finaliser le plan d'actions."
 
@@ -27,10 +28,20 @@ def _recommandations_couvertes(etape: EtapeMission) -> list[str]:
             "recommandation_id", flat=True
         )
     )
-    acceptees = set(
-        AcceptationRisque.objects.filter(mission_id=etape.mission_id).values_list(
-            "recommandation_id", flat=True
+    # Règle de gouvernance « escalade » : une acceptation qui attend la validation de
+    # l'autorité désignée ne couvre pas encore la recommandation.
+    acceptations = AcceptationRisque.objects.filter(mission_id=etape.mission_id).filter(
+        Q(validation_requise="")
+        | Q(
+            validations__decision=DecisionAcceptation.VALIDEE,
+            validations__deleted_at__isnull=True,
         )
+    )
+    acceptees = set(acceptations.values_list("recommandation_id", flat=True))
+    en_attente = dict(
+        AcceptationRisque.objects.filter(mission_id=etape.mission_id)
+        .exclude(recommandation_id__in=acceptees)
+        .values_list("recommandation_id", "validation_requise")
     )
     recos = (
         Recommandation.objects.filter(
@@ -40,10 +51,20 @@ def _recommandations_couvertes(etape: EtapeMission) -> list[str]:
         .select_related("constat")
         .order_by("constat__numero", "ordre")
     )
-    return [
-        f"La recommandation {r.constat.reference}-{r.ordre} n'a ni action ni acceptation du risque."
-        for r in recos
-    ]
+    messages: list[str] = []
+    for r in recos:
+        reference = f"{r.constat.reference}-{r.ordre}"
+        autorite = en_attente.get(r.pk)
+        if autorite:
+            messages.append(
+                f"La recommandation {reference} : l'acceptation du risque attend la validation "
+                f"{LIBELLE_AUTORITE[autorite]}."
+            )
+        else:
+            messages.append(
+                f"La recommandation {reference} n'a ni action ni acceptation du risque."
+            )
+    return messages
 
 
 def _actions_completes(etape: EtapeMission) -> list[str]:
