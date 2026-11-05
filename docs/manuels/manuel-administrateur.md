@@ -11,12 +11,13 @@ du référentiel (directions et processus). Il n'accède à aucune mission.
 2. Gérer les utilisateurs
 3. Gérer les gabarits de documents et leur numérotation
 4. Choisir le mode de signature
-5. Structure du référentiel
-6. Règles à connaître
-7. Messages fréquents
-8. Questions fréquentes
-9. À confirmer
-10. Glossaire
+5. Règles de gouvernance et journal d'audit
+6. Structure du référentiel
+7. Règles à connaître
+8. Messages fréquents
+9. Questions fréquentes
+10. À confirmer
+11. Glossaire
 
 ---
 
@@ -264,7 +265,59 @@ Le RAI voit la même page en lecture seule.
 
 ---
 
-## 5. Structure du référentiel
+## 5. Règles de gouvernance et journal d'audit
+
+### 5.1 Ce que sont les règles de gouvernance
+
+« Paramétrage », « Règles de gouvernance » (`/administration/gouvernance`). Huit règles métier
+s'y règlent ; vous seul (administrateur actif) les modifiez. Le RAI et le DG voient la page en
+lecture seule. Ce droit **n'est jamais délégable** : une délégation de gestion des comptes ne le
+donne pas.
+
+Chaque règle part de sa **valeur de référence**, la plus prudente (Normes IIA 2024, fiches IFACI) :
+
+| Règle | Valeur de référence | Effet dans la plateforme |
+|---|---|---|
+| Approbation du programme annuel *(issue des normes, IIA 9.4)* | Direction générale puis Conseil ; exigée avant le lancement | Le DG enregistre son approbation du programme validé, puis la décision du Conseil (date et référence de la délibération). Une mission inscrite au programme ne se lance pas tant que le programme de son année n'est pas approuvé. |
+| Escalade d'une acceptation de risque (IIA 11.5) | Risque faible et moyen : RAI ; élevé : DG | L'acceptation d'un risque par la direction auditée attend la validation de l'autorité désignée ; tant qu'elle n'est pas validée, elle ne couvre pas la recommandation (étape XVI). Un refus motivé retire l'acceptation. « Conseil » : le DG reporte la décision avec la référence de la délibération. |
+| Contrôle d'objectivité *(issue des normes, IIA 2.2)* | Activé, blocage, 12 mois | À l'affectation d'un intervenant et à l'émission de l'ordre : appartenance à une entité auditée, audité de la même entité ou mission de conseil sur elle dans la durée de refroidissement. Blocage : affectation refusée. Avertissement : affectation possible, alerte affichée dans « Équipe » et notifiée au RAI. |
+| Lien programme ↔ risque (IIA 9.4) | Obligatoire | Une mission dont l'événement déclencheur est « Mission inscrite au programme annuel » doit désigner, dès sa création, au moins un risque de la cartographie qu'elle couvre. |
+| Réponse de l'audité (fiches XIII, XIV, XVI) | 15 jours ; dérogation par le RAI ; motif obligatoire ; trois contrôles actifs | Clôture de XIII : position de chaque entité sur les résultats des tests. Clôture de XIV : position de l'audité sur chaque constat validé. Clôture de XVI : réponse au rapport provisoire ou délai échu. Sans réponse, l'autorité désignée déroge depuis son tableau de bord, avec un motif écrit au journal de l'étape. Le délai est celui proposé à la transmission du provisoire. |
+| Ordre des étapes | Strict | Une étape ne démarre qu'une fois les précédentes closes ; le RAI peut déroger avec un motif journalisé. « Libre » : aucun enchaînement imposé. |
+| Repli de la recherche | Missions seules | Moteur de recherche indisponible : recherche en base des missions, ou des missions et des constats. |
+| Lecture des étapes par l'audité | Autorisée | L'audité lit la liste des étapes de sa mission (statuts, dates). « Non autorisé » : la liste lui est refusée ; son plan d'actions reste lisible. |
+
+### 5.2 Modifier une règle
+
+1. « Modifier » sur la carte de la règle ; changez les valeurs ; saisissez le **motif**.
+2. Si le changement **assouplit** un contrôle (approbateur moins élevé, contrôle désactivé, durée
+   ou délai réduit, ordre libre…), la fenêtre l'annonce : le motif devient obligatoire et le DG et
+   le RAI reçoivent une notification « Règle de gouvernance assouplie » avec ce motif.
+3. Les valeurs sont contrôlées par le serveur (listes de choix, bornes : refroidissement 0 à 60
+   mois, délai 1 à 60 jours ; une autorité d'escalade ne baisse jamais quand le niveau de risque
+   monte). Une valeur refusée est expliquée dans la fenêtre.
+4. Une règle ne s'applique qu'aux **actions faites après le changement** : rien n'est recalculé sur
+   les missions clôturées ou annulées, ni sur les acceptations de risque déjà données (leur
+   autorité de validation est figée à la création).
+
+Une règle **assouplie** porte la mention « Assouplie » ; un bandeau « Règles assouplies » reste
+affiché en tête de page, et un encadré « Règles de gouvernance assouplies » figure sur votre tableau
+de bord et sur celui du DG, tant qu'elle n'est pas rétablie. Les règles issues des normes
+(approbation du programme, objectivité) le signalent expressément : elles peuvent être assouplies,
+jamais supprimées en silence. Une règle ne se supprime pas.
+
+### 5.3 Journal d'audit
+
+« Paramétrage », « Journal d'audit » (`/journal-audit`), en lecture seule : date, auteur, objet,
+action, valeurs avant et après, motif, mention « Assouplissement ». Filtres : catégorie (« Règles
+de gouvernance »), période. Le RAI y voit toutes les entrées ; le DG uniquement les changements de
+règles de gouvernance. En mode « Masqué » (section 4), les changements de règles restent lisibles.
+
+[Capture à insérer : CAP-ADM-12 — Règles de gouvernance ; CAP-ADM-13 — Journal d'audit filtré]
+
+---
+
+## 6. Structure du référentiel
 
 Vous créez, modifiez et supprimez (suppression logique) les **directions** et les **processus**, comme le RAI.
 Les cartographies, risques et objets auditables sont en lecture seule pour vous.
@@ -279,7 +332,7 @@ Les cartographies, risques et objets auditables sont en lecture seule pour vous.
 
 ---
 
-## 6. Règles à connaître
+## 7. Règles à connaître
 
 - **Aucun accès aux missions** : vous ne voyez ni missions, ni constats, ni rapports, ni recommandations.
 - **Mots de passe** : jamais visibles après coup. Un mot de passe temporaire ne s'affiche qu'une fois (création,
@@ -297,11 +350,12 @@ Les cartographies, risques et objets auditables sont en lecture seule pour vous.
 - **Traçabilité** : chaque modification de compte est consignée dans l'« Historique du compte » ; rien n'est supprimé physiquement.
 - **Gabarits** : seule la version activée sert aux nouveaux documents ; les documents existants gardent leur version.
 - **Limites de débit** : les imports, les créations de comptes et les réinitialisations de mot de passe sont limités ; au-delà : « Trop de requêtes : réessayez dans quelques instants. »
-- **Journal d'audit global** : accessible par l'interface de programmation seulement (aucun écran) ; il est réservé au RAI et à l'administrateur.
+- **Journal d'audit** : écran « Journal d'audit » (section 5.3), en lecture seule ; RAI et administrateur y lisent tout, le DG les seuls changements de règles de gouvernance.
+- **Règles de gouvernance** : vous seul les modifiez (droit non délégable) ; tout assouplissement exige un motif et prévient le DG et le RAI (section 5).
 
 ---
 
-## 7. Messages fréquents
+## 8. Messages fréquents
 
 | Message | Signification |
 |---|---|
@@ -319,7 +373,7 @@ Les cartographies, risques et objets auditables sont en lecture seule pour vous.
 
 ---
 
-## 8. Questions fréquentes
+## 9. Questions fréquentes
 
 **Un audité ne peut pas répondre à un constat.** Vérifiez sa direction dans sa fiche (2.2) : elle doit correspondre à l'entité du constat.
 
@@ -337,7 +391,7 @@ Les cartographies, risques et objets auditables sont en lecture seule pour vous.
 
 ---
 
-## 9. À confirmer
+## 10. À confirmer
 
 - V-04 : piste d'audit globale sans écran ; l'entrée « Consulter la piste d'audit » est annoncée pour plus tard.
 - V-08 : écran d'accueil d'attente.
@@ -347,6 +401,6 @@ Les cartographies, risques et objets auditables sont en lecture seule pour vous.
 - Envoi des courriels (bienvenue, code de connexion, mot de passe oublié) : dépend du relais SMTP de l'ONEA, non encore fourni, et du service d'envoi de la plateforme ; sans eux, appliquer les replis décrits en 2.2 et 2.6.
 - Libellés exacts des écrans de délégation et de création après la restriction des délégués aux comptes auditeur et audité : à relever à l'écran.
 
-## 10. Glossaire
+## 11. Glossaire
 
 Voir [glossaire.md](glossaire.md).

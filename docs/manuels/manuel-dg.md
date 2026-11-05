@@ -141,6 +141,32 @@ Aucune action de modification n'est offerte.
 - « Référentiel » : onglet « Cartographies » (matrice 5 × 5 ; niveaux faible de 1 à 7, moyen de 8 à 14, élevé de 15 à 25 ; « Comparer avec… » deux versions),
   « Processus », « Directions », « Objets auditables ». Mention « Votre rôle donne un accès en lecture seule ».
 
+### 5.1 Approuver le programme annuel (règles de gouvernance)
+
+Selon la règle « Approbation du programme annuel » (par défaut : Direction générale puis Conseil),
+l'encadré « Approbation du programme » d'un programme **validé par le RAI** vous propose :
+
+1. « Enregistrer l'approbation de la DG » : date de la décision (aujourd'hui par défaut), commentaire facultatif ;
+2. puis « Enregistrer la décision du Conseil » : le Conseil n'a pas de compte, vous reportez sa décision avec
+   la **référence de la délibération** (obligatoire) et sa date.
+
+Une approbation ne se modifie ni ne se supprime. Tant que le programme de l'année n'est pas approuvé, le RAI
+ne peut pas lancer une mission inscrite au programme. Vous êtes notifié quand le RAI valide un programme.
+
+### 5.2 Décisions de gouvernance et règles assouplies
+
+Votre tableau de bord affiche :
+
+- **Décisions de gouvernance attendues** : les acceptations de risque que les règles vous confient (risque
+  élevé par défaut, ou décision du Conseil que vous reportez avec la référence de la délibération) :
+  « Valider » ou « Refuser », motif obligatoire ; un refus retire l'acceptation. Si la règle « Réponse de
+  l'audité » vous désigne, les étapes bloquées faute de réponse de l'audité, avec « Déroger » (motif).
+- **Règles de gouvernance assouplies** : l'état courant des règles affaiblies par l'administrateur, avec
+  leur motif. Vous recevez une notification à chaque assouplissement.
+
+« Paramétrage », « Règles de gouvernance » (lecture seule) et « Journal d'audit » (changements des règles,
+valeurs avant et après, motif) complètent ce suivi.
+
 [Capture à insérer : CAP-DG-07 — Programme annuel en lecture]
 [Capture à insérer : CAP-DG-08 — Cartographie des risques en lecture]
 
