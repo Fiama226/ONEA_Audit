@@ -48,7 +48,31 @@ const referentiel: RequestHandler[] = [
       ]),
     ),
   ),
+  http.get(`${API_URL}/api/v1/risk-maps/`, () =>
+    HttpResponse.json(pageOf([{ id: MAP_ID, annee: 2026, statut: "VALIDEE" }])),
+  ),
+  http.get(`${API_URL}/api/v1/risks/`, () =>
+    HttpResponse.json(
+      pageOf([
+        {
+          id: RISK_ID,
+          code: "1-ACH-R1",
+          libelle: "Fractionnement des marchés",
+          processus: PROCESS_ID,
+        },
+        {
+          id: "risk-other",
+          code: "2-RH-R1",
+          libelle: "Risque d'un autre processus",
+          processus: "p2",
+        },
+      ]),
+    ),
+  ),
 ];
+
+const MAP_ID = "0e7c1d6a-5f2b-4c3d-9e8f-7a6b5c4d3e21";
+const RISK_ID = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c65";
 
 async function fillRequired() {
   await userEvent.type(
@@ -80,6 +104,11 @@ describe("MissionFormPage", () => {
       ],
     });
     await fillRequired();
+    // Seuls les risques des processus cochés sont proposés (règle « lien programme ↔ risque »).
+    expect(
+      screen.queryByLabelText("2-RH-R1 - Risque d'un autre processus"),
+    ).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByLabelText("1-ACH-R1 - Fractionnement des marchés"));
     await submit();
     await waitFor(() => expect(body.titre).toBeDefined());
     expect(body).toMatchObject({
@@ -87,6 +116,7 @@ describe("MissionFormPage", () => {
       type: "ASSURANCE",
       processus: [PROCESS_ID],
       entites: [ENTITY_ID],
+      risques_couverts: [RISK_ID],
       date_debut_prevue: "2026-03-02",
       date_fin_prevue: "2026-05-29",
       budget_jours: null,

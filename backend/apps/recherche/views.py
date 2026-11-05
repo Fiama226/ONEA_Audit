@@ -97,8 +97,9 @@ class RechercheView(APIView):
             "Renvoie au plus 20 résultats visibles de l'utilisateur, sans total (`plus` indique "
             "qu'il en reste). Le surlignage est porté par deux caractères de contrôle réservés "
             "(U+0002 début, U+0003 fin). Rôle ADMIN : 403 ; au-delà de 60 requêtes par minute : "
-            "429. Moteur indisponible : repli sur les missions en base (`degrade` vrai), ou 503 si "
-            "la requête exclut les missions."
+            "429. Moteur indisponible : repli en base (`degrade` vrai) sur les missions, et sur "
+            "les constats si la règle de gouvernance « repli de la recherche » l'étend ; 503 si "
+            "la requête ne vise aucun de ces types."
         ),
         parameters=[RechercheParametresSerializer],
         responses={

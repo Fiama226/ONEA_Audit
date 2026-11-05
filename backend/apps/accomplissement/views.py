@@ -17,7 +17,7 @@ from django.http.response import HttpResponseBase
 from django.utils.http import content_disposition_header
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
-from rest_framework import status
+from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.negotiation import BaseContentNegotiation
@@ -42,7 +42,12 @@ from apps.documents.integrite import IntegriteError
 from apps.documents.views import nom_telechargement
 from apps.missions import acces
 from apps.missions.models import Mission
-from apps.missions.permissions import exiger, exiger_contribution, mission_visible
+from apps.missions.permissions import (
+    exiger,
+    exiger_contribution,
+    mission_du_corps,
+    mission_visible,
+)
 from apps.missions.serializers import MotifSerializer
 from apps.missions.services.etapes import contexte_actions
 from apps.missions.views import MissionApiViewSet, _action_schema
@@ -50,6 +55,7 @@ from apps.missions.views import MissionApiViewSet, _action_schema
 from . import droits, droits_fiches, filters, serializers
 from .fichiers import MSG_TAILLE, taille_maximale, type_contenu
 from .models import (
+    AccordResultats,
     EvenementFiche,
     FicheDeTest,
     InstantaneProgramme,
@@ -62,6 +68,7 @@ from .services import fiches as svc_fiches
 from .services import pieces as svc_pieces
 from .services import programme as svc_programme
 from .services import tests_prevus as svc_tests
+from .services.accords import accords_lisibles, donner_accord_resultats
 from .services.integrite import ouvrir_piece_verifiee
 from .services.synthese import synthese_programme
 from .stockage import FichierIntrouvableError
@@ -701,3 +708,75 @@ class PieceViewSet(AccomplissementViewSet, ModelViewSet[PieceJustificative]):
         )
         _poser_en_tetes(envoi, piece)
         return envoi
+
+
+# --------------------------------------------------------------------------- accord XIII
+
+
+@extend_schema_view(
+    list=extend_schema(
+        tags=["Accomplissement"],
+        summary="Positions des entités sur les résultats des tests (étape XIII)",
+        parameters=[PARAM_MISSION],
+        responses={
+            200: serializers.AccordResultatsSerializer(many=True),
+            **ERROR_400,
+            **ERROR_RESPONSES,
+            **ERROR_404,
+        },
+    ),
+    create=extend_schema(
+        tags=["Accomplissement"],
+        summary="Donner la position de l'entité sur les résultats des tests (audité responsable)",
+        responses={
+            201: serializers.AccordResultatsSerializer,
+            **ERROR_400,
+            **ERROR_RESPONSES,
+            **ERROR_404,
+            **ERROR_422,
+        },
+    ),
+)
+class AccordResultatsViewSet(MissionApiViewSet, mixins.ListModelMixin, mixins.CreateModelMixin):
+    """Accord ou désaccord motivé de l'entité auditée (fiche XIII « avec les audités »).
+
+    Lecture : équipe, RAI, et l'audité pour sa direction ; écriture : l'audité responsable de
+    l'entité, pendant l'étape XIII. Ajout seul.
+    """
+
+    serializer_class = serializers.AccordResultatsSerializer
+    queryset = AccordResultats.objects.none()
+    pagination_class = None
+    filter_backends: list[Any] = []
+    audite_actions = frozenset({"list", "create"})
+    lookup_value_regex = _UUID_REGEX
+
+    def get_queryset(self) -> QuerySet[AccordResultats]:
+        return AccordResultats.objects.filter(
+            mission__in=acces.missions_visibles(self.acteur)
+        ).select_related("entite", "auteur")
+
+    def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        brut = request.query_params.get("mission")
+        if not brut:
+            raise ValidationError({"mission": [MSG_PARAMETRE]})
+        identifiant = _uuid(brut)
+        if identifiant is None:
+            raise ValidationError({"mission": ["Identifiant invalide."]})
+        mission = mission_visible(self.acteur, identifiant)
+        accords = accords_lisibles(self.acteur, mission).order_by("created_at")
+        return Response(self.get_serializer(accords, many=True).data)
+
+    def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        mission_du_corps(request)
+        corps = self.get_serializer(data=request.data)
+        corps.is_valid(raise_exception=True)
+        donnees = corps.validated_data
+        accord = donner_accord_resultats(
+            donnees["mission"],
+            entite=donnees["entite"],
+            position=donnees["position"],
+            commentaire=donnees.get("commentaire", ""),
+            by=self.acteur,
+        )
+        return Response(self.lire(accord.pk), status=status.HTTP_201_CREATED)

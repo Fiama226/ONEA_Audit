@@ -23,7 +23,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import mixins
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer, Serializer
@@ -32,6 +32,7 @@ from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from apps.core.filters import StableOrderingFilter
 from apps.core.reseau import adresse_client
 from apps.core.schema import ERROR_400, ERROR_404, ERROR_422, ERROR_RESPONSES, crud_schema
+from apps.gouvernance import regles_gouvernance
 from apps.referentiel.models import NiveauRisque
 from apps.signatures.models import Confirmation, TypeDocumentSignable
 from apps.users.models import Role, User
@@ -70,6 +71,9 @@ from .services.suivi import fiche_de_suivi
 TAG = "Missions"
 F = TypeVar("F", bound=Callable[..., Any])
 LECTURE = frozenset({"list", "retrieve"})
+MSG_ETAPES_AUDITE = (
+    "La lecture des étapes de la mission n'est pas ouverte aux audités (règle de gouvernance)."
+)
 
 
 def _action_schema(
@@ -586,6 +590,12 @@ class EtapeViewSet(
     audite_actions = frozenset({"list", "retrieve"})
     _mission_liste: Mission | None = None
     _statuts_liste: dict[int, str] | None = None
+
+    def initial(self, request: Request, *args: Any, **kwargs: Any) -> None:
+        super().initial(request, *args, **kwargs)
+        # Règle de gouvernance « lecture des étapes par l'audité » : relue à chaque requête.
+        if self.acteur.role == Role.AUDITE and not regles_gouvernance.auditee_step_read_allowed():
+            raise PermissionDenied(MSG_ETAPES_AUDITE)
 
     def get_queryset(self) -> QuerySet[EtapeMission]:
         queryset = EtapeMission.objects.filter(

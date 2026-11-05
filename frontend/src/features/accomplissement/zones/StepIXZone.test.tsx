@@ -31,6 +31,7 @@ function member(u: UtilisateurResume): Affectation {
     utilisateur_detail: u,
     role_mission: "AUDITEUR",
     responsable_entite: false,
+    alerte_objectivite: "",
     declaration: null,
   };
 }

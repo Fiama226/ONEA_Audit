@@ -13,6 +13,7 @@ class AccomplissementConfig(AppConfig):
         from . import recepteurs  # noqa: F401
         from .controles import programme as controles_programme
         from .models import (
+            AccordResultats,
             EvenementFiche,
             FicheDeTest,
             InstantaneProgramme,
@@ -28,6 +29,7 @@ class AccomplissementConfig(AppConfig):
             EvenementFiche,
             PieceJustificative,
             InstantaneProgramme,
+            AccordResultats,
         ):
             register(modele)
 
@@ -36,6 +38,14 @@ class AccomplissementConfig(AppConfig):
         for module in (controles_programme, controles_fiches):
             for numero, controles in module.CONTROLES_ETAPE.items():
                 enregistrer_controles(numero, controles)
+
+        from apps.missions.services.derogations import enregistrer_controle_audite
+
+        from .services.accords import ETAPE_RESULTATS, controle_accord_resultats
+
+        enregistrer_controle_audite(
+            ETAPE_RESULTATS, "evidence_agreement", controle_accord_resultats
+        )
 
         from .documents import enregistrer_types
 

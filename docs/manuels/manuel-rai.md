@@ -459,6 +459,25 @@ consultables mais pas modifiables : « Lecture seule : seul l'administrateur peu
 [Capture à insérer : CAP-RAI-23 — Gabarits de documents en lecture seule]
 [Capture à insérer : CAP-RAI-24 — Mode de signature en lecture seule]
 
+### 7.6 Règles de gouvernance et décisions attendues
+
+« Paramétrage », « Règles de gouvernance » : lecture seule (seul l'administrateur les modifie, avec un motif
+s'il assouplit un contrôle ; vous en êtes notifié). Ce qu'elles changent pour vous, aux valeurs de référence :
+
+- **Programme** : après votre validation, le DG puis le Conseil (enregistré par le DG) approuvent le
+  programme ; une mission du programme ne se lance qu'une fois le programme de son année approuvé.
+- **Création d'une mission du programme** : cochez au moins un « Risque couvert » (risques des processus cochés).
+- **Équipe** : un auditeur relevant d'une entité auditée, audité de la même entité ou auteur d'une mission de
+  conseil sur elle depuis moins de 12 mois n'est pas affectable (en mode avertissement : alerte sous sa ligne).
+- **Acceptations de risque** : vous validez celles des risques faibles et moyens (tableau de bord, « Décisions de
+  gouvernance attendues », motif obligatoire) ; le DG celles des risques élevés.
+- **Réponse de l'audité** : XIII exige la position de chaque entité sur les résultats des tests (onglet
+  « Constats » de l'audité), XIV la position de l'audité sur chaque constat validé, XVI une réponse au rapport
+  provisoire ou le délai échu. Sans réponse, « Déroger » dans « Décisions de gouvernance attendues », avec un
+  motif écrit au journal de l'étape (la dérogation tombe si l'étape est rouverte).
+
+« Journal d'audit » : toutes les entrées, filtre « Règles de gouvernance ».
+
 ---
 
 ## 8. Règles à connaître

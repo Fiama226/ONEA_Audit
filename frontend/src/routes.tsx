@@ -29,6 +29,9 @@ const authPages = {
 const dashboard = () => import("@/features/dashboard/pages/DashboardPage");
 const monCompte = () => import("@/features/tutoriel/pages/MonComptePage");
 
+const governanceRules = () => import("@/features/gouvernance/pages/GovernanceRulesPage");
+const auditJournal = () => import("@/features/gouvernance/pages/AuditJournalPage");
+
 const rapportsList = () => import("@/features/communication/pages/RapportsDiffusesPage");
 const rapportDetail = () => import("@/features/communication/pages/RapportDiffusePage");
 
@@ -172,6 +175,18 @@ export const appRoutes: RouteObject[] = [
             path: "/administration/signatures",
             children: signatureAdminRoutes,
             element: guardedOutlet("/administration/signatures"),
+          },
+          // Règles de gouvernance : lecture ADMIN, RAI et DG ; écriture ADMIN (le serveur répond 403).
+          {
+            path: "/administration/gouvernance",
+            element: guarded(
+              "/administration/gouvernance",
+              lazyRoute(governanceRules, "GovernanceRulesPage"),
+            ),
+          },
+          {
+            path: "/journal-audit",
+            element: guarded("/journal-audit", lazyRoute(auditJournal, "AuditJournalPage")),
           },
           { path: "*", element: <NotFound /> },
         ],

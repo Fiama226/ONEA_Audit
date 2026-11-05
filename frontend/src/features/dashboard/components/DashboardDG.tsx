@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import { RateMeter, StackedBar, StatTile } from "@/components/charts";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { Button } from "@/components/ui/button";
+import { GovernanceDecisions } from "@/features/gouvernance/components/GovernanceDecisions";
+import { RelaxedRulesCard } from "@/features/gouvernance/components/RelaxedRulesCard";
 import { fr } from "@/i18n/fr";
 import { downloadImplementationRates, useDashboardDg, type TableauDg } from "../api";
 import { useYearParam } from "../year";
@@ -91,6 +93,10 @@ function Content({ data }: { data: TableauDg }) {
   return (
     <div className="flex flex-col gap-6">
       <AttentionPoints data={data} />
+      <div className="grid gap-4 print:hidden lg:grid-cols-2">
+        <GovernanceDecisions />
+        <RelaxedRulesCard />
+      </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatTile label={t.tileCovered} value={risks.couverts} icon={CheckCircle2} tone="success" />
         <StatTile

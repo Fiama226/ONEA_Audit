@@ -3,7 +3,7 @@
 Document de recette manuelle. Il sert à deux usages :
 
 1. **la démonstration** de la plateforme (section 2, déroulé guidé de 25 minutes) ;
-2. **le test par les collègues** (sections 3 à 6 : 117 scénarios classés du plus simple au plus complexe).
+2. **le test par les collègues** (sections 3 à 6 : 124 scénarios classés du plus simple au plus complexe).
 
 Il a été rédigé à partir du code de la branche `develop` (backend `backend/apps/*`, frontend
 `frontend/src/features/*`, libellés de `frontend/src/i18n/fr.ts`, plans de lot, revue ASVS
@@ -1124,6 +1124,86 @@ les livrables manquent (liste « Manquant : … » sous l'étape).
 
 `[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
 
+### S3-34 — Règles de gouvernance : lecture, modification, assouplissement
+**Rôle** : `admin`, `rai`, `dg`, `delegue1` (droits délégués de gestion des comptes) · **Préconditions** : règles aux valeurs de référence (installation neuve ou démonstration).
+1. `rai` puis `dg` : « Paramétrage », « Règles de gouvernance » : relever les huit règles et la mention « Lecture seule ».
+2. `delegue1` : ouvrir `/administration/gouvernance`, puis `PATCH /api/v1/governance-rules/step_order/` (`{"valeur": {"mode": "FREE"}, "motif": "x"}`).
+3. `admin` : « Modifier » sur « Contrôle d'objectivité », passer la durée de refroidissement à 24 mois, sans motif, « Enregistrer ».
+4. `admin` : « Modifier » sur « Contrôle d'objectivité », choisir « Avertir (affectation possible) », « Enregistrer » sans motif ; puis saisir « Effectif réduit » et enregistrer.
+5. `admin` : « Modifier » sur la même règle, durée 99 mois.
+6. `dg` et `rai` : ouvrir les notifications ; `admin` et `dg` : ouvrir le tableau de bord.
+
+**Résultat attendu** : étape 1 huit cartes, valeurs de référence, badge « Issue des normes » sur « Approbation du programme annuel » et « Contrôle d'objectivité », aucun bouton « Modifier » ; étape 2 la route est refusée et l'API répond **403** ; étape 3 enregistrement accepté sans motif (renforcement), aucune notification ; étape 4 sans motif la fenêtre annonce « Ce changement assouplit un contrôle » et refuse, avec motif la règle passe « Assouplie », le bandeau « Règles assouplies » apparaît (« issue des normes, est assouplie ») ; étape 5 refus « La valeur doit être comprise entre 0 et 60. » ; étape 6 `dg` et `rai` ont « Règle de gouvernance assouplie : Contrôle d'objectivité » avec le motif, les tableaux de bord ADMIN et DG listent la règle dans « Règles de gouvernance assouplies ».
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S3-35 — Journal d'audit des règles de gouvernance
+**Rôle** : `admin`, `rai`, `dg`, `auditeur1` · **Préconditions** : S3-34 réalisé.
+1. `admin` : « Paramétrage », « Journal d'audit », catégorie « Règles de gouvernance ».
+2. `rai` : même page, catégorie « Toutes les entrées ».
+3. `dg` : « Journal d'audit ».
+4. `auditeur1` : ouvrir `/journal-audit` ; puis `GET /api/v1/audit-log/`.
+5. `admin` : passer la piste d'audit en mode « Masqué » (« Mode de signature »), revenir au journal.
+
+**Résultat attendu** : étape 1 une ligne par changement : date, auteur `admin`, « Règle : Contrôle d'objectivité », valeurs avant → après lisibles (« En cas de situation détectée : Bloquer l'affectation » → « Avertir… »), motif « Effectif réduit », mention « Assouplissement » ; étape 2 toutes les entrées (comptes, référentiel…) ; étape 3 uniquement les changements de règles, sans filtre de catégorie ; étape 4 accès refusé, API **403** ; étape 5 les changements de règles restent lisibles.
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S3-36 — Approbation du programme et lancement d'une mission du programme
+**Rôle** : `rai`, `dg` · **Préconditions** : règle « Approbation du programme annuel » à sa valeur de référence ; un programme brouillon de l'année N avec une ligne ; une mission planifiée de l'année N, événement déclencheur « Mission inscrite au programme annuel », chef désigné.
+1. `rai` : valider le programme ; puis « Lancer » la mission.
+2. `dg` : notifications ; ouvrir le programme : encadré « Approbation du programme ».
+3. `dg` : « Enregistrer l'approbation de la DG » ; puis « Enregistrer la décision du Conseil » sans référence, puis avec « Délibération n° 12 ».
+4. `rai` : « Lancer » la mission.
+5. Variante : `admin` règle l'approbateur sur « Direction générale » (motif) : refaire avec un nouveau programme.
+
+**Résultat attendu** : étape 1 refus « Le programme annuel N n'est pas approuvé par le DG et le Conseil : la mission ne peut pas être lancée (règle de gouvernance). » ; étape 2 notification « Programme annuel N à approuver », « En attente : Direction générale, Conseil. » ; étape 3 la décision du Conseil exige la référence, puis « Programme approuvé. » avec les deux lignes (date, auteur, référence) ; étape 4 lancement accepté ; étape 5 seule l'approbation de la DG est demandée. Le RAI ne voit aucun bouton d'approbation. Une mission hors programme (« Demande du management ») se lance sans approbation.
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S3-37 — Risques couverts et objectivité à la constitution de la mission
+**Rôle** : `rai` · **Préconditions** : cartographie validée ; un auditeur `auditeur.daf` dont la direction est DAF ; une mission de conseil sur la DAF conduite il y a moins de 12 mois par `auditeur2`.
+1. Créer une mission « Mission inscrite au programme annuel » sans cocher de risque couvert ; puis cocher un processus et un de ses risques.
+2. Créer une mission d'assurance sur l'entité DAF ; affecter `auditeur.daf`, puis `auditeur2`.
+3. `admin` passe le contrôle d'objectivité en « Avertir » (motif) ; refaire l'étape 2.
+
+**Résultat attendu** : étape 1 refus « Une mission inscrite au programme annuel doit désigner au moins un risque… » sur « Risques couverts », puis création acceptée (seuls les risques des processus cochés sont proposés) ; étape 2 les deux affectations sont refusées (« Contrôle d'objectivité (Normes IIA 2.2) : … relève de l'entité auditée… », « … a conduit une mission de conseil sur la même entité… ») ; étape 3 les affectations passent, l'alerte s'affiche sous la déclaration dans « Équipe », un autre RAI reçoit « Alerte d'objectivité ».
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S3-38 — Escalade d'une acceptation de risque
+**Rôle** : `audite1`, `rai`, `dg` · **Préconditions** : étape XVI ouverte ; deux recommandations sans action, l'une d'un constat moyen, l'autre d'un constat élevé.
+1. `audite1` accepte le risque des deux recommandations (S3-33).
+2. `rai` : plan d'actions : lire l'état des acceptations ; tableau de bord : « Décisions de gouvernance attendues ».
+3. `rai` tente de terminer XVI ; puis valide l'acceptation du risque moyen (motif).
+4. `dg` : tableau de bord : refuser l'acceptation du risque élevé (motif).
+5. `audite1` : notifications et plan d'actions.
+
+**Résultat attendu** : étape 2 « Acceptation en attente de validation par le responsable de l'audit interne… » et « … par la Direction générale … » ; la file du RAI ne contient que le risque moyen ; étape 3 livrables manquants « … l'acceptation du risque attend la validation du RAI / de la Direction générale. », puis le risque moyen est couvert (« Acceptation validée par … ») ; étape 4 l'acceptation est retirée ; étape 5 « Acceptation du risque refusée » avec le motif, la recommandation est de nouveau sans suite (proposer une action).
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S3-39 — Réponse de l'audité exigée à la clôture (XIII, XIV, XVI) et dérogation
+**Rôle** : `audite1` (responsable de son entité), chef de mission, `rai` · **Préconditions** : règle « Réponse de l'audité » à sa valeur de référence ; une mission en étape XIII, puis XIV, puis XVI.
+1. Chef : terminer XIII. `audite1` : onglet « Constats » : encadré « Résultats des tests : position de votre entité » : « Désaccord » sans commentaire, puis avec commentaire. Chef : terminer XIII.
+2. XIV : un constat validé sans réponse de l'audité ; chef : terminer XIV.
+3. `rai` : tableau de bord, « Étapes bloquées par l'absence de réponse de l'audité » : « Déroger » sans motif, puis avec motif. Chef : terminer XIV ; lire le journal de l'étape.
+4. XVI : rapport provisoire transmis (délai proposé : 15 jours), aucune réponse ; chef : terminer XVI. Attendre l'échéance (ou transmettre avec un délai de 1 jour) et réessayer.
+
+**Résultat attendu** : étape 1 refus « L'entité … n'a pas donné sa position sur les résultats des tests. », le désaccord exige un commentaire, puis la clôture passe ; étape 2 refus « L'audité n'a pas donné sa position sur le constat C-0x. » ; étape 3 motif obligatoire, puis la clôture passe et le journal porte « Dérogation à la réponse de l'audité (étape XIV) : <motif>… » ; étape 4 refus « Le constat C-0x attend la réponse de la direction (délai : JJ/MM/AAAA). » tant que le délai court, clôture acceptée après l'échéance. Réglée sur « DG », la dérogation n'est proposée qu'au DG.
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
+### S3-40 — Ordre libre, repli de la recherche et lecture des étapes par l'audité
+**Rôle** : `admin`, `auditeur1`, `audite1` · **Préconditions** : une mission dont seule l'étape I est close ; moteur de recherche arrêtable en recette.
+1. `admin` règle « Ordre des étapes » sur « Libre » (motif). `auditeur1` démarre l'étape III.
+2. Arrêter le moteur de recherche ; `auditeur1` cherche le titre d'un constat. `admin` règle « Repli de la recherche » sur « Missions et constats » ; refaire la recherche.
+3. `admin` règle « Lecture des étapes par l'audité » sur « Non autorisé ». `audite1` ouvre le plan d'actions de sa mission ; puis `GET /api/v1/mission-steps/?mission=<id>`.
+
+**Résultat attendu** : étape 1 démarrage accepté sans dérogation ; étape 2 bandeau de recherche dégradée, aucun constat avec « Missions seules », le constat apparaît (droits respectés) avec « Missions et constats » ; étape 3 le plan d'actions reste lisible, l'API répond **403** « La lecture des étapes de la mission n'est pas ouverte aux audités (règle de gouvernance). ».
+
+`[ ] Réussi   [ ] Échec   [ ] N/A     Commentaire : ______`
+
 ---
 
 ## 6. Niveau 4 — Scénarios complexes et limites
@@ -1678,7 +1758,12 @@ Légende : **L** lecture seule ; **E** lecture et écriture/action ; **—** ref
 | Recherche globale | — | équipe | ses missions | ses éléments « audité » | missions diffusées |
 | Tableau de bord RAI / auditeur / audité / DG (API) | — | RAI et DG | Auditeur | Audité | DG |
 | Export des taux de mise en œuvre | — | E | — | — | E |
-| Journal d'audit (API seulement) | L | L | — | — | — |
+| Journal d'audit (écran « Journal d'audit ») | L | L | — | — | L (c : règles de gouvernance seulement) |
+| Règles de gouvernance | E (non délégable) | L | — | — | L |
+| Approuver le programme annuel (DG, puis décision du Conseil) | — | — | — | — | E (c : programme validé, selon la règle) |
+| Valider ou refuser une acceptation de risque | — | E (c : autorité RAI) | — | — | E (c : autorité DG ou Conseil) |
+| Déroger à l'absence de réponse de l'audité (XIII, XIV, XVI) | — | E (c : règle « RAI ») | — | — | E (c : règle « DG ») |
+| Position de l'entité sur les résultats des tests (XIII) | — | L | L | E (c : responsable de l'entité) | — |
 
 Remarques de lecture :
 - Pour l'ADMIN, l'API de la piste d'audit expose le contenu des missions (SEC-02) alors que l'interface le lui interdit : l'écart est volontairement noté, voir S4-22.

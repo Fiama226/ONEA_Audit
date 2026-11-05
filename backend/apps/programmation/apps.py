@@ -9,7 +9,8 @@ class ProgrammationConfig(AppConfig):
     def ready(self) -> None:
         from apps.core.audit import register
 
-        from .models import LigneProgramme, ProgrammeAnnuel
+        from .models import ApprobationProgramme, LigneProgramme, ProgrammeAnnuel
 
         register(ProgrammeAnnuel)
+        register(ApprobationProgramme)
         register(LigneProgramme, m2m_fields={"entites"})

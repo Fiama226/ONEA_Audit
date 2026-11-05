@@ -35,6 +35,7 @@ urlpatterns = [
     path("api/v1/", include("apps.suivi.urls_relances")),
     path("api/v1/", include("apps.tableaux_de_bord.urls")),
     path("api/v1/", include("apps.recherche.urls")),
+    path("api/v1/", include("apps.gouvernance.urls")),
     path("api/schema/", SpectacularAPIView.as_view(**_SCHEMA_ACCESS), name="schema"),
     path(
         "api/docs/",

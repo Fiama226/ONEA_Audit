@@ -369,7 +369,12 @@ class SignatureElectroniqueSerializer(serializers.Serializer[Any]):
 
 
 class TransmissionRequestSerializer(serializers.Serializer[Any]):
-    delai_jours = serializers.IntegerField(required=False, default=15)
+    delai_jours = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text="Absent : délai de la règle de gouvernance « réponse de l'audité ».",
+    )
 
 
 class TelechargementQuerySerializer(serializers.Serializer[Any]):

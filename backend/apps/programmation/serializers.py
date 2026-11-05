@@ -6,7 +6,14 @@ from rest_framework import serializers
 from apps.referentiel.models import Direction, ObjetAuditable, Processus
 from apps.referentiel.serializers import ValideurSerializer
 
-from .models import LigneProgramme, ProgrammeAnnuel, StatutProgramme, TypeIntervention
+from .models import (
+    LigneProgramme,
+    NiveauApprobation,
+    ProgrammeAnnuel,
+    StatutProgramme,
+    TypeIntervention,
+)
+from .services import etat_approbation
 
 MSG_INTROUVABLE = "Objet introuvable."
 
@@ -16,6 +23,47 @@ class _Relation(serializers.PrimaryKeyRelatedField):  # type: ignore[type-arg]
         "does_not_exist": MSG_INTROUVABLE,
         "incorrect_type": MSG_INTROUVABLE,
     }
+
+
+class AuteurApprobationSerializer(serializers.Serializer[Any]):
+    id = serializers.IntegerField()
+    nom_complet = serializers.CharField()
+
+
+class ApprobationLueSerializer(serializers.Serializer[Any]):
+    niveau = serializers.ChoiceField(choices=NiveauApprobation.choices)
+    niveau_libelle = serializers.CharField()
+    approuve_par = AuteurApprobationSerializer()
+    approuve_le = serializers.DateTimeField()
+    date_decision = serializers.DateField()
+    reference = serializers.CharField(allow_blank=True)
+    commentaire = serializers.CharField(allow_blank=True)
+
+
+class EtatApprobationSerializer(serializers.Serializer[Any]):
+    approbateur = serializers.ChoiceField(
+        choices=["NONE", "DG", "DG_AND_BOARD"],
+        help_text="Approbateur exigé par la règle de gouvernance en vigueur.",
+    )
+    requise = serializers.BooleanField()
+    approuve = serializers.BooleanField()
+    manquantes = serializers.ListField(child=serializers.ChoiceField(NiveauApprobation.choices))
+    approbations = ApprobationLueSerializer(many=True)
+
+
+class ApprobationEcritureSerializer(serializers.Serializer[Any]):
+    niveau = serializers.ChoiceField(choices=NiveauApprobation.choices)
+    date_decision = serializers.DateField(required=False, allow_null=True)
+    reference = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=120,
+        default="",
+        help_text="Référence de la délibération : obligatoire pour le Conseil.",
+    )
+    commentaire = serializers.CharField(
+        required=False, allow_blank=True, default="", max_length=2000
+    )
 
 
 class ProgrammeAnnuelSerializer(serializers.ModelSerializer[ProgrammeAnnuel]):
@@ -29,6 +77,7 @@ class ProgrammeAnnuelSerializer(serializers.ModelSerializer[ProgrammeAnnuel]):
         help_text="Écriture à la création seulement : l'année est ensuite immuable.",
     )
     libelle = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    approbation = serializers.SerializerMethodField()
 
     class Meta:
         model = ProgrammeAnnuel
@@ -40,6 +89,7 @@ class ProgrammeAnnuelSerializer(serializers.ModelSerializer[ProgrammeAnnuel]):
             "statut",
             "valide_le",
             "valide_par",
+            "approbation",
             "nb_lignes",
             "charge_totale_jours",
             "created_at",
@@ -48,6 +98,10 @@ class ProgrammeAnnuelSerializer(serializers.ModelSerializer[ProgrammeAnnuel]):
         read_only_fields = ("id", "valide_le", "created_at", "updated_at")
         # L'unicité de l'année est vérifiée par le service (422 sur « annee »).
         validators: list[Any] = []
+
+    @extend_schema_field(EtatApprobationSerializer)
+    def get_approbation(self, obj: ProgrammeAnnuel) -> dict[str, Any]:
+        return dict(EtatApprobationSerializer(etat_approbation(obj)).data)
 
 
 class EntiteResumeSerializer(serializers.ModelSerializer[Direction]):

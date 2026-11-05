@@ -1,3 +1,4 @@
+import { isApiError } from "@/api/errors";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "@/auth/useAuth";
 import { useRole } from "@/auth/useRole";
@@ -98,15 +99,18 @@ export function PlanActionsPage() {
   const { id } = useParams();
   const mission = useMission(id);
   const steps = useSteps(id);
+  // Règle de gouvernance « lecture des étapes par l'audité » : un refus (403) n'empêche pas de
+  // lire le plan d'actions ; seul l'état de l'étape XVI manque alors.
+  const stepsForbidden = isApiError(steps.error) && steps.error.status === 403;
 
-  if (mission.isError || steps.isError) {
+  if (mission.isError || (steps.isError && !stepsForbidden)) {
     return (
       <p role="alert" className={ALERT_CLASS}>
         {t.loadError}
       </p>
     );
   }
-  if (!mission.data || !steps.data) {
+  if (!mission.data || (!steps.data && !stepsForbidden)) {
     return <p role="status">{fr.common.loading}</p>;
   }
   return (
@@ -119,7 +123,7 @@ export function PlanActionsPage() {
       <h2 id="plan-actions-title" className="text-lg font-semibold">
         {fr.communication.planActionsTitle}
       </h2>
-      <PlanActionsContent mission={mission.data} step={steps.data.find((s) => s.numero === 16)} />
+      <PlanActionsContent mission={mission.data} step={steps.data?.find((s) => s.numero === 16)} />
     </section>
   );
 }

@@ -33,6 +33,7 @@ function member(
     utilisateur_detail: user(id, nom, role === "AUDITE" ? "AUDITE" : "AUDITEUR"),
     role_mission: role,
     responsable_entite: manager,
+    alerte_objectivite: "",
     declaration,
   };
 }

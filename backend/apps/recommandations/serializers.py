@@ -19,7 +19,15 @@ from apps.users.models import User
 from apps.users.serializers import UtilisateurResumeSerializer
 
 from . import droits
-from .models import AcceptationRisque, Action, EngagementPlanActions, StatutAction
+from .models import (
+    AcceptationRisque,
+    Action,
+    DecisionAcceptation,
+    EngagementPlanActions,
+    StatutAction,
+    ValidateurAcceptation,
+    ValidationAcceptation,
+)
 from .services import statuts
 
 MSG_CONFIRME = "Cochez la case de confirmation."
@@ -86,15 +94,78 @@ class ActionSerializer(serializers.ModelSerializer[Action]):
         return droits.actions_action(obj, _acteur(self), contexte=_contexte(self, obj.mission))
 
 
+class ValidationAcceptationSerializer(serializers.ModelSerializer[ValidationAcceptation]):
+    par = UtilisateurResumeSerializer(read_only=True)
+
+    class Meta:
+        model = ValidationAcceptation
+        fields = ("niveau", "decision", "par", "le", "motif", "reference_conseil")
+        read_only_fields = fields
+
+
 class AcceptationRisqueSerializer(serializers.ModelSerializer[AcceptationRisque]):
     auteur = UtilisateurResumeSerializer(read_only=True)
     confirmation = ConfirmationResumeSerializer(read_only=True)
     texte = serializers.CharField(source="confirmation.texte", read_only=True)
+    validation_requise = serializers.ChoiceField(
+        choices=ValidateurAcceptation.choices,
+        allow_blank=True,
+        read_only=True,
+        help_text=(
+            "Autorité qui doit valider l'acceptation (règle de gouvernance, figée à la "
+            "création) ; vide : aucune validation."
+        ),
+    )
+    validation = serializers.SerializerMethodField()
 
     class Meta:
         model = AcceptationRisque
-        fields = ("id", "recommandation", "justification", "auteur", "confirmation", "texte")
+        fields = (
+            "id",
+            "recommandation",
+            "justification",
+            "auteur",
+            "confirmation",
+            "texte",
+            "niveau_risque",
+            "validation_requise",
+            "validation",
+        )
         read_only_fields = fields
+
+    @extend_schema_field(ValidationAcceptationSerializer(allow_null=True))
+    def get_validation(self, obj: AcceptationRisque) -> dict[str, Any] | None:
+        validation = next(iter(obj.validations.all()), None)
+        return dict(ValidationAcceptationSerializer(validation).data) if validation else None
+
+
+class AcceptationAValiderSerializer(serializers.Serializer[Any]):
+    """Acceptation de risque en attente de la décision de l'utilisateur (RAI ou DG)."""
+
+    id = serializers.UUIDField()
+    mission_id = serializers.UUIDField()
+    mission_reference = serializers.CharField(source="mission.reference")
+    mission_titre = serializers.CharField(source="mission.titre")
+    constat_reference = serializers.CharField(source="recommandation.constat.reference")
+    constat_titre = serializers.CharField(source="recommandation.constat.titre")
+    recommandation = serializers.CharField(source="recommandation.libelle")
+    niveau_risque = serializers.CharField()
+    justification = serializers.CharField()
+    auteur = UtilisateurResumeSerializer()
+    acceptee_le = serializers.DateTimeField(source="created_at")
+    validation_requise = serializers.ChoiceField(choices=ValidateurAcceptation.choices)
+
+
+class DecisionAcceptationSerializer(serializers.Serializer[Any]):
+    decision = serializers.ChoiceField(choices=DecisionAcceptation.choices)
+    motif = serializers.CharField(max_length=2000, allow_blank=True)
+    reference_conseil = serializers.CharField(
+        max_length=120,
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Obligatoire quand la décision est celle du Conseil.",
+    )
 
 
 class _ConfirmeMixin(serializers.Serializer[Any]):

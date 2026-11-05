@@ -31,6 +31,11 @@ class TypeNotification(models.TextChoices):
     REUNION_CONVOQUEE = "REUNION_CONVOQUEE", "Réunion convoquée"
     REFERENTIEL_A_VALIDER = "REFERENTIEL_A_VALIDER", "Référentiel à valider"
     CONSTAT_SOUMIS = "CONSTAT_SOUMIS", "Constat soumis"
+    REGLE_ASSOUPLIE = "REGLE_ASSOUPLIE", "Règle de gouvernance assouplie"
+    PROGRAMME_A_APPROUVER = "PROGRAMME_A_APPROUVER", "Programme annuel à approuver"
+    ACCEPTATION_A_VALIDER = "ACCEPTATION_A_VALIDER", "Acceptation de risque à valider"
+    ACCEPTATION_DECIDEE = "ACCEPTATION_DECIDEE", "Acceptation de risque décidée"
+    ALERTE_OBJECTIVITE = "ALERTE_OBJECTIVITE", "Alerte d'objectivité"
 
 
 class Notification(BaseModel):

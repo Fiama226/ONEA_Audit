@@ -240,7 +240,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Piste d'audit (ADMIN, RAI)
+         * Piste d'audit (ADMIN, RAI ; DG : règles de gouvernance seulement)
          * @description Immutable, read-only view of the audit trail.
          */
         get: operations["audit_log_list"];
@@ -439,6 +439,26 @@ export interface paths {
         patch: operations["v1_audit_plans_partial_update"];
         trace?: never;
     };
+    "/api/v1/audit-plans/{id}/approve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enregistrer l'approbation d'un programme validé (DG)
+         * @description Règle de gouvernance « approbation du programme annuel » : le DG enregistre son approbation, puis, si la règle l'exige, celle du Conseil (date et référence de la délibération). Ajout seul.
+         */
+        post: operations["v1_audit_plans_approve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit-plans/{id}/export/": {
         parameters: {
             query?: never;
@@ -559,6 +579,44 @@ export interface paths {
         get: operations["v1_auditable_objects_tree_list"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auditee-response-waivers/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Étapes en attente d'une dérogation (réponse de l'audité)
+         * @description Étapes XIII, XIV et XVI bloquées par l'absence de réponse de l'audité : file de
+         *     l'autorité désignée par la règle « réponse de l'audité » (RAI ou DG).
+         */
+        get: operations["auditee_response_waivers_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auditee-response-waivers/{etape_id}/waive/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Déroger à l'absence de réponse de l'audité (motif journalisé) */
+        post: operations["auditee_response_waivers_waive"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2004,6 +2062,44 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/governance-rules/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Règles de gouvernance (ADMIN, RAI, DG) */
+        get: operations["governance_rules_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/governance-rules/{cle}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Une règle de gouvernance */
+        get: operations["governance_rules_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Modifier une règle de gouvernance (ADMIN)
+         * @description Validation stricte (énumérations, bornes, champs inconnus refusés). Un changement qui assouplit un contrôle exige un motif et notifie le DG et le RAI. Chaque changement est écrit dans le journal d'audit.
+         */
+        patch: operations["governance_rules_partial_update"];
         trace?: never;
     };
     "/api/v1/health/": {
@@ -3651,6 +3747,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/risk-acceptance-validations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Acceptations du risque à valider (RAI, DG)
+         * @description File des acceptations de risque à valider (règle de gouvernance « escalade ») : le RAI
+         *     pour les siennes, le DG pour les siennes et celles du Conseil.
+         */
+        get: operations["risk_acceptance_validations_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/risk-acceptance-validations/{id}/decide/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Valider ou refuser une acceptation du risque
+         * @description Décision motivée de l'autorité désignée par la règle de gouvernance ; un refus retire l'acceptation. Pour le Conseil, le DG reporte la décision avec la référence de la délibération.
+         */
+        post: operations["risk_acceptance_validations_decide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/risk-acceptances/": {
         parameters: {
             query?: never;
@@ -3908,7 +4045,7 @@ export interface paths {
         };
         /**
          * Recherche globale filtrée par droits
-         * @description Renvoie au plus 20 résultats visibles de l'utilisateur, sans total (`plus` indique qu'il en reste). Le surlignage est porté par deux caractères de contrôle réservés (U+0002 début, U+0003 fin). Rôle ADMIN : 403 ; au-delà de 60 requêtes par minute : 429. Moteur indisponible : repli sur les missions en base (`degrade` vrai), ou 503 si la requête exclut les missions.
+         * @description Renvoie au plus 20 résultats visibles de l'utilisateur, sans total (`plus` indique qu'il en reste). Le surlignage est porté par deux caractères de contrôle réservés (U+0002 début, U+0003 fin). Rôle ADMIN : 403 ; au-delà de 60 requêtes par minute : 429. Moteur indisponible : repli en base (`degrade` vrai) sur les missions, et sur les constats si la règle de gouvernance « repli de la recherche » l'étend ; 503 si la requête ne vise aucun de ces types.
          */
         get: operations["v1_search_retrieve"];
         put?: never;
@@ -4137,6 +4274,36 @@ export interface paths {
         get: operations["v1_templates_preview_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/test-results-agreements/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Positions des entités sur les résultats des tests (étape XIII)
+         * @description Accord ou désaccord motivé de l'entité auditée (fiche XIII « avec les audités »).
+         *
+         *     Lecture : équipe, RAI, et l'audité pour sa direction ; écriture : l'audité responsable de
+         *     l'entité, pendant l'étape XIII. Ajout seul.
+         */
+        get: operations["v1_test_results_agreements_list"];
+        put?: never;
+        /**
+         * Donner la position de l'entité sur les résultats des tests (audité responsable)
+         * @description Accord ou désaccord motivé de l'entité auditée (fiche XIII « avec les audités »).
+         *
+         *     Lecture : équipe, RAI, et l'audité pour sa direction ; écriture : l'audité responsable de
+         *     l'entité, pendant l'étape XIII. Ajout seul.
+         */
+        post: operations["v1_test_results_agreements_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4611,6 +4778,24 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Acceptation de risque en attente de la décision de l'utilisateur (RAI ou DG). */
+        AcceptationAValider: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            mission_id: string;
+            mission_reference: string;
+            mission_titre: string;
+            constat_reference: string;
+            constat_titre: string;
+            recommandation: string;
+            niveau_risque: string;
+            justification: string;
+            auteur: components["schemas"]["UtilisateurResume"];
+            /** Format: date-time */
+            acceptee_le: string;
+            validation_requise: components["schemas"]["ValidateurAcceptationEnum"];
+        };
         AcceptationRequestRequest: {
             /** @description Doit être vrai : la confirmation explicite de l'audité. */
             confirme: boolean;
@@ -4633,6 +4818,43 @@ export interface components {
             readonly auteur: components["schemas"]["UtilisateurResume"];
             readonly confirmation: components["schemas"]["ConfirmationResume"];
             readonly texte: string;
+            /** Niveau du constat */
+            readonly niveau_risque: string;
+            /**
+             * @description Autorité qui doit valider l'acceptation (règle de gouvernance, figée à la création) ; vide : aucune validation.
+             *
+             *     * `RAI` - Responsable de l'audit interne
+             *     * `DG` - Direction générale
+             *     * `BOARD` - Conseil (Comité d'audit)
+             */
+            readonly validation_requise: components["schemas"]["ValidateurAcceptationEnum"] | components["schemas"]["BlankEnum"];
+            readonly validation: components["schemas"]["ValidationAcceptation"] | null;
+        };
+        /** @description Position de l'entité auditée sur les résultats des tests (étape XIII). */
+        AccordResultats: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            mission: string;
+            /** Format: uuid */
+            entite: string;
+            readonly entite_libelle: string;
+            readonly auteur: components["schemas"]["UtilisateurResume"];
+            position: components["schemas"]["PositionAuditeEnum"];
+            /** @default  */
+            commentaire: string;
+            /** Format: date-time */
+            readonly created_at: string;
+        };
+        /** @description Position de l'entité auditée sur les résultats des tests (étape XIII). */
+        AccordResultatsRequest: {
+            /** Format: uuid */
+            mission: string;
+            /** Format: uuid */
+            entite: string;
+            position: components["schemas"]["PositionAuditeEnum"];
+            /** @default  */
+            commentaire: string;
         };
         Action: {
             /** Format: uuid */
@@ -4742,6 +4964,8 @@ export interface components {
              */
             responsable_entite: boolean;
             readonly declaration: components["schemas"]["DeclarationResume"] | null;
+            /** @description Situation relevée par le contrôle d'objectivité en mode avertissement (vide sinon, et toujours vide pour un audité). */
+            readonly alerte_objectivite: string;
         };
         AffectationRequest: {
             /** Format: uuid */
@@ -4791,6 +5015,36 @@ export interface components {
          * @enum {string}
          */
         AppreciationGlobaleEnum: "MAITRISE" | "PERFECTIBLE" | "INSUFFISANTE";
+        /**
+         * @description * `NONE` - NONE
+         *     * `DG` - DG
+         *     * `DG_AND_BOARD` - DG_AND_BOARD
+         * @enum {string}
+         */
+        ApprobateurProgrammeEnum: "NONE" | "DG" | "DG_AND_BOARD";
+        ApprobationEcritureRequest: {
+            niveau: components["schemas"]["NiveauApprobationEnum"];
+            /** Format: date */
+            date_decision?: string | null;
+            /**
+             * @description Référence de la délibération : obligatoire pour le Conseil.
+             * @default
+             */
+            reference: string;
+            /** @default  */
+            commentaire: string;
+        };
+        ApprobationLue: {
+            niveau: components["schemas"]["NiveauApprobationEnum"];
+            niveau_libelle: string;
+            approuve_par: components["schemas"]["AuteurApprobation"];
+            /** Format: date-time */
+            approuve_le: string;
+            /** Format: date */
+            date_decision: string;
+            reference: string;
+            commentaire: string;
+        };
         ArbitrageRequest: {
             justification: string;
         };
@@ -4822,6 +5076,18 @@ export interface components {
             };
             /** @description Business action named by the service that wrote the entry (additional_data.action), e.g. creation_compte, reinitialisation_mot_de_passe, changement_mot_de_passe, reinitialisation_par_code, activation_otp; null when none. */
             readonly action_metier: string | null;
+            /** @description Motif saisi avec le changement (règles de gouvernance) ; null sinon. */
+            readonly motif: string | null;
+            /** @description Vrai si le changement a assoupli un contrôle (règles de gouvernance). */
+            readonly affaiblissement: boolean | null;
+        };
+        AuteurApprobation: {
+            id: number;
+            nom_complet: string;
+        };
+        AuteurRegle: {
+            id: number;
+            nom_complet: string;
         };
         AvisAudite: {
             /** Format: uuid */
@@ -5273,6 +5539,21 @@ export interface components {
             acteur: string;
             roles: components["schemas"]["RoleTacheEnum"][];
         };
+        /**
+         * @description * `VALIDEE` - Validée
+         *     * `REFUSEE` - Refusée
+         * @enum {string}
+         */
+        DecisionAcceptationEnum: "VALIDEE" | "REFUSEE";
+        DecisionAcceptationRequest: {
+            decision: components["schemas"]["DecisionAcceptationEnum"];
+            motif: string;
+            /**
+             * @description Obligatoire quand la décision est celle du Conseil.
+             * @default
+             */
+            reference_conseil: string;
+        };
         DecisionReportRequest: {
             /** @default  */
             commentaire: string;
@@ -5431,6 +5712,13 @@ export interface components {
             fichier: string;
             /** @default  */
             commentaire: string;
+        };
+        DerogationReponseAuditeRequest: {
+            /**
+             * @description Obligatoire quand la règle de gouvernance l'exige.
+             * @default
+             */
+            motif: string;
         };
         DerogationRequest: {
             /** @description Motif d'une dérogation du RAI à l'ordre des étapes (journalisé). */
@@ -5824,6 +6112,18 @@ export interface components {
             readonly livrables_manquants: string[];
             readonly evenements: components["schemas"]["Evenement"][];
         };
+        /** @description Étape ouverte bloquée par l'absence de réponse de l'audité (dérogation possible). */
+        EtapeADeroger: {
+            /** Format: uuid */
+            etape: string;
+            numero: number;
+            romain: string;
+            /** Format: uuid */
+            mission_id: string;
+            mission_reference: string;
+            mission_titre: string;
+            manquants: string[];
+        };
         EtapeCourante: {
             numero: number;
             romain: string;
@@ -5846,6 +6146,20 @@ export interface components {
          * @enum {string}
          */
         EtapeEnum: "OK" | "OTP" | "CHANGER_MOT_DE_PASSE";
+        EtatApprobation: {
+            /**
+             * @description Approbateur exigé par la règle de gouvernance en vigueur.
+             *
+             *     * `NONE` - NONE
+             *     * `DG` - DG
+             *     * `DG_AND_BOARD` - DG_AND_BOARD
+             */
+            approbateur: components["schemas"]["ApprobateurProgrammeEnum"];
+            requise: boolean;
+            approuve: boolean;
+            manquantes: components["schemas"]["NiveauApprobationEnum"][];
+            approbations: components["schemas"]["ApprobationLue"][];
+        };
         /**
          * @description * `CONFIRME` - Confirmé
          *     * `A_RENOUVELER` - À renouveler
@@ -6587,6 +6901,7 @@ export interface components {
             readonly ma_declaration_en_attente: boolean;
             readonly processus_detail: components["schemas"]["Resume"][];
             readonly entites_detail: components["schemas"]["Resume"][];
+            readonly risques_couverts_detail: components["schemas"]["RisqueCouvert"][];
             evenement_declencheur?: components["schemas"]["EvenementDeclencheurEnum"] | components["schemas"]["BlankEnum"];
             /** Précision sur l'événement */
             evenement_precision?: string;
@@ -6684,6 +6999,8 @@ export interface components {
             date_fin_prevue?: string | null;
             processus?: string[];
             entites?: string[];
+            /** @description Risques de la cartographie de référence couverts par la mission ; au moins un pour une mission du programme annuel quand la règle « lien programme ↔ risque » l'exige. */
+            risques_couverts?: string[];
             evenement_declencheur?: components["schemas"]["EvenementDeclencheurEnum"] | components["schemas"]["BlankEnum"];
             /** Précision sur l'événement */
             evenement_precision?: string;
@@ -6825,6 +7142,12 @@ export interface components {
          * @enum {string}
          */
         NatureTestEnum: "ENTRETIEN" | "QCI" | "OBSERVATION" | "EXAMEN_DOCUMENTAIRE" | "PROCEDURE_ANALYTIQUE" | "PISTE_AUDIT" | "CIRCULARISATION" | "ECHANTILLONNAGE" | "CAATS" | "TEST_CHEMINEMENT" | "AUTRE";
+        /**
+         * @description * `DG` - Direction générale
+         *     * `BOARD` - Conseil (Comité d'audit)
+         * @enum {string}
+         */
+        NiveauApprobationEnum: "DG" | "BOARD";
         /**
          * @description * `FAIBLE` - Faible
          *     * `MOYEN` - Moyen
@@ -7916,6 +8239,8 @@ export interface components {
             date_fin_prevue?: string | null;
             processus?: string[];
             entites?: string[];
+            /** @description Risques de la cartographie de référence couverts par la mission ; au moins un pour une mission du programme annuel quand la règle « lien programme ↔ risque » l'exige. */
+            risques_couverts?: string[];
             evenement_declencheur?: components["schemas"]["EvenementDeclencheurEnum"] | components["schemas"]["BlankEnum"];
             /** Précision sur l'événement */
             evenement_precision?: string;
@@ -8062,6 +8387,17 @@ export interface components {
             couverture_ordre?: components["schemas"]["CouvertureOrdreEnum"] | components["schemas"]["BlankEnum"];
             /** Justification */
             justification_couverture?: string;
+        };
+        PatchedRegleGouvernanceEcritureRequest: {
+            /** @description Champs à changer (les autres gardent leur valeur). Validés par le service. */
+            valeur?: {
+                [key: string]: unknown;
+            };
+            /**
+             * @description Obligatoire quand le changement assouplit un contrôle.
+             * @default
+             */
+            motif: string;
         };
         PatchedResponsableRequestRequest: {
             responsable?: number;
@@ -8283,6 +8619,7 @@ export interface components {
              */
             readonly valide_le: string | null;
             readonly valide_par: components["schemas"]["Valideur"] | null;
+            readonly approbation: components["schemas"]["EtatApprobation"];
             readonly nb_lignes: number;
             /** Format: decimal */
             readonly charge_totale_jours: string;
@@ -8607,6 +8944,30 @@ export interface components {
             avis: components["schemas"]["AvisAudite"][];
             mes_droits: components["schemas"]["DroitsAnalyse"];
         };
+        /** @description État d'une règle de gouvernance (lecture ADMIN, RAI, DG). */
+        RegleGouvernance: {
+            cle: string;
+            libelle: string;
+            description: string;
+            /** @description Norme ou fiche dont la règle est issue. */
+            reference: string;
+            /** @description Règle issue des Normes IIA : assouplie, elle reste signalée en permanence. */
+            issue_des_normes: boolean;
+            /** @description Valeur effective. */
+            valeur: {
+                [key: string]: unknown;
+            };
+            /** @description Valeur de référence (la plus prudente). */
+            defaut: {
+                [key: string]: unknown;
+            };
+            /** @description La valeur effective est plus faible que la valeur de référence. */
+            assouplie: boolean;
+            /** Format: date-time */
+            modifie_le: string | null;
+            modifie_par: components["schemas"]["AuteurRegle"] | null;
+            motif: string;
+        };
         ReinitialisationCompteRequest: {
             /**
              * @description Confier au service d'envoi le courriel du nouveau mot de passe temporaire. Sinon (ou si l'envoi n'est pas configuré ou pas disponible), il est renvoyé une seule fois dans la réponse.
@@ -8817,6 +9178,13 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+        };
+        RisqueCouvert: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            libelle: string;
+            niveau: components["schemas"]["NiveauRisqueEnum"];
         };
         RisqueEleve: {
             /** Format: uuid */
@@ -9383,8 +9751,8 @@ export interface components {
             signature_electronique_requise: boolean;
         };
         TransmissionRequestRequest: {
-            /** @default 15 */
-            delai_jours: number;
+            /** @description Absent : délai de la règle de gouvernance « réponse de l'audité ». */
+            delai_jours?: number | null;
         };
         /** @description État du tutoriel d'accueil de l'utilisateur connecté. */
         Tutoriel: {
@@ -9448,9 +9816,10 @@ export interface components {
          *     * `A_REVALIDER` - Marquée à revalider
          *     * `NON_APPLICABLE` - Marquée non applicable
          *     * `RETABLIE` - Rétablie
+         *     * `DEROGATION` - Dérogation (réponse de l'audité)
          * @enum {string}
          */
-        TypeEvenementEtapeEnum: "DEMARREE" | "TERMINEE" | "VALIDEE" | "RENVOYEE" | "ROUVERTE" | "A_REVALIDER" | "NON_APPLICABLE" | "RETABLIE";
+        TypeEvenementEtapeEnum: "DEMARREE" | "TERMINEE" | "VALIDEE" | "RENVOYEE" | "ROUVERTE" | "A_REVALIDER" | "NON_APPLICABLE" | "RETABLIE" | "DEROGATION";
         /**
          * @description * `SOUMISE` - Soumise
          *     * `VALIDEE` - Validée
@@ -9524,9 +9893,14 @@ export interface components {
          *     * `REUNION_CONVOQUEE` - Réunion convoquée
          *     * `REFERENTIEL_A_VALIDER` - Référentiel à valider
          *     * `CONSTAT_SOUMIS` - Constat soumis
+         *     * `REGLE_ASSOUPLIE` - Règle de gouvernance assouplie
+         *     * `PROGRAMME_A_APPROUVER` - Programme annuel à approuver
+         *     * `ACCEPTATION_A_VALIDER` - Acceptation de risque à valider
+         *     * `ACCEPTATION_DECIDEE` - Acceptation de risque décidée
+         *     * `ALERTE_OBJECTIVITE` - Alerte d'objectivité
          * @enum {string}
          */
-        TypeNotificationEnum: "SUIVI_OUVERT" | "ACTION_DECLAREE" | "ACTION_VERIFIEE" | "ACTION_REJETEE" | "ACTION_CLOTUREE" | "ABANDON_PROPOSE" | "ABANDON_DECIDE" | "REPORT_DEMANDE" | "REPORT_DECIDE" | "RESPONSABLE_CHANGE" | "RELANCE" | "MISSION_A_CLOTURER" | "MISSION_CLOTUREE" | "ACTION_IGNOREE" | "AFFECTATION_MISSION" | "ORDRE_MISSION_EMIS" | "REUNION_CONVOQUEE" | "REFERENTIEL_A_VALIDER" | "CONSTAT_SOUMIS";
+        TypeNotificationEnum: "SUIVI_OUVERT" | "ACTION_DECLAREE" | "ACTION_VERIFIEE" | "ACTION_REJETEE" | "ACTION_CLOTUREE" | "ABANDON_PROPOSE" | "ABANDON_DECIDE" | "REPORT_DEMANDE" | "REPORT_DECIDE" | "RESPONSABLE_CHANGE" | "RELANCE" | "MISSION_A_CLOTURER" | "MISSION_CLOTUREE" | "ACTION_IGNOREE" | "AFFECTATION_MISSION" | "ORDRE_MISSION_EMIS" | "REUNION_CONVOQUEE" | "REFERENTIEL_A_VALIDER" | "CONSTAT_SOUMIS" | "REGLE_ASSOUPLIE" | "PROGRAMME_A_APPROUVER" | "ACCEPTATION_A_VALIDER" | "ACCEPTATION_DECIDEE" | "ALERTE_OBJECTIVITE";
         /**
          * @description * `PRISE_CONNAISSANCE` - Questionnaire de prise de connaissance
          *     * `QCI` - Questionnaire de contrôle interne
@@ -9585,6 +9959,28 @@ export interface components {
          * @enum {string}
          */
         ValeurEnum: "COMPLET" | "MASQUE";
+        /**
+         * @description * `RAI` - Responsable de l'audit interne
+         *     * `DG` - Direction générale
+         *     * `BOARD` - Conseil (Comité d'audit)
+         * @enum {string}
+         */
+        ValidateurAcceptationEnum: "RAI" | "DG" | "BOARD";
+        ValidationAcceptation: {
+            /** Autorité */
+            readonly niveau: components["schemas"]["ValidateurAcceptationEnum"];
+            /** Décision */
+            readonly decision: components["schemas"]["DecisionAcceptationEnum"];
+            readonly par: components["schemas"]["UtilisateurResume"];
+            /**
+             * Décidée le
+             * Format: date-time
+             */
+            readonly le: string;
+            readonly motif: string;
+            /** Référence de la délibération du Conseil */
+            readonly reference_conseil: string;
+        };
         /** @description Validation du rapport : `confirme` doit être vrai (jamais pré-coché). */
         ValidationRequestRequest: {
             /** @description Doit être vrai : la confirmation explicite de l'utilisateur. */
@@ -10625,6 +11021,12 @@ export interface operations {
                 action?: "create" | "delete" | "update";
                 /** @description Id of the user who made the change */
                 actor?: number | null;
+                /**
+                 * @description gouvernance : changements des règles de gouvernance
+                 *
+                 *     * `gouvernance` - gouvernance
+                 */
+                categorie?: "gouvernance";
                 /** @description ISO date YYYY-MM-DD */
                 date_from?: string;
                 /** @description ISO date YYYY-MM-DD, inclusive of the whole day (Africa/Ouagadougou) */
@@ -11724,6 +12126,74 @@ export interface operations {
             };
         };
     };
+    v1_audit_plans_approve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Un(une) Chaîne UUID identifiant ce(cette) programme annuel d'audit. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprobationEcritureRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ApprobationEcritureRequest"];
+                "multipart/form-data": components["schemas"]["ApprobationEcritureRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgrammeAnnuel"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_audit_plans_export_retrieve: {
         parameters: {
             query: {
@@ -12224,6 +12694,107 @@ export interface operations {
                 };
             };
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    auditee_response_waivers_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EtapeADeroger"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    auditee_response_waivers_waive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                etape_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DerogationReponseAuditeRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DerogationReponseAuditeRequest"];
+                "multipart/form-data": components["schemas"]["DerogationReponseAuditeRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17301,6 +17872,145 @@ export interface operations {
                 };
             };
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    governance_rules_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegleGouvernance"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    governance_rules_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cle: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegleGouvernance"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    governance_rules_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cle: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedRegleGouvernanceEcritureRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedRegleGouvernanceEcritureRequest"];
+                "multipart/form-data": components["schemas"]["PatchedRegleGouvernanceEcritureRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegleGouvernance"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -23813,6 +24523,107 @@ export interface operations {
             };
         };
     };
+    risk_acceptance_validations_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptationAValider"][];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    risk_acceptance_validations_decide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionAcceptationRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DecisionAcceptationRequest"];
+                "multipart/form-data": components["schemas"]["DecisionAcceptationRequest"];
+            };
+        };
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     v1_risk_acceptances_list: {
         parameters: {
             query?: {
@@ -25956,6 +26767,125 @@ export interface operations {
                 };
             };
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_test_results_agreements_list: {
+        parameters: {
+            query: {
+                /** @description Mission (obligatoire). */
+                mission: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccordResultats"][];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    v1_test_results_agreements_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccordResultatsRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AccordResultatsRequest"];
+                "multipart/form-data": components["schemas"]["AccordResultatsRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccordResultats"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

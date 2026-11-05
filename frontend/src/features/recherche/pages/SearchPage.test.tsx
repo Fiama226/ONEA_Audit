@@ -67,7 +67,7 @@ describe("SearchPage", () => {
       HttpResponse.json({ ...reponseRechercheFixture, degrade: true }),
     );
     expect(
-      await screen.findByText(/Le moteur de recherche est indisponible : seules les missions/),
+      await screen.findByText(/Le moteur de recherche est indisponible : la recherche se limite/),
     ).toBeVisible();
   });
 

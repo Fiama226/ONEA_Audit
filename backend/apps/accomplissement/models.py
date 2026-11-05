@@ -7,6 +7,7 @@ from django.db.models import F, Q
 from django.utils import timezone
 from django_fsm import FSMField, transition
 
+from apps.core.exceptions import RegleMetierError
 from apps.core.models import BaseModel
 from apps.missions.gardes import exiger_etape_ouverte
 from apps.missions.models import (
@@ -500,3 +501,60 @@ class InstantaneProgramme(BaseModel):
 
     def soft_delete(self, by: Any) -> None:
         raise InstantaneImmuableError
+
+
+class PositionAccord(models.TextChoices):
+    ACCORD = "ACCORD", "Accord"
+    DESACCORD = "DESACCORD", "Désaccord"
+
+
+class AccordResultats(BaseModel):
+    """Position de l'entité auditée sur les résultats des tests (fiche XIII, « avec les
+    audités ») : accord, ou désaccord motivé. Ajout seul ; la dernière position fait foi.
+
+    Exigée pour clore l'étape XIII quand la règle de gouvernance « réponse de l'audité »
+    l'active (contrôle `evidence_agreement`), sauf dérogation motivée.
+    """
+
+    mission = models.ForeignKey(
+        "missions.Mission",
+        on_delete=models.PROTECT,
+        related_name="accords_resultats",
+        verbose_name="mission",
+    )
+    entite = models.ForeignKey(
+        "referentiel.Direction",
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name="entité",
+    )
+    auteur = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name="auteur",
+    )
+    position = models.CharField("position", max_length=10, choices=PositionAccord.choices)
+    commentaire = models.TextField("commentaire", blank=True)
+
+    class Meta:
+        verbose_name = "accord sur les résultats des tests"
+        verbose_name_plural = "accords sur les résultats des tests"
+        ordering = ("created_at",)
+        constraints = [
+            models.CheckConstraint(
+                condition=~Q(position="DESACCORD") | ~Q(commentaire=""),
+                name="accord_resultats_desaccord_motive",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_position_display()} ({self.entite_id})"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self._state.adding:
+            raise RegleMetierError("Une position sur les résultats ne peut pas être modifiée.")
+        super().save(*args, **kwargs)
+
+    def soft_delete(self, by: Any) -> None:
+        raise RegleMetierError("Une position sur les résultats ne peut pas être supprimée.")

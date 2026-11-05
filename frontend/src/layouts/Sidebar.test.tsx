@@ -49,9 +49,9 @@ describe("Sidebar", () => {
     expect(nav.queryByText(fr.nav.administration)).not.toBeInTheDocument();
   });
 
-  it("gives ADMIN the four entries plus the templates and the signature mode", () => {
+  it("gives ADMIN the four entries plus templates, signature, governance rules and journal", () => {
     const nav = renderSidebar("ADMIN");
-    expect(nav.getAllByRole("link")).toHaveLength(6);
+    expect(nav.getAllByRole("link")).toHaveLength(8);
   });
 
   it("marks only the templates entry current under /administration/documents", () => {

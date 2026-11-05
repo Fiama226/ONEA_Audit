@@ -126,6 +126,23 @@ export function useValidateAuditPlan() {
   });
 }
 
+export type ApprovalInput = {
+  niveau: "DG" | "BOARD";
+  date_decision?: string | null;
+  reference?: string;
+  commentaire?: string;
+};
+
+/** Approbation d'un programme validé (DG), selon la règle de gouvernance. */
+export function useApproveAuditPlan() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: ApprovalInput & { id: string }) =>
+      apiFetch<AuditPlan>(`${BASE}/audit-plans/${id}/approve/`, { method: "POST", json: body }),
+    onSuccess: () => invalidate(client, planKeys.all),
+  });
+}
+
 export function useAuditPlanSummary(id: string | undefined) {
   return useQuery({
     queryKey: planKeys.summary(id),

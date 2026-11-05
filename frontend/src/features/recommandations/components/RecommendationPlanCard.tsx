@@ -90,6 +90,19 @@ export function RecommendationPlanCard({
             .replace("{date}", formatDate(acceptation.confirmation.confirme_le))
             .replace("{auteur}", acceptation.auteur.nom_complet)
             .replace("{motif}", acceptation.justification)}
+          {acceptation.validation_requise && (
+            <span className="mt-1 block">
+              {acceptation.validation
+                ? t.acceptanceValidated
+                    .replace("{qui}", acceptation.validation.par.nom_complet)
+                    .replace("{date}", formatDate(acceptation.validation.le))
+                : t.acceptancePending.replace(
+                    "{autorite}",
+                    t.acceptanceAuthorities[acceptation.validation_requise] ??
+                      acceptation.validation_requise,
+                  )}
+            </span>
+          )}
         </p>
       ) : actions.length === 0 ? (
         <p className="text-sm text-text-muted">{t.noActions}</p>

@@ -54,6 +54,13 @@ export function aPlan(overrides: Partial<AuditPlan> = {}): AuditPlan {
     valide_par: null,
     nb_lignes: 1,
     charge_totale_jours: "20.0",
+    approbation: {
+      approbateur: "DG_AND_BOARD",
+      requise: true,
+      approuve: false,
+      manquantes: ["DG", "BOARD"],
+      approbations: [],
+    },
     created_at: "2026-01-05T08:00:00Z",
     updated_at: "2026-01-05T08:00:00Z",
     ...overrides,
