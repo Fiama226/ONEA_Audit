@@ -1,43 +1,19 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   E2E_AUDITEE_DIRECTION,
   E2E_MISSION_PREFIX,
   E2E_MISSION_PROCESS_LABEL,
   E2E_MISSION_PROCESS_CODE,
-  devToken,
   ensureValidatedRiskMap,
-  provisionUsers,
 } from "./api";
+import { ApiSession, BASE, logIn, sessionOf } from "./session";
 
 // Full-stack journey of the mission lifecycle (lot 3) on a throw-away database (scripts/e2e.sh): the RAI creates,
 // staffs, plans, launches and issues the mission order; the lead auditor confirms the
 // independence declaration and works steps II and IV; the auditee sees only their scope.
 // Test data: missions titled "E2E <run id> — ..." (no cleanup: the database is discarded).
-const PASSWORD = "onea2026";
-const WEB_PORT = process.env.WEB_PORT ?? "5174";
-const BASE = `http://localhost:${WEB_PORT}`;
 const TITLE = `${E2E_MISSION_PREFIX}Audit de la gestion des achats`;
 const REFERENCE = /DAI\/\d{4}\/M\d{2,}/;
-
-async function logIn(page: Page, username: string) {
-  await page.goto("/");
-  const loginButton = page.getByRole("button", { name: "Se connecter" });
-  await expect(loginButton).toBeEnabled();
-  await loginButton.click();
-  await page.waitForURL(/\/realms\/onea\/protocol\/openid-connect\/auth/);
-  await page.locator("#username").fill(username);
-  await page.locator("#password").fill(PASSWORD);
-  await page.locator("#kc-login").click();
-  await page.waitForURL(`${BASE}/`);
-}
-
-/** A fresh browser context per account: the Keycloak session cookie is never shared. */
-async function sessionOf(browser: Browser, username: string): Promise<Page> {
-  const context = await browser.newContext({ baseURL: BASE, locale: "fr-FR" });
-  const page = await context.newPage();
-  await logIn(page, username);
-  return page;
-}
 
 async function openMenuAction(page: Page, action: string) {
   await page.getByRole("button", { name: "Actions sur la mission" }).click();
@@ -63,9 +39,12 @@ let missionUrl = "";
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async () => {
-  const rai = await devToken("rai");
-  await provisionUsers();
-  await ensureValidatedRiskMap(rai);
+  const rai = await ApiSession.login("rai");
+  try {
+    await ensureValidatedRiskMap(rai);
+  } finally {
+    await rai.dispose();
+  }
 });
 
 test("RAI creates the mission, staffs it, plans it, launches it and issues the order", async ({
@@ -111,7 +90,7 @@ test("RAI creates the mission, staffs it, plans it, launches it and issues the o
     await page.getByRole("button", { name: "Affecter une personne" }).click();
     let dialog = page.getByRole("alertdialog");
     await dialog.getByLabel("Rôle dans la mission").selectOption({ label: "Chef de mission" });
-    await dialog.getByRole("radio", { name: /Auditeur Un/ }).check();
+    await dialog.getByRole("radio", { name: /Auditeur1 E2E/ }).check();
     await dialog.getByRole("button", { name: "Affecter", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByRole("cell", { name: "Chef de mission", exact: true })).toBeVisible();
@@ -120,7 +99,7 @@ test("RAI creates the mission, staffs it, plans it, launches it and issues the o
     dialog = page.getByRole("alertdialog");
     await dialog.getByLabel("Rôle dans la mission").selectOption({ label: "Audité" });
     // The auditees of the mission's entity (direction DEX) are proposed and pre-checked.
-    await expect(dialog.getByRole("checkbox", { name: /Audite Un/ })).toBeChecked();
+    await expect(dialog.getByRole("checkbox", { name: /Audite1 E2E/ })).toBeChecked();
     await dialog.getByRole("button", { name: "Affecter", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByRole("cell", { name: "Audité", exact: true })).toBeVisible();
@@ -201,7 +180,7 @@ test("auditeur1 confirms the declaration, then completes steps II and IV", async
     dialog = page.getByRole("dialog");
     await dialog.getByLabel("Objet").fill("Entretien avec le directeur des achats");
     await dialog.getByLabel("Date et heure").fill("2026-11-06T10:00");
-    await dialog.getByRole("checkbox", { name: /Auditeur Un/ }).click();
+    await dialog.getByRole("checkbox", { name: /Auditeur1 E2E/ }).click();
     await dialog.getByRole("button", { name: "Enregistrer" }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByText("Entretien avec le directeur des achats")).toBeVisible();

@@ -1,20 +1,35 @@
 import { createContext, useContext } from "react";
-import type { AuthStatus, Me } from "./types";
+import type { AuthStatus, Etape, Me } from "./types";
 
 export type AuthContextValue = {
   status: AuthStatus;
   me?: Me;
-  /** Message du serveur (403 sur /me : compte désactivé) ; vide pour une indisponibilité technique. */
+  /** Étape de la session ouverte : "CHANGER_MOT_DE_PASSE" impose le changement avant tout. */
+  etape?: Etape;
+  /** Message du serveur (403 sur la sonde de session) ; vide pour une indisponibilité technique. */
   errorDetail?: string;
-  /** Vrai quand la session a expiré (jeton expiré ou renouvellement échoué). */
+  /** Vrai quand la session a expiré en cours d'utilisation (401 de l'API). */
   sessionExpired: boolean;
-  /** Lance la connexion ; `returnTo` est restitué après le retour de Keycloak. */
-  login(returnTo?: string): Promise<void>;
+  /** Vrai quand un autre agent s'est connecté dans un autre onglet pendant cette session. */
+  sessionChanged: boolean;
+  /** Vrai après une déconnexion volontaire : la page quittée n'est pas proposée au suivant. */
+  loggedOut: boolean;
+  /** Vrai quand le serveur n'a pas confirmé la fin de session (rejouée au prochain démarrage). */
+  logoutUnconfirmed: boolean;
+  /**
+   * Vérifie identifiant et mot de passe. Renvoie "OTP" si un code par courriel est attendu
+   * (session pas encore ouverte), sinon l'étape de la session ouverte. Rejette en ApiError.
+   */
+  login(identifiant: string, motDePasse: string): Promise<Etape>;
+  /** Vérifie le code reçu par courriel et ouvre la session. Rejette en ApiError. */
+  verifyOtp(code: string): Promise<Etape>;
+  /** Change le mot de passe de l'utilisateur connecté. Rejette en ApiError. */
+  changePassword(ancien: string, nouveau: string): Promise<void>;
   logout(): Promise<void>;
-  /** Relance l'initialisation (bouton « Réessayer »). */
+  /** Relance la sonde de session (bouton « Réessayer »). */
   retry(): Promise<void>;
-  /** Termine la connexion sur /callback ; renvoie le chemin demandé à l'origine, ou null en cas d'échec. */
-  completeLogin(): Promise<string | null>;
+  /** Applique au profil chargé un changement confirmé par le serveur (ex. code de connexion). */
+  updateMe(changes: Partial<Me>): void;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

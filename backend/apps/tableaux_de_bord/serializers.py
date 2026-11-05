@@ -166,6 +166,7 @@ class MaDemandeReportSerializer(_Base):
     demande_id = serializers.UUIDField()
     suivi_id = serializers.UUIDField()
     reference = serializers.CharField()
+    libelle = serializers.CharField()
     echeance_actuelle = serializers.DateField()
     nouvelle_echeance = serializers.DateField()
     statut = serializers.CharField()

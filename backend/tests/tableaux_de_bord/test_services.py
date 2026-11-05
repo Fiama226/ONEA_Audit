@@ -127,6 +127,8 @@ def test_tableau_audite_constats_a_repondre_cycle_courant(
         (bientot.pk, False, None),
     ]
     assert [d["demande_id"] for d in tableau["mes_demandes_report"]] == [demande.pk]
+    # La ligne nomme l'action, pas seulement la mission.
+    assert tableau["mes_demandes_report"][0]["libelle"] == bientot.action.libelle
 
 
 def test_tableau_audite_refuse_les_autres_roles(db: None) -> None:
@@ -161,3 +163,20 @@ def test_tableau_dg_seulement_rapports_diffuses(
     assert en_cours.pk not in {r["mission_id"] for r in tableau["rapports_diffuses"]}
     assert str(tableau["taux"]["taux"]) == "0.50"
     assert [d["code"] for d in tableau["taux_par_direction"]] == [entite.code]
+
+
+@pytest.mark.parametrize("tableau", [tableau_dg, tableau_rai])
+def test_une_seule_regle_d_annee_celle_de_la_mission(
+    db: None, creer_suivi: Callable[..., SuiviAction], tableau: Callable[..., dict[str, Any]]
+) -> None:
+    """Rapports, taux et risques suivent l'année de la mission, pas celle de la diffusion."""
+    mission = faire_mission(annee=2027)
+    suivi = creer_suivi(mission, DirectionFactory(), StatutSuivi.CLOTUREE)
+    assert suivi.diffuse_le.year == 2026  # diffusé l'année précédant celle de la mission
+    en_2027 = tableau(2027, AUJOURD_HUI)
+    en_2026 = tableau(2026, AUJOURD_HUI)
+    assert en_2027["taux"]["total"] == 1
+    assert en_2026["taux"]["total"] == 0
+    if tableau is tableau_dg:
+        assert [m["reference"] for m in en_2027["rapports_diffuses"]] == [mission.reference]
+        assert en_2026["rapports_diffuses"] == []

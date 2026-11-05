@@ -12,7 +12,7 @@ Maître d'œuvre : IKA SOLUTION LTD. Langue de travail et de l'interface : **fra
 1. **Aucune fonctionnalité IA dans le produit.** Pas d'appel LLM, pas d'embedding, pas de
    « génération assistée », pas de chatbot. L'IA sert uniquement à construire le logiciel.
 2. **100 % open source.** Toute dépendance doit être sous licence MIT, BSD, Apache 2.0,
-   PostgreSQL, LGPL, AGPL ou MPL-2.0 (mozilla-django-oidc). Licences permissives équivalentes
+   PostgreSQL, LGPL, AGPL ou MPL-2.0. Licences permissives équivalentes
    acceptées : ISC, OFL-1.1, 0BSD, BlueOak, CC0, CC-BY-4.0, Python-2.0, MIT-0, PSF-2.0, ZPL-2.1 (décision du 2026-11-02). Exception GPL-2.0 : ClamAV,
    uniquement comme conteneur séparé (aucun lien de code avec l'application). Aucun SaaS payant, aucun service propriétaire.
 3. **Français partout** dans l'interface, les messages, les documents générés et la doc
@@ -33,7 +33,7 @@ Maître d'œuvre : IKA SOLUTION LTD. Langue de travail et de l'interface : **fra
 | Documents | docxtpl (remplissage des gabarits Word ONEA), Gotenberg (docx → PDF) |
 | Recherche | Meilisearch |
 | Fichiers | Système de fichiers du serveur (volume Docker), via l'interface de stockage ; S3 en option future |
-| Auth | Keycloak (OIDC) via mozilla-django-oidc ; la SPA n'utilise que Keycloak (pas d'auth Django locale ; admin Django en session, hors SPA) |
+| Auth | Authentification interne : sessions Django (cookie `HttpOnly`, même origine, protection CSRF), mots de passe Argon2id (`argon2-cffi`), code à usage unique (OTP) par courriel, comptes créés par l'administrateur ou un délégué (mot de passe temporaire) ; aucun service d'identité externe |
 | Tests | pytest + pytest-django + factory_boy ; Vitest + Testing Library ; Playwright (e2e) |
 | Qualité | ruff, mypy, ESLint, Prettier, pre-commit |
 | Infra | Docker Compose, Nginx, Gitea Actions (ou GitHub Actions) |
@@ -76,7 +76,7 @@ Les agents fixent déjà leur modèle dans leur frontmatter ; ne pas le surcharg
 ## Commandes
 
 ```
-make up            # docker compose up (postgres, redis, meilisearch, gotenberg, keycloak)
+make up            # docker compose up (postgres, redis, meilisearch, gotenberg, mailpit)
 make backend       # python manage.py runserver
 make frontend      # npm run dev
 make test          # pytest + vitest

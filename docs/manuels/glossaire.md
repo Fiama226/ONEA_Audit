@@ -12,10 +12,12 @@ plateforme.
 | **Audité** | Personne de l'entité auditée qui répond aux constats et porte des actions. Rôle « Audité ». |
 | **Cartographie des risques** | Liste versionnée des risques de l'ONEA, notés en matrice 5 × 5. Une fois validée, elle est figée. |
 | **Chef de mission** | Auditeur désigné par le RAI pour conduire une mission ; seul (avec le RAI) à soumettre les constats et à transmettre le rapport provisoire. |
+| **Code de connexion** | Code à 6 chiffres, valable 10 minutes, envoyé par courriel après le mot de passe quand l'agent a activé ce réglage facultatif dans « Mon compte ». |
 | **Confirmation horodatée** | Mode de validation actuel : la personne coche une confirmation ; la plateforme enregistre la date, l'heure et une empreinte. Ce n'est pas une signature électronique qualifiée. |
 | **Constat** | Observation d'audit établie à partir d'une fiche de test : fait, critère, cause, conséquence, conclusion. |
 | **DAI** | Département Audit Interne de l'ONEA. |
 | **Déclaration d'indépendance** | Confirmation, par chaque intervenant d'une mission, de l'absence de situation compromettant son indépendance. Tant qu'elle n'est pas levée, aucune contribution n'est possible. |
+| **Délégation** | Droit, confié par l'administrateur à un agent et révocable à tout moment, de créer des comptes, réinitialiser des mots de passe, changer des rôles ou désactiver des comptes. |
 | **Diffusion** | Envoi du rapport final validé aux destinataires de la liste de diffusion. Irréversible. |
 | **Direction** | Direction ou département de l'ONEA ; la direction d'un audité détermine les constats auxquels il répond. |
 | **Empreinte (SHA-256)** | Code calculé à partir d'un fichier ou d'une confirmation ; toute altération la modifie. |
@@ -30,6 +32,7 @@ plateforme.
 | **Journal** | Historique lisible dans l'interface (journal de l'étape, de la fiche, du rapport, chronologie d'une action) : qui, quand, quoi. |
 | **MARC** | Matrice des risques et contrôles, établie à l'étape V. |
 | **Mission** | Audit d'un processus ou d'une entité, identifiée par une référence `DAI/AAAA/Mnn` attribuée à la planification. |
+| **Mot de passe temporaire** | Mot de passe généré à la création d'un compte ou à une réinitialisation par l'administrateur : valable 72 heures, à changer à la première connexion. |
 | **Objectif d'audit (OA)** | Objectif retenu à l'étape VII, codé OA et jamais réutilisé. |
 | **Objet auditable** | Domaine ou opération rattaché à un processus dans le référentiel. |
 | **Ordre de mission** | Acte du RAI qui lance officiellement la mission ; émis à l'étape I. |
@@ -47,4 +50,3 @@ plateforme.
 | **Superviseur** | Membre d'équipe qui peut valider les jalons VI, X et XIII par délégation du RAI (jamais le XVIII). |
 | **Suppression logique** | Un objet « supprimé » reste conservé et tracé ; il n'est plus affiché. |
 | **7M** | Grille d'analyse des causes : main-d'œuvre, méthodes, matériel, milieu, matière, management, moyens financiers. |
-| **SSO / Keycloak** | Service d'authentification de l'ONEA ; la connexion passe par lui. |

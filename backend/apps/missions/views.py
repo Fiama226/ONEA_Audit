@@ -23,7 +23,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import mixins
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer, Serializer
@@ -32,6 +32,7 @@ from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from apps.core.filters import StableOrderingFilter
 from apps.core.reseau import adresse_client
 from apps.core.schema import ERROR_400, ERROR_404, ERROR_422, ERROR_RESPONSES, crud_schema
+from apps.gouvernance import regles_gouvernance
 from apps.referentiel.models import NiveauRisque
 from apps.signatures.models import Confirmation, TypeDocumentSignable
 from apps.users.models import Role, User
@@ -70,6 +71,9 @@ from .services.suivi import fiche_de_suivi
 TAG = "Missions"
 F = TypeVar("F", bound=Callable[..., Any])
 LECTURE = frozenset({"list", "retrieve"})
+MSG_ETAPES_AUDITE = (
+    "La lecture des étapes de la mission n'est pas ouverte aux audités (règle de gouvernance)."
+)
 
 
 def _action_schema(
@@ -582,7 +586,16 @@ class EtapeViewSet(
     http_method_names = ["get", "post", "patch", "head", "options"]
     filterset_class = filters.EtapeFilter
     ordering = ("numero",)
+    # Lecture seule pour l'audité : le plan d'actions (étape XVI) a besoin de l'état des étapes.
+    audite_actions = frozenset({"list", "retrieve"})
     _mission_liste: Mission | None = None
+    _statuts_liste: dict[int, str] | None = None
+
+    def initial(self, request: Request, *args: Any, **kwargs: Any) -> None:
+        super().initial(request, *args, **kwargs)
+        # Règle de gouvernance « lecture des étapes par l'audité » : relue à chaque requête.
+        if self.acteur.role == Role.AUDITE and not regles_gouvernance.auditee_step_read_allowed():
+            raise PermissionDenied(MSG_ETAPES_AUDITE)
 
     def get_queryset(self) -> QuerySet[EtapeMission]:
         queryset = EtapeMission.objects.filter(
@@ -599,7 +612,7 @@ class EtapeViewSet(
         contexte["detail"] = self.action != "list"
         if self.action == "list" and self._mission_liste is not None:
             contexte["contexte_actions"] = svc_etapes.contexte_actions(
-                self._mission_liste, self.acteur
+                self._mission_liste, self.acteur, statuts=self._statuts_liste
             )
         return contexte
 
@@ -612,7 +625,8 @@ class EtapeViewSet(
         except ValueError as e:
             raise ValidationError({"mission": ["Identifiant invalide."]}) from e
         self._mission_liste = mission_visible(self.acteur, identifiant)
-        etapes = self.get_queryset().filter(mission=self._mission_liste).order_by("numero")
+        etapes = list(self.get_queryset().filter(mission=self._mission_liste).order_by("numero"))
+        self._statuts_liste = {e.numero: e.statut for e in etapes}
         return Response(self.get_serializer(etapes, many=True).data)
 
     def perform_update(self, serializer: BaseSerializer[EtapeMission]) -> None:
@@ -640,10 +654,22 @@ class EtapeViewSet(
             service(etape, by=self.acteur)
         return Response(self.lire(etape.pk))
 
-    @_action_schema("Démarrer l'étape", serializers.EtapeSerializer)
+    @_action_schema(
+        "Démarrer l'étape (motif facultatif : dérogation du RAI à l'ordre des étapes)",
+        serializers.EtapeSerializer,
+        request=serializers.DerogationSerializer,
+    )
     @action(detail=True, methods=["post"], filter_backends=[])
     def start(self, request: Request, pk: str | None = None) -> Response:
-        return self._transition(request, svc_etapes.demarrer_etape, ActionEtape.DEMARRER)
+        etape = self.get_object()
+        svc_etapes.exiger_droit(etape, ActionEtape.DEMARRER, self.acteur)
+        svc_etapes.exiger_action_generique(etape, ActionEtape.DEMARRER)
+        corps = serializers.DerogationSerializer(data=request.data or {})
+        corps.is_valid(raise_exception=True)
+        svc_etapes.demarrer_etape(
+            etape, by=self.acteur, derogation=corps.validated_data.get("motif", "")
+        )
+        return Response(self.lire(etape.pk))
 
     @_action_schema("Terminer l'étape", serializers.EtapeSerializer)
     @action(detail=True, methods=["post"], filter_backends=[])

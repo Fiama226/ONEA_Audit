@@ -1,11 +1,16 @@
+import { KeyRound } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { LoginCodeSettings } from "@/auth/LoginCodeSettings";
+import { AUTH_PATHS } from "@/auth/paths";
 import { useAuth } from "@/auth/useAuth";
 import { fr } from "@/i18n/fr";
 import { useTutoriel } from "../context";
 
 const T = fr.tutoriel;
+const M = fr.monCompte;
 
-/** Profil de l'utilisateur connecté et relance de la visite guidée. */
+/** Profil de l'utilisateur connecté, mot de passe, code de connexion et visite guidée. */
 export function MonComptePage() {
   const { me } = useAuth();
   const { relancer } = useTutoriel();
@@ -30,6 +35,19 @@ export function MonComptePage() {
           </div>
         ))}
       </dl>
+      <section aria-labelledby="mot-de-passe" className="mt-8 border-t border-border pt-6">
+        <h2 id="mot-de-passe" className="text-base font-semibold">
+          {M.passwordSection}
+        </h2>
+        <p className="mt-1 text-sm text-text-muted">{M.passwordText}</p>
+        <Button asChild variant="outline" className="mt-4">
+          <Link to={AUTH_PATHS.change} state={{ from: "/mon-compte" }}>
+            <KeyRound aria-hidden />
+            {M.passwordLink}
+          </Link>
+        </Button>
+      </section>
+      <LoginCodeSettings />
       <section aria-labelledby="visite-guidee" className="mt-8 border-t border-border pt-6">
         <h2 id="visite-guidee" className="text-base font-semibold">
           {T.tourSection}

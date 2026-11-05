@@ -26,8 +26,6 @@ print(json.dumps({
     "cache": settings.CACHES["default"]["LOCATION"],
     "email_password": settings.EMAIL_HOST_PASSWORD,
     "email_user": settings.EMAIL_HOST_USER,
-    "oidc": settings.OIDC_RP_CLIENT_SECRET,
-    "kc": settings.KEYCLOAK_ADMIN_API_CLIENT_SECRET,
     "meili": settings.RECHERCHE["CLE"],
     "metrics": settings.METRICS_TOKEN,
 }))
@@ -59,15 +57,11 @@ def test_fichier_prioritaire_et_saut_de_ligne_final_retire(tmp_path: Path) -> No
         "METRICS_TOKEN": "variable",
         "METRICS_TOKEN_FILE": _ecrire(tmp_path, "mt", "jeton-fichier\r\n"),
         "MEILI_MASTER_KEY_FILE": _ecrire(tmp_path, "mk", "cle-meili\n"),
-        "OIDC_RP_CLIENT_SECRET_FILE": _ecrire(tmp_path, "oidc", "secret-oidc\n"),
-        "KEYCLOAK_ADMIN_API_CLIENT_SECRET_FILE": _ecrire(tmp_path, "kc", "secret-kc\n"),
     }
     donnees = _charger(env)
     assert donnees["secret_key"] == "cle-du-fichier-" + "y" * 40
     assert donnees["metrics"] == "jeton-fichier"
     assert donnees["meili"] == "cle-meili"
-    assert donnees["oidc"] == "secret-oidc"
-    assert donnees["kc"] == "secret-kc"
 
 
 def test_seul_le_saut_de_ligne_final_est_retire(tmp_path: Path) -> None:
@@ -78,7 +72,7 @@ def test_seul_le_saut_de_ligne_final_est_retire(tmp_path: Path) -> None:
 def test_variable_utilisee_sans_fichier() -> None:
     donnees = _charger({**PROD_ENV, "METRICS_TOKEN": "par-variable"})
     assert donnees["metrics"] == "par-variable"
-    assert donnees["kc"] == "prod-sync-secret"
+    assert donnees["meili"] == "prod-meili-key"
 
 
 @pytest.mark.parametrize(
@@ -87,8 +81,6 @@ def test_variable_utilisee_sans_fichier() -> None:
         "SECRET_KEY",
         "METRICS_TOKEN",
         "MEILI_MASTER_KEY",
-        "OIDC_RP_CLIENT_SECRET",
-        "KEYCLOAK_ADMIN_API_CLIENT_SECRET",
         "DATABASE_PASSWORD",
         "REDIS_PASSWORD",
         "EMAIL_PASSWORD",
@@ -172,8 +164,6 @@ def test_anciennes_cles_acceptees_pendant_la_rotation(tmp_path: Path) -> None:
         "SECRET_KEY",
         "METRICS_TOKEN",
         "MEILI_MASTER_KEY",
-        "OIDC_RP_CLIENT_SECRET",
-        "KEYCLOAK_ADMIN_API_CLIENT_SECRET",
     ],
 )
 def test_valeur_change_me_refusee_en_production(variable: str) -> None:

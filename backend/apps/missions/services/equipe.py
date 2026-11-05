@@ -15,6 +15,8 @@ from ..models import (
     RoleMission,
     StatutMission,
 )
+from ..notifications import notifier_affectation
+from . import objectivite
 
 MSG_INTERVENANT = "Un intervenant doit avoir le rôle Auditeur interne."
 MSG_AUDITE = "Un audité doit avoir le rôle Audité."
@@ -110,16 +112,20 @@ def affecter(
         raise refuser(MSG_SUPERVISEUR_EXISTE, role_mission=MSG_SUPERVISEUR_EXISTE)
     if responsable_entite:
         _controler_responsable(existantes, utilisateur, role_mission)
+    alerte = objectivite.controler_affectation(mission, utilisateur, role_mission)
 
     affectation = AffectationMission(
         mission=mission,
         utilisateur=utilisateur,
         role_mission=role_mission,
         responsable_entite=responsable_entite,
+        alerte_objectivite=alerte,
     )
     enregistrer(affectation, by=by, creation=True)
+    objectivite.signaler(affectation, alerte, by)
     if role_mission in ROLES_INTERVENANTS:
         _creer_declaration(affectation, by)
+    notifier_affectation(affectation, by=by)
     return affectation
 
 
@@ -158,16 +164,25 @@ def remplacer_chef(mission: Mission, *, utilisateur: User, by: User) -> Affectat
     if courante is not None and courante.role_mission == RoleMission.SUPERVISEUR:
         raise refuser(MSG_SUPERVISEUR_CHEF, utilisateur=MSG_SUPERVISEUR_CHEF)
 
+    alerte = objectivite.controler_affectation(mission, utilisateur, RoleMission.CHEF_MISSION)
+
     ancien_chef.role_mission = RoleMission.AUDITEUR
     enregistrer(ancien_chef, by=by)
     if courante is not None:
         courante.role_mission = RoleMission.CHEF_MISSION
+        if alerte and alerte != courante.alerte_objectivite:
+            courante.alerte_objectivite = alerte
+            objectivite.signaler(courante, alerte, by)
         enregistrer(courante, by=by)
         return courante
     nouveau = AffectationMission(
-        mission=mission, utilisateur=utilisateur, role_mission=RoleMission.CHEF_MISSION
+        mission=mission,
+        utilisateur=utilisateur,
+        role_mission=RoleMission.CHEF_MISSION,
+        alerte_objectivite=alerte,
     )
     enregistrer(nouveau, by=by, creation=True)
+    objectivite.signaler(nouveau, alerte, by)
     _creer_declaration(nouveau, by)
     return nouveau
 

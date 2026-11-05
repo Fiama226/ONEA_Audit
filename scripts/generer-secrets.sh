@@ -18,7 +18,7 @@ umask 077
 # Fichiers attendus. Deux sont créés VIDES : `email_password` (à renseigner seulement si le relais SMTP
 # exige un mot de passe ; vide = mot de passe de EMAIL_URL, s'il y en a un) et `secret_key_fallbacks`
 # (anciennes clés Django acceptées pendant une rotation, une par ligne ; vide = aucune).
-SECRETS="secret_key secret_key_fallbacks postgres_password postgres_app_password redis_password oidc_client_secret keycloak_sync_secret meili_master_key metrics_token email_password"
+SECRETS="secret_key secret_key_fallbacks postgres_password postgres_app_password redis_password meili_master_key metrics_token email_password"
 
 usage() {
   echo "Usage : sh scripts/generer-secrets.sh [--verifier] [--dossier DIR] [--proprietaire UID:GID | --sans-proprietaire]" >&2

@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { AlertTriangle, CheckCircle2, Download } from "lucide-react";
+import { Link } from "react-router-dom";
 import { RateMeter, StackedBar, StatTile } from "@/components/charts";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { Button } from "@/components/ui/button";
+import { GovernanceDecisions } from "@/features/gouvernance/components/GovernanceDecisions";
+import { RelaxedRulesCard } from "@/features/gouvernance/components/RelaxedRulesCard";
 import { fr } from "@/i18n/fr";
 import { downloadImplementationRates, useDashboardDg, type TableauDg } from "../api";
 import { useYearParam } from "../year";
@@ -44,10 +47,56 @@ function LoadingDG() {
   );
 }
 
+function AttentionPoints({ data }: { data: TableauDg }) {
+  const late = Math.max(0, data.taux.echues - data.taux.cloturees_echues);
+  const uncovered = data.risques_eleves.non_couverts;
+  const items = [
+    uncovered > 0 && {
+      to: "/referentiel/cartographies",
+      label:
+        uncovered === 1
+          ? t.attentionRisksOne
+          : t.attentionRisks.replace("{count}", String(uncovered)),
+    },
+    late > 0 && {
+      to: "/recommandations",
+      label: late === 1 ? t.attentionLateOne : t.attentionLate.replace("{count}", String(late)),
+    },
+  ].filter((item): item is { to: string; label: string } => item !== false);
+  return (
+    <section
+      aria-labelledby="dg-attention"
+      className="rounded-lg border border-border bg-surface p-4"
+    >
+      <h2 id="dg-attention" className="mb-2 text-base font-semibold">
+        {t.attentionTitle}
+      </h2>
+      {items.length === 0 ? (
+        <p className="text-sm text-text-muted">{t.attentionNone}</p>
+      ) : (
+        <ul className="m-0 flex list-none flex-col gap-1.5 p-0 text-sm">
+          {items.map((item) => (
+            <li key={item.to}>
+              <Link to={item.to} className="text-primary underline underline-offset-2">
+                {item.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function Content({ data }: { data: TableauDg }) {
   const { taux, taux_par_direction: dirs, risques_eleves: risks } = data;
   return (
     <div className="flex flex-col gap-6">
+      <AttentionPoints data={data} />
+      <div className="grid gap-4 print:hidden lg:grid-cols-2">
+        <GovernanceDecisions />
+        <RelaxedRulesCard />
+      </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatTile label={t.tileCovered} value={risks.couverts} icon={CheckCircle2} tone="success" />
         <StatTile
@@ -138,7 +187,7 @@ export function DashboardDG() {
 
   return (
     <PrintLayout title={t.printTitleDg}>
-      <PageHeader title={d.dgTitle} userRole="DG" />
+      <PageHeader title={d.dgTitle} userRole="DG" annee={annee} />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <YearFilter value={annee} onChange={setAnnee} />
         <Button

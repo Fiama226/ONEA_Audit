@@ -7,7 +7,7 @@ from apps.missions.models import EtapeMission, Mission, StatutEtape, StatutMissi
 from apps.missions.services.etapes import terminer_etape
 from apps.missions.services.livrables import livrables_manquants
 from apps.users.models import Role, User
-from tests.constats.factories import ConstatFactory
+from tests.constats.factories import ConstatFactory, ReponseFactory
 from tests.factories import make_user
 
 pytestmark = pytest.mark.django_db
@@ -15,6 +15,12 @@ pytestmark = pytest.mark.django_db
 
 def _xiv(mission: Mission) -> EtapeMission:
     return EtapeMission.objects.get(mission=mission, numero=14)
+
+
+def _position_audite(constat: Constat) -> None:
+    """Règle de gouvernance par défaut : XIV exige la position de l'audité sur le constat."""
+    constat.refresh_from_db()
+    ReponseFactory(constat=constat, cycle=constat.cycle)
 
 
 @pytest.fixture
@@ -30,6 +36,7 @@ def test_constats_non_valides_listes(mission_en_xiv: Mission, chef: User, rai: U
     valide = ConstatFactory(mission=mission_en_xiv)
     soumettre_constat(valide, by=chef)
     valider_constat(valide, by=rai)
+    _position_audite(valide)
     brouillon = ConstatFactory(mission=mission_en_xiv)
     assert livrables_manquants(_xiv(mission_en_xiv)) == [
         f"Le constat {brouillon.reference} n'est pas validé."
@@ -48,6 +55,7 @@ def test_xiv_termine_et_xiii_valide_passent_en_communication(
     c = ConstatFactory(mission=mission_en_xiv)
     soumettre_constat(c, by=chef)
     valider_constat(c, by=rai)
+    _position_audite(c)
     assert Constat.objects.filter(mission=mission_en_xiv).count() == 1
     terminer_etape(_xiv(mission_en_xiv), by=chef)
     mission_en_xiv.refresh_from_db()
@@ -59,6 +67,7 @@ def test_un_message_par_constat_non_valide(mission_en_xiv: Mission, chef: User, 
     valide = ConstatFactory(mission=mission_en_xiv)
     soumettre_constat(valide, by=chef)
     valider_constat(valide, by=rai)
+    _position_audite(valide)
     a, b = ConstatFactory(mission=mission_en_xiv), ConstatFactory(mission=mission_en_xiv)
     assert livrables_manquants(_xiv(mission_en_xiv)) == [
         f"Le constat {a.reference} n'est pas validé.",

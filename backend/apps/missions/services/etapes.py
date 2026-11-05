@@ -1,6 +1,6 @@
 """Moteur des 18 étapes (D8) : transitions, changements de phase (D2) et droits d'action (D4)."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
@@ -11,6 +11,7 @@ from django.utils import timezone
 from apps.core.audit import actor_scope
 from apps.core.exceptions import RegleMetierError
 from apps.core.services import appliquer, enregistrer, refuser, relire
+from apps.gouvernance import regles_gouvernance
 from apps.users.models import Role, User
 
 from .. import acces
@@ -20,6 +21,7 @@ from ..etapes import (
     JALONS,
     JALONS_DELEGABLES,
     PHASE_DU_STATUT,
+    PREDECESSEURS,
     romain,
 )
 from ..gardes import verrouiller_mission
@@ -35,8 +37,10 @@ from ..models import (
     TypeEvenementEtape,
     TypeMission,
 )
+from ..notifications import notifier_referentiel_a_valider
 from .livrables import declarations_en_attente, livrables_manquants
 
+ETAPE_REFERENTIEL = 6  # « Valider le référentiel d'audit » : l'avis des audités est attendu
 MSG_MOTIF = "Le motif est obligatoire."
 MSG_DECLARATION = "Confirmez votre déclaration d'indépendance avant de contribuer à la mission."
 MSG_DROIT = "Vous n'avez pas le droit d'effectuer cette action."
@@ -142,22 +146,58 @@ def _verifier_etat(action: str, etape: EtapeMission, mission: Mission, user: Use
 
 @dataclass(frozen=True)
 class ContexteActions:
-    """Mission, rôle dans la mission et déclaration de l'utilisateur (calculés une fois)."""
+    """Mission, rôle dans la mission et déclaration de l'utilisateur (calculés une fois).
+
+    `etapes_statuts` (numéro -> statut des 18 étapes) évite une requête par étape quand l'appelant
+    les a déjà chargées ; à défaut, ils sont lus à la demande.
+    """
 
     mission: Mission
     role_mission: str | None
     levee: bool
+    etapes_statuts: dict[int, str] | None = field(default=None, kw_only=True)
 
 
-def contexte_actions(mission: Mission, user: User) -> ContexteActions:
+def contexte_actions(
+    mission: Mission, user: User, *, statuts: dict[int, str] | None = None
+) -> ContexteActions:
     """Deux requêtes au plus ; à construire une fois pour toute la liste des étapes."""
     if user.role == Role.RAI:
-        return ContexteActions(mission, None, False)
+        return ContexteActions(mission, None, False, etapes_statuts=statuts)
     return ContexteActions(
         mission,
         acces.role_dans_mission(user, mission),
         acces.declaration_levee(user, mission),
+        etapes_statuts=statuts,
     )
+
+
+def predecesseurs_ouverts(
+    etape: EtapeMission, *, statuts: dict[int, str] | None = None
+) -> list[int]:
+    """Étapes à clore avant de démarrer `etape` (un jalon doit être validé, pas terminé).
+
+    Règle de gouvernance « ordre des étapes » : en mode libre, aucune étape n'est exigée.
+    """
+    requis = PREDECESSEURS.get(etape.numero, ())
+    if not requis or not regles_gouvernance.step_order_strict():
+        return []
+    if statuts is None:
+        statuts = dict(
+            EtapeMission.objects.filter(mission_id=etape.mission_id, numero__in=requis).values_list(
+                "numero", "statut"
+            )
+        )
+    ouverts: list[int] = []
+    for numero in requis:
+        statut = statuts.get(numero)
+        if numero in JALONS:
+            clos = statut == StatutEtape.VALIDEE
+        else:
+            clos = statut in CLOSES
+        if not clos:
+            ouverts.append(numero)
+    return ouverts
 
 
 def _role_permet(action: str, etape: EtapeMission, ctx: ContexteActions, user: User) -> bool:
@@ -201,8 +241,16 @@ def actions_possibles(
             _verifier_etat(action, etape, contexte.mission, user)
         except RegleMetierError:
             continue
-        if _role_permet(action, etape, contexte, user):
-            possibles.append(action.value)
+        if not _role_permet(action, etape, contexte, user):
+            continue
+        # Hors ordre, seul le RAI garde « Démarrer » (dérogation motivée, journalisée).
+        if (
+            action == A.DEMARRER
+            and user.role != Role.RAI
+            and predecesseurs_ouverts(etape, statuts=contexte.etapes_statuts)
+        ):
+            continue
+        possibles.append(action.value)
     return possibles
 
 
@@ -252,9 +300,30 @@ def _aujourd_hui() -> Any:
     return timezone.localdate()
 
 
+def _verifier_ordre(etape: EtapeMission, by: User, derogation: str) -> str:
+    """Refuse (422) de démarrer avant la clôture des étapes précédentes ; renvoie le motif à
+    journaliser quand le RAI déroge avec un motif."""
+    ouverts = predecesseurs_ouverts(etape)
+    if not ouverts:
+        return ""
+    romains = [romain(n) for n in ouverts]
+    motif = derogation.strip()
+    if by.role == Role.RAI and motif:
+        ouvertes = ", ".join(romains)
+        return f"Dérogation à l'ordre des étapes (étape(s) {ouvertes} non close(s)) : {motif}"
+    liste = " et ".join(romains)
+    verbe = "doit être terminée" if len(romains) == 1 else "doivent être terminées"
+    raise RegleMetierError(
+        f"L'étape {liste} {verbe} avant de démarrer l'étape {romain(etape.numero)}.",
+        {"predecesseurs": romains},
+    )
+
+
 @transaction.atomic
-def demarrer_etape(etape: EtapeMission, *, by: User) -> EtapeMission:
+def demarrer_etape(etape: EtapeMission, *, by: User, derogation: str = "") -> EtapeMission:
+    """Démarre l'étape ; hors ordre, seul le RAI peut passer outre, avec un motif journalisé."""
     mission, etape, _ = _ouvrir(etape, A.DEMARRER, by)
+    motif_derogation = _verifier_ordre(etape, by, derogation)
     if etape.numero >= 2:
         noms = declarations_en_attente(mission.pk)
         if noms:
@@ -265,7 +334,9 @@ def demarrer_etape(etape: EtapeMission, *, by: User) -> EtapeMission:
     if etape.date_debut_reelle is None:
         etape.date_debut_reelle = _aujourd_hui()
     enregistrer(etape, by=by)
-    _journaliser(etape, TypeEvenementEtape.DEMARREE, by=by, motif="", avant=avant)
+    _journaliser(etape, TypeEvenementEtape.DEMARREE, by=by, motif=motif_derogation, avant=avant)
+    if etape.numero == ETAPE_REFERENTIEL:
+        notifier_referentiel_a_valider(mission, by=by)
     return etape
 
 

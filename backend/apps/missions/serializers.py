@@ -34,6 +34,7 @@ from apps.users.models import Role, User
 from apps.users.serializers import UtilisateurResumeSerializer
 
 from . import acces
+from .etapes import romain
 from .gardes import STATUTS_ETAPE_CLOSE
 from .models import (
     AffectationMission,
@@ -199,6 +200,12 @@ class AffectationSerializer(serializers.ModelSerializer[AffectationMission]):
         ),
     )
     declaration = serializers.SerializerMethodField()
+    alerte_objectivite = serializers.SerializerMethodField(
+        help_text=(
+            "Situation relevée par le contrôle d'objectivité en mode avertissement (vide sinon, "
+            "et toujours vide pour un audité)."
+        )
+    )
 
     class Meta:
         model = AffectationMission
@@ -210,8 +217,12 @@ class AffectationSerializer(serializers.ModelSerializer[AffectationMission]):
             "role_mission",
             "responsable_entite",
             "declaration",
+            "alerte_objectivite",
         )
         read_only_fields = ("id",)
+
+    def get_alerte_objectivite(self, obj: AffectationMission) -> str:
+        return "" if _est_audite(self) else obj.alerte_objectivite
 
     @extend_schema_field(DeclarationResumeSerializer(allow_null=True))
     def get_declaration(self, obj: AffectationMission) -> dict[str, Any] | None:
@@ -284,6 +295,13 @@ class MissionListeSerializer(serializers.ModelSerializer[Mission]):
         )
 
 
+class RisqueCouvertSerializer(serializers.Serializer[Any]):
+    id = serializers.UUIDField()
+    code = serializers.CharField()
+    libelle = serializers.CharField()
+    niveau = serializers.ChoiceField(choices=NiveauRisque.choices)
+
+
 class MissionSerializer(MissionListeSerializer):
     evenement_declencheur = serializers.ChoiceField(
         choices=EvenementDeclencheur.choices, required=False, allow_blank=True
@@ -297,6 +315,17 @@ class MissionSerializer(MissionListeSerializer):
         many=True, queryset=Direction.objects.all(), required=False, write_only=True
     )
     entites_detail = serializers.SerializerMethodField()
+    risques_couverts = CleRelation(
+        many=True,
+        queryset=Risque.objects.all(),
+        required=False,
+        write_only=True,
+        help_text=(
+            "Risques de la cartographie de référence couverts par la mission ; au moins un pour "
+            "une mission du programme annuel quand la règle « lien programme ↔ risque » l'exige."
+        ),
+    )
+    risques_couverts_detail = serializers.SerializerMethodField()
     budget_jours = serializers.DecimalField(
         max_digits=6, decimal_places=1, min_value=0, required=False, allow_null=True
     )
@@ -328,6 +357,8 @@ class MissionSerializer(MissionListeSerializer):
             "processus_detail",
             "entites",
             "entites_detail",
+            "risques_couverts",
+            "risques_couverts_detail",
             "evenement_declencheur",
             "evenement_precision",
             "periode_debut",
@@ -379,6 +410,15 @@ class MissionSerializer(MissionListeSerializer):
             for d in sorted(obj.entites.all(), key=lambda d: d.code)
         ]
 
+    @extend_schema_field(RisqueCouvertSerializer(many=True))
+    def get_risques_couverts_detail(self, obj: Mission) -> list[dict[str, Any]]:
+        if _est_audite(self):
+            return []
+        return [
+            {"id": str(r.pk), "code": r.code, "libelle": r.libelle, "niveau": r.niveau}
+            for r in sorted(obj.risques_couverts.all(), key=lambda r: r.code)
+        ]
+
     @extend_schema_field(ConfirmationResumeSerializer(allow_null=True))
     def get_ordre_mission(self, obj: Mission) -> dict[str, Any] | None:
         confirmation = _dernier_ordre(obj)
@@ -405,6 +445,15 @@ class RemplacerChefSerializer(serializers.Serializer[Any]):
 
 class MotifSerializer(serializers.Serializer[Any]):
     motif = serializers.CharField(min_length=1, max_length=2000)
+
+
+class DerogationSerializer(serializers.Serializer[Any]):
+    motif = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=2000,
+        help_text="Motif d'une dérogation du RAI à l'ordre des étapes (journalisé).",
+    )
 
 
 class ConfirmationSerializer(serializers.Serializer[Any]):
@@ -594,6 +643,7 @@ class EtapeSerializer(serializers.ModelSerializer[EtapeMission]):
     terminee_par = UtilisateurResumeSerializer(read_only=True, allow_null=True)
     validee_par = UtilisateurResumeSerializer(read_only=True, allow_null=True)
     actions_possibles = serializers.SerializerMethodField()
+    predecesseurs_ouverts = serializers.SerializerMethodField()
     livrables_manquants = serializers.SerializerMethodField()
     evenements = serializers.SerializerMethodField()
 
@@ -622,6 +672,7 @@ class EtapeSerializer(serializers.ModelSerializer[EtapeMission]):
             "validee_le",
             "motif_non_applicable",
             "actions_possibles",
+            "predecesseurs_ouverts",
             "livrables_manquants",
             "evenements",
         )
@@ -638,6 +689,14 @@ class EtapeSerializer(serializers.ModelSerializer[EtapeMission]):
     def _detail(self) -> bool:
         return bool(self.context.get("detail"))
 
+    def to_representation(self, instance: EtapeMission) -> dict[str, Any]:
+        data = dict(super().to_representation(instance))
+        if self.context["request"].user.role == Role.AUDITE:
+            # Les charges (jours) sont internes à l'équipe d'audit : comme `budget_jours`.
+            data["charge_prevue_jours"] = None
+            data["charge_reelle_jours"] = None
+        return data
+
     @extend_schema_field(
         serializers.ListField(child=serializers.ChoiceField(choices=ActionEtape.choices))
     )
@@ -647,12 +706,23 @@ class EtapeSerializer(serializers.ModelSerializer[EtapeMission]):
         return svc_etapes.actions_possibles(obj, user, contexte=contexte)
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
+    def get_predecesseurs_ouverts(self, obj: EtapeMission) -> list[str]:
+        """Chiffres romains des étapes à clore avant de démarrer celle-ci (vide si démarrée)."""
+        if obj.statut != StatutEtape.A_FAIRE:
+            return []
+        contexte: ContexteActions | None = self.context.get("contexte_actions")
+        statuts = contexte.etapes_statuts if contexte is not None else None
+        return [romain(n) for n in svc_etapes.predecesseurs_ouverts(obj, statuts=statuts)]
+
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_livrables_manquants(self, obj: EtapeMission) -> list[str]:
-        return livrables_manquants(obj) if self._detail() else []
+        if not self._detail() or self.context["request"].user.role == Role.AUDITE:
+            return []
+        return livrables_manquants(obj)
 
     @extend_schema_field(EvenementSerializer(many=True))
     def get_evenements(self, obj: EtapeMission) -> list[dict[str, Any]]:
-        if not self._detail():
+        if not self._detail() or self.context["request"].user.role == Role.AUDITE:
             return []
         return [dict(EvenementSerializer(e).data) for e in obj.evenements.all()]
 

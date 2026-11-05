@@ -1,14 +1,15 @@
-# Fiche d'exercices — RAI (compte `rai`, mot de passe `onea2026`)
+# Fiche d'exercices — RAI (compte `rai`, mot de passe fourni par le formateur)
 
 Manuel de référence : [manuel-rai.md](../manuels/manuel-rai.md). Durée indicative : 3 h.
 Prérequis : environnement « formation » prêt (voir [guide-formateur.md](guide-formateur.md)). Les
 libellés entre guillemets sont ceux du manuel.
 
 ## Exercice 1 — Se connecter et s'orienter (manuel §1)
-1. Ouvrir l'application, cliquer « Se connecter », saisir `rai` / `onea2026`.
+1. Ouvrir l'application, saisir `rai` et le mot de passe temporaire remis par le formateur, « Se connecter » ;
+   choisir un nouveau mot de passe à l'écran « Changer le mot de passe ».
 2. Repérer la barre latérale (« Tableau de bord », « Programme annuel », « Missions », « Référentiel »,
    « Recommandations », « Rapports diffusés », « Documents »), la cloche et la recherche.
-3. Ouvrir le menu utilisateur : nom, rôle, « Se déconnecter ».
+3. Ouvrir le menu utilisateur : nom, rôle, « Mon compte », « Se déconnecter ».
 
 Résultat attendu : le tableau de bord du RAI s'affiche, le rôle RAI figure dans le menu utilisateur.
 

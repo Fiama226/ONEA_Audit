@@ -13,7 +13,8 @@ from typing import Any
 
 from apps.core.audit import actor_scope
 from apps.core.demo import ContexteDemo
-from apps.referentiel.models import Direction, Processus
+from apps.referentiel.models import Direction, Processus, Risque
+from apps.referentiel.services import version_courante
 from apps.users.models import User
 
 from .models import (
@@ -35,6 +36,7 @@ from .services.missions import (
     planifier_mission,
     suspendre_mission,
 )
+from .services.objectivite import conflits
 from .services.reunions import creer_reunion, marquer_reunion_tenue
 
 BROUILLON = "BROUILLON"
@@ -111,6 +113,7 @@ def _creer(ctx: ContexteDemo, rang: int, niveau: Niveau, final: str | None) -> S
     mission = _tracer(
         rai,
         creer_mission,
+        risques_couverts=_risques_couverts(processus),
         titre=f"{prefixe}{rng.choice(OBJETS)} {processus[0].libelle.lower()}"[:300],
         type=TypeMission.CONSEIL if rang % 9 == 8 else TypeMission.ASSURANCE,
         by=rai,
@@ -130,8 +133,19 @@ def _creer(ctx: ContexteDemo, rang: int, niveau: Niveau, final: str | None) -> S
     return SuiviMission(rang=rang, niveau=niveau, final=final, mission=mission)
 
 
+def _risques_couverts(processus: list[Processus]) -> list[Risque]:
+    """Règle « lien programme ↔ risque » : la mission désigne les risques qu'elle couvre (ceux
+    de ses processus dans la cartographie de référence, sinon le premier de la cartographie)."""
+    risques = Risque.objects.filter(version=version_courante()).order_by("code")
+    choisis = list(risques.filter(processus__in=processus)[:3])
+    return choisis or list(risques[:1])
+
+
 def _constituer_equipe(ctx: ContexteDemo, s: SuiviMission) -> None:
-    pool = ctx.rng.sample(ctx.groupes["auditeurs"], k=min(4, len(ctx.groupes["auditeurs"])))
+    # Règle « contrôle d'objectivité » : le RAI ne retient que des auditeurs objectifs (pas de
+    # mission de conseil récente sur la même entité, par exemple).
+    objectifs = [u for u in ctx.groupes["auditeurs"] if not conflits(s.mission, u)]
+    pool = ctx.rng.sample(objectifs, k=min(4, len(objectifs)))
     s.chef = pool[0]
     reste = pool[1:]
     if len(reste) >= 2:

@@ -95,4 +95,4 @@ Le seul logo autorisé est le logo officiel ONEA (`frontend/src/assets/logo-onea
 de `LOGO.jpg`, carré 500 × 500, fond blanc). Texte alternatif : « ONEA — Office national de l'eau et de
 l'assainissement ». Sur fond sombre il est posé sur une pastille blanche arrondie (le JPG n'est pas
 transparent). Dérivés générés par redimensionnement (Pillow) : `frontend/public/favicon.ico`,
-`favicon-32.png`, `apple-touch-icon.png` (180 px) et `docker/keycloak/themes/onea/login/resources/img/logo-onea.png`.
+`favicon-32.png` et `apple-touch-icon.png` (180 px).

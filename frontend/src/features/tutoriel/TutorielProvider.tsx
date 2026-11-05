@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/auth/useAuth";
 import { envoyerAction, type TutorielAction } from "./api";
@@ -6,12 +15,29 @@ import { trouverCible } from "./cible";
 import { TutorielContext } from "./context";
 import { etapesPour, TUTORIEL_VERSION, type Etape } from "./etapes";
 import { dejaTraiteEnSession, memoriserEnSession } from "./storage";
-import { TourPopover } from "./components/TourPopover";
 import { WelcomeDialog } from "./components/WelcomeDialog";
 
 type Phase = "repos" | "accueil" | "visite";
 
-const PAGES_PUBLIQUES = ["/connexion", "/callback", "/erreur"];
+/** La bulle de visite n'est utile qu'une fois la visite lancée : hors du JS d'entrée. */
+const TourPopover = lazy(async () => ({
+  default: (await import("./components/TourPopover")).TourPopover,
+}));
+
+const PAGES_PUBLIQUES = [
+  "/connexion",
+  "/mot-de-passe-oublie",
+  "/mot-de-passe/reinitialiser",
+  "/mot-de-passe/changer",
+  "/erreur",
+];
+
+/**
+ * Pages où la proposition attend : « Mon compte » porte l'interrupteur du code de connexion,
+ * que la fenêtre de bienvenue masquerait. Rien n'est mémorisé : la visite est proposée à la
+ * page suivante.
+ */
+const PAGES_SANS_PROPOSITION = [...PAGES_PUBLIQUES, "/mon-compte"];
 
 /**
  * Propose la visite guidée au premier passage (version courante non vue) et expose
@@ -30,7 +56,7 @@ export function TutorielProvider({ children }: { children: ReactNode }) {
   const role = me?.role;
   const etat = me?.tutoriel;
   const vue = etat ? etat.version_vue !== null && etat.version_vue >= TUTORIEL_VERSION : true;
-  const publique = PAGES_PUBLIQUES.includes(pathname);
+  const publique = PAGES_SANS_PROPOSITION.includes(pathname);
 
   useEffect(() => {
     if (propose.current || userId === undefined || !etat || vue || publique) return;
@@ -89,7 +115,11 @@ export function TutorielProvider({ children }: { children: ReactNode }) {
       {phase === "accueil" && role && (
         <WelcomeDialog role={role} onStart={demarrer} onLater={ignorer} />
       )}
-      {phase === "visite" && <TourPopover etapes={etapes} onFinish={terminer} onSkip={ignorer} />}
+      {phase === "visite" && (
+        <Suspense fallback={null}>
+          <TourPopover etapes={etapes} onFinish={terminer} onSkip={ignorer} />
+        </Suspense>
+      )}
     </TutorielContext.Provider>
   );
 }

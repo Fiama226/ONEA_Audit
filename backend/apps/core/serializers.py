@@ -46,7 +46,11 @@ ACTION_NAMES: dict[int, str] = {
 MASQUE = "[masqué]"
 # Entités hors mission, toujours lisibles par l'ADMIN (comptes, référentiel, réglages).
 APPS_HORS_MISSION = {"users", "referentiel", "auth"}
-MODELES_HORS_MISSION = {"signatures.parametresignature", "core.parametreplateforme"}
+MODELES_HORS_MISSION = {
+    "signatures.parametresignature",
+    "core.parametreplateforme",
+    "gouvernance.reglegouvernance",
+}
 
 
 def masquer_pour(request: Any, entree: LogEntry, mode: str | None = None) -> bool:
@@ -76,6 +80,9 @@ class AuditLogSerializer(serializers.Serializer[LogEntry]):
     object_id = serializers.CharField(source="object_pk", read_only=True)
     object_repr = serializers.CharField(read_only=True)
     changes = serializers.SerializerMethodField()
+    action_metier = serializers.SerializerMethodField()
+    motif = serializers.SerializerMethodField()
+    affaiblissement = serializers.SerializerMethodField()
 
     @extend_schema_field(
         serializers.ChoiceField(choices=["create", "update", "delete", "access", "unknown"])
@@ -98,6 +105,50 @@ class AuditLogSerializer(serializers.Serializer[LogEntry]):
         if self._masque(instance):
             data["object_repr"] = MASQUE
         return data
+
+    @extend_schema_field(
+        serializers.CharField(
+            allow_null=True,
+            help_text=(
+                "Business action named by the service that wrote the entry "
+                "(additional_data.action), e.g. creation_compte, reinitialisation_mot_de_passe, "
+                "changement_mot_de_passe, reinitialisation_par_code, activation_otp; "
+                "null when none."
+            ),
+        )
+    )
+    def get_action_metier(self, obj: LogEntry) -> str | None:
+        if self._masque(obj):
+            return None
+        donnees = obj.additional_data
+        action = donnees.get("action") if isinstance(donnees, dict) else None
+        return action if isinstance(action, str) else None
+
+    def _donnee(self, obj: LogEntry, cle: str) -> object:
+        if self._masque(obj):
+            return None
+        donnees = obj.additional_data
+        return donnees.get(cle) if isinstance(donnees, dict) else None
+
+    @extend_schema_field(
+        serializers.CharField(
+            allow_null=True,
+            help_text="Motif saisi avec le changement (règles de gouvernance) ; null sinon.",
+        )
+    )
+    def get_motif(self, obj: LogEntry) -> str | None:
+        motif = self._donnee(obj, "motif")
+        return motif if isinstance(motif, str) and motif else None
+
+    @extend_schema_field(
+        serializers.BooleanField(
+            allow_null=True,
+            help_text="Vrai si le changement a assoupli un contrôle (règles de gouvernance).",
+        )
+    )
+    def get_affaiblissement(self, obj: LogEntry) -> bool | None:
+        valeur = self._donnee(obj, "affaiblissement")
+        return valeur if isinstance(valeur, bool) else None
 
     @extend_schema_field(CHANGES_SCHEMA)
     def get_changes(self, obj: LogEntry) -> dict[str, Any]:

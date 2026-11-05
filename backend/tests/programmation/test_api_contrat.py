@@ -83,6 +83,7 @@ def test_api_contrat_ligne(api_client: APIClient, db: None) -> None:
         "annee",
         "libelle",
         "commentaire",
+        "approbation",
         "statut",
         "valide_le",
         "valide_par",

@@ -18,7 +18,7 @@ sslyze_json() {
 }
 
 mkdir -p "$RECETTE_DIR/tmp"
-for h in "$PUBLIC_HOST" "$SSO_HOST"; do
+for h in "$PUBLIC_HOST"; do
     j="$RECETTE_DIR/tmp/sslyze-$h.json"
     sslyze_json "$h" > "$j" || true
     # Les assertions lisent le JSON avec python (present dans l'image sslyze, pas sur l'hote).

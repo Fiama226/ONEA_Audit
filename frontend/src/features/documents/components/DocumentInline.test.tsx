@@ -5,7 +5,7 @@ import { axe } from "vitest-axe";
 import { fr } from "@/i18n/fr";
 import { API_URL, server } from "@/test/msw";
 import { aDisponible, aDocument, MISSION_ID, OBJET_ID, renderDocuments } from "../testUtils";
-import { DocumentInline } from "./DocumentInline";
+import { DocumentInline, MissionDocuments } from "./DocumentInline";
 
 const d = fr.documents;
 
@@ -53,5 +53,40 @@ describe("DocumentInline", () => {
     );
     expect(await screen.findByRole("button", { name: d.generate })).toBeEnabled();
     expect(screen.queryByRole("button", { name: d.downloadWord })).not.toBeInTheDocument();
+  });
+
+  it("hides « Générer » when the user may not generate, and shows the reason", async () => {
+    server.use(
+      http.get(`${API_URL}/api/v1/documents/available/`, () =>
+        HttpResponse.json([
+          aDisponible({
+            peut_generer: false,
+            raison: "Vous n'avez pas le droit de générer ce document.",
+          }),
+        ]),
+      ),
+    );
+    renderDocuments(
+      <DocumentInline typeDocument="ORDRE_MISSION" objetId={OBJET_ID} missionId={MISSION_ID} />,
+    );
+    expect(
+      await screen.findByText("Vous n'avez pas le droit de générer ce document."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: d.generate })).not.toBeInTheDocument();
+  });
+
+  it("lists every available document of the mission in the side panel", async () => {
+    server.use(
+      http.get(`${API_URL}/api/v1/documents/available/`, () =>
+        HttpResponse.json([
+          aDisponible(),
+          aDisponible({ type_document: "PV_OUVERTURE", libelle: "PV d'ouverture", objet_id: "x" }),
+        ]),
+      ),
+    );
+    renderDocuments(<MissionDocuments missionId={MISSION_ID} />);
+    expect(await screen.findByText("Ordre de mission")).toBeInTheDocument();
+    expect(screen.getByText("PV d'ouverture")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: d.generate })).toHaveLength(2);
   });
 });

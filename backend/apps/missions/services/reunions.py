@@ -12,6 +12,7 @@ from apps.core.services import appliquer, enregistrer, refuser, relire
 from apps.users.models import User
 
 from ..models import Mission, Reunion, TypeReunion
+from ..notifications import notifier_reunion
 from .travaux import verrouiller_travaux
 
 _CHAMPS = {"lieu", "ordre_du_jour", "participants_externes", "decisions", "compte_rendu"}
@@ -38,6 +39,7 @@ def creer_reunion(
     appliquer(reunion, champs, _CHAMPS)
     enregistrer(reunion, by=by, creation=True)
     reunion.participants.set(list(participants))
+    notifier_reunion(reunion, reunion.participants.all(), by=by)
     return reunion
 
 
@@ -49,6 +51,7 @@ def modifier_reunion(reunion: Reunion, *, by: User, **changes: Any) -> Reunion:
     enregistrer(reunion, by=by)
     if "participants" in changes:
         reunion.participants.set(list(changes["participants"]))
+        notifier_reunion(reunion, reunion.participants.all(), by=by)
     return reunion
 
 

@@ -93,6 +93,7 @@ class TypeEvenementEtape(models.TextChoices):
     A_REVALIDER = "A_REVALIDER", "Marquée à revalider"
     NON_APPLICABLE = "NON_APPLICABLE", "Marquée non applicable"
     RETABLIE = "RETABLIE", "Rétablie"
+    DEROGATION = "DEROGATION", "Dérogation (réponse de l'audité)"
 
 
 class StatutDeclaration(models.TextChoices):
@@ -138,6 +139,16 @@ class Mission(BaseModel):
     )
     entites = models.ManyToManyField(
         Direction, verbose_name="entités auditées", blank=True, related_name="missions"
+    )
+    risques_couverts = models.ManyToManyField(
+        "referentiel.Risque",
+        verbose_name="risques couverts",
+        blank=True,
+        related_name="missions_couvrantes",
+        help_text=(
+            "Risques de la cartographie de référence que la mission couvre (règle de "
+            "gouvernance « lien programme ↔ risque »)."
+        ),
     )
     evenement_declencheur = models.CharField(
         "événement déclencheur",
@@ -271,6 +282,14 @@ class AffectationMission(MissionEnfantModel):
             "Audité habilité à engager sa direction (acceptation de risque, réponse au "
             "rapport provisoire). Au plus un par direction et par mission (contrôlé par le "
             "service d'équipe : la direction vient du compte, pas de l'affectation)."
+        ),
+    )
+    alerte_objectivite = models.TextField(
+        "alerte d'objectivité",
+        blank=True,
+        help_text=(
+            "Situation détectée par le contrôle d'objectivité (Normes IIA 2.2) quand la règle "
+            "de gouvernance est en mode avertissement ; vide sinon."
         ),
     )
 

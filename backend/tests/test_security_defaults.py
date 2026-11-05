@@ -38,11 +38,11 @@ def test_default_cache_is_usable() -> None:
     assert cache.get("t5-probe") == {"a": 1}
 
 
-def test_api_default_authentication_is_bearer_only() -> None:
+def test_api_default_authentication_is_session_only() -> None:
     from django.conf import settings
 
     auth = settings.REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]
-    assert auth == ["apps.users.authentication.OIDCBearerAuthentication"]
+    assert auth == ["apps.users.authentication.SessionAuthentication401"]
 
 
 def test_session_cookie_policy_defaults() -> None:

@@ -1,23 +1,36 @@
 import type { ReactNode } from "react";
 import { Link, Outlet, createBrowserRouter, type RouteObject } from "react-router-dom";
+import { RequireAccountManager } from "@/auth/RequireAccountManager";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { RequireRole } from "@/auth/RequireRole";
 import { EmptyState } from "@/components/EmptyState";
 import { lazyRoute } from "@/components/lazyRoute";
-import { DashboardPage } from "@/features/dashboard/pages/DashboardPage";
 import { documentRoutes, documentsAdminRoutes } from "@/features/documents/routes";
 import { missionRoutes } from "@/features/missions/routes";
 import { programmationRoutes } from "@/features/programmation/routes";
 import { referentielRoutes } from "@/features/referentiel/routes";
 import { signatureAdminRoutes } from "@/features/signatures/routes";
-import { MonComptePage } from "@/features/tutoriel/pages/MonComptePage";
 import { administrationRoutes } from "@/features/utilisateurs/routes";
 import { fr } from "@/i18n/fr";
 import { AppShell } from "@/layouts/AppShell";
 import { rolesFor } from "@/layouts/navigation";
-import { CallbackPage } from "@/pages/CallbackPage";
 import { ErrorPage } from "@/pages/ErrorPage";
-import { LoginPage } from "@/pages/LoginPage";
+
+/**
+ * Pages chargées à la demande pour alléger le JS d'entrée (budget D10) : les pages
+ * d'authentification portent react-hook-form et zod, le tableau de bord ses graphiques.
+ */
+const authPages = {
+  login: () => import("@/auth/LoginPage"),
+  forgot: () => import("@/auth/ForgotPasswordPage"),
+  reset: () => import("@/auth/ResetPasswordPage"),
+  change: () => import("@/auth/ChangePasswordPage"),
+};
+const dashboard = () => import("@/features/dashboard/pages/DashboardPage");
+const monCompte = () => import("@/features/tutoriel/pages/MonComptePage");
+
+const governanceRules = () => import("@/features/gouvernance/pages/GovernanceRulesPage");
+const auditJournal = () => import("@/features/gouvernance/pages/AuditJournalPage");
 
 const rapportsList = () => import("@/features/communication/pages/RapportsDiffusesPage");
 const rapportDetail = () => import("@/features/communication/pages/RapportDiffusePage");
@@ -62,16 +75,29 @@ function NotFound() {
 }
 
 export const appRoutes: RouteObject[] = [
-  { path: "/connexion", element: <LoginPage /> },
-  { path: "/callback", element: <CallbackPage /> },
+  // Pages publiques : connexion et mot de passe oublié (chemins repris dans auth/paths.ts).
+  { path: "/connexion", element: lazyRoute(authPages.login, "LoginPage") },
+  {
+    path: "/mot-de-passe-oublie",
+    element: lazyRoute(authPages.forgot, "ForgotPasswordPage"),
+  },
+  {
+    path: "/mot-de-passe/reinitialiser",
+    element: lazyRoute(authPages.reset, "ResetPasswordPage"),
+  },
   { path: "/erreur", element: <ErrorPage /> },
   {
     element: <RequireAuth />,
     children: [
+      // Hors du shell : seule page accessible tant qu'un mot de passe temporaire n'est pas changé.
+      {
+        path: "/mot-de-passe/changer",
+        element: lazyRoute(authPages.change, "ChangePasswordPage"),
+      },
       {
         element: <AppShell />,
         children: [
-          { path: "/", element: <DashboardPage /> },
+          { path: "/", element: lazyRoute(dashboard, "DashboardPage") },
           { path: "/missions", children: missionRoutes, element: guardedOutlet("/missions") },
           {
             path: "/programme-annuel",
@@ -117,7 +143,7 @@ export const appRoutes: RouteObject[] = [
             path: "/notifications",
             element: lazyRoute(suiviPages.notifications, "NotificationsPage"),
           },
-          { path: "/mon-compte", element: <MonComptePage /> },
+          { path: "/mon-compte", element: lazyRoute(monCompte, "MonComptePage") },
           { path: "/recherche", element: lazyRoute(suiviPages.search, "SearchPage") },
           {
             path: "/rapports",
@@ -129,8 +155,13 @@ export const appRoutes: RouteObject[] = [
           },
           { path: "/documents", children: documentRoutes, element: guardedOutlet("/documents") },
           {
+            // Comptes : l'ADMIN et tout agent qui détient un droit délégué de gestion des comptes.
             path: "/administration",
-            element: guarded("/administration", <Outlet />),
+            element: (
+              <RequireAccountManager>
+                <Outlet />
+              </RequireAccountManager>
+            ),
             children: administrationRoutes,
           },
           // Gabarits et numérotation : lecture ADMIN et RAI (garde propre, hors de la garde ADMIN du parent).
@@ -144,6 +175,18 @@ export const appRoutes: RouteObject[] = [
             path: "/administration/signatures",
             children: signatureAdminRoutes,
             element: guardedOutlet("/administration/signatures"),
+          },
+          // Règles de gouvernance : lecture ADMIN, RAI et DG ; écriture ADMIN (le serveur répond 403).
+          {
+            path: "/administration/gouvernance",
+            element: guarded(
+              "/administration/gouvernance",
+              lazyRoute(governanceRules, "GovernanceRulesPage"),
+            ),
+          },
+          {
+            path: "/journal-audit",
+            element: guarded("/journal-audit", lazyRoute(auditJournal, "AuditJournalPage")),
           },
           { path: "*", element: <NotFound /> },
         ],

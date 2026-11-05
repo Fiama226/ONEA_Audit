@@ -70,3 +70,6 @@ class ResultatRechercheSerializer(serializers.Serializer[dict[str, Any]]):
 class ReponseRechercheSerializer(serializers.Serializer[dict[str, Any]]):
     resultats = ResultatRechercheSerializer(many=True)
     plus = serializers.BooleanField()
+    degrade = serializers.BooleanField(
+        help_text="Vrai quand le moteur est indisponible : seules les missions sont cherchées."
+    )

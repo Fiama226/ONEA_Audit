@@ -7,6 +7,7 @@ from django.utils import timezone
 from pytest_django.fixtures import DjangoAssertNumQueries
 
 from apps.core.exceptions import RegleMetierError
+from apps.missions.etapes import JALONS, PREDECESSEURS
 from apps.missions.exceptions import MissionFigeeError
 from apps.missions.models import (
     DeclarationIndependance,
@@ -372,6 +373,14 @@ def test_actions_possibles_par_role_et_statut(
         "superviseur": superviseur,
     }
     Mission.objects.filter(pk=mission_lancee.pk).update(type=type_mission)
+    # Les étapes précédentes sont closes : l'ordre n'est pas ce que ce test vérifie.
+    forcer_etapes(
+        mission_lancee,
+        {
+            n: StatutEtape.VALIDEE if n in JALONS else StatutEtape.TERMINEE
+            for n in PREDECESSEURS.get(numero, ())
+        },
+    )
     forcer_etapes(mission_lancee, {numero: statut})
     resultat = actions_possibles(etape_n(mission_lancee, numero), utilisateurs[qui])
     assert set(resultat) == attendues
@@ -397,14 +406,16 @@ def test_actions_possibles_liste_de_18_etapes_en_peu_de_requetes(
     chef: User,
     django_assert_max_num_queries: DjangoAssertNumQueries,
 ) -> None:
+    forcer_etapes(mission_lancee, {1: StatutEtape.TERMINEE})
     mission = Mission.objects.get(pk=mission_lancee.pk)
     with django_assert_max_num_queries(4):
-        contexte = contexte_actions(mission, chef)
         etapes = list(EtapeMission.objects.filter(mission=mission))
+        contexte = contexte_actions(mission, chef, statuts={e.numero: e.statut for e in etapes})
         resultats = {e.numero: actions_possibles(e, chef, contexte=contexte) for e in etapes}
     assert len(resultats) == 18
     assert A.PLANIFIER in resultats[3]
-    assert A.DEMARRER in resultats[3]
+    assert A.DEMARRER in resultats[2]
+    assert A.DEMARRER not in resultats[3]  # II n'est pas close
 
 
 def test_phase_bloquee_si_une_etape_precedente_est_rouverte(
@@ -441,3 +452,104 @@ def test_renvoyer_efface_la_date_de_fin_reelle(mission_lancee: Mission, rai: Use
     )
     etape = renvoyer_etape(etape_n(mission_lancee, 6), motif="À reprendre", by=rai)
     assert etape.date_fin_reelle is None
+
+
+# ---------------------------------------------------------------- enchaînement des étapes (D4)
+
+
+def _declarations_confirmees() -> None:
+    DeclarationIndependance.objects.update(statut=StatutDeclaration.CONFIRMEE)
+
+
+def test_demarrer_exige_la_cloture_de_l_etape_precedente(
+    mission_lancee: Mission, auditeur_mission: User
+) -> None:
+    _declarations_confirmees()
+    forcer_etapes(mission_lancee, {1: StatutEtape.TERMINEE, 2: StatutEtape.EN_COURS})
+    with pytest.raises(RegleMetierError) as exc:
+        demarrer_etape(etape_n(mission_lancee, 3), by=auditeur_mission)
+    assert exc.value.message == "L'étape II doit être terminée avant de démarrer l'étape III."
+    assert exc.value.errors["predecesseurs"] == ["II"]
+    assert etape_n(mission_lancee, 3).statut == StatutEtape.A_FAIRE
+    forcer_etapes(mission_lancee, {2: StatutEtape.TERMINEE})
+    assert demarrer_etape(etape_n(mission_lancee, 3), by=auditeur_mission).statut == (
+        StatutEtape.EN_COURS
+    )
+
+
+def test_un_jalon_precedent_doit_etre_valide(mission_lancee: Mission, rai: User) -> None:
+    _declarations_confirmees()
+    forcer_etapes(
+        mission_lancee,
+        {n: StatutEtape.TERMINEE for n in range(1, 7)},
+    )
+    with pytest.raises(RegleMetierError) as exc:
+        demarrer_etape(etape_n(mission_lancee, 7), by=rai)
+    assert exc.value.errors["predecesseurs"] == ["VI"]
+    forcer_etapes(mission_lancee, {6: StatutEtape.VALIDEE})
+    assert demarrer_etape(etape_n(mission_lancee, 7), by=rai).statut == StatutEtape.EN_COURS
+
+
+def test_le_rai_demarre_par_derogation_motivee_et_journalisee(
+    mission_lancee: Mission, rai: User
+) -> None:
+    _declarations_confirmees()
+    forcer_etapes(mission_lancee, {1: StatutEtape.TERMINEE})
+    with pytest.raises(RegleMetierError):
+        demarrer_etape(etape_n(mission_lancee, 3), by=rai)
+    etape = demarrer_etape(etape_n(mission_lancee, 3), by=rai, derogation="Urgence du terrain.")
+    assert etape.statut == StatutEtape.EN_COURS
+    evenement = EvenementEtape.objects.filter(etape=etape).latest("created_at")
+    assert evenement.type == TypeEvenementEtape.DEMARREE
+    assert "Urgence du terrain." in evenement.motif
+    assert "II" in evenement.motif
+
+
+def test_un_auditeur_ne_deroge_pas(mission_lancee: Mission, auditeur_mission: User) -> None:
+    _declarations_confirmees()
+    forcer_etapes(mission_lancee, {1: StatutEtape.TERMINEE})
+    with pytest.raises(RegleMetierError):
+        demarrer_etape(
+            etape_n(mission_lancee, 3), by=auditeur_mission, derogation="Je suis pressé."
+        )
+
+
+def test_la_derogation_exige_un_motif(mission_lancee: Mission, rai: User) -> None:
+    _declarations_confirmees()
+    forcer_etapes(mission_lancee, {1: StatutEtape.TERMINEE})
+    with pytest.raises(RegleMetierError) as exc:
+        demarrer_etape(etape_n(mission_lancee, 3), by=rai, derogation="   ")
+    assert exc.value.errors["predecesseurs"] == ["II"]
+
+
+def test_xii_et_xiii_demarrent_en_parallele_apres_xi(mission_lancee: Mission, rai: User) -> None:
+    _declarations_confirmees()
+    forcer_etapes(
+        mission_lancee,
+        {
+            **{
+                n: StatutEtape.VALIDEE if n in (6, 10) else StatutEtape.TERMINEE
+                for n in range(1, 11)
+            }
+        },
+    )
+    en_phase(mission_lancee, StatutMission.EN_ACCOMPLISSEMENT)
+    forcer_etapes(mission_lancee, {11: StatutEtape.TERMINEE})
+    demarrer_etape(etape_n(mission_lancee, 12), by=rai)
+    demarrer_etape(etape_n(mission_lancee, 13), by=rai)
+    with pytest.raises(RegleMetierError) as exc:
+        demarrer_etape(etape_n(mission_lancee, 14), by=rai)
+    assert exc.value.errors["predecesseurs"] == ["XII", "XIII"]
+
+
+def test_actions_possibles_masque_demarrer_sans_precedent_clos(
+    mission_lancee: Mission, rai: User, auditeur_mission: User
+) -> None:
+    _declarations_confirmees()
+    forcer_etapes(mission_lancee, {1: StatutEtape.TERMINEE})
+    etape = etape_n(mission_lancee, 3)
+    assert A.DEMARRER not in actions_possibles(etape, auditeur_mission)
+    # Le RAI garde le bouton : il démarre par dérogation motivée.
+    assert A.DEMARRER in actions_possibles(etape, rai)
+    forcer_etapes(mission_lancee, {2: StatutEtape.TERMINEE})
+    assert A.DEMARRER in actions_possibles(etape, auditeur_mission)

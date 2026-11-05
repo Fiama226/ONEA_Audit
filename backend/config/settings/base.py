@@ -78,7 +78,6 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",
-    "corsheaders",
     "django_filters",
     "auditlog",
     "apps.core",
@@ -97,6 +96,7 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.recherche",
     "apps.tableaux_de_bord",
+    "apps.gouvernance",
 ]
 
 AUTH_USER_MODEL = "users.User"
@@ -105,11 +105,12 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "apps.core.journalisation.CorrelationMiddleware",
     "apps.core.middleware.PasDeCacheApiMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.core.middleware.SessionLimiteeMiddleware",
+    "apps.core.middleware.MotDePasseAChangerMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.AdresseClientMiddleware",
@@ -148,9 +149,17 @@ REDIS_URL: str = url_redis("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+]
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 12},
+    },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
@@ -228,17 +237,31 @@ STORAGES = {
 # Django admin (/admin/) is mounted only when enabled; prod.py defaults it to False.
 DJANGO_ADMIN_ENABLED: bool = env.bool("DJANGO_ADMIN_ENABLED", default=True)
 
-CORS_ALLOWED_ORIGINS: list[str] = env.list(
-    "CORS_ALLOWED_ORIGINS", default=["http://localhost:5173"]
+
+# Scopes of `apps.users.auth_throttles`: their period may carry a multiplier ("30/15min").
+_PORTEES_AUTHENTIFICATION = frozenset(
+    {
+        "connexion",
+        "connexion_code",
+        "mot_de_passe_oublie",
+        "mot_de_passe_oublie_ip",
+        "reinitialisation",
+        "changement_mot_de_passe",
+        "echecs_connexion",
+        "echecs_reinitialisation",
+        "echecs_tous",
+    }
 )
-# Lisible par la SPA en cross-origin : nom du fichier des exports (CSV / Excel).
-CORS_EXPOSE_HEADERS: list[str] = ["Content-Disposition"]
 
 
 def _taux_debit(portee: str, defaut: str) -> str:
-    """Taux « N/min|hour|day » d'une portée, surchargeable par THROTTLE_RATE_<PORTEE>."""
+    """Taux « N/min|hour|day » d'une portée, surchargeable par THROTTLE_RATE_<PORTEE>.
+
+    Les portées de l'authentification acceptent aussi un multiple de la période (« 30/15min »).
+    """
     valeur: str = env(f"THROTTLE_RATE_{portee.upper()}", default=defaut).strip()
-    if not re.fullmatch(r"[1-9]\d*/(sec|min|hour|day)", valeur):
+    multiple = r"([1-9]\d*)?" if portee in _PORTEES_AUTHENTIFICATION else ""
+    if not re.fullmatch(rf"[1-9]\d*/{multiple}(sec|min|hour|day)", valeur):
         raise ImproperlyConfigured(
             f"THROTTLE_RATE_{portee.upper()} doit avoir la forme « 20/min » (sec, min, hour, day)."
         )
@@ -252,8 +275,8 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.FormParser",
         "rest_framework.parsers.MultiPartParser",
     ],
-    # Bearer-only (D4): the Django session authenticates /admin/ and the schema views only.
-    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.users.authentication.OIDCBearerAuthentication"],
+    # In-app session login only (CSRF enforced on writes); same origin, no bearer tokens.
+    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.users.authentication.SessionAuthentication401"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.StandardPagination",
@@ -273,11 +296,49 @@ REST_FRAMEWORK = {
             "import": "10/hour",
             "export": "30/min",
             "anonyme": "30/min",
-            "annuaire": "60/min",
             "recherche": "60/min",
+            # Authentication (apps.users.auth_throttles, AUTH-04/05): one bucket per endpoint,
+            # per client IP (IPv6: per /64). Sized for a head office behind one NAT address;
+            # the per-account lockout (5 failures, 15 min) is the brute-force defence. Each
+            # one is overridable by THROTTLE_RATE_<SCOPE>, e.g. THROTTLE_RATE_CONNEXION=120/min.
+            "connexion": "60/min",
+            "connexion_code": "30/min",
+            "mot_de_passe_oublie_ip": "20/min",
+            "reinitialisation": "20/min",
+            # failures only, across accounts: one address cannot keep many accounts locked
+            "echecs_connexion": "30/15min",
+            "echecs_reinitialisation": "30/hour",
+            # every refusal of any kind (login, code, reset, admin), whatever the secret:
+            # bounds the unauthenticated hashing one address can cause (round 4)
+            "echecs_tous": "120/15min",
+            # per user: change of password, removal of the login code (password re-checked)
+            "changement_mot_de_passe": "10/min",
+            # per typed identifier on "forgotten password" (+ a per-account quota in the DB)
+            "mot_de_passe_oublie": "5/hour",
+            # per user: account creation, password reset, login-code removal (emails sent)
+            "gestion_comptes": "30/hour",
         }.items()
     },
 }
+
+
+def _entier_positif(nom: str, defaut: int) -> int:
+    """A positive integer from the environment; anything else stops the start-up (N5)."""
+    try:
+        valeur = int(env(nom, default=str(defaut)))
+    except ValueError:
+        valeur = 0
+    if valeur < 1:
+        raise ImproperlyConfigured(f"{nom} doit être un entier strictement positif.")
+    return valeur
+
+
+# AUTH-02: wrong forgotten-password codes accepted per account over 24 h, whatever the code
+# (then no code is issued nor accepted until the window ends; the admin reset remains).
+AUTH_REINITIALISATION_ECHECS_MAX: int = _entier_positif("AUTH_REINITIALISATION_ECHECS_MAX", 15)
+# N6: login codes mailed per account over 15 min (whoever knows the password cannot flood
+# the owner's mailbox; past it, no code is issued until the window ends).
+AUTH_CODES_CONNEXION_MAX: int = _entier_positif("AUTH_CODES_CONNEXION_MAX", 10)
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "API Audit Interne ONEA",
@@ -318,9 +379,12 @@ SPECTACULAR_SETTINGS = {
         "ActionEtapeEnum": "apps.missions.services.etapes.ActionEtape.choices",
         "TypeDocumentSignableEnum": "apps.signatures.models.TypeDocumentSignable.choices",
         "ModeSignatureParametreEnum": "apps.signatures.models.ModeSignatureParametre.choices",
-        "KeycloakSyncStatutEnum": "apps.users.models.KeycloakSyncStatut.choices",
         "OrigineCompteEnum": "apps.users.models.OrigineCompte.choices",
         "StatutProgrammeEnum": "apps.programmation.models.StatutProgramme.choices",
+        "NiveauApprobationEnum": "apps.programmation.models.NiveauApprobation.choices",
+        "ApprobateurProgrammeEnum": ["NONE", "DG", "DG_AND_BOARD"],
+        "ValidateurAcceptationEnum": "apps.recommandations.models.ValidateurAcceptation.choices",
+        "DecisionAcceptationEnum": "apps.recommandations.models.DecisionAcceptation.choices",
         # programmation.TypeIntervention a les mêmes choix que missions.TypeMission
         # (ASSURANCE / CONSEIL) : drf-spectacular les fusionne sous TypeMissionEnum.
         "StatutGabaritEnum": "apps.documents.models.StatutGabarit.choices",
@@ -377,6 +441,18 @@ TEMPLATES[0]["DIRS"] = [BASE_DIR / "templates"]
 
 # --- Celery (namespace CELERY; broker/backend are set from REDIS_URL above) ---
 CELERY_TIMEZONE = "Africa/Ouagadougou"
+# N2: the authentication emails have their own queue, served by a dedicated worker in
+# production (`worker-auth`, docker/compose.prod.yml) and by the main worker as a fallback:
+# a login code (10 min) must not wait behind a document conversion (up to 8 min).
+CELERY_FILE_AUTHENTIFICATION = "auth"
+CELERY_TASK_ROUTES = {
+    nom: {"queue": CELERY_FILE_AUTHENTIFICATION}
+    for nom in (
+        "users.envoyer_code_connexion",
+        "users.envoyer_code_reinitialisation",
+        "users.envoyer_mot_de_passe_temporaire",
+    )
+}
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -385,10 +461,6 @@ CELERY_BEAT_SCHEDULE = {
     "heartbeat": {
         "task": "core.tasks.heartbeat",
         "schedule": crontab(hour=6, minute=0),
-    },
-    "users-keycloak-sync": {
-        "task": "users.synchroniser_comptes_keycloak",
-        "schedule": crontab(minute="*/15"),
     },
     "pouls-beat": {
         "task": "core.tasks.pouls_beat",
@@ -405,6 +477,14 @@ CELERY_BEAT_SCHEDULE = {
     "recherche-reconciliation": {
         "task": "recherche.reconcilier",
         "schedule": crontab(hour=2, minute=0),
+    },
+    "users-purge-codes": {
+        "task": "users.purger_codes",
+        "schedule": crontab(hour=3, minute=30),
+    },
+    "users-purge-sessions": {
+        "task": "users.purger_sessions",
+        "schedule": crontab(hour=3, minute=45),
     },
 }
 
@@ -429,43 +509,20 @@ EMAIL_HOST_PASSWORD = env_secret("EMAIL_PASSWORD", default="") or _email.get(
     "EMAIL_HOST_PASSWORD", ""
 )
 EMAIL_USE_TLS = _email.get("EMAIL_USE_TLS", False)
+# Seconds before an SMTP connection or send gives up (no timeout by default: a server that
+# stops answering would block a request, e.g. the welcome emails of a CSV import, forever).
+EMAIL_TIMEOUT = 15
 DEFAULT_FROM_EMAIL = "audit-interne@onea.bf"
 
-# --- Keycloak / OIDC bearer authentication (Task 5) ---
-OIDC_OP_BASE_URL: str = env("OIDC_OP_BASE_URL", default="http://localhost:8080/realms/onea").rstrip(
-    "/"
-)
-OIDC_OP_AUTHORIZATION_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/auth"
-OIDC_OP_TOKEN_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/token"
-OIDC_OP_USER_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/userinfo"
-OIDC_OP_JWKS_ENDPOINT = f"{OIDC_OP_BASE_URL}/protocol/openid-connect/certs"
-OIDC_RP_CLIENT_ID: str = env("OIDC_RP_CLIENT_ID", default="onea-backend")
-# Unused by the Bearer path (userinfo + JWKS only); required in prod only because
-# mozilla-django-oidc reads it when the backend is instantiated.
-OIDC_RP_CLIENT_SECRET: str = env_secret("OIDC_RP_CLIENT_SECRET", default="")
-OIDC_RP_SIGN_ALGO = "RS256"
-OIDC_RP_SCOPES = "openid email profile"
-OIDC_VERIFY_SSL: bool = env.bool("OIDC_VERIFY_SSL", default=True)
-OIDC_TIMEOUT = 5  # seconds; Keycloak calls must never hang a request worker
-# Accepted `azp` (issuing client) of bearer access tokens; other realm clients are refused.
-OIDC_ALLOWED_AZP: list[str] = env.list("OIDC_ALLOWED_AZP", default=["onea-frontend"])
-
-# --- Keycloak Admin API (service account of the realm, least privilege) ---
-# Client-credentials grant of `onea-admin-sync` (view-users + manage-users only). Never an
-# accepted `azp` of bearer tokens. Empty secret = synchronisation not configured.
-KEYCLOAK_ADMIN_API_CLIENT_ID: str = env("KEYCLOAK_ADMIN_API_CLIENT_ID", default="onea-admin-sync")
-KEYCLOAK_ADMIN_API_CLIENT_SECRET: str = env_secret("KEYCLOAK_ADMIN_API_CLIENT_SECRET", default="")
-# The OIDC backend is wired for the DRF bearer path only, NOT in AUTHENTICATION_BACKENDS,
-# so that django authenticate() (admin/session) can never trigger a code-flow exchange.
-# --- Bloc T11 : duree maximale du cache de userinfo (D5), bornee par l'expiration du jeton ---
-OIDC_USERINFO_CACHE_SECONDES: int = env.int("OIDC_USERINFO_CACHE_SECONDES", default=60)
-OIDC_DRF_AUTH_BACKEND = "apps.users.oidc.OneaOIDCBackend"
 AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
 
-# --- T5: cookies, cache ---
+# --- T5: cookies, cache. Sessions in the database (no Redis needed to log in). ---
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True
+# Absolute maximum (not sliding, see SessionLimiteeMiddleware) and idle timeout.
 SESSION_COOKIE_AGE = 8 * 3600
+SESSION_INACTIVITE_SECONDES = 30 * 60
 CSRF_COOKIE_SAMESITE = "Lax"
 
 

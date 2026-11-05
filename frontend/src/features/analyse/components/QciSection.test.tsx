@@ -17,9 +17,7 @@ function setup(editable: boolean, qcis: ReturnType<typeof aQuestionnaire>[]) {
     http.get(`${API_URL}/api/v1/analysis-questionnaires/`, () =>
       HttpResponse.json({ count: qcis.length, next: null, previous: null, results: qcis }),
     ),
-    http.get(`${API_URL}/api/v1/analysis-questions/`, () =>
-      HttpResponse.json({ count: 0, next: null, previous: null, results: [] }),
-    ),
+    http.get(`${API_URL}/api/v1/analysis-questions/`, () => HttpResponse.json([])),
   );
   render(
     <QueryClientProvider

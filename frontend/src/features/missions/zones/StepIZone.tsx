@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/auth/useAuth";
 import { Button } from "@/components/ui/button";
+import { DocumentInline } from "@/features/documents/components/DocumentInline";
 import { fr } from "@/i18n/fr";
 import { formatDate } from "@/lib/dates";
 import { useMissionTransition } from "../api";
@@ -76,7 +77,13 @@ export function StepIZone({ mission }: { mission: Mission; step: Etape }) {
               .replace("{name}", order.signataire.nom_complet)}
           </p>
           <p title={order.empreinte}>{m.orderHash.replace("{hash}", shortHash(order.empreinte))}</p>
-          <p className="text-text-muted">{m.orderWordLater}</p>
+          <div className="mt-2">
+            <DocumentInline
+              typeDocument="ORDRE_MISSION"
+              objetId={mission.id}
+              missionId={mission.id}
+            />
+          </div>
         </div>
       )}
       {!issued && !mission.mes_droits.emettre_ordre && (

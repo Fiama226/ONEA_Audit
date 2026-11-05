@@ -7,9 +7,9 @@ Les engagements et les acceptations sont en ajout seul : jamais de modification.
 """
 
 import dataclasses
-from typing import Any
+from typing import Any, cast
 
-from django.db.models import QuerySet
+from django.db.models import Prefetch, QuerySet
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import mixins, status
@@ -18,7 +18,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.serializers import BaseSerializer
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
 
 from apps.accomplissement.views import MSG_PARAMETRE, PARAM_MISSION, _uuid, _uuid_du_corps
 from apps.constats.permissions import constats_lisibles
@@ -32,10 +32,11 @@ from apps.core.schema import (
 from apps.missions.models import Mission
 from apps.missions.permissions import exiger, mission_du_corps, mission_visible
 from apps.missions.views import MissionApiViewSet
-from apps.users.models import Role
+from apps.users.models import Role, User
+from apps.users.permissions import HasRole
 
 from . import droits, filters, serializers
-from .models import AcceptationRisque, Action, EngagementPlanActions
+from .models import AcceptationRisque, Action, EngagementPlanActions, ValidationAcceptation
 from .permissions import (
     RecommandationsAccessPermission,
     acceptations_lisibles,
@@ -190,8 +191,15 @@ class AcceptationViewSet(
     audite_actions = frozenset({"list", "retrieve", "create", "withdraw"})
 
     def get_queryset(self) -> QuerySet[AcceptationRisque]:
-        return acceptations_lisibles(self.acteur).select_related(
-            "auteur", "confirmation__signataire", "recommandation"
+        return (
+            acceptations_lisibles(self.acteur)
+            .select_related("auteur", "confirmation__signataire", "recommandation")
+            .prefetch_related(
+                Prefetch(
+                    "validations",
+                    queryset=ValidationAcceptation.objects.select_related("par"),
+                )
+            )
         )
 
     def verifier_portee(self, request: Request) -> None:
@@ -234,6 +242,54 @@ class AcceptationViewSet(
         acceptation = self.get_object()
         exiger(self.acteur.role == Role.RAI or acceptation.auteur_id == self.acteur.pk)
         svc_acceptations.retirer_acceptation(acceptation, by=self.acteur)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ValidationAcceptationViewSet(GenericViewSet[AcceptationRisque]):
+    """File des acceptations de risque à valider (règle de gouvernance « escalade ») : le RAI
+    pour les siennes, le DG pour les siennes et celles du Conseil."""
+
+    permission_classes = [HasRole(Role.RAI, Role.DG)]
+    serializer_class = serializers.AcceptationAValiderSerializer
+    pagination_class = None
+    filter_backends: list[Any] = []
+    lookup_value_regex = "[0-9a-fA-F-]{36}"
+
+    def get_queryset(self) -> QuerySet[AcceptationRisque]:
+        return svc_acceptations.acceptations_a_valider(cast(User, self.request.user))
+
+    @extend_schema(
+        tags=[TAG_ACCEPTATIONS],
+        operation_id="risk_acceptance_validations_list",
+        summary="Acceptations du risque à valider (RAI, DG)",
+        responses={
+            200: serializers.AcceptationAValiderSerializer(many=True),
+            **ERROR_RESPONSES,
+        },
+    )
+    def list(self, request: Request) -> Response:
+        return Response(self.get_serializer(self.get_queryset(), many=True).data)
+
+    @extend_schema(
+        tags=[TAG_ACCEPTATIONS],
+        operation_id="risk_acceptance_validations_decide",
+        summary="Valider ou refuser une acceptation du risque",
+        description=(
+            "Décision motivée de l'autorité désignée par la règle de gouvernance ; un refus "
+            "retire l'acceptation. Pour le Conseil, le DG reporte la décision avec la "
+            "référence de la délibération."
+        ),
+        request=serializers.DecisionAcceptationSerializer,
+        responses={204: None, **ERROR_400, **ERROR_RESPONSES, **ERROR_404, **ERROR_422},
+    )
+    @action(detail=True, methods=["post"])
+    def decide(self, request: Request, pk: str | None = None) -> Response:
+        acceptation = get_object_or_404(self.get_queryset(), pk=pk)
+        corps = serializers.DecisionAcceptationSerializer(data=request.data)
+        corps.is_valid(raise_exception=True)
+        svc_acceptations.decider_acceptation(
+            acceptation, **corps.validated_data, by=cast(User, request.user)
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

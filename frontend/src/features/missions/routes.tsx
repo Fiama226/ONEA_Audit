@@ -1,10 +1,9 @@
-import { Navigate, useParams, type RouteObject } from "react-router-dom";
+import type { RouteObject } from "react-router-dom";
 import { lazyRoute } from "@/components/lazyRoute";
-import { useRole } from "@/auth/useRole";
-import { fr } from "@/i18n/fr";
-import { useMission } from "./api";
 
 const load = {
+  // La redirection d'arrivée lit la mission (api.ts) : chargée à la demande, hors du JS d'entrée.
+  indexRedirect: () => import("./components/MissionIndexRedirect"),
   layout: () => import("./components/MissionLayout"),
   list: () => import("./pages/MissionListPage"),
   form: () => import("./pages/MissionFormPage"),
@@ -23,24 +22,6 @@ const load = {
   followUp: () => import("@/features/suivi/pages/MissionFollowUpPage"),
 };
 
-/** Page d'arrivée d'une mission : audités et lecteurs sans accès aux travaux vont aux réunions. */
-function MissionIndexRedirect() {
-  const { id } = useParams();
-  const { is } = useRole();
-  const mission = useMission(id);
-  if (!mission.data) {
-    return mission.isError ? null : (
-      <p role="status" className="text-sm text-text-muted">
-        {fr.common.loading}
-      </p>
-    );
-  }
-  if (is("AUDITE") || !mission.data.mes_droits.voir_travaux) {
-    return <Navigate to="reunions" replace />;
-  }
-  return <Navigate to={`etapes/${mission.data.etape_courante?.numero ?? 1}`} replace />;
-}
-
 /** Routes enfants de `/missions` (la garde de rôle est posée dans routes.tsx). */
 export const missionRoutes: RouteObject[] = [
   { index: true, element: lazyRoute(load.list, "MissionListPage") },
@@ -49,7 +30,7 @@ export const missionRoutes: RouteObject[] = [
     path: ":id",
     element: lazyRoute(load.layout, "MissionLayout"),
     children: [
-      { index: true, element: <MissionIndexRedirect /> },
+      { index: true, element: lazyRoute(load.indexRedirect, "MissionIndexRedirect") },
       { path: "modifier", element: lazyRoute(load.form, "MissionFormPage") },
       { path: "etapes/:numero", element: lazyRoute(load.step, "StepPage") },
       { path: "equipe", element: lazyRoute(load.team, "TeamPage") },

@@ -84,7 +84,7 @@ def test_api_recherche_forme_des_resultats(index_peuple: dict[str, str], rai: Us
 
 def test_api_recherche_sans_total(index_peuple: dict[str, str], rai: User) -> None:
     reponse = client_de(rai).get(URL, {"q": "Rapprochement"})
-    assert set(reponse.json()) == {"resultats", "plus"}
+    assert set(reponse.json()) == {"resultats", "plus", "degrade"}
     assert reponse.json()["plus"] is False
     assert reponse["Cache-Control"] == "no-store"
 
@@ -108,7 +108,7 @@ def test_api_recherche_503(rai: User, index: Any, monkeypatch: pytest.MonkeyPatc
         raise RechercheIndisponibleError
 
     monkeypatch.setattr(index, "rechercher", indisponible)
-    reponse = client_de(rai).get(URL, {"q": "Rapprochement"})
+    reponse = client_de(rai).get(URL, {"q": "Rapprochement", "types": "DOCUMENT"})
     assert reponse.status_code == 503
     assert set(reponse.json()) == {"detail", "errors"}
 
@@ -193,3 +193,48 @@ def test_api_recherche_etape_et_reference_des_documents(
     assert isinstance(resultats[0]["etape"], int)
     assert resultats[1]["etape"] is None
     assert resultats[1]["mission_reference"] == ""
+
+
+def test_recherche_degradee_sur_les_missions_quand_le_moteur_tombe(
+    rai: User, index: Any, mission_lancee: Mission, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def indisponible(*_a: Any, **_k: Any) -> None:
+        raise RechercheIndisponibleError
+
+    monkeypatch.setattr(index, "rechercher", indisponible)
+    reponse = client_de(rai).get(URL, {"q": mission_lancee.reference})
+    assert reponse.status_code == 200, reponse.json()
+    corps = reponse.json()
+    assert corps["degrade"] is True
+    assert [r["objet_id"] for r in corps["resultats"]] == [str(mission_lancee.pk)]
+    assert {r["type"] for r in corps["resultats"]} == {"MISSION"}
+
+
+def test_recherche_degradee_respecte_les_droits(
+    autre_auditeur: User, index: Any, mission_lancee: Mission, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def indisponible(*_a: Any, **_k: Any) -> None:
+        raise RechercheIndisponibleError
+
+    monkeypatch.setattr(index, "rechercher", indisponible)
+    reponse = client_de(autre_auditeur).get(URL, {"q": mission_lancee.reference})
+    assert reponse.status_code == 200
+    assert reponse.json()["resultats"] == []
+
+
+def test_recherche_non_degradee_signale_degrade_faux(
+    rai: User, index_peuple: dict[str, str]
+) -> None:
+    corps = client_de(rai).get(URL, {"q": "Rapprochement"}).json()
+    assert corps["degrade"] is False
+
+
+def test_recherche_503_quand_les_missions_sont_exclues(
+    rai: User, index: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def indisponible(*_a: Any, **_k: Any) -> None:
+        raise RechercheIndisponibleError
+
+    monkeypatch.setattr(index, "rechercher", indisponible)
+    reponse = client_de(rai).get(URL, {"q": "Rapprochement", "types": "CONSTAT"})
+    assert reponse.status_code == 503

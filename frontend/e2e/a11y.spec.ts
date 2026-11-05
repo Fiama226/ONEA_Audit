@@ -1,8 +1,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { devToken } from "./api";
 import {
+  COMPTE_DELEGUE,
   COMPTES,
   DIALOGUES,
   PAGES_PUBLIQUES,
@@ -11,20 +11,18 @@ import {
   type Ressource,
   type RoleDemo,
 } from "./inventaire";
+import { ApiSession, logIn } from "./session";
 
 // Audit axe (wcag2a, wcag2aa, wcag21aa) : pour chaque rôle et chaque route autorisée, page
-// chargée puis dialogues principaux ouverts. À lancer sur la base peuplée :
-//   python manage.py peupler_demo --profil formation   (puis scripts/e2e.sh e2e/a11y.spec.ts)
+// chargée puis dialogues principaux ouverts. À lancer par scripts/e2e.sh e2e/a11y.spec.ts
+// (comptes créés par creer_comptes_e2e ; les routes sans données sont consignées « non résolues »).
 // A11Y_STRICT=0 (défaut) : rapport JSON seul ; A11Y_STRICT=1 : échec sur serious/critical (T24, T25).
 const STRICT = process.env.A11Y_STRICT === "1";
-const PASSWORD = "onea2026";
-const BASE = `http://localhost:${process.env.WEB_PORT ?? "5174"}`;
-const API = process.env.E2E_API_URL ?? "http://localhost:8000";
 const TAGS = ["wcag2a", "wcag2aa", "wcag21aa"];
 const SORTIE = "test-results/a11y-violations.json";
 
 type Constat = {
-  role: RoleDemo;
+  role: string;
   route: string;
   contexte: string;
   regle: string;
@@ -43,7 +41,7 @@ const LISTES: Record<Ressource, (ctx: Record<string, string>) => string> = {
   cartographie: () => "/api/v1/risk-maps/",
   risque: () => "/api/v1/risks/",
   processus: () => "/api/v1/processes/",
-  utilisateur: () => "/api/v1/users/",
+  utilisateur: () => "/api/v1/user-accounts/",
   document: () => "/api/v1/documents/",
   gabarit: () => "/api/v1/document-types/",
   rapport: () => "/api/v1/reports/",
@@ -52,11 +50,9 @@ const LISTES: Record<Ressource, (ctx: Record<string, string>) => string> = {
   fiche: (c) => `/api/v1/test-sheets/?mission=${c.mission ?? ""}`,
 };
 
-async function premier(token: string, ressource: Ressource, ctx: Record<string, string>) {
-  const reponse = await fetch(`${API}${LISTES[ressource](ctx)}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!reponse.ok) return null;
+async function premier(api: ApiSession, ressource: Ressource, ctx: Record<string, string>) {
+  const reponse = await api.raw(LISTES[ressource](ctx));
+  if (!reponse.ok()) return null;
   const corps = (await reponse.json()) as { results?: { id?: string | number; code?: string }[] };
   const element = corps.results?.[0];
   // Les types de document/gabarit sont adressés par code, les autres par identifiant.
@@ -65,13 +61,13 @@ async function premier(token: string, ressource: Ressource, ctx: Record<string, 
     : null;
 }
 
-async function resoudre(route: EntreeRoute, token: string): Promise<string | null> {
+async function resoudre(route: EntreeRoute, api: ApiSession): Promise<string | null> {
   const ctx: Record<string, string> = {};
   let chemin = route.motif;
   for (const [cle, valeur] of Object.entries(route.fixes ?? {}))
     chemin = chemin.replace(`:${cle}`, valeur);
   for (const ressource of route.parametres ?? []) {
-    const id = await premier(token, ressource, ctx);
+    const id = await premier(api, ressource, ctx);
     if (!id) return null;
     ctx[ressource] = id;
     chemin = chemin.replace(/:[A-Za-z]+/, id); // les paramètres se remplissent dans l'ordre
@@ -79,17 +75,7 @@ async function resoudre(route: EntreeRoute, token: string): Promise<string | nul
   return chemin;
 }
 
-async function seConnecter(page: Page, role: RoleDemo) {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Se connecter" }).click();
-  await page.waitForURL(/\/realms\/onea\/protocol\/openid-connect\/auth/);
-  await page.locator("#username").fill(COMPTES[role]);
-  await page.locator("#password").fill(PASSWORD);
-  await page.locator("#kc-login").click();
-  await page.waitForURL(`${BASE}/`);
-}
-
-async function analyser(page: Page, role: RoleDemo, route: string, contexte: string) {
+async function analyser(page: Page, role: string, route: string, contexte: string) {
   const resultat = await new AxeBuilder({ page }).withTags(TAGS).analyze();
   for (const v of resultat.violations) {
     for (const n of v.nodes) {
@@ -111,27 +97,32 @@ async function attendreEcran(page: Page) {
   await expect(page.locator("main#contenu")).toBeVisible();
 }
 
-for (const role of Object.keys(COMPTES) as RoleDemo[]) {
-  test(`axe : routes et dialogues du rôle ${role}`, async ({ page }) => {
-    test.setTimeout(30 * 60_000);
-    const token = await devToken(COMPTES.RAI); // identifiants de démonstration : lecture seule
-    await seConnecter(page, role);
-
-    for (const route of ROUTES.filter((r) => r.roles.includes(role))) {
-      const chemin = await resoudre(route, token);
+/** Parcourt les routes données avec le compte donné : page chargée, puis dialogues ouverts. */
+async function parcourir(
+  page: Page,
+  etiquette: string,
+  compte: string,
+  routes: readonly EntreeRoute[],
+  dialoguesDe: RoleDemo | null,
+) {
+  await logIn(page, compte);
+  const rai = await ApiSession.login(COMPTES.RAI); // lecture seule : résout les identifiants
+  try {
+    for (const route of routes) {
+      const chemin = await resoudre(route, rai);
       if (!chemin) {
-        nonResolues.push(`${role} ${route.motif}`);
+        nonResolues.push(`${etiquette} ${route.motif}`);
         continue;
       }
       await page.goto(chemin);
       await attendreEcran(page);
-      await analyser(page, role, route.motif, "page chargée");
+      await analyser(page, etiquette, route.motif, "page chargée");
 
       // Dialogues : déclencheurs listés puis tout déclencheur Radix de l'écran.
       const declencheurs = [
-        ...DIALOGUES.filter((d) => d.motif === route.motif && d.roles.includes(role)).map((d) =>
-          page.getByRole("button", { name: d.declencheur }).first(),
-        ),
+        ...DIALOGUES.filter(
+          (d) => dialoguesDe !== null && d.motif === route.motif && d.roles.includes(dialoguesDe),
+        ).map((d) => page.getByRole("button", { name: d.declencheur }).first()),
         ...(await page.locator('main [aria-haspopup="dialog"]').all()),
       ];
       for (const [i, declencheur] of declencheurs.entries()) {
@@ -139,22 +130,50 @@ for (const role of Object.keys(COMPTES) as RoleDemo[]) {
         await declencheur.click();
         const dialogue = page.getByRole("dialog");
         if (await dialogue.isVisible().catch(() => false)) {
-          await analyser(page, role, route.motif, `dialogue ${i + 1}`);
+          await analyser(page, etiquette, route.motif, `dialogue ${i + 1}`);
           await page.keyboard.press("Escape");
           await expect(dialogue).toBeHidden();
         }
       }
     }
+  } finally {
+    await rai.dispose();
+  }
+}
 
-    // Garde de rôle : une route interdite ne doit pas afficher de contenu protégé (couvert ailleurs).
-    if (role === "ADMIN") {
-      for (const publique of PAGES_PUBLIQUES) {
-        await page.goto(publique);
-        await analyser(page, role, publique, "page publique");
-      }
-    }
+for (const role of Object.keys(COMPTES) as RoleDemo[]) {
+  test(`axe : routes et dialogues du rôle ${role}`, async ({ page }) => {
+    test.setTimeout(30 * 60_000);
+    await parcourir(
+      page,
+      role,
+      COMPTES[role],
+      ROUTES.filter((r) => r.roles.includes(role)),
+      role,
+    );
   });
 }
+
+// Agent non administrateur titulaire de droits délégués : l'administration des comptes.
+test("axe : routes de l'administration des comptes pour un délégué", async ({ page }) => {
+  test.setTimeout(10 * 60_000);
+  await parcourir(
+    page,
+    "DELEGUE",
+    COMPTE_DELEGUE,
+    ROUTES.filter((r) => r.delegue),
+    null,
+  );
+});
+
+// Pages d'authentification sans session : connexion, mot de passe oublié, réinitialisation, erreur.
+test("axe : pages publiques", async ({ page }) => {
+  for (const publique of PAGES_PUBLIQUES) {
+    await page.goto(publique);
+    await page.waitForLoadState("networkidle");
+    await analyser(page, "ANONYME", publique, "page publique");
+  }
+});
 
 test.afterAll(() => {
   mkdirSync("test-results", { recursive: true });

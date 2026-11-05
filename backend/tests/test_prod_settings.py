@@ -15,13 +15,12 @@ PROD_ENV = {
     "DATABASE_URL": "postgres://u:p@db:5432/onea",
     "EMAIL_URL": "smtp://user:pw@smtp.onea.bf:587",
     "ALLOWED_HOSTS": "audit.onea.bf,.audit.onea.bf",
-    "CORS_ALLOWED_ORIGINS": "https://audit.onea.bf",
     "CSRF_TRUSTED_ORIGINS": "https://audit.onea.bf",
-    "OIDC_OP_BASE_URL": "https://sso.onea.bf/realms/onea",
-    "KEYCLOAK_ADMIN_API_CLIENT_SECRET": "prod-sync-secret",
+    "SESSION_COOKIE_SECURE": "true",
     "DOCUMENTS_ROOT": "/var/lib/onea/documents",
     "MEILI_MASTER_KEY": "prod-meili-key",
     "PLATEFORME_URL": "https://audit.onea.bf",
+    "TRUSTED_PROXY_CIDRS": "172.30.10.2",
 }
 
 PROBE = """
@@ -32,7 +31,7 @@ django.setup()
 from django.conf import settings
 print(json.dumps({
     "hosts": settings.ALLOWED_HOSTS,
-    "cors": settings.CORS_ALLOWED_ORIGINS,
+    "cors": [n for n in [*settings.INSTALLED_APPS, *settings.MIDDLEWARE] if "cors" in n.lower()],
     "csrf": settings.CSRF_TRUSTED_ORIGINS,
     "db_host": settings.DATABASES["default"]["HOST"],
     "email_host": settings.EMAIL_HOST,
@@ -58,6 +57,7 @@ print(json.dumps({
     "documents_root": settings.DOCUMENTS_ROOT,
     "documents_backend": settings.STORAGES["documents"]["BACKEND"],
     "media_url": getattr(sys.modules[settings.SETTINGS_MODULE], "MEDIA_URL", ""),
+    "proxies": settings.TRUSTED_PROXY_CIDRS,
 }))
 """
 
@@ -90,7 +90,7 @@ def probe(env: dict[str, str]) -> dict[str, object]:
 def test_prod_settings_load_and_are_hardened() -> None:
     data = probe(PROD_ENV)
     assert data["hosts"] == ["audit.onea.bf", ".audit.onea.bf"]
-    assert data["cors"] == ["https://audit.onea.bf"]
+    assert data["cors"] == []  # same origin: no CORS app nor middleware
     assert data["csrf"] == ["https://audit.onea.bf"]
     assert data["db_host"] == "db"
     assert data["email_host"] == "smtp.onea.bf"
@@ -114,18 +114,17 @@ def test_prod_cookies_are_host_prefixed_secure_httponly() -> None:
     assert data["session_age"] == 8 * 3600
 
 
-def test_prod_auth_is_bearer_only_and_cache_is_redis() -> None:
+def test_prod_auth_is_session_first_and_cache_is_redis() -> None:
     data = probe({**PROD_ENV, "REDIS_URL": "redis://:pw@redis:6379/0"})
-    assert data["auth"] == ["apps.users.authentication.OIDCBearerAuthentication"]
+    assert data["auth"] == ["apps.users.authentication.SessionAuthentication401"]
     cache = data["cache"]
     assert isinstance(cache, dict)
     assert cache["BACKEND"] == "django.core.cache.backends.redis.RedisCache"
     assert cache["LOCATION"] == "redis://:pw@redis:6379/1"
 
 
-def test_prod_cors_is_optional_and_empty_by_default() -> None:
-    env = {k: v for k, v in PROD_ENV.items() if k != "CORS_ALLOWED_ORIGINS"}
-    assert probe(env)["cors"] == []
+def test_prod_ignores_a_stale_cors_variable() -> None:
+    assert probe({**PROD_ENV, "CORS_ALLOWED_ORIGINS": "https://malveillant.example"})["cors"] == []
 
 
 def test_prod_cache_url_overrides_redis_url() -> None:
@@ -142,7 +141,8 @@ def test_prod_cors_preflight_from_foreign_origin_has_no_allow_origin() -> None:
         " HTTP_ACCESS_CONTROL_REQUEST_METHOD='GET', HTTP_HOST='audit.onea.bf', secure=True)\n"
         "print('ACAO', r.headers.get('Access-Control-Allow-Origin'))\n"
     )
-    result = load_prod(PROD_ENV, code=code)
+    stale = {**PROD_ENV, "CORS_ALLOWED_ORIGINS": "https://malveillant.example"}
+    result = load_prod(stale, code=code)
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip().splitlines()[-1] == "ACAO None"
 
@@ -163,10 +163,52 @@ def test_prod_email_transport_security_and_timeout(url: str, ssl: bool, tls: boo
     assert data["email_timeout"] == 10
 
 
-def test_prod_refuses_http_oidc_base_url() -> None:
-    result = load_prod({**PROD_ENV, "OIDC_OP_BASE_URL": "http://sso.onea.bf/realms/onea"})
+@pytest.mark.parametrize("url", ["consolemail://", "filemail:///tmp/courriels", "memorymail://"])
+def test_prod_refuse_un_backend_qui_ecrit_les_courriels_hors_smtp(url: str) -> None:
+    """AUTH-07 : un backend console, fichier ou mémoire écrirait les codes et les mots de
+    passe temporaires dans les journaux ou sur le disque."""
+    result = load_prod({**PROD_ENV, "EMAIL_URL": url})
     assert result.returncode != 0
-    assert "https" in result.stderr
+    assert "EMAIL_URL" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("variable", "valeur"),
+    [
+        ("AUTH_REINITIALISATION_ECHECS_MAX", "0"),
+        ("AUTH_REINITIALISATION_ECHECS_MAX", "abc"),
+        ("AUTH_CODES_CONNEXION_MAX", "-1"),
+        ("THROTTLE_RATE_ECHECS_TOUS", "beaucoup"),
+        ("THROTTLE_RATE_ECHECS_TOUS", "0/15min"),
+    ],
+)
+def test_prod_refuse_un_reglage_d_authentification_invalide(variable: str, valeur: str) -> None:
+    """N5 : un plafond nul, négatif ou illisible empêche le démarrage."""
+    result = load_prod({**PROD_ENV, variable: valeur})
+    assert result.returncode != 0
+    assert variable in result.stderr
+
+
+def test_prod_dummymail_avec_un_hote_reste_sans_envoi() -> None:
+    """N9 : un hôte dans dummymail:// ne fait pas croire à un envoi réel."""
+    code = (
+        PROBE + "\nfrom apps.users.auth_services import envoi_courriel_actif\n"
+        "print(envoi_courriel_actif())"
+    )
+    result = load_prod({**PROD_ENV, "EMAIL_URL": "dummymail://relais.onea.bf"}, code=code)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip().splitlines()[-1] == "False"
+
+
+def test_prod_accepte_dummymail_pour_fonctionner_sans_courriel() -> None:
+    """Sans relais SMTP : rien n'est envoyé, les mots de passe sont affichés à l'opérateur."""
+    code = (
+        PROBE + "\nfrom apps.users.auth_services import envoi_courriel_actif\n"
+        "print(envoi_courriel_actif())"
+    )
+    result = load_prod({**PROD_ENV, "EMAIL_URL": "dummymail://"}, code=code)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip().splitlines()[-1] == "False"
 
 
 @pytest.mark.parametrize(
@@ -192,12 +234,6 @@ def test_prod_plateforme_url_sans_barre_finale() -> None:
     assert result.stdout.strip().splitlines()[-1] == "https://audit.onea.bf"
 
 
-def test_prod_refuses_disabled_oidc_ssl_verification() -> None:
-    result = load_prod({**PROD_ENV, "OIDC_VERIFY_SSL": "false"})
-    assert result.returncode != 0
-    assert "OIDC_VERIFY_SSL" in result.stderr
-
-
 def test_prod_admin_can_be_enabled_explicitly() -> None:
     assert probe({**PROD_ENV, "DJANGO_ADMIN_ENABLED": "true"})["admin"] is True
 
@@ -210,8 +246,9 @@ def test_prod_admin_can_be_enabled_explicitly() -> None:
         "EMAIL_URL",
         "ALLOWED_HOSTS",
         "CSRF_TRUSTED_ORIGINS",
-        "OIDC_OP_BASE_URL",
+        "SESSION_COOKIE_SECURE",
         "PLATEFORME_URL",
+        "TRUSTED_PROXY_CIDRS",
     ],
 )
 def test_prod_settings_refuse_to_start_without_required_variable(missing: str) -> None:
@@ -221,9 +258,7 @@ def test_prod_settings_refuse_to_start_without_required_variable(missing: str) -
     assert missing in result.stderr
 
 
-@pytest.mark.parametrize(
-    "flag", ["SESSION_COOKIE_SECURE", "CSRF_COOKIE_SECURE", "SECURE_SSL_REDIRECT"]
-)
+@pytest.mark.parametrize("flag", ["CSRF_COOKIE_SECURE", "SECURE_SSL_REDIRECT"])
 def test_prod_security_flags_cannot_be_weakened_by_env(flag: str) -> None:
     data = probe({**PROD_ENV, flag: "false"})
     assert data["session_secure"] is True
@@ -293,3 +328,27 @@ def test_prod_refuse_antivirus_aucun_sans_accord_explicite() -> None:
     assert result.returncode != 0
     assert "ANTIVIRUS_MOTEUR" in result.stderr
     assert probe({**PROD_ENV, "ANTIVIRUS_MOTEUR": "aucun", "ANTIVIRUS_AUTORISER_AUCUN": "true"})
+
+
+@pytest.mark.parametrize("valeur", ["false", "0", ""])
+def test_prod_refuse_session_cookie_secure_desactive(valeur: str) -> None:
+    result = load_prod({**PROD_ENV, "SESSION_COOKIE_SECURE": valeur})
+    assert result.returncode != 0
+    assert "SESSION_COOKIE_SECURE" in result.stderr
+
+
+def test_prod_lit_les_mandataires_de_confiance() -> None:
+    assert probe(PROD_ENV)["proxies"] == ["172.30.10.2"]
+    assert probe({**PROD_ENV, "TRUSTED_PROXY_CIDRS": "172.30.10.2, 10.0.0.0/8"})["proxies"] == [
+        "172.30.10.2",
+        "10.0.0.0/8",
+    ]
+
+
+@pytest.mark.parametrize("valeur", ["", " ", ",", "nginx", "172.30.10.2,pas-une-adresse"])
+def test_prod_refuse_des_mandataires_de_confiance_vides_ou_invalides(valeur: str) -> None:
+    """Empty, every per-address auth limit would become ONE counter for the whole
+    organisation (30 failures from anyone = 429 for everybody): refuse to start (M6)."""
+    result = load_prod({**PROD_ENV, "TRUSTED_PROXY_CIDRS": valeur})
+    assert result.returncode != 0
+    assert "TRUSTED_PROXY_CIDRS" in result.stderr

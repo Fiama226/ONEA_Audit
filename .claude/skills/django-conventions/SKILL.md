@@ -11,7 +11,7 @@ backend/
   config/            settings (base, dev, prod), urls, celery
   apps/
     core/            modèle de base abstrait, mixins, permissions communes, utils
-    users/           profils, rôles (RAI, AUDITEUR, AUDITE, DG, ADMIN), OIDC Keycloak
+    users/           comptes, rôles (RAI, AUDITEUR, AUDITE, DG, ADMIN), authentification par sessions, délégation
     referentiel/     processus ONEA, directions, objets auditables, cartographie des risques
     missions/        Mission, étapes IFACI, fiche de suivi, réunions, entretiens
     programme/       référentiel d'audit, objectifs d'audit, programme de travail, fiches de test

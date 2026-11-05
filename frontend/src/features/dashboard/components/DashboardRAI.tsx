@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { BarList, StackedBar, StatTile } from "@/components/charts";
 import { PrintLayout } from "@/components/print/PrintLayout";
 import { RiskMatrix, type RiskMatrixCell } from "@/components/RiskMatrix";
+import { GovernanceDecisions } from "@/features/gouvernance/components/GovernanceDecisions";
 import { fr } from "@/i18n/fr";
 import { useDashboardRai, type TableauRai } from "../api";
 import { useYearParam } from "../year";
@@ -190,8 +191,11 @@ export function DashboardRAI() {
   const query = useDashboardRai(annee);
   return (
     <PrintLayout title={t.printTitleRai} orientation="paysage">
-      <PageHeader title={d.raiTitle} userRole="RAI" />
+      <PageHeader title={d.raiTitle} userRole="RAI" annee={annee} />
       <YearFilter value={annee} onChange={setAnnee} />
+      <div className="mb-6 print:hidden">
+        <GovernanceDecisions />
+      </div>
       {query.isPending ? (
         <LoadingRAI />
       ) : query.isError ? (

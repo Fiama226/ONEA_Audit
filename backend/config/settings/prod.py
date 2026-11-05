@@ -4,6 +4,7 @@ Everything security- or deployment-relevant is REQUIRED from the environment: th
 no localhost/mailpit fallbacks. A missing variable raises ImproperlyConfigured at startup.
 """
 
+import ipaddress
 import os
 from urllib.parse import urlsplit
 
@@ -18,17 +19,26 @@ DEBUG = False
 SECRET_KEY = env_secret("SECRET_KEY")  # required in production, no default (SECRET_KEY_FILE first)
 DATABASES = {"default": base_de_donnees("DATABASE_URL")}  # required (DATABASE_PASSWORD_FILE first)
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS")  # required
-# The SPA and the API share one origin behind nginx: CORS is optional and closed by default.
-CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")  # required
 
 _email = env.email_url("EMAIL_URL")  # required (no mailpit default)
 EMAIL_BACKEND = _email["EMAIL_BACKEND"]
-EMAIL_HOST = _email.get("EMAIL_HOST", "")
-EMAIL_PORT = _email.get("EMAIL_PORT", 25)
-EMAIL_HOST_USER = _email.get("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = env_secret("EMAIL_PASSWORD", default="") or _email.get(
-    "EMAIL_HOST_PASSWORD", ""
+# AUTH-07: a console, file or in-memory backend would write the one-time codes and the
+# temporary passwords to the logs or the disk. Production sends through SMTP, or sends
+# nothing at all (dummymail://: the temporary passwords are then shown to the operator).
+_BACKENDS_COURRIEL_PROD = frozenset(
+    {"django.core.mail.backends.smtp.EmailBackend", "django.core.mail.backends.dummy.EmailBackend"}
+)
+if EMAIL_BACKEND not in _BACKENDS_COURRIEL_PROD:
+    raise ImproperlyConfigured(
+        "EMAIL_URL must be smtp://, smtp+tls://, smtps:// (or dummymail:// to send no email) "
+        "in production"
+    )
+EMAIL_HOST = _email.get("EMAIL_HOST") or ""  # None for dummymail://
+EMAIL_PORT = _email.get("EMAIL_PORT") or 25
+EMAIL_HOST_USER = _email.get("EMAIL_HOST_USER") or ""
+EMAIL_HOST_PASSWORD = env_secret("EMAIL_PASSWORD", default="") or (
+    _email.get("EMAIL_HOST_PASSWORD") or ""
 )
 # django-environ maps smtps:// to STARTTLS; on a smtps:// URL (implicit TLS, usually port
 # 465) Django needs EMAIL_USE_SSL instead. The two are mutually exclusive.
@@ -36,20 +46,9 @@ EMAIL_USE_SSL = _email.get("EMAIL_USE_SSL", False) or env("EMAIL_URL").startswit
 EMAIL_USE_TLS = _email.get("EMAIL_USE_TLS", False) and not EMAIL_USE_SSL
 EMAIL_TIMEOUT = 10  # seconds; a dead relay must not hang a worker
 
-if not env("OIDC_OP_BASE_URL").startswith("https://"):  # required in production, no default
-    raise ImproperlyConfigured("OIDC_OP_BASE_URL must be an https:// URL in production")
 _plateforme = urlsplit(PLATEFORME_URL)  # noqa: F405
 if _plateforme.scheme != "https" or not _plateforme.hostname or _plateforme.username:
     raise ImproperlyConfigured("PLATEFORME_URL must be an https:// URL in production")
-if not env.bool("OIDC_VERIFY_SSL", default=True):
-    raise ImproperlyConfigured("OIDC_VERIFY_SSL must not be disabled in production")
-_kc_sync_secret = KEYCLOAK_ADMIN_API_CLIENT_SECRET  # noqa: F405 (KEYCLOAK_..._FILE first)
-if not _kc_sync_secret:  # required in production
-    raise ImproperlyConfigured("KEYCLOAK_ADMIN_API_CLIENT_SECRET must be set in production")
-if _kc_sync_secret.startswith("CHANGE_ME") or _kc_sync_secret == "onea-dev-sync-secret":  # noqa: S105
-    raise ImproperlyConfigured(
-        "KEYCLOAK_ADMIN_API_CLIENT_SECRET is still a placeholder or the dev default"
-    )
 
 # --- Documents storage: explicit, absolute, outside the code (D2). ---
 if DOCUMENTS_STORAGE == "filesystem":  # noqa: F405
@@ -83,7 +82,6 @@ _SECRETS_A_CONTROLER = {
     ),
     "mot de passe Redis (REDIS_URL / REDIS_PASSWORD_FILE)": urlsplit(REDIS_URL).password or "",  # noqa: F405
     "mot de passe SMTP (EMAIL_URL / EMAIL_PASSWORD_FILE)": EMAIL_HOST_PASSWORD or "",
-    "OIDC_RP_CLIENT_SECRET": OIDC_RP_CLIENT_SECRET,  # noqa: F405
     "MEILI_MASTER_KEY": RECHERCHE["CLE"],  # noqa: F405
     "METRICS_TOKEN": METRICS_TOKEN,  # noqa: F405
     **{f"SECRET_KEY_FALLBACKS[{i}]": v for i, v in enumerate(SECRET_KEY_FALLBACKS)},  # noqa: F405
@@ -108,16 +106,38 @@ DJANGO_ADMIN_ENABLED = env.bool("DJANGO_ADMIN_ENABLED", default=False)
 # safe because docker/nginx/prod.conf OVERWRITES that header on every proxied request and
 # the web container publishes no host port. Never expose gunicorn directly.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# M6: X-Real-IP is believed only from these peers (nginx, ONEA_NGINX_IP in the composition).
+# Empty or wrong, every client would be seen as nginx: the per-address limits of the
+# authentication would become ONE counter for the whole organisation (30 failures from
+# anyone and everybody gets 429). Required, every entry an address or a CIDR network.
+TRUSTED_PROXY_CIDRS = [c.strip() for c in env.list("TRUSTED_PROXY_CIDRS") if c.strip()]
+if not TRUSTED_PROXY_CIDRS:
+    raise ImproperlyConfigured(
+        "TRUSTED_PROXY_CIDRS must list the address of nginx (ONEA_NGINX_IP) in production"
+    )
+for _cidr in TRUSTED_PROXY_CIDRS:
+    try:
+        ipaddress.ip_network(_cidr, strict=False)
+    except ValueError as _exc:
+        raise ImproperlyConfigured(
+            "TRUSTED_PROXY_CIDRS must contain IP addresses or CIDR networks only"
+        ) from _exc
 SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-SESSION_COOKIE_SECURE = True
+# Same origin behind nginx: the session cookie MUST be Secure. The variable is required and
+# cannot be turned off (a misconfigured deployment fails at start-up instead of leaking cookies).
+SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE")  # required
+if not SESSION_COOKIE_SECURE:
+    raise ImproperlyConfigured("SESSION_COOKIE_SECURE must be true in production")
 CSRF_COOKIE_SECURE = True
 # `__Host-` prefix: Secure, Path=/, no Domain; only valid over HTTPS, hence production only.
 SESSION_COOKIE_NAME = "__Host-onea-session"
 CSRF_COOKIE_NAME = "__Host-onea-csrf"
-CSRF_COOKIE_HTTPONLY = True  # the API is bearer-only; admin forms carry the token in the page
+# The SPA reads the token from GET /api/v1/auth/csrf/ (body), admin forms from the page:
+# no script needs to read the cookie.
+CSRF_COOKIE_HTTPONLY = True
 
 # --- T13: JSON logs in production (no personal data), metrics token from the environment ---
 LOGGING = {  # noqa: F405

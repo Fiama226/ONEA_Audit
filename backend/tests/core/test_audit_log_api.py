@@ -50,6 +50,9 @@ def test_rai_lists_entries_with_changes(rai_client: APIClient, modified_user: Us
         "object_id",
         "object_repr",
         "changes",
+        "action_metier",
+        "motif",
+        "affaiblissement",
     }
     assert item["action"] == "update"
     assert item["model"] == "users.user"
@@ -90,7 +93,14 @@ def test_admin_allowed(api_client: APIClient, admin: User) -> None:
     assert _login(api_client, admin).get(URL).status_code == 200
 
 
-@pytest.mark.parametrize("fixture_name", ["user", "audite", "dg"])
+def test_dg_reads_governance_entries_only(api_client: APIClient, dg: User) -> None:
+    """Le DG lit le journal des règles de gouvernance, et rien d'autre."""
+    response = _login(api_client, dg).get(URL)
+    assert response.status_code == 200
+    assert all(e["model"] == "gouvernance.reglegouvernance" for e in response.json()["results"])
+
+
+@pytest.mark.parametrize("fixture_name", ["user", "audite"])
 def test_other_roles_forbidden(
     api_client: APIClient, request: pytest.FixtureRequest, fixture_name: str
 ) -> None:

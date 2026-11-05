@@ -49,7 +49,7 @@ function toRoman(n: number): string {
   return out || String(n);
 }
 
-function crumbsFor(pathname: string): Crumb[] {
+export function crumbsFor(pathname: string): Crumb[] {
   const root: Crumb = { to: "/", label: fr.nav.dashboard, linkable: true };
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length === 0) return [root];

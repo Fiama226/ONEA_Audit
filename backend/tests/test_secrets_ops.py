@@ -27,8 +27,6 @@ SECRETS = [
     "postgres_password",
     "postgres_app_password",
     "redis_password",
-    "oidc_client_secret",
-    "keycloak_sync_secret",
     "meili_master_key",
     "metrics_token",
     "email_password",
@@ -83,7 +81,6 @@ def test_syntaxe_des_scripts() -> None:
         "scripts/generer-secrets.sh",
         "scripts/recette/up.sh",
         "scripts/recette/lib.sh",
-        "scripts/recette/realm.sh",
         "scripts/recette/tests/secrets.sh",
     ):
         r = subprocess.run(  # noqa: S603
@@ -214,10 +211,10 @@ def test_compose_declare_les_secrets_et_chaque_service_les_monte() -> None:
     for definition in compose["secrets"].values():
         assert definition["file"].startswith("${ONEA_SECRETS_DIR")
     services = compose["services"]
-    for nom in ("web", "worker", "beat", "migrate", "db", "redis", "meilisearch"):
+    for nom in ("web", "worker", "worker-auth", "beat", "migrate", "db", "redis", "meilisearch"):
         env = services[nom].get("environment", {})
         for cle, valeur in env.items():
-            if cle.endswith("_FILE"):
+            if cle.endswith("_FILE") and cle != "SSL_CERT_FILE":  # bundle de CA, pas un secret
                 secret = str(valeur).rsplit("/", 1)[-1]
                 assert secret in services[nom]["secrets"], f"{nom} : {cle} sans secret monté"
     # Chaque secret déclaré est utilisé par au moins un service.
@@ -233,27 +230,21 @@ def test_compose_sans_secret_en_clair_dans_l_environnement() -> None:
         "POSTGRES_PASSWORD",
         "POSTGRES_APP_PASSWORD",
         "REDIS_PASSWORD",
-        "OIDC_RP_CLIENT_SECRET",
-        "KEYCLOAK_ADMIN_API_CLIENT_SECRET",
         "MEILI_MASTER_KEY",
         "METRICS_TOKEN",
         "EMAIL_PASSWORD",
         "DATABASE_PASSWORD",
     }
     for nom, service in services.items():
-        if nom in {"keycloak", "keycloak-db"}:  # Keycloak ne lit pas de fichier (D16)
-            continue
         env = service.get("environment", {})
         assert not interdits & set(env), f"{nom} : secret en clair dans l'environnement"
-    # Aucune interpolation de variable de secret dans le fichier, hors secrets de Keycloak.
+    # Aucune interpolation de variable de secret dans le fichier.
     texte = COMPOSE.read_text(encoding="utf-8")
     for ref in re.findall(r"\$\{([A-Z_]+)", texte):
         if re.search(r"PASSWORD|SECRET|TOKEN|_KEY", ref):
-            assert ref in {"KEYCLOAK_ADMIN_PASSWORD", "KEYCLOAK_DB_PASSWORD", "ONEA_SECRETS_DIR"}, (
-                ref
-            )
+            assert ref == "ONEA_SECRETS_DIR", ref
     # Les URL de connexion ne contiennent plus de mot de passe.
-    for nom in ("web", "worker", "beat", "migrate"):
+    for nom in ("web", "worker", "worker-auth", "beat", "migrate"):
         for cle in ("DATABASE_URL", "REDIS_URL"):
             valeur = re.sub(r"\$\{[^}]*\}", "X", str(services[nom]["environment"][cle]))
             assert not re.search(r"://[^/@]*:[^/@]*@", valeur), f"{nom} : {cle}"
@@ -267,9 +258,8 @@ def test_valkey_ne_recoit_pas_le_mot_de_passe_en_argument() -> None:
     assert "/run/secrets/redis_password" in str(redis["healthcheck"]["test"])
 
 
-def test_modele_de_production_sans_secret_hors_keycloak() -> None:
+def test_modele_de_production_sans_secret() -> None:
     lignes = (RACINE / ".env.prod.example").read_text(encoding="utf-8").splitlines()
-    autorises = {"KEYCLOAK_ADMIN_PASSWORD", "KEYCLOAK_DB_PASSWORD"}
     for ligne in lignes:
         if ligne.lstrip().startswith("#") or "=" not in ligne:
             continue
@@ -277,9 +267,9 @@ def test_modele_de_production_sans_secret_hors_keycloak() -> None:
         if cle == "ONEA_SECRETS_DIR":
             continue
         if re.search(r"PASSWORD|SECRET|TOKEN|_KEY$", cle):
-            assert cle in autorises, f"{cle} ne doit pas figurer dans .env.prod.example"
+            raise AssertionError(f"{cle} ne doit pas figurer dans .env.prod.example")
         if "CHANGE_ME" in valeur:
-            assert cle in autorises, cle
+            raise AssertionError(cle)
     assert any(ligne.startswith("ONEA_SECRETS_DIR=") for ligne in lignes)
     # Le mot de passe SMTP n'est plus dans l'URL du modèle.
     url = next(ligne for ligne in lignes if ligne.startswith("EMAIL_URL="))
@@ -292,8 +282,6 @@ def test_modele_de_recette_sans_secret_applicatif() -> None:
         "SECRET_KEY",
         "POSTGRES_PASSWORD",
         "REDIS_PASSWORD",
-        "OIDC_RP_CLIENT_SECRET",
-        "KEYCLOAK_ADMIN_API_CLIENT_SECRET",
         "MEILI_MASTER_KEY",
     ):
         assert not re.search(rf"^{cle}=", texte, re.MULTILINE), cle
@@ -326,12 +314,9 @@ def test_compose_config_valide_avec_un_environnement_factice(tmp_path: Path) -> 
             [
                 f"ONEA_SECRETS_DIR={(tmp_path / 's').as_posix()}",
                 "PUBLIC_HOST=audit.example.org",
-                "SSO_HOST=sso.example.org",
                 f"TLS_CERT_DIR={(tmp_path / 'certs').as_posix()}",
                 "APP_VERSION=1.0.0",
                 "EMAIL_URL=smtp+tls://user@smtp.example.org:587",
-                "KEYCLOAK_ADMIN_PASSWORD=factice-1",
-                "KEYCLOAK_DB_PASSWORD=factice-2",
                 f"DOCUMENTS_HOST_DIR={(tmp_path / 'docs').as_posix()}",
             ]
         )

@@ -1,32 +1,34 @@
-import uuid
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import pytest
 from auditlog.models import LogEntry
+from django.contrib.sessions.models import Session
+from django.core.exceptions import PermissionDenied
 from django.db import close_old_connections
+from django.test import Client
+from django.utils import timezone
 
 from apps.core.exceptions import RegleMetierError
 from apps.referentiel.models import Direction, TypeEntite
-from apps.users.models import KeycloakSyncStatut, OrigineCompte, Role, User
+from apps.users.delegation import DROIT_REFUSE, acteur_systeme
+from apps.users.models import OrigineCompte, Role, User
 from apps.users.services import (
     COMPTE_PERSONNEL,
     DEJA_ACTIF,
     DEJA_DESACTIVE,
-    DEJA_SYNCHRONISE,
     DERNIER_ADMIN,
     DIRECTION_INCONNUE,
     MATRICULE_PRIS,
     PROFILE_FIELDS,
-    SYNCED_FIELDS,
     actions_compte,
     desactiver,
     direction_existe,
     modifier_profil,
     reactiver,
-    resynchroniser_profil,
 )
 
+from ..connexion import connecter
 from ..factories import make_user
 
 
@@ -35,35 +37,43 @@ def _direction(code: str) -> Direction:
 
 
 def test_constants() -> None:
-    assert PROFILE_FIELDS == {"matricule", "direction_code", "fonction"}
-    assert SYNCED_FIELDS == {"direction_code", "fonction"}
+    assert PROFILE_FIELDS == {
+        "matricule",
+        "direction_code",
+        "fonction",
+        "email",
+        "first_name",
+        "last_name",
+    }
     assert OrigineCompte.CSV.label == "Import CSV"
-    assert KeycloakSyncStatut.ECHEC.label == "Échec"
+    assert User().origine == OrigineCompte.ADMINISTRATION
 
 
 def test_desactiver_puis_reactiver(admin: User, user: User) -> None:
-    user.keycloak_id = uuid.uuid4()
-    user.save()
     desactiver(user, motif="Départ à la retraite", by=admin)
     user.refresh_from_db()
-    assert (
-        not user.is_active
-        and user.desactive_par == admin
-        and user.keycloak_sync_statut == "EN_ATTENTE"
-    )
+    assert not user.is_active and user.desactive_par == admin and user.desactive_le is not None
     reactiver(user, by=admin)
     user.refresh_from_db()
     assert user.is_active and user.desactive_le is None and user.motif_desactivation == ""
-    assert user.keycloak_sync_statut == "EN_ATTENTE"
     changes = [e.changes_dict for e in LogEntry.objects.get_for_object(user).filter(actor=admin)]
     assert any(c.get("motif_desactivation") == ["", "Départ à la retraite"] for c in changes)
 
 
-def test_desactiver_compte_non_lie_reste_a_jour(admin: User, user: User) -> None:
+def _sessions_de(compte: User) -> int:
+    return sum(
+        1 for s in Session.objects.all() if s.get_decoded().get("_auth_user_id") == str(compte.pk)
+    )
+
+
+def test_desactiver_termine_les_sessions(admin: User, user: User) -> None:
+    connecter(Client(), user)
+    connecter(Client(), user)
+    connecter(Client(), admin)
+    assert _sessions_de(user) == 2
     desactiver(user, motif="x", by=admin)
-    user.refresh_from_db()
-    assert not user.is_active
-    assert user.keycloak_sync_statut == KeycloakSyncStatut.A_JOUR
+    assert _sessions_de(user) == 0
+    assert _sessions_de(admin) == 1
 
 
 def test_desactiver_soi_meme_refuse(admin: User) -> None:
@@ -88,8 +98,10 @@ def test_reactiver_actif_refuse(admin: User, user: User) -> None:
 
 
 def test_dernier_admin_refuse(admin: User) -> None:
-    other = make_user(Role.AUDITEUR)
-    with pytest.raises(RegleMetierError) as exc:
+    # The services check rights now: an inactive admin acts only as an explicit system
+    # actor (like the demo one), and is not an active admin keeping the platform run.
+    other = make_user(Role.ADMIN, is_active=False)
+    with acteur_systeme(other), pytest.raises(RegleMetierError) as exc:
         desactiver(admin, motif="x", by=other)
     assert exc.value.message == DERNIER_ADMIN
     assert (
@@ -105,6 +117,8 @@ def _try_desactiver(args: tuple[User, User]) -> str:
         return "ok"
     except RegleMetierError as exc:
         return exc.message
+    except PermissionDenied as exc:
+        return str(exc)
     finally:
         close_old_connections()
 
@@ -114,21 +128,24 @@ def test_desactivations_croisees_gardent_un_admin() -> None:
     a, b = make_user(Role.ADMIN), make_user(Role.ADMIN)
     with ThreadPoolExecutor(2) as pool:
         results = list(pool.map(_try_desactiver, [(b, a), (a, b)]))
-    assert sorted(results) == sorted(["ok", DERNIER_ADMIN])
+    # Serialized on the locked rows: the second caller has just been deactivated, so his
+    # rights, re-read under the lock, are gone (an inactive admin is no admin). Before the
+    # actor lock and the inactive-admin rule, the last-admin guard refused it instead.
+    assert sorted(results) == sorted(["ok", DROIT_REFUSE])
     assert User.objects.filter(role=Role.ADMIN, is_active=True).count() == 1
 
 
-def test_matricule_seul_ne_pose_pas_le_drapeau(admin: User, user: User) -> None:
+def test_modifier_matricule(admin: User, user: User) -> None:
     modifier_profil(user, changes={"matricule": " M-1 "}, by=admin)
     user.refresh_from_db()
-    assert user.matricule == "M-1" and not user.profil_gere_localement
+    assert user.matricule == "M-1"
 
 
-def test_modifier_direction_pose_le_drapeau(admin: User, user: User) -> None:
+def test_modifier_direction_et_fonction(admin: User, user: User) -> None:
     d = _direction("DIRX")
     modifier_profil(user, changes={"direction_code": d.code, "fonction": " Chef "}, by=admin)
     user.refresh_from_db()
-    assert user.profil_gere_localement and user.direction_code == d.code
+    assert user.direction_code == d.code
     assert user.fonction == "Chef"
 
 
@@ -159,28 +176,14 @@ def test_matricules_vides_multiples_acceptes(db: None) -> None:
     assert User.objects.filter(matricule="").count() >= 2
 
 
-def test_resync_deja_synchronise_refuse(admin: User, user: User) -> None:
-    with pytest.raises(RegleMetierError) as exc:
-        resynchroniser_profil(user, by=admin)
-    assert exc.value.message == DEJA_SYNCHRONISE
-    assert DEJA_SYNCHRONISE == "Le profil est déjà synchronisé avec l'annuaire."
-
-
-def test_resync_leve_le_drapeau(admin: User, user: User) -> None:
-    User.objects.filter(pk=user.pk).update(profil_gere_localement=True)
-    resynchroniser_profil(user, by=admin)
-    user.refresh_from_db()
-    assert not user.profil_gere_localement
-
-
 @pytest.mark.parametrize(
-    ("self_target", "active", "linked", "statut", "local", "expected"),
+    ("self_target", "active", "otp", "expected"),
     [
-        (False, True, True, "A_JOUR", False, (True, True, False, False, False)),
-        (True, True, False, "A_JOUR", False, (True, False, False, False, False)),
-        (False, False, True, "ECHEC", True, (True, False, True, True, True)),
-        (False, False, True, "EN_ATTENTE", False, (True, False, True, False, True)),
-        (False, False, False, "EN_ATTENTE", False, (True, False, True, False, False)),
+        (False, True, False, (True, True, False, True, False, True, True, True)),
+        (True, True, True, (True, False, False, False, False, True, True, False)),
+        (False, False, False, (True, False, True, False, False, True, True, True)),
+        (False, False, True, (True, False, True, False, True, True, True, True)),
+        (False, True, True, (True, True, False, True, True, True, True, True)),
     ],
 )
 def test_actions_compte(
@@ -188,24 +191,23 @@ def test_actions_compte(
     user: User,
     self_target: bool,
     active: bool,
-    linked: bool,
-    statut: str,
-    local: bool,
+    otp: bool,
     expected: tuple[bool, ...],
 ) -> None:
     target = admin if self_target else user
+    target.otp_connexion_actif = otp
     target.is_active = active
-    target.keycloak_id = uuid.uuid4() if linked else None
-    target.keycloak_sync_statut = statut
-    target.profil_gere_localement = local
     actions = actions_compte(target, admin)
     assert tuple(actions.values()) == expected
     assert list(actions) == [
         "modifier_profil",
         "desactiver",
         "reactiver",
-        "resynchroniser_profil",
-        "relancer_synchro_keycloak",
+        "reinitialiser_mot_de_passe",
+        "desactiver_otp",
+        "modifier_courriel",
+        "modifier_direction",
+        "changer_role",
     ]
 
 
@@ -225,15 +227,16 @@ def test_ecritures_historisees_avec_l_admin_pour_acteur(admin: User, user: User)
 
 
 def test_champs_techniques_hors_historique(admin: User, user: User) -> None:
-    user.keycloak_id = uuid.uuid4()
+    user.echecs_connexion = 3
+    user.last_login = timezone.now()
+    user.set_password("un-autre-mot-de-passe-2026")
     user.save()
     desactiver(user, motif="x", by=admin)
     all_changes: dict[str, Any] = {}
     for e in LogEntry.objects.get_for_object(user):
         all_changes.update(e.changes_dict)
-    assert "keycloak_sync_le" not in all_changes
-    assert "keycloak_sync_tentatives" not in all_changes
-    assert "keycloak_sync_statut" in all_changes
+    assert not {"echecs_connexion", "last_login", "password"} & set(all_changes)
+    assert "is_active" in all_changes
 
 
 def test_migration_refuse_les_matricules_en_double(db: None) -> None:

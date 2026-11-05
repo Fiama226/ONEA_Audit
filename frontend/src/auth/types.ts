@@ -1,6 +1,8 @@
 import type { components } from "../api/schema";
 
 export type Me = components["schemas"]["Me"];
+/** Effective account-management rights of the current user (all of them for an ADMIN). */
+export type DroitsGestionComptes = components["schemas"]["DroitsGestionComptes"];
 export type Role = components["schemas"]["RoleEnum"];
 
 /** Runtime list of roles; the type check below keeps it in sync with the generated RoleEnum. */
@@ -20,3 +22,9 @@ export function toRole(value: unknown): Role {
 }
 
 export type AuthStatus = "loading" | "anonymous" | "authenticated" | "error";
+
+/** Next step after a password or code check (POST /api/v1/auth/login/, login/otp/, session/). */
+export type Etape = components["schemas"]["EtapeEnum"];
+
+/** Session state answered by the /api/v1/auth/ endpoints; `me` is null at the OTP step. */
+export type EtatSession = components["schemas"]["EtatSession"];

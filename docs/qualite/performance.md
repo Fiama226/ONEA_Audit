@@ -213,8 +213,9 @@ Aucune route n'atteint 300 ms. Trois routes sont proches du seuil (`findings/`,
 `follow-up/actions/`, `document-types/`), mais uniquement sous la charge du poste de mesure
 (agents en parallèle) : leur médiane est d'environ 50 ms, le temps est passé en sérialisation
 Python (0 à 30 ms de SQL) et non en base. Sur une machine chargée, relever `PERF_P95_MS`.
-Deux routes sont exclues du test de temps car dominées par un service externe :
-`templates/{id}/preview/` (conversion Gotenberg) et `user-accounts/directory-search/` (Keycloak).
+Une route est exclue du test de temps car dominée par un service externe :
+`templates/{id}/preview/` (conversion Gotenberg). (La seconde exclusion,
+`user-accounts/directory-search/`, servait l'annuaire Keycloak : la route n'existe plus.)
 
 ## Limites
 
@@ -232,7 +233,7 @@ Deux routes sont exclues du test de temps car dominées par un service externe :
 | `loadtest/locustfile.py` | scénario Locust (MIT) et vérification des seuils D10 (code de sortie 1 si un seuil est dépassé) |
 | `loadtest/requirements.in`, `requirements.txt` | Locust 2.47.0 épinglé, dépendances résolues avec empreintes SHA-256 (`uv pip compile --universal --generate-hashes`), installées par `pip install --require-hashes` |
 | `scripts/recette/charge.sh` | lance le scénario sur la recette, relève `docker stats` toutes les 30 s, contrôle la file Celery 2 min après la fin |
-| `scripts/recette/realm.sh` | comptes `charge01…40` (2 RAI, 20 AUDITEUR, 15 AUDITE, 3 DG) dans le realm de recette |
+| `.recette/comptes.txt` (fichier local, hors Git) | comptes `charge01…40` (2 RAI, 20 AUDITEUR, 15 AUDITE, 3 DG), créés par l'administration des comptes de l'application (le script `realm.sh` du realm Keycloak a été supprimé avec Keycloak) |
 
 Licences : Locust et ses dépendances sont sous MIT, BSD, Apache-2.0, MPL-2.0 (bidict, certifi) ou PSF ;
 `zope.event` et `zope.interface` sont sous ZPL-2.1 (licence permissive de type BSD, approuvée OSI,
@@ -275,7 +276,7 @@ Tout seuil relevé par variable (`SEUIL_*`) doit être consigné ici.
 ### Lancer
 
 ```sh
-sh scripts/recette/up.sh && sh scripts/recette/certs.sh && sh scripts/recette/realm.sh
+sh scripts/recette/up.sh && sh scripts/recette/certs.sh   # puis créer les comptes chargeNN (docs/recette.md)
 # peuplement : exec web python manage.py peupler_demo --profil volumetrie --recette
 sh scripts/recette/charge.sh      # 40 utilisateurs, 2/s, 20 min ; CHARGE_USERS / CHARGE_DUREE pour réduire
 ```
@@ -284,9 +285,11 @@ Sorties dans `.recette/charge/<horodatage>/` : CSV Locust, `resume.json`, `docke
 
 ### État de la mesure : ce qui a été mesuré, et ce qui ne l'a pas été
 
+**Note (2026-11-04).** Les mesures ci-dessous datent du 2026-11-02, avant le remplacement de Keycloak par l'authentification interne : les mentions de Keycloak, du client `onea-dev-cli` et de `user-accounts/directory-search/` y sont historiques (ces éléments n'existent plus). Les connexions se font désormais par session ; la mesure est à refaire sur la version courante.
+
 **Non exécuté : `sh scripts/recette/charge.sh` sur la recette (critère d'acceptation de la tâche).**
 La pile de recette tournait sur le poste mais n'appartenait pas à cette tâche et n'a pas été touchée.
-`charge.sh` et `realm.sh` (40 comptes) sont écrits (`sh -n` passe) mais n'ont **pas** été joués. Reste à faire
+`charge.sh` est écrit (`sh -n` passe) mais n'a **pas** été joué. Reste à faire
 à la recette : `sh scripts/recette/charge.sh` en entier (20 min, 40 comptes distincts), puis y consigner
 les résultats avec les `docker stats` des conteneurs de recette.
 

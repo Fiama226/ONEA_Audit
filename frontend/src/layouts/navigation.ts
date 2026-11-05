@@ -8,6 +8,8 @@ import {
   FileText,
   LayoutDashboard,
   PenLine,
+  Scale,
+  ScrollText,
   SlidersHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -31,6 +33,10 @@ const ROUTE_ROLES: Readonly<Record<string, readonly Role[]>> = {
   // Gabarits et numérotation : lecture ADMIN et RAI ; les écritures restent ADMIN (le serveur répond 403).
   "/administration/documents": ["ADMIN", "RAI"],
   "/administration/signatures": ["ADMIN", "RAI"],
+  // Règles de gouvernance et journal d'audit : lecture ADMIN, RAI et DG ; seul l'ADMIN modifie
+  // les règles (le serveur répond 403) ; le DG ne lit que le journal des règles.
+  "/administration/gouvernance": ["ADMIN", "RAI", "DG"],
+  "/journal-audit": ["ADMIN", "RAI", "DG"],
   "/administration": ["ADMIN"],
 };
 
@@ -77,7 +83,11 @@ export const NAV_GROUPS: NavGroup[] = [
         to: "/administration",
         label: fr.nav.administration,
         icon: SlidersHorizontal,
-        exclude: ["/administration/documents", "/administration/signatures"],
+        exclude: [
+          "/administration/documents",
+          "/administration/signatures",
+          "/administration/gouvernance",
+        ],
       },
       {
         to: "/administration/documents",
@@ -89,16 +99,31 @@ export const NAV_GROUPS: NavGroup[] = [
         label: fr.signatureAdmin.title,
         icon: PenLine,
       },
+      { to: "/administration/gouvernance", label: fr.nav.governanceRules, icon: Scale },
+      { to: "/journal-audit", label: fr.nav.auditJournal, icon: ScrollText },
     ],
   },
 ];
 
-/** Groupes visibles pour un rôle ; un groupe sans entrée visible disparaît avec son titre. */
-export function navFor(role: Role | null): NavGroup[] {
+/**
+ * Administration des comptes : ouverte à l'ADMIN (ROUTE_ROLES) et, quel que soit son rôle, à
+ * l'agent qui détient au moins un droit délégué (gestion_comptes). Gardée par
+ * RequireAccountManager dans routes.tsx.
+ */
+export const ACCOUNT_ADMINISTRATION_PATH = "/administration";
+
+/**
+ * Groupes visibles pour un rôle ; un groupe sans entrée visible disparaît avec son titre.
+ * `accountManager` : l'utilisateur détient au moins un droit de gestion des comptes.
+ */
+export function navFor(role: Role | null, accountManager = false): NavGroup[] {
   if (role === null) return [];
+  const visible = (to: string) =>
+    (to === ACCOUNT_ADMINISTRATION_PATH && accountManager) ||
+    (rolesFor(to)?.includes(role) ?? true);
   return NAV_GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter((i) => rolesFor(i.to)?.includes(role) ?? true),
+    items: g.items.filter((i) => visible(i.to)),
   })).filter((g) => g.items.length > 0);
 }
 
@@ -119,6 +144,8 @@ export const SEGMENT_LABELS: Record<string, string> = {
   gabarits: fr.documents.tabTemplates,
   numerotation: fr.documents.tabNumbering,
   signatures: fr.signatureAdmin.title,
+  gouvernance: fr.nav.governanceRules,
+  "journal-audit": fr.nav.auditJournal,
   administration: fr.nav.administration,
   utilisateurs: fr.utilisateurs.title,
   cartographies: fr.referentiel.tabCartographies,

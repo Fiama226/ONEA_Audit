@@ -11,7 +11,8 @@ from django.utils import timezone
 from apps.core.audit import actor_scope
 from apps.core.exceptions import RegleMetierError
 from apps.core.services import appliquer, enregistrer, refuser
-from apps.referentiel.models import Direction, Processus
+from apps.gouvernance import regles_gouvernance
+from apps.referentiel.models import Direction, Processus, Risque
 from apps.referentiel.services import version_courante
 from apps.signatures.models import Confirmation, TypeDocumentSignable
 from apps.signatures.services import confirmer
@@ -22,6 +23,7 @@ from ..gardes import verrouiller_mission
 from ..models import (
     ROLES_INTERVENANTS,
     EtapeMission,
+    EvenementDeclencheur,
     EvenementEtape,
     Mission,
     RoleMission,
@@ -29,7 +31,8 @@ from ..models import (
     StatutMission,
     TypeEvenementEtape,
 )
-from . import LOCK_REFERENCE_MISSION, aujourd_hui
+from ..notifications import notifier_ordre_emis
+from . import LOCK_REFERENCE_MISSION, aujourd_hui, objectivite
 from .declarations import nom_complet
 
 MSG_DIFFUSION = (
@@ -53,8 +56,9 @@ CHAMPS_MODIFIABLES = {
     "livrables_attendus",
     "processus",
     "entites",
+    "risques_couverts",
 }
-M2M = frozenset({"processus", "entites"})
+M2M = frozenset({"processus", "entites", "risques_couverts"})
 SUSPENDABLES = frozenset(
     {
         StatutMission.PLANIFIEE,
@@ -119,7 +123,32 @@ def _verifier_dates(mission: Mission) -> None:
         raise RegleMetierError("Données invalides.", erreurs)
 
 
-def _poser_m2m(mission: Mission, champ: str, valeurs: Iterable[Processus | Direction]) -> None:
+MSG_RISQUES_REQUIS = (
+    "Une mission inscrite au programme annuel doit désigner au moins un risque de la "
+    "cartographie qu'elle couvre (règle de gouvernance « lien programme ↔ risque »)."
+)
+MSG_RISQUE_AUTRE_CARTOGRAPHIE = (
+    "Les risques couverts doivent appartenir à la cartographie de référence de la mission."
+)
+
+
+def _verifier_risques(mission: Mission, risques: list[Risque]) -> None:
+    """Risques de la cartographie de la mission ; au moins un pour une mission du programme
+    quand la règle de gouvernance l'exige (lue au moment de l'action, jamais rétroactive)."""
+    if any(r.version_id != mission.cartographie_id for r in risques):
+        msg = MSG_RISQUE_AUTRE_CARTOGRAPHIE
+        raise refuser(msg, risques_couverts=msg)
+    if (
+        not risques
+        and mission.evenement_declencheur == EvenementDeclencheur.PROGRAMME_ANNUEL
+        and regles_gouvernance.program_risk_link_required()
+    ):
+        raise refuser(MSG_RISQUES_REQUIS, risques_couverts=MSG_RISQUES_REQUIS)
+
+
+def _poser_m2m(
+    mission: Mission, champ: str, valeurs: Iterable[Processus | Direction | Risque]
+) -> None:
     cibles = {v.pk for v in valeurs}
     relation = getattr(mission, champ)
     if {o.pk for o in relation.all()} != cibles:
@@ -134,6 +163,7 @@ def creer_mission(
     by: User,
     processus: Iterable[Processus] = (),
     entites: Iterable[Direction] = (),
+    risques_couverts: Iterable[Risque] = (),
     **champs: Any,
 ) -> Mission:
     version = version_courante()
@@ -145,12 +175,15 @@ def creer_mission(
         raise refuser(msg, cartographie=msg)
     mission = Mission(titre=titre, type=type, cartographie=version)
     appliquer(mission, champs, CHAMPS_MODIFIABLES - M2M)
+    risques = list(risques_couverts)
+    _verifier_risques(mission, risques)
     _verifier_et_enregistrer(mission, by)
     for definition in ETAPES:
         etape = EtapeMission(mission=mission, numero=definition.numero)
         enregistrer(etape, by=by, creation=True)
     _poser_m2m(mission, "processus", processus)
     _poser_m2m(mission, "entites", entites)
+    _poser_m2m(mission, "risques_couverts", risques)
     return mission
 
 
@@ -166,6 +199,9 @@ def modifier_mission(mission: Mission, *, by: User, **changes: Any) -> Mission:
     mission = verrouiller_mission(mission)
     appliquer(mission, changes, CHAMPS_MODIFIABLES, m2m=M2M)
     _verifier_dates(mission)
+    if "risques_couverts" in changes:
+        changes["risques_couverts"] = list(changes["risques_couverts"])
+        _verifier_risques(mission, changes["risques_couverts"])
     enregistrer(mission, by=by)
     for champ in M2M & set(changes):
         _poser_m2m(mission, champ, changes[champ])
@@ -227,6 +263,25 @@ def _etape(mission: Mission, numero: int) -> EtapeMission:
     return etape
 
 
+def _verifier_programme_approuve(mission: Mission) -> None:
+    """Mission du programme annuel : programme de l'année approuvé avant le lancement, quand la
+    règle de gouvernance « approbation du programme annuel » l'exige (Normes IIA 9.4)."""
+    if mission.evenement_declencheur != EvenementDeclencheur.PROGRAMME_ANNUEL:
+        return
+    regle = regles_gouvernance.program_approval()
+    if regle["approver"] == "NONE" or not regle["required_before_launch"]:
+        return
+    from apps.programmation.services import programme_approuve_pour
+
+    if not programme_approuve_pour(mission.annee):
+        approbateur = "le DG et le Conseil" if regle["approver"] == "DG_AND_BOARD" else "le DG"
+        msg = (
+            f"Le programme annuel {mission.annee} n'est pas approuvé par {approbateur} : "
+            "la mission ne peut pas être lancée (règle de gouvernance)."
+        )
+        raise refuser(msg, programme=msg)
+
+
 @transaction.atomic
 def lancer_mission(mission: Mission, *, by: User) -> Mission:
     mission = verrouiller_mission(mission)
@@ -234,6 +289,7 @@ def lancer_mission(mission: Mission, *, by: User) -> Mission:
         raise _pas_possible(mission, "lancer la mission")
     if not mission.affectations.filter(role_mission=RoleMission.CHEF_MISSION).exists():
         raise refuser(MSG_CHEF, chef_mission=MSG_CHEF)
+    _verifier_programme_approuve(mission)
     mission.statut = StatutMission.EN_PLANIFICATION
     enregistrer(mission, by=by)
     etape = _etape(mission, 1)
@@ -290,6 +346,7 @@ def emettre_ordre_mission(
     }
     if erreurs:
         raise RegleMetierError("Des informations obligatoires manquent.", erreurs)
+    objectivite.controler_equipe(mission, by=by)
 
     texte = _TEXTE_ORDRE.format(
         nom_complet=nom_complet(by), reference=mission.reference, titre=mission.titre
@@ -312,6 +369,7 @@ def emettre_ordre_mission(
     enregistrer(etape, by=by)
     with actor_scope(by):
         EvenementEtape.journaliser(etape, TypeEvenementEtape.TERMINEE, par=by, statut_avant=avant)
+    notifier_ordre_emis(mission, by=by)
     return confirmation
 
 

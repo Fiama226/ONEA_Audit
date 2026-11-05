@@ -45,6 +45,21 @@ describe("StepIZone", () => {
         return HttpResponse.json(issuedMission);
       }),
     );
+    server.use(
+      http.get(`${API_URL}/api/v1/documents/available/`, () =>
+        HttpResponse.json([
+          {
+            type_document: "ORDRE_MISSION",
+            libelle: "Ordre de mission",
+            objet_id: MISSION_ID,
+            document: null,
+            peut_generer: true,
+            raison: "",
+            en_cours: false,
+          },
+        ]),
+      ),
+    );
     renderMission(`/missions/${MISSION_ID}/etapes/1`, "RAI");
 
     expect(await screen.findByText("Évaluer la passation des marchés.")).toBeInTheDocument();
@@ -63,7 +78,8 @@ describe("StepIZone", () => {
     ).toBeInTheDocument();
     expect(posted).toBe(1);
     expect(screen.getByText("Empreinte : 3f2a…9c1b")).toBeInTheDocument();
-    expect(screen.getByText(m.orderWordLater)).toBeInTheDocument();
+    // L'ordre apparaît dans la zone de l'étape et dans le panneau latéral des documents.
+    expect(await screen.findAllByRole("button", { name: fr.documents.generate })).toHaveLength(2);
     expect(screen.queryByRole("button", { name: m.issueOrder })).not.toBeInTheDocument();
   });
 

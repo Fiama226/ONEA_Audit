@@ -218,3 +218,62 @@ def _garder_entites(
     )
     if annee is not None:
         raise ProgrammeFigeError(annee)
+
+
+class NiveauApprobation(models.TextChoices):
+    DG = "DG", "Direction générale"
+    BOARD = "BOARD", "Conseil (Comité d'audit)"
+
+
+class ApprobationProgramme(BaseModel):
+    """Approbation d'un programme validé (Normes IIA 9.4), selon la règle de gouvernance.
+
+    Enregistrée par le DG : la sienne, puis celle du Conseil (le Conseil n'a pas de compte dans
+    la plateforme : le DG en reporte la décision, sa date et la référence de la délibération).
+    Ajout seul : ni modification, ni suppression (y compris en base, `TABLES_AJOUT_SEUL`).
+    """
+
+    programme = models.ForeignKey(
+        ProgrammeAnnuel,
+        verbose_name="programme",
+        on_delete=models.PROTECT,
+        related_name="approbations",
+    )
+    niveau = models.CharField("niveau", max_length=8, choices=NiveauApprobation.choices)
+    approuve_par = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="enregistrée par",
+        on_delete=models.PROTECT,
+        related_name="+",
+    )
+    approuve_le = models.DateTimeField("enregistrée le")
+    date_decision = models.DateField("date de la décision")
+    reference = models.CharField("référence de la délibération", max_length=120, blank=True)
+    commentaire = models.TextField("commentaire", blank=True)
+
+    class Meta:
+        verbose_name = "approbation du programme"
+        verbose_name_plural = "approbations du programme"
+        ordering = ("approuve_le",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["programme", "niveau"],
+                condition=Q(deleted_at__isnull=True),
+                name="approbation_programme_niveau_unique",
+            ),
+            models.CheckConstraint(
+                condition=~Q(niveau=NiveauApprobation.BOARD) | ~Q(reference=""),
+                name="approbation_conseil_reference",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_niveau_display()} ({self.programme_id})"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self._state.adding:
+            raise RegleMetierError("Une approbation du programme ne peut pas être modifiée.")
+        super().save(*args, **kwargs)
+
+    def soft_delete(self, by: Any) -> None:
+        raise RegleMetierError("Une approbation du programme ne peut pas être supprimée.")

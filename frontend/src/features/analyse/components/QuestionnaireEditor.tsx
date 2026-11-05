@@ -56,7 +56,7 @@ export function QuestionnaireEditor({ questionnaire, editable, missionReference 
     );
   }
 
-  const list = [...questions.data.results].sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
+  const list = [...questions.data].sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
   const done = list.filter((q) => q.repondue).length;
 
   return (

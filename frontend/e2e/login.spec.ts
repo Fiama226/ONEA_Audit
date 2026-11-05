@@ -1,10 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, request, test, type Page } from "@playwright/test";
+import { BASE, E2E_PASSWORD, logIn } from "./session";
 
-// Keycloak dev realm "onea" (docker/keycloak/realm-onea.json) seeds
-// the users rai / audite1 (password onea2026) and the public client onea-frontend
-// (redirect http://localhost:5174/* for the e2e).
-const PASSWORD = "onea2026";
-const BASE = `http://localhost:${process.env.WEB_PORT ?? "5174"}`;
+// Connexion par le formulaire /connexion (identifiant + mot de passe) avec les comptes créés par
+// `manage.py creer_comptes_e2e` (scripts/e2e.sh) : mot de passe connu, aucun changement forcé.
 // Optional: full-page screenshots for visual review (frontend/e2e/screens/, git-ignored).
 const SCREENS = process.env.E2E_SCREENSHOTS ? "e2e/screens" : null;
 
@@ -16,19 +14,6 @@ async function shot(page: Page, name: string) {
   await page.setViewportSize({ width: 1280, height: 1300 });
   await page.screenshot({ path: `${SCREENS}/${name}.png`, fullPage: true });
   if (original) await page.setViewportSize(original);
-}
-
-async function logIn(page: Page, username: string) {
-  await page.goto("/");
-  // Anonymous visitors land on /connexion, whose button starts the Keycloak code flow.
-  const loginButton = page.getByRole("button", { name: "Se connecter" });
-  await expect(loginButton).toBeEnabled();
-  await loginButton.click();
-  await page.waitForURL(/\/realms\/onea\/protocol\/openid-connect\/auth/);
-  await page.locator("#username").fill(username);
-  await page.locator("#password").fill(PASSWORD);
-  await page.locator("#kc-login").click();
-  await page.waitForURL(`${BASE}/`);
 }
 
 test("RAI signs in and sees the dashboard with the Référentiel entry", async ({ page }) => {
@@ -59,47 +44,77 @@ test("AUDITE signs in and sees neither Référentiel nor Administration", async 
   await shot(page, "dashboard-audite");
 });
 
+test("a delegate sees the account administration, a plain auditor does not", async ({ page }) => {
+  await logIn(page, "auditeur1");
+  const nav = page.getByRole("navigation", { name: "Menu principal" });
+  await expect(nav.getByRole("link", { name: "Administration" })).toHaveCount(0);
+  await page.goto("/administration/utilisateurs");
+  // Attendre la vue « accès refusé » avant le contrôle négatif : sinon il passerait trop tôt.
+  await expect(page.locator("main h1")).toHaveText("Accès refusé");
+  await expect(page.getByRole("heading", { level: 1, name: "Utilisateurs" })).toHaveCount(0);
+  await page.context().clearCookies();
+
+  await logIn(page, "delegue1");
+  await expect(nav.getByRole("link", { name: "Administration" })).toBeVisible();
+  await page.goto("/administration/utilisateurs");
+  await expect(page.getByRole("heading", { level: 1, name: "Utilisateurs" })).toBeVisible();
+});
+
+// Identifiant inexistant : aucun compte e2e ne peut être verrouillé par ce test (réponse identique).
+test("a wrong password shows one neutral message and stays on the form", async ({ page }) => {
+  await page.goto("/connexion");
+  await page.getByLabel("Identifiant ou courriel professionnel").fill("inconnu.e2e");
+  await page.getByLabel("Mot de passe", { exact: true }).fill(`${E2E_PASSWORD}-faux`);
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await expect(page.getByText("Identifiant ou mot de passe incorrect.")).toBeVisible();
+  await expect(page).toHaveURL(/\/connexion$/);
+});
+
+test("the login page links to the forgotten-password page", async ({ page }) => {
+  await page.goto("/connexion");
+  await page.getByRole("link", { name: "Mot de passe oublié ?" }).click();
+  await expect(page).toHaveURL(/\/mot-de-passe-oublie$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Mot de passe oublié" })).toBeVisible();
+  await page.getByRole("link", { name: "Retour à la connexion" }).click();
+  await expect(page).toHaveURL(/\/connexion$/);
+});
+
+test("a signed-in user reaches Mon compte and the password change page", async ({ page }) => {
+  await logIn(page, "rai");
+  await page.goto("/mon-compte");
+  await expect(page.getByRole("heading", { level: 1, name: "Mon compte" })).toBeVisible();
+  await page.goto("/mot-de-passe/changer");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Changer le mot de passe" }),
+  ).toBeVisible();
+});
+
 test("a signed-in user can log out and is asked to sign in again", async ({ page }) => {
   await logIn(page, "rai");
-  // Jeton d'accès courant, pour prouver plus bas qu'il ne donne plus accès.
-  const ancienJeton = await page.evaluate(() => {
-    for (const cle of Object.keys(sessionStorage)) {
-      if (!cle.startsWith("oidc.user:")) continue;
-      const brut = sessionStorage.getItem(cle);
-      if (brut) return (JSON.parse(brut) as { access_token: string }).access_token;
-    }
-    return null;
-  });
-  expect(ancienJeton).toBeTruthy();
+  // Cookies de la session courante (dont le cookie HttpOnly), pour prouver qu'ils sont invalidés.
+  const cookies = await page.context().cookies();
+  // Une page protégée de plus dans l'historique : « Précédent » y reviendra après la déconnexion.
+  await page.goto("/missions");
+  await expect(page.getByRole("navigation", { name: "Menu principal" })).toBeVisible();
   await page.getByRole("button", { name: /Menu utilisateur/ }).click();
   await page.getByRole("menuitem", { name: "Se déconnecter" }).click();
-  // Keycloak may ask for confirmation when no id_token_hint is sent.
-  await page.waitForURL(
-    (url) => url.origin === BASE || /\/protocol\/openid-connect\/logout/.test(url.pathname),
-  );
-  const confirm = page.locator("#kc-logout");
-  if (await confirm.isVisible().catch(() => false)) {
-    await confirm.click();
-    await page.waitForURL((url) => url.origin === BASE);
-  }
   // (1) page de connexion affichée
+  await expect(page).toHaveURL(/\/connexion$/);
   await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
-  // (2) aucun utilisateur OIDC dans sessionStorage
-  const restes = await page.evaluate(() =>
-    Object.keys(sessionStorage).filter((cle) => cle.startsWith("oidc.user:")),
-  );
-  expect(restes).toEqual([]);
-  // (3) une page protégée renvoie vers la connexion
-  await page.goto("/missions");
-  await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
-  // (4) l'ancien jeton d'accès n'ouvre plus l'API
-  const apiUrl = process.env.VITE_API_URL ?? "http://localhost:8000";
-  const reponse = await page.request.get(`${apiUrl}/api/v1/me/`, {
-    headers: { Authorization: `Bearer ${ancienJeton}` },
-  });
-  expect(reponse.status()).toBe(401);
-  // (5) le bouton Précédent n'affiche aucun contenu protégé
+  // (4) le bouton Précédent revient sur une page protégée vue connecté (le tableau de bord,
+  // avant /missions) : aucun contenu protégé, retour à la connexion
   await page.goBack();
+  await expect(page).toHaveURL(/\/connexion$/);
   await expect(page.getByRole("heading", { name: "Pilotage de l'audit interne" })).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Menu principal" })).toHaveCount(0);
+  // (2) une page protégée renvoie vers la connexion
+  await page.goto("/missions");
+  await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
+  // (3) l'ancien cookie de session n'ouvre plus l'API (la session est détruite côté serveur)
+  const ancienne = await request.newContext({
+    baseURL: BASE,
+    storageState: { cookies, origins: [] },
+  });
+  expect((await ancienne.get("/api/v1/me/")).status()).toBe(401);
+  await ancienne.dispose();
 });

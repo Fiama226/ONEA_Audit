@@ -17,6 +17,14 @@ export function meFor(role: Role, overrides: Partial<Me> = {}): Me {
     direction_code: "DAI",
     fonction: "Fonction",
     tutoriel: { version_vue: 1, termine_le: null },
+    otp_connexion_actif: false,
+    // An active ADMIN holds every account-management right; other roles none by default.
+    gestion_comptes: {
+      creer: role === "ADMIN",
+      reinitialiser: role === "ADMIN",
+      roles: role === "ADMIN",
+      desactiver: role === "ADMIN",
+    },
     ...overrides,
   };
 }
@@ -24,25 +32,35 @@ export function meFor(role: Role, overrides: Partial<Me> = {}): Me {
 export function authValueFor(
   role: Role,
   logout: AuthContextValue["logout"] = vi.fn().mockResolvedValue(undefined),
+  me: Partial<Me> = {},
 ): AuthContextValue {
   return {
     status: "authenticated",
-    me: meFor(role),
+    me: meFor(role, me),
+    etape: "OK",
     sessionExpired: false,
-    login: vi.fn().mockResolvedValue(undefined),
+    sessionChanged: false,
+    loggedOut: false,
+    logoutUnconfirmed: false,
+    login: vi.fn().mockResolvedValue("OK"),
+    verifyOtp: vi.fn().mockResolvedValue("OK"),
+    changePassword: vi.fn().mockResolvedValue(undefined),
     logout,
     retry: vi.fn().mockResolvedValue(undefined),
-    completeLogin: vi.fn().mockResolvedValue("/"),
+    updateMe: vi.fn(),
   };
 }
 
-/** Rend `routes` dans un routeur mémoire avec un utilisateur authentifié du rôle donné. */
+/**
+ * Rend `routes` dans un routeur mémoire avec un utilisateur authentifié du rôle donné ;
+ * `me` complète son profil (ex. droits délégués `gestion_comptes`).
+ */
 export function renderRoutes(
   routes: RouteObject[],
   role: Role,
-  opts: { path?: string; logout?: AuthContextValue["logout"] } = {},
+  opts: { path?: string; logout?: AuthContextValue["logout"]; me?: Partial<Me> } = {},
 ) {
-  const value = authValueFor(role, opts.logout);
+  const value = authValueFor(role, opts.logout, opts.me);
   const router = createMemoryRouter(routes, { initialEntries: [opts.path ?? "/"] });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const utils = render(
@@ -52,11 +70,11 @@ export function renderRoutes(
       </AuthContext.Provider>
     </QueryClientProvider>,
   );
-  return { ...utils, router, auth: value };
+  return { ...utils, router, auth: value, client };
 }
 
-export function renderWithAuth(ui: ReactElement, role: Role, path = "/") {
-  return renderRoutes([{ path: "*", element: ui }], role, { path });
+export function renderWithAuth(ui: ReactElement, role: Role, path = "/", me: Partial<Me> = {}) {
+  return renderRoutes([{ path: "*", element: ui }], role, { path, me });
 }
 
 /** Simule `window.matchMedia` ; `set` bascule une requête et notifie ses écouteurs. */

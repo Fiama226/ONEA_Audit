@@ -41,7 +41,6 @@ export function ImportReport({ report }: { report: RapportImport }) {
   }, [report]);
   const summary = [
     plural(report.crees.length, t.createdOne, t.createdMany),
-    `${report.mis_a_jour.length} ${t.updated}`,
     plural(report.ignores.length, t.ignoredOne, t.ignoredMany),
   ].join(", ");
   return (
@@ -56,7 +55,6 @@ export function ImportReport({ report }: { report: RapportImport }) {
         {summary}
       </p>
       <NameList title={t.createdList} items={report.crees} />
-      <NameList title={t.updatedList} items={report.mis_a_jour} />
       {report.ignores.length > 0 && (
         <div className="max-h-64 overflow-auto rounded-md border border-border">
           <Table>
@@ -70,8 +68,8 @@ export function ImportReport({ report }: { report: RapportImport }) {
             </TableHeader>
             <TableBody>
               {report.ignores.map((row, i) => (
-                <TableRow key={`${row.ligne ?? "x"}-${row.identifiant}-${i}`}>
-                  <TableCell>{row.ligne ?? t.noLine}</TableCell>
+                <TableRow key={`${row.ligne}-${row.identifiant}-${i}`}>
+                  <TableCell>{row.ligne}</TableCell>
                   <TableCell>{row.identifiant}</TableCell>
                   <TableCell className="whitespace-normal">{row.motif}</TableCell>
                 </TableRow>

@@ -6,6 +6,10 @@ d'acces doit declarer son budget. Les budgets valent pour une page de 10 comme d
 """
 
 BUDGETS_REQUETES: dict[str, int] = {
+    "/api/v1/auditee-response-waivers/": 8,
+    "/api/v1/governance-rules/": 3,
+    "/api/v1/governance-rules/{cle}/": 2,
+    "/api/v1/risk-acceptance-validations/": 3,
     "/api/v1/action-plan-commitments/": 5,
     "/api/v1/action-plan-commitments/texte/": 5,
     "/api/v1/action-plans/summary/": 7,
@@ -29,6 +33,8 @@ BUDGETS_REQUETES: dict[str, int] = {
     "/api/v1/auditable-objects/": 5,
     "/api/v1/auditable-objects/tree/": 5,
     "/api/v1/auditable-objects/{id}/": 5,
+    "/api/v1/auth/csrf/": 2,
+    "/api/v1/auth/session/": 3,
     "/api/v1/corrective-actions/": 7,
     "/api/v1/corrective-actions/{id}/": 5,
     "/api/v1/dashboards/auditee/": 5,
@@ -131,11 +137,14 @@ BUDGETS_REQUETES: dict[str, int] = {
     "/api/v1/templates/{id}/": 5,
     "/api/v1/templates/{id}/file/": 5,
     "/api/v1/templates/{id}/preview/": 5,
+    "/api/v1/test-results-agreements/": 4,
     "/api/v1/test-sheets/": 7,
     "/api/v1/test-sheets/{id}/": 8,
     "/api/v1/user-accounts/": 5,
-    "/api/v1/user-accounts/directory-search/": 5,
+    # Measured on a real first read (test_budget_lecture_reelle_du_fichier_de_mots_de_passe): 4.
+    "/api/v1/user-accounts/import-passwords/{fichier_id}/": 5,
     "/api/v1/user-accounts/{id}/": 5,
+    "/api/v1/user-accounts/{id}/delegation/": 4,
     "/api/v1/users/": 5,
     "/api/v1/work-programs/": 7,
     "/api/v1/work-programs/snapshots/": 5,
@@ -144,11 +153,10 @@ BUDGETS_REQUETES: dict[str, int] = {
     "/api/v1/work-programs/{id}/": 5,
 }
 
-# Routes dont le temps de reponse depend d'un service externe (conversion Gotenberg, Keycloak) :
+# Routes dont le temps de reponse depend d'un service externe (conversion Gotenberg) :
 # exclues du p95 de test_est_temps_reponse mais pas du budget de requetes.
 EXCLUES_TEMPS: frozenset[str] = frozenset(
     {
         "/api/v1/templates/{id}/preview/",
-        "/api/v1/user-accounts/directory-search/",
     }
 )

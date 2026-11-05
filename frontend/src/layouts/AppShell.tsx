@@ -1,13 +1,19 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
+import { LiveMessage } from "@/auth/LiveMessage";
+import { PASSWORD_CHANGED_NOTICE, stateField } from "@/auth/paths";
 import { fr } from "@/i18n/fr";
 import { TutorielProvider } from "@/features/tutoriel/TutorielProvider";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
+import { useDocumentTitle } from "./useDocumentTitle";
 import { useSidebarCollapsed } from "./useSidebarCollapsed";
 
 /** Coque applicative : barre latérale (≥ 1024 px) ou tiroir, en-tête, zone principale. */
 export function AppShell() {
+  useDocumentTitle();
   const [collapsed, toggle] = useSidebarCollapsed();
+  const location = useLocation();
+  const passwordChanged = stateField(location.state, "notice") === PASSWORD_CHANGED_NOTICE;
   return (
     <TutorielProvider>
       <a
@@ -30,6 +36,15 @@ export function AppShell() {
             className="flex-1 overflow-y-auto px-6 pt-6 pb-12 outline-none lg:px-8 lg:pt-8"
           >
             <div className="mx-auto max-w-[1280px]">
+              {/* Confirmation d'un changement de mot de passe : la zone est rendue vide puis
+                  remplie (LiveMessage), donc annoncée. */}
+              {passwordChanged && (
+                <LiveMessage
+                  role="status"
+                  message={fr.auth.passwordChanged}
+                  className="mb-6 rounded-md border border-success/40 p-3 text-sm text-success-text print:hidden"
+                />
+              )}
               <Outlet />
             </div>
           </main>

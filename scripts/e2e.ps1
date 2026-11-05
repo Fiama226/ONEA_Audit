@@ -3,6 +3,7 @@
 # Équivalent de scripts/e2e.sh (voir son en-tête) : crée onea_e2e_<horodatage>, migre, lance
 # l'API (127.0.0.1:8010) et Vite (5174), exécute Playwright, puis supprime serveurs, base et
 # dossier temporaire. Compare les comptes de la base onea avant/après.
+# Les comptes de test sont créés par `manage.py creer_comptes_e2e` (mot de passe E2E_PASSWORD).
 # Variables : E2E_DB_NAME (doit valoir ^onea_e2e_[0-9]+$, sinon code 2 avant toute écriture),
 # E2E_API_PORT, E2E_WEB_PORT, PYTHON, ONEA_VENV. Codes : 2 nom refusé ; 3 pile de dev absente ;
 # 4 comptes de la base onea modifiés.
@@ -40,12 +41,11 @@ if (-not $PgPass) { throw 'POSTGRES_PASSWORD manquant (voir .env.example)' }
 $DevDb = Cfg 'POSTGRES_DB' 'onea'
 $DbPort = Cfg 'DB_PORT' '5432'
 $RedisPort = Cfg 'REDIS_PORT' '6379'
-$KcPort = Cfg 'KEYCLOAK_PORT' '8080'
 $Compose = @('compose', '--env-file', $EnvFile, '-f', (Join-Path $Root 'docker\compose.yml'), '-f', (Join-Path $Root 'docker\compose.dev.yml'))
 
 # 2. La pile de dev doit tourner.
 $running = & docker @Compose ps --status running --services 2>$null
-foreach ($service in 'db', 'keycloak') {
+foreach ($service in 'db') {
   if ($running -notcontains $service) {
     [Console]::Error.WriteLine("Pile de dev absente : le service '$service' ne tourne pas (make up).")
     exit 3
@@ -100,10 +100,8 @@ try {
   $env:DATABASE_URL = "postgres://${PgUser}:${PgPass}@localhost:${DbPort}/${DbName}"
   $env:DOCUMENTS_ROOT = Join-Path $Tmp 'documents'
   $env:FICHIERS_RACINE = Join-Path $Tmp 'fichiers'
-  $env:CORS_ALLOWED_ORIGINS = "http://localhost:$WebPort"
   $env:MEILI_URL = 'http://127.0.0.1:9'
   $env:REDIS_URL = "redis://localhost:$RedisPort/14"
-  $env:OIDC_OP_BASE_URL = "http://localhost:$KcPort/realms/onea"
 
   Push-Location (Join-Path $Root 'backend')
   & $Py manage.py migrate --noinput
@@ -111,13 +109,35 @@ try {
   Pop-Location
   if ($migrated) { throw 'migrate a échoué' }
 
+  # Limites de débit relevées : la suite se connecte des dizaines de fois par minute depuis la même
+  # IP (seaux de l'authentification, backend/apps/users/auth_throttles.py). E2e jetable uniquement.
+  $env:THROTTLE_RATE_CONNEXION = '10000/min'
+  $env:THROTTLE_RATE_CONNEXION_CODE = '10000/min'
+  $env:THROTTLE_RATE_MOT_DE_PASSE_OUBLIE_IP = '10000/min'
+  $env:THROTTLE_RATE_REINITIALISATION = '10000/min'
+  $env:THROTTLE_RATE_ECHECS_CONNEXION = '10000/min'
+  $env:THROTTLE_RATE_ECHECS_REINITIALISATION = '10000/min'
+  $env:THROTTLE_RATE_ECHECS_TOUS = '10000/min'
+  $env:THROTTLE_RATE_CHANGEMENT_MOT_DE_PASSE = '10000/min'
+  $env:THROTTLE_RATE_MOT_DE_PASSE_OUBLIE = '10000/hour'
+
+  # Comptes de test avec un mot de passe connu (e2e uniquement : la commande refuse tout hors
+  # DEBUG et hors base onea_e2e_<nombre>). Les specs se connectent par le vrai formulaire.
+  if (-not $env:E2E_PASSWORD) { $env:E2E_PASSWORD = 'Onea-e2e-2026-pwd' }
+  Push-Location (Join-Path $Root 'backend')
+  & $Py manage.py creer_comptes_e2e
+  $seeded = $LASTEXITCODE
+  Pop-Location
+  if ($seeded) { throw 'creer_comptes_e2e a échoué' }
+
   $Procs += Start-Process -FilePath $Py -ArgumentList @('manage.py', 'runserver', "127.0.0.1:$ApiPort", '--noreload') `
     -WorkingDirectory (Join-Path $Root 'backend') -WindowStyle Hidden -PassThru `
     -RedirectStandardOutput (Join-Path $Tmp 'api.log') -RedirectStandardError (Join-Path $Tmp 'api.err.log')
   Wait-Http "http://127.0.0.1:$ApiPort/api/v1/health/" 90
 
-  $env:VITE_API_URL = "http://localhost:$ApiPort"
-  $env:VITE_OIDC_AUTHORITY = "http://localhost:$KcPort/realms/onea"
+  # Même origine : le navigateur parle à Vite, qui relaie /api vers Django (ONEA_API_URL).
+  $env:VITE_API_URL = "http://localhost:$WebPort"
+  $env:ONEA_API_URL = "http://127.0.0.1:$ApiPort"
   $Procs += Start-Process -FilePath 'node' `
     -ArgumentList @('node_modules\vite\bin\vite.js', '--host', 'localhost', '--port', $WebPort, '--strictPort') `
     -WorkingDirectory (Join-Path $Root 'frontend') -WindowStyle Hidden -PassThru `
@@ -125,7 +145,6 @@ try {
   Wait-Http "http://localhost:$WebPort/" 90
 
   $env:E2E_API_URL = "http://localhost:$ApiPort"
-  $env:E2E_OIDC_AUTHORITY = "http://localhost:$KcPort/realms/onea"
   $env:E2E_RUN_ID = "$Stamp"
   $env:E2E_WEB_EXTERNAL = '1'
   $env:WEB_PORT = "$WebPort"

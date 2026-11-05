@@ -93,7 +93,7 @@ journalise en ERROR). Procédures : `docs/exploitation/runbook.md` §11.
 Deux emplacements de fichiers sont à protéger : le **dossier des documents** (`DOCUMENTS_HOST_DIR`,
 cette page) et le **volume Docker `onea-fichiers`** (pièces justificatives du lot 6, `FICHIERS_RACINE`,
 jamais exposé par nginx). `scripts/backup.sh` (en root, `sudo` : le dossier appartient à 10001, mode
-`0750`) sauvegarde, dans cet ordre : la base applicative, la base Keycloak, le volume `onea-fichiers`
+`0750`) sauvegarde, dans cet ordre : la base applicative, le volume `onea-fichiers`
 (`fichiers-<horodatage>.tar.gz`), puis le dossier des documents (`documents-<horodatage>.tar.gz`). Chaque
 archive est écrite en `.tmp`, vérifiée (`tar -tzf`) puis renommée ; un manifeste `manifeste-<horodatage>.sha256`
 (SHA-256 des dumps et archives) est écrit en dernier. 14 jeux sont conservés.
@@ -112,8 +112,8 @@ restic chiffré (destinations acceptées, mot de passe, minuteries et alerte par
 `sudo sh scripts/restore.sh <horodatage> --oui --dossier <dossier de sauvegarde>` automatise la
 procédure ; le détail et les garde-fous sont dans `docs/deploy.md`, §7.4. En résumé :
 
-1. contrôle du manifeste (refus d'un jeu altéré), arrêt de `web`, `worker`, `beat`, `keycloak` ;
-2. `pg_restore --clean --if-exists --single-transaction` des deux bases, puis `installer_gardes_sql`
+1. contrôle du manifeste (refus d'un jeu altéré), arrêt de `web`, `worker`, `worker-auth`, `beat` ;
+2. `pg_restore --clean --if-exists --single-transaction` de la base applicative, puis `installer_gardes_sql`
    (déclencheurs de gel et droits de `onea_app`, que le dump ne suffit pas à garantir) ;
 3. le dossier des documents est **déplacé** en `<DOCUMENTS_HOST_DIR>-avant-restauration-<horodatage>`,
    l'archive est extraite, puis `chown -R 10001:10001` et `chmod 0750` ;

@@ -3,6 +3,7 @@ from typing import Any, cast
 
 from auditlog.models import LogEntry
 from django.conf import settings
+from django.db.models import QuerySet
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.views import defaults
 from django_filters.rest_framework import DjangoFilterBackend
@@ -18,12 +19,12 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 from apps.core import metriques
 from apps.core.schema import ERROR_400, ERROR_RESPONSES
 from apps.documents.stockage import etat_stockage
-from apps.users.models import User
-from apps.users.permissions import IsAdmin, IsRAIOrAdmin
+from apps.users.models import Role, User
+from apps.users.permissions import HasRole, IsAdmin, IsRAIOrAdmin
 from config import __version__
 
 from . import parametres
-from .filters import AuditLogFilter
+from .filters import AuditLogFilter, filtre_categorie
 from .serializers import (
     AuditLogSerializer,
     ParametreJournalEcritureSerializer,
@@ -78,7 +79,7 @@ def metrics(request: Request) -> HttpResponse:
 @extend_schema_view(
     list=extend_schema(
         operation_id="audit_log_list",
-        summary="Piste d'audit (ADMIN, RAI)",
+        summary="Piste d'audit (ADMIN, RAI ; DG : règles de gouvernance seulement)",
         responses={200: AuditLogSerializer(many=True), **ERROR_400, **ERROR_RESPONSES},
     ),
     retrieve=extend_schema(
@@ -93,9 +94,17 @@ class AuditLogViewSet(ReadOnlyModelViewSet[LogEntry]):
         "-timestamp", "-id"
     )
     serializer_class = AuditLogSerializer
-    permission_classes = [IsRAIOrAdmin]
+    permission_classes = [HasRole(Role.ADMIN, Role.RAI, Role.DG)]
     filterset_class = AuditLogFilter
     filter_backends = [DjangoFilterBackend]
+
+    def get_queryset(self) -> QuerySet[LogEntry]:
+        queryset = super().get_queryset()
+        user = self.request.user
+        # Le DG lit le journal des règles de gouvernance, rien d'autre.
+        if isinstance(user, User) and user.role == Role.DG:
+            return filtre_categorie(queryset, "gouvernance")
+        return queryset
 
 
 def _reglage_journal() -> dict[str, object]:

@@ -13,4 +13,4 @@ foreach ($name in 'web', 'api') {
   }
 }
 $compose = @('compose', '--env-file', (Join-Path $Root '.env'), '-f', (Join-Path $Root 'docker\compose.yml'), '-f', (Join-Path $Root 'docker\compose.dev.yml'))
-if ($Purge) { & docker @compose down -v } else { & docker @compose stop db redis keycloak }
+if ($Purge) { & docker @compose down -v } else { & docker @compose stop db redis mailpit }

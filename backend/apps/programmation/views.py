@@ -30,13 +30,15 @@ from apps.core.throttling import ThrottleParActionMixin
 from apps.referentiel.models import Direction
 from apps.referentiel.permissions import RolePermission
 from apps.referentiel.renderers import PassthroughRenderer
-from apps.users.models import User
+from apps.users.models import Role, User
+from apps.users.permissions import HasRole
 
 from . import exports, pdf, services
 from .filters import LigneFilter, ProgrammeFilter
-from .models import LigneProgramme, ProgrammeAnnuel
+from .models import ApprobationProgramme, LigneProgramme, ProgrammeAnnuel
 from .permissions import ECRITURE_PROGRAMME, LECTURE_PROGRAMME
 from .serializers import (
+    ApprobationEcritureSerializer,
     LigneProgrammeSerializer,
     ProgrammeAnnuelSerializer,
     SyntheseProgrammeSerializer,
@@ -66,13 +68,20 @@ class _ProgrammeViewSet[M: ProgrammeAnnuel | LigneProgramme](
 
 def _programmes_annotes() -> QuerySet[ProgrammeAnnuel]:
     actives = Q(lignes__deleted_at__isnull=True)
-    return ProgrammeAnnuel.objects.select_related("valide_par").annotate(
-        nb_lignes=Count("lignes", filter=actives),
-        charge_totale_jours=Coalesce(
-            Sum("lignes__charge_prevue_jours", filter=actives),
-            Value(Decimal("0")),
-            output_field=DecimalField(max_digits=10, decimal_places=1),
-        ),
+    approbations = Prefetch(
+        "approbations", queryset=ApprobationProgramme.objects.select_related("approuve_par")
+    )
+    return (
+        ProgrammeAnnuel.objects.select_related("valide_par")
+        .prefetch_related(approbations)
+        .annotate(
+            nb_lignes=Count("lignes", filter=actives),
+            charge_totale_jours=Coalesce(
+                Sum("lignes__charge_prevue_jours", filter=actives),
+                Value(Decimal("0")),
+                output_field=DecimalField(max_digits=10, decimal_places=1),
+            ),
+        )
     )
 
 
@@ -116,6 +125,36 @@ class ProgrammeAnnuelViewSet(_ProgrammeViewSet[ProgrammeAnnuel]):
     def validate(self, request: Request, pk: str | None = None) -> Response:
         programme = self.get_object()
         services.valider_programme(programme, by=self.acteur)
+        return Response(ProgrammeAnnuelSerializer(self.get_queryset().get(pk=programme.pk)).data)
+
+    def get_permissions(self) -> Any:
+        if self.action == "approve":
+            return [HasRole(Role.DG)()]
+        return super().get_permissions()
+
+    @extend_schema(
+        tags=[TAG],
+        summary="Enregistrer l'approbation d'un programme validé (DG)",
+        description=(
+            "Règle de gouvernance « approbation du programme annuel » : le DG enregistre son "
+            "approbation, puis, si la règle l'exige, celle du Conseil (date et référence de la "
+            "délibération). Ajout seul."
+        ),
+        request=ApprobationEcritureSerializer,
+        responses={
+            200: ProgrammeAnnuelSerializer,
+            **ERROR_400,
+            **ERROR_RESPONSES,
+            **ERROR_404,
+            **ERROR_422,
+        },
+    )
+    @action(detail=True, methods=["post"], pagination_class=None, filter_backends=[])
+    def approve(self, request: Request, pk: str | None = None) -> Response:
+        programme = self.get_object()
+        corps = ApprobationEcritureSerializer(data=request.data)
+        corps.is_valid(raise_exception=True)
+        services.approuver_programme(programme, **corps.validated_data, by=self.acteur)
         return Response(ProgrammeAnnuelSerializer(self.get_queryset().get(pk=programme.pk)).data)
 
     @extend_schema(

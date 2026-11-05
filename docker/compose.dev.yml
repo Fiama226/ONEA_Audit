@@ -1,5 +1,5 @@
-# Development overlay: publishes host ports, adds Keycloak (start-dev, test realm)
-# and Mailpit. DEV ONLY - production is docker/compose.prod.yml.
+# Development overlay: publishes host ports and adds Mailpit (dev e-mail catcher).
+# DEV ONLY - production is docker/compose.prod.yml.
 # Every host port can be overridden (see .env.example) when it is already taken.
 services:
   db:
@@ -17,38 +17,6 @@ services:
   gotenberg:
     ports:
       - "127.0.0.1:${GOTENBERG_PORT:-3000}:3000"
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.8.1
-    command: ["start-dev", "--import-realm"]
-    environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
-      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required (see .env.example)}
-      KC_HEALTH_ENABLED: "true"
-      KC_HOSTNAME_STRICT: "false"
-      KC_HTTP_ENABLED: "true"
-      # Substituted into realm-onea.json (${OIDC_RP_CLIENT_SECRET}) at import time.
-      OIDC_RP_CLIENT_SECRET: ${OIDC_RP_CLIENT_SECRET:?OIDC_RP_CLIENT_SECRET is required (see .env.example)}
-      # Secret of the onea-admin-sync service account (${KEYCLOAK_ADMIN_API_CLIENT_SECRET} in the realm).
-      KEYCLOAK_ADMIN_API_CLIENT_SECRET: ${KEYCLOAK_ADMIN_API_CLIENT_SECRET:?KEYCLOAK_ADMIN_API_CLIENT_SECRET is required (see .env.example)}
-    volumes:
-      - ./keycloak/realm-onea.json:/opt/keycloak/data/import/realm-onea.json:ro
-      - ./keycloak/themes/onea:/opt/keycloak/themes/onea:ro
-    ports:
-      - "127.0.0.1:${KEYCLOAK_PORT:-8080}:8080"
-    healthcheck:
-      # No curl in the image: raw HTTP on the management port through bash.
-      test:
-        - CMD-SHELL
-        - >-
-          exec 3<>/dev/tcp/127.0.0.1/9000 &&
-          printf 'GET /health/ready HTTP/1.0\r\n\r\n' >&3 &&
-          grep -q '"status": "UP"' <&3
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 40s
-    restart: unless-stopped
 
   mailpit:
     image: axllent/mailpit:v1.32.0
@@ -88,7 +56,8 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-onea}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required (see .env.example)}@db:5432/${POSTGRES_DB:-onea}
       REDIS_URL: redis://redis:6379/0
       EMAIL_URL: smtp://mailpit:1025
-    command: ["celery", "-A", "config", "worker", "-l", "info"]
+    # The default queue and `auth` (authentication emails, CELERY_TASK_ROUTES).
+    command: ["celery", "-A", "config", "worker", "-l", "info", "-Q", "celery,auth"]
     healthcheck:
       disable: true  # the image HEALTHCHECK targets gunicorn, not celery
     depends_on:

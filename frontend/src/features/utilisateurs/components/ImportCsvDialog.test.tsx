@@ -1,7 +1,7 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { axe } from "vitest-axe";
 import { API_URL, server } from "@/test/msw";
 import { renderWithAuth } from "@/test/shell";
@@ -23,7 +23,7 @@ async function choose(f = file()) {
 describe("ImportCsvDialog", () => {
   it("explains the format and the ADMIN restriction", () => {
     renderDialog();
-    expect(screen.getByText(/UTF-8, 1 000 lignes au plus/)).toBeInTheDocument();
+    expect(screen.getByText(/UTF-8, 300 lignes au plus/)).toBeInTheDocument();
     expect(
       screen.getByText(/Le rôle ADMIN ne peut pas être attribué par fichier/),
     ).toBeInTheDocument();
@@ -49,7 +49,7 @@ describe("ImportCsvDialog", () => {
       await screen.findByText("Vérification — aucun compte n'a encore été créé"),
     ).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /chef/ })).toHaveTextContent(
-      "3chefLe rôle ADMIN ne s'attribue que dans l'annuaire (Keycloak).",
+      "3chefLe rôle Administrateur ne peut pas être attribué par import.",
     );
     expect(sent).toEqual(["true"]);
     expect(screen.getByRole("button", { name: "Importer" })).toBeEnabled();
@@ -106,6 +106,209 @@ describe("ImportCsvDialog", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Le fichier dépasse 1 Mo.");
     expect(screen.getByRole("button", { name: "Vérifier le fichier" })).toBeDisabled();
     expect(calls).toBe(0);
+  });
+
+  it("sends the welcome email option, checked by default", async () => {
+    const sent: [string, string][] = [];
+    server.use(
+      http.post(URL_CSV, async ({ request }) => {
+        const form = await request.formData();
+        sent.push([String(form.get("dry_run")), String(form.get("envoyer_courriel"))]);
+        return HttpResponse.json(aReport({ dry_run: form.get("dry_run") === "true" }));
+      }),
+    );
+    const user = userEvent.setup();
+    renderDialog();
+    const option = screen.getByRole("checkbox", {
+      name: "Envoyer le courriel de bienvenue à chaque compte créé",
+    });
+    expect(option).toBeChecked();
+    expect(option).toHaveAccessibleDescription(/télécharger une seule fois/);
+    await choose();
+    await user.click(screen.getByRole("button", { name: "Vérifier le fichier" }));
+    await screen.findByText("Vérification — aucun compte n'a encore été créé");
+    await user.click(option);
+    await user.click(screen.getByRole("button", { name: "Importer" }));
+    await screen.findByText("Import terminé");
+    expect(sent).toEqual([
+      ["true", "true"],
+      ["false", "false"],
+    ]);
+  });
+
+  it("downloads the password file once, then says it is gone", async () => {
+    const ID = "3f2b8f0e-4c1a-4d6e-9a7b-1c2d3e4f5a6b";
+    let downloads = 0;
+    server.use(
+      http.post(URL_CSV, async ({ request }) => {
+        const dry = (await request.formData()).get("dry_run") === "true";
+        return HttpResponse.json(
+          aReport({ dry_run: dry, fichier_mots_de_passe_id: dry ? null : ID }),
+        );
+      }),
+      http.get(`${API_URL}/api/v1/user-accounts/import-passwords/${ID}/`, () => {
+        downloads += 1;
+        if (downloads > 1) {
+          return HttpResponse.json({ detail: "Introuvable.", errors: {} }, { status: 404 });
+        }
+        return new HttpResponse("identifiant;mot_de_passe\na.b;Tmp-1\n", {
+          headers: {
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition": 'attachment; filename="mots-de-passe-temporaires.csv"',
+          },
+        });
+      }),
+    );
+    const { createObjectURL, revokeObjectURL } = URL;
+    const createUrl = vi.fn(() => "blob:mots-de-passe");
+    URL.createObjectURL = createUrl;
+    URL.revokeObjectURL = vi.fn();
+    onTestFinished(() => {
+      URL.createObjectURL = createObjectURL;
+      URL.revokeObjectURL = revokeObjectURL;
+    });
+    const user = userEvent.setup();
+    renderDialog();
+    await choose();
+    await user.click(screen.getByRole("button", { name: "Vérifier le fichier" }));
+    await screen.findByText("Vérification — aucun compte n'a encore été créé");
+    expect(
+      screen.queryByRole("button", { name: "Télécharger le fichier des mots de passe" }),
+    ).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Importer" }));
+    await screen.findByText("Import terminé");
+
+    expect(screen.getByText(/ne peut être téléchargé qu'une seule fois/)).toBeVisible();
+    const download = screen.getByRole("button", {
+      name: "Télécharger le fichier des mots de passe",
+    });
+    await user.click(download);
+    expect(await screen.findByText(/Fichier téléchargé/)).toBeVisible();
+    expect(createUrl).toHaveBeenCalledTimes(1);
+    expect(downloads).toBe(1);
+    // Téléchargé une fois : le bouton disparaît, plus aucun appel n'est possible.
+    expect(
+      screen.queryByRole("button", { name: "Télécharger le fichier des mots de passe" }),
+    ).toBeNull();
+  });
+
+  it("explains that the password file is gone on a 404", async () => {
+    const ID = "3f2b8f0e-4c1a-4d6e-9a7b-1c2d3e4f5a6b";
+    server.use(
+      http.post(URL_CSV, async ({ request }) => {
+        const dry = (await request.formData()).get("dry_run") === "true";
+        return HttpResponse.json(
+          aReport({ dry_run: dry, fichier_mots_de_passe_id: dry ? null : ID }),
+        );
+      }),
+      http.get(`${API_URL}/api/v1/user-accounts/import-passwords/${ID}/`, () =>
+        HttpResponse.json({ detail: "Introuvable.", errors: {} }, { status: 404 }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderDialog();
+    await choose();
+    await user.click(screen.getByRole("button", { name: "Vérifier le fichier" }));
+    await screen.findByText("Vérification — aucun compte n'a encore été créé");
+    await user.click(screen.getByRole("button", { name: "Importer" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Télécharger le fichier des mots de passe" }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Ce fichier n'est plus disponible/);
+  });
+
+  describe("verrou tant que le fichier des mots de passe n'est pas téléchargé", () => {
+    const ID = "3f2b8f0e-4c1a-4d6e-9a7b-1c2d3e4f5a6b";
+
+    async function importWithPasswordFile() {
+      server.use(
+        http.post(URL_CSV, async ({ request }) => {
+          const dry = (await request.formData()).get("dry_run") === "true";
+          return HttpResponse.json(
+            aReport({ dry_run: dry, fichier_mots_de_passe_id: dry ? null : ID }),
+          );
+        }),
+      );
+      const onOpenChange = vi.fn();
+      renderWithAuth(<ImportCsvDialog open onOpenChange={onOpenChange} />, "ADMIN");
+      const user = userEvent.setup();
+      await choose();
+      await user.click(screen.getByRole("button", { name: "Vérifier le fichier" }));
+      await screen.findByText("Vérification — aucun compte n'a encore été créé");
+      await user.click(screen.getByRole("button", { name: "Importer" }));
+      await screen.findByText("Import terminé");
+      return { user, onOpenChange };
+    }
+
+    it("ni Échap, ni clic extérieur, ni « Fermer » sans confirmation explicite", async () => {
+      const { user, onOpenChange } = await importWithPasswordFile();
+      await user.keyboard("{Escape}");
+      fireEvent.pointerDown(document.body);
+      expect(onOpenChange).not.toHaveBeenCalled();
+      // Une seule commande de fermeture (pas de croix), celle qui demande confirmation.
+      expect(screen.getAllByRole("button", { name: "Fermer" })).toHaveLength(1);
+
+      await user.click(screen.getByRole("button", { name: "Fermer" }));
+      expect(onOpenChange).not.toHaveBeenCalled();
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        /il ne pourra plus être téléchargé/,
+      );
+      // Revenir : l'avertissement disparaît, le téléchargement reste possible.
+      await user.click(screen.getByRole("button", { name: "Revenir au téléchargement" }));
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Télécharger le fichier des mots de passe" }),
+      ).toBeEnabled();
+
+      await user.click(screen.getByRole("button", { name: "Fermer" }));
+      await user.click(await screen.findByRole("button", { name: "Fermer sans télécharger" }));
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("fichier téléchargé : la fenêtre se ferme normalement", async () => {
+      server.use(
+        http.get(
+          `${API_URL}/api/v1/user-accounts/import-passwords/${ID}/`,
+          () =>
+            new HttpResponse("identifiant;mot_de_passe\na.b;Tmp-1\n", {
+              headers: { "Content-Type": "text/csv; charset=utf-8" },
+            }),
+        ),
+      );
+      const { createObjectURL, revokeObjectURL } = URL;
+      URL.createObjectURL = vi.fn(() => "blob:mots-de-passe");
+      URL.revokeObjectURL = vi.fn();
+      onTestFinished(() => {
+        URL.createObjectURL = createObjectURL;
+        URL.revokeObjectURL = revokeObjectURL;
+      });
+      const { user, onOpenChange } = await importWithPasswordFile();
+      await user.click(
+        screen.getByRole("button", { name: "Télécharger le fichier des mots de passe" }),
+      );
+      await screen.findByText(/Fichier téléchargé/);
+      await user.click(screen.getByRole("button", { name: "Fermer" }));
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("pendant l'envoi : Échap ignoré et bouton d'annulation désactivé", async () => {
+      server.use(
+        http.post(URL_CSV, async () => {
+          await new Promise((r) => setTimeout(r, 300));
+          return HttpResponse.json(aReport());
+        }),
+      );
+      const onOpenChange = vi.fn();
+      renderWithAuth(<ImportCsvDialog open onOpenChange={onOpenChange} />, "ADMIN");
+      const user = userEvent.setup();
+      await choose();
+      await user.click(screen.getByRole("button", { name: "Vérifier le fichier" }));
+      expect(screen.getByRole("button", { name: "Annuler" })).toBeDisabled();
+      await user.keyboard("{Escape}");
+      expect(onOpenChange).not.toHaveBeenCalled();
+      await screen.findByRole("table");
+      expect(screen.getByRole("button", { name: "Annuler" })).toBeEnabled();
+    });
   });
 
   it("disables the file input while the check runs", async () => {

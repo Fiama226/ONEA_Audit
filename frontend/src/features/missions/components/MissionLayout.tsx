@@ -2,6 +2,7 @@ import { Link, Outlet, useLocation, useParams } from "react-router-dom";
 import { isApiError } from "@/api/errors";
 import { useRole } from "@/auth/useRole";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MissionDocuments } from "@/features/documents/components/DocumentInline";
 import { fr } from "@/i18n/fr";
 import { cn } from "@/lib/utils";
 import { useMission } from "../api";
@@ -149,7 +150,7 @@ export function MissionLayout() {
           <h2 id="mission-documents" className="mb-2 text-sm font-semibold">
             {fr.missions.documentsPanel}
           </h2>
-          <p className="text-sm text-text-muted">{fr.missions.documentsSoon}</p>
+          <MissionDocuments missionId={data.id} />
         </aside>
       </div>
     </>

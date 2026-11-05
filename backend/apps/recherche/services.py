@@ -11,12 +11,16 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
+from django.db.models import Q
 from rest_framework.exceptions import ValidationError
 
+from apps.gouvernance import regles_gouvernance
+from apps.missions.models import StatutMission
 from apps.users.models import User
 
 from .client import MARQUEUR_DEBUT, MARQUEUR_FIN, Hit, echapper_filtre, moteur
-from .sources import SOURCES
+from .exceptions import RechercheIndisponibleError
+from .sources import SOURCES, TYPE_CONSTAT, TYPE_MISSION, _constats_lus, _perimetre_missions
 from .visibilite import filtre_pour
 
 logger = logging.getLogger(__name__)
@@ -31,6 +35,9 @@ LOT_REINDEXATION = 500
 class ResultatRecherche:
     resultats: list[Hit]
     plus: bool
+    # Vrai quand le moteur ne répond pas : recherche en base des missions (et des constats si
+    # la règle de gouvernance « repli de la recherche » l'étend).
+    degrade: bool = False
 
 
 def nettoyer_requete(q: str) -> str:
@@ -103,6 +110,74 @@ def _reverifier(
     return confirmes, rejetes
 
 
+def _hits_missions(user: User, q: str, limite: int) -> list[Hit]:
+    missions = (
+        _perimetre_missions(user)
+        .exclude(statut=StatutMission.BROUILLON)
+        .filter(Q(reference__icontains=q) | Q(titre__icontains=q))
+        .order_by("-updated_at", "pk")[: limite + 1]
+    )
+    return [
+        Hit(
+            id=f"{TYPE_MISSION}-{m.pk}",
+            type=TYPE_MISSION,
+            objet_id=str(m.pk),
+            mission_id=str(m.pk),
+            titre=m.titre,
+            sous_titre=m.reference,
+            extrait="",
+        )
+        for m in missions
+    ]
+
+
+def _hits_constats(user: User, q: str, limite: int) -> list[Hit]:
+    """Constats lisibles (mêmes requêtes que la revérification), mission indexable comme dans
+    l'index : brouillons de mission et supprimés exclus."""
+    constats = (
+        _constats_lus(user)
+        .filter(mission__deleted_at__isnull=True)
+        .exclude(mission__statut=StatutMission.BROUILLON)
+        .filter(Q(reference__icontains=q) | Q(titre__icontains=q))
+        .select_related("entite")
+        .order_by("-updated_at", "pk")[: limite + 1]
+    )
+    return [
+        Hit(
+            id=f"{TYPE_CONSTAT}-{c.pk}",
+            type=TYPE_CONSTAT,
+            objet_id=str(c.pk),
+            mission_id=str(c.mission_id),
+            titre=c.titre or c.reference,
+            sous_titre=c.entite.libelle if c.entite_id else "",
+            extrait="",
+        )
+        for c in constats
+    ]
+
+
+def _repli(user: User, q: str, limite: int, types: list[str] | None) -> ResultatRecherche:
+    """Moteur indisponible : recherche directement en base (référence, titre), mode dégradé.
+
+    Règle de gouvernance « repli de la recherche » : missions seules (par défaut), ou missions
+    et constats. Mêmes droits que l'API ; brouillons exclus comme dans l'index. Un type hors de
+    cette portée (documents, actions...) n'est pas cherché ; une requête qui ne vise que des
+    types hors portée reste en 503.
+    """
+    portee = {TYPE_MISSION}
+    if regles_gouvernance.search_fallback_includes_findings():
+        portee.add(TYPE_CONSTAT)
+    voulus = portee if types is None else portee & set(types)
+    if not voulus:
+        raise RechercheIndisponibleError
+    hits: list[Hit] = []
+    if TYPE_MISSION in voulus:
+        hits.extend(_hits_missions(user, q, limite))
+    if TYPE_CONSTAT in voulus:
+        hits.extend(_hits_constats(user, q, limite))
+    return ResultatRecherche(hits[:limite], len(hits) > limite, degrade=True)
+
+
 def rechercher(
     user: User, q: str, *, types: list[str] | None = None, limite: int = 20
 ) -> ResultatRecherche:
@@ -111,7 +186,10 @@ def rechercher(
     filtre = filtre_pour(user)
     if filtre is None:
         return ResultatRecherche([], False)
-    hits = moteur().rechercher(propre, filtre=_filtre_types(filtre, types), limite=limite + 1)
+    try:
+        hits = moteur().rechercher(propre, filtre=_filtre_types(filtre, types), limite=limite + 1)
+    except RechercheIndisponibleError:
+        return _repli(user, propre, limite, types)
     confirmes, rejetes = _reverifier(user, hits, types)
     if rejetes:
         _demander_reindexation(rejetes)

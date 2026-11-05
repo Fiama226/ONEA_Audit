@@ -11,7 +11,6 @@ export type UserFilterValues = {
   role: string;
   statut: string;
   direction: string;
-  sync: string;
 };
 
 const SEARCH_DELAY_MS = 300;
@@ -109,18 +108,6 @@ export function UserFilters({
               {directionLabel(d.code, d.libelle)}
             </option>
           ))}
-        </NativeSelect>
-      </div>
-      <div className="grid gap-1.5">
-        <Label htmlFor="user-filter-sync">{t.sync}</Label>
-        <NativeSelect
-          id="user-filter-sync"
-          value={values.sync}
-          onChange={(e) => onChange({ sync: e.target.value })}
-        >
-          <option value="">{t.syncAll}</option>
-          <option value="ECHEC">{t.syncFailed}</option>
-          <option value="EN_ATTENTE">{t.syncPending}</option>
         </NativeSelect>
       </div>
     </form>

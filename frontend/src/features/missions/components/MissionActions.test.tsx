@@ -74,7 +74,9 @@ describe("MissionActions", () => {
     await openMenu();
     await userEvent.click(screen.getByRole("menuitem", { name: m.actionPlan }));
     await userEvent.click(await screen.findByRole("button", { name: m.confirmPlan }));
-    expect(await screen.findByText("Les objectifs sont obligatoires.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Objectifs : Les objectifs sont obligatoires."),
+    ).toBeInTheDocument();
     expect(screen.getByText("Des informations obligatoires manquent.")).toBeInTheDocument();
   });
 

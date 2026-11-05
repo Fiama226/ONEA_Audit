@@ -6,6 +6,7 @@ from apps.missions.models import EtapeMission, Mission, StatutEtape
 from apps.missions.services.etapes import demarrer_etape
 from apps.missions.signals import etape_changee
 from apps.users.models import User
+from tests.missions.conftest import forcer_etapes
 
 pytestmark = pytest.mark.django_db
 
@@ -25,6 +26,7 @@ def test_signal_emis_par_transition(mission_lancee: Mission, chef: User) -> None
             }
         )
 
+    forcer_etapes(mission_lancee, {1: "TERMINEE", 2: "TERMINEE", 4: "TERMINEE"})
     etape_changee.connect(recepteur, weak=False)
     try:
         demarrer_etape(mission_lancee.etapes.get(numero=3), by=chef)
@@ -47,6 +49,7 @@ def test_exception_du_recepteur_annule_la_transition(mission_lancee: Mission, ch
     def recepteur(**_: Any) -> None:
         raise RuntimeError("boom")
 
+    forcer_etapes(mission_lancee, {1: "TERMINEE", 2: "TERMINEE"})
     etape_changee.connect(recepteur, weak=False)
     try:
         with pytest.raises(RuntimeError):

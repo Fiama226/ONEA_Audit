@@ -260,6 +260,19 @@ PHASE_DU_STATUT: dict[str, Phase] = {
     StatutMission.EN_COMMUNICATION: Phase.COMMUNICATION,
 }
 
+# Étapes à clore avant de démarrer une étape (enchaînement IFACI dans une phase). Les premières
+# étapes d'une phase (XI, XV) sont gardées par le changement de phase ; XII et XIII se déroulent
+# en parallèle après XI. Un jalon précédent doit être validé, pas seulement terminé.
+PREDECESSEURS: dict[int, tuple[int, ...]] = {
+    **{n: (n - 1,) for n in range(2, 11)},
+    11: (),
+    12: (11,),
+    13: (11,),
+    14: (12, 13),
+    15: (),
+    **{n: (n - 1,) for n in range(16, 19)},
+}
+
 ETAPES_DE_PHASE: dict[Phase, range] = {
     Phase.PLANIFICATION: range(1, 11),
     Phase.ACCOMPLISSEMENT: range(11, 15),

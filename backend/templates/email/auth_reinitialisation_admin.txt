@@ -1,0 +1,11 @@
+{% extends "email/base.txt" %}{% block content %}Bonjour {{ name }},
+
+Le mot de passe de votre compte sur la plateforme d'audit interne de l'ONEA a été réinitialisé par l'administration.
+
+Adresse de connexion : {{ url }}
+Identifiant : {{ identifiant }}
+Mot de passe temporaire : {{ mot_de_passe }}
+
+Ce mot de passe est valable 72 heures et à usage unique : vous devrez en choisir un nouveau dès votre prochaine connexion. Ne le communiquez à personne.
+
+Si vous n'êtes pas à l'origine de cette demande, signalez-le sans attendre à l'administrateur de la plateforme.{% endblock %}

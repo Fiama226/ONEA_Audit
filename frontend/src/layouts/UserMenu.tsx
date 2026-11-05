@@ -1,4 +1,4 @@
-import { ChevronDown, CircleHelp, LogOut, UserRound } from "lucide-react";
+import { ChevronDown, CircleHelp, KeyRound, LogOut, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTutoriel } from "@/features/tutoriel/context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AUTH_PATHS } from "@/auth/paths";
 import { useAuth } from "@/auth/useAuth";
 import { fr } from "@/i18n/fr";
 import { initialsOf } from "./initials";
@@ -63,6 +64,12 @@ export function UserMenu() {
           <Link to="/mon-compte">
             <UserRound aria-hidden />
             {fr.tutoriel.menuAccount}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="h-9 gap-3 px-3">
+          <Link to={AUTH_PATHS.change} state={{ from: "/mon-compte" }}>
+            <KeyRound aria-hidden />
+            {fr.tutoriel.menuPassword}
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem className="h-9 gap-3 px-3" onSelect={relancer}>

@@ -2,12 +2,14 @@
 # Tests e2e (Playwright) sur une base PostgreSQL jetable : jamais la base "onea" de dev.
 # Usage : scripts/e2e.sh [arguments Playwright]      (ex. scripts/e2e.sh e2e/login.spec.ts)
 #
-# Exige la pile de dev (services db et keycloak du compose). Crée onea_e2e_<horodatage>, la
+# Exige la pile de dev (service db du compose). Crée onea_e2e_<horodatage>, la
 # migre, lance l'API sur 127.0.0.1:8010 (documents dans un dossier temporaire) et Vite sur 5174,
 # exécute Playwright, puis (trap) arrête les serveurs, supprime la base et le dossier temporaire.
 # La pile de dev (8000/5173, base onea) continue de tourner. Compare les comptes de
 # missions_mission et referentiel_cartographieversion de la base onea avant/après.
 #
+# Les comptes de test (admin, rai, dg, auditeur1, auditeur2, delegue1, audite1) sont créés par
+# `manage.py creer_comptes_e2e` avec le mot de passe E2E_PASSWORD (défaut dans ce script).
 # Variables : E2E_DB_NAME (doit valoir ^onea_e2e_[0-9]+$, sinon code 2 avant toute écriture),
 # E2E_API_PORT (8010), E2E_WEB_PORT (5174), PYTHON (interpréteur), ONEA_VENV, DB_PORT, REDIS_PORT.
 # Codes : 2 nom de base refusé ; 3 pile de dev absente ; 4 comptes de la base onea modifiés.
@@ -36,7 +38,6 @@ PGPASS_="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant (voir .env.example)}"
 DEV_DB="${POSTGRES_DB:-onea}"
 DB_HOST_PORT="${DB_PORT:-5432}"
 REDIS_HOST_PORT="${REDIS_PORT:-6379}"
-KC_PORT="${KEYCLOAK_PORT:-8080}"
 
 compose() {
   docker compose --env-file "$ROOT/.env" -f "$ROOT/docker/compose.yml" -f "$ROOT/docker/compose.dev.yml" "$@"
@@ -44,7 +45,7 @@ compose() {
 
 # 2. La pile de dev doit tourner.
 running="$(compose ps --status running --services 2>/dev/null)"
-for service in db keycloak; do
+for service in db; do
   if ! printf '%s\n' "$running" | grep -qx "$service"; then
     echo "Pile de dev absente : le service '$service' ne tourne pas (make up)." >&2
     exit 3
@@ -117,28 +118,44 @@ export DJANGO_SETTINGS_MODULE=config.settings.dev
 export DATABASE_URL="postgres://${PGUSER_}:${PGPASS_}@localhost:${DB_HOST_PORT}/${DB_NAME}"
 export DOCUMENTS_ROOT="$TMP/documents"
 export FICHIERS_RACINE="$TMP/fichiers"
-export CORS_ALLOWED_ORIGINS="http://localhost:${WEB_PORT}"
 # Isolation des services partagés : aucun index de recherche ni file Celery de la pile de dev.
 export MEILI_URL="http://127.0.0.1:9"
 export REDIS_URL="redis://localhost:${REDIS_HOST_PORT}/14"
-export OIDC_OP_BASE_URL="http://localhost:${KC_PORT}/realms/onea"
 
 (cd "$ROOT/backend" && "$PY" manage.py migrate --noinput) || { STATUS=1; exit 1; }
+
+# Limites de débit relevées : la suite se connecte des dizaines de fois par minute depuis la même
+# IP (seaux de l'authentification, backend/apps/users/auth_throttles.py). E2e jetable uniquement.
+export THROTTLE_RATE_CONNEXION="10000/min"
+export THROTTLE_RATE_CONNEXION_CODE="10000/min"
+export THROTTLE_RATE_MOT_DE_PASSE_OUBLIE_IP="10000/min"
+export THROTTLE_RATE_REINITIALISATION="10000/min"
+export THROTTLE_RATE_ECHECS_CONNEXION="10000/min"
+export THROTTLE_RATE_ECHECS_REINITIALISATION="10000/min"
+export THROTTLE_RATE_ECHECS_TOUS="10000/min"
+export THROTTLE_RATE_CHANGEMENT_MOT_DE_PASSE="10000/min"
+export THROTTLE_RATE_MOT_DE_PASSE_OUBLIE="10000/hour"
+
+# Comptes de test avec un mot de passe connu (e2e uniquement : la commande refuse tout hors
+# DEBUG et hors base onea_e2e_<nombre>). Les specs se connectent par le vrai formulaire.
+E2E_PASSWORD="${E2E_PASSWORD:-Onea-e2e-2026-pwd}"
+export E2E_PASSWORD
+(cd "$ROOT/backend" && "$PY" manage.py creer_comptes_e2e) || { STATUS=1; exit 1; }
 
 (cd "$ROOT/backend" && exec "$PY" manage.py runserver "127.0.0.1:${API_PORT}" --noreload) \
   >"$TMP/api.log" 2>&1 &
 API_PID=$!
 wait_http "http://127.0.0.1:${API_PORT}/api/v1/health/" 90 || { cat "$TMP/api.log" >&2; STATUS=1; exit 1; }
 
-(cd "$ROOT/frontend" && VITE_API_URL="http://localhost:${API_PORT}" \
-  VITE_OIDC_AUTHORITY="http://localhost:${KC_PORT}/realms/onea" \
+# Même origine : le navigateur parle à Vite, qui relaie /api vers Django (ONEA_API_URL).
+(cd "$ROOT/frontend" && VITE_API_URL="http://localhost:${WEB_PORT}" \
+  ONEA_API_URL="http://127.0.0.1:${API_PORT}" \
   exec node node_modules/vite/bin/vite.js --host localhost --port "$WEB_PORT" --strictPort) \
   >"$TMP/web.log" 2>&1 &
 WEB_PID=$!
 wait_http "http://localhost:${WEB_PORT}/" 90 || { cat "$TMP/web.log" >&2; STATUS=1; exit 1; }
 
 export E2E_API_URL="http://localhost:${API_PORT}"
-export E2E_OIDC_AUTHORITY="http://localhost:${KC_PORT}/realms/onea"
 export E2E_RUN_ID="$STAMP"
 export E2E_WEB_EXTERNAL=1
 export WEB_PORT

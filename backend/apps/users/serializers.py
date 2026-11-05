@@ -1,5 +1,7 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from .delegation import droits_effectifs
 from .models import ActionTutoriel, User
 
 
@@ -19,8 +21,18 @@ class TutorielActionSerializer(serializers.Serializer[dict[str, object]]):
     version = serializers.IntegerField(min_value=1)
 
 
+class DroitsGestionComptesSerializer(serializers.Serializer[dict[str, bool]]):
+    """Droits effectifs de gestion des comptes (tous pour un administrateur)."""
+
+    creer = serializers.BooleanField()
+    reinitialiser = serializers.BooleanField()
+    roles = serializers.BooleanField()
+    desactiver = serializers.BooleanField()
+
+
 class MeSerializer(serializers.ModelSerializer[User]):
     tutoriel = TutorielSerializer(source="*", read_only=True)
+    gestion_comptes = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -34,8 +46,14 @@ class MeSerializer(serializers.ModelSerializer[User]):
             "direction_code",
             "fonction",
             "tutoriel",
+            "otp_connexion_actif",
+            "gestion_comptes",
         )
         read_only_fields = fields
+
+    @extend_schema_field(DroitsGestionComptesSerializer)
+    def get_gestion_comptes(self, obj: User) -> dict[str, bool]:
+        return droits_effectifs(obj)
 
 
 class UtilisateurResumeSerializer(serializers.ModelSerializer[User]):

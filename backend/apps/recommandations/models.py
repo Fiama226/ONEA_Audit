@@ -7,6 +7,8 @@ from django.db import models
 from django.db.models import Q
 
 from apps.constats.models import Recommandation
+from apps.core.exceptions import RegleMetierError
+from apps.core.models import BaseModel
 from apps.missions.gardes import exiger_etape_ouverte
 from apps.missions.models import Mission, MissionEnfantModel
 
@@ -94,8 +96,25 @@ class Action(MissionEnfantModel):
         super().save(*args, **kwargs)
 
 
+class ValidateurAcceptation(models.TextChoices):
+    RAI = "RAI", "Responsable de l'audit interne"
+    DG = "DG", "Direction générale"
+    BOARD = "BOARD", "Conseil (Comité d'audit)"
+
+
+class DecisionAcceptation(models.TextChoices):
+    VALIDEE = "VALIDEE", "Validée"
+    REFUSEE = "REFUSEE", "Refusée"
+
+
 class AcceptationRisque(MissionEnfantModel):
-    """Risque accepté par la direction concernée, sans plan d'actions (D8)."""
+    """Risque accepté par la direction concernée, sans plan d'actions (D8).
+
+    `validation_requise` fige, à la création, l'autorité qui doit valider l'acceptation selon la
+    règle de gouvernance « escalade d'une acceptation de risque » (Normes IIA 11.5) : vide =
+    aucune validation. Tant qu'elle n'est pas validée, l'acceptation ne couvre pas la
+    recommandation (contrôle de l'étape XVI).
+    """
 
     mission = _mission_fk("acceptations_risque")
     recommandation = models.ForeignKey(
@@ -111,6 +130,13 @@ class AcceptationRisque(MissionEnfantModel):
         verbose_name="confirmation",
         on_delete=models.PROTECT,
         related_name="+",
+    )
+    niveau_risque = models.CharField("niveau du constat", max_length=8, blank=True)
+    validation_requise = models.CharField(
+        "validation requise",
+        max_length=8,
+        choices=ValidateurAcceptation.choices,
+        blank=True,
     )
 
     objects: ClassVar[AcceptationManager[Any]] = AcceptationManager()
@@ -148,6 +174,58 @@ class AcceptationRisque(MissionEnfantModel):
             avant, self, touches=None if update_fields is None else set(update_fields)
         )
         super().save(*args, **kwargs)
+
+
+class ValidationAcceptation(BaseModel):
+    """Décision de l'autorité désignée sur une acceptation de risque (Normes IIA 11.5).
+
+    Ajout seul. Une décision « refusée » retire aussi l'acceptation (suppression logique) : la
+    direction doit alors proposer des actions. Le Conseil n'ayant pas de compte, le DG en
+    reporte la décision avec la référence de la délibération.
+    """
+
+    acceptation = models.ForeignKey(
+        AcceptationRisque,
+        verbose_name="acceptation",
+        on_delete=models.PROTECT,
+        related_name="validations",
+    )
+    niveau = models.CharField("autorité", max_length=8, choices=ValidateurAcceptation.choices)
+    decision = models.CharField("décision", max_length=8, choices=DecisionAcceptation.choices)
+    par = _utilisateur_fk(verbose_name="décidée par")
+    le = models.DateTimeField("décidée le")
+    motif = models.TextField("motif")
+    reference_conseil = models.CharField(
+        "référence de la délibération du Conseil", max_length=120, blank=True
+    )
+
+    class Meta:
+        verbose_name = "validation d'une acceptation de risque"
+        verbose_name_plural = "validations d'acceptations de risque"
+        ordering = ("le",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["acceptation"],
+                condition=Q(deleted_at__isnull=True),
+                name="validation_acceptation_unique",
+            ),
+            models.CheckConstraint(condition=~Q(motif=""), name="validation_acceptation_motif"),
+            models.CheckConstraint(
+                condition=~Q(niveau=ValidateurAcceptation.BOARD) | ~Q(reference_conseil=""),
+                name="validation_acceptation_reference_conseil",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_decision_display()} ({self.acceptation_id})"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self._state.adding:
+            raise RegleMetierError("Une validation d'acceptation ne peut pas être modifiée.")
+        super().save(*args, **kwargs)
+
+    def soft_delete(self, by: Any) -> None:
+        raise RegleMetierError("Une validation d'acceptation ne peut pas être supprimée.")
 
 
 class EngagementPlanActions(MissionEnfantModel):

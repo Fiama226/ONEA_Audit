@@ -7,14 +7,14 @@ Ce document donne, pour chacune, la route, le compte et l'état des données à 
 
 - **Jeu de données** : base de recette dédiée (jamais la base de développement `onea`), peuplée par
   `python manage.py peupler_demo --profil volumetrie --echelle 0.2` (comptes `admin`, `rai`, `auditeur1`,
-  `auditeur2`, `audite1`, `dg`, mot de passe de développement `onea2026`). Ce peuplement s'arrête à l'étape VIII :
+  `auditeur2`, `audite1`, `dg` ; la commande affiche une seule fois leur mot de passe temporaire, à changer à la première connexion). Ce peuplement s'arrête à l'étape VIII :
   les écrans des étapes IX à XVIII, constats, rapports, recommandations et suivi exigent de rejouer les scénarios
   S3-01 à S3-31 de `docs/recette/scenarios-de-test.md` pour constituer la « mission de recette ».
 - **Direction de `audite1`** : à fixer sur l'entité auditée de la mission de recette (scénario S2-12).
 - **Services** : worker de tâches de fond et service de conversion PDF pour les captures de documents et de diffusion
   service de recherche pour CAP-RAI-… (recherche non capturée).
 - **Format** : navigateur Chrome ou Edge, fenêtre de 1440 × 900, zoom 100 %, thème par défaut, PNG. Aucune
-  adresse électronique réelle (utiliser `@example.org`). Masquer les identifiants Keycloak réels.
+  adresse électronique réelle (utiliser `@example.org`). Masquer les identifiants et mots de passe temporaires réels.
 - **Nom de fichier proposé** : `images/<repère en minuscules>.png` (exemple `images/cap-rai-01.png`).
 - **Horloge** : prendre les captures à une date unique pour que les échéances (« en retard », « Il vous reste N jours »)
   soient cohérentes.
@@ -27,7 +27,7 @@ Ce document donne, pour chacune, la route, le compte et l'état des données à 
 | Repère | Écran | Route | Compte | État des données |
 |---|---|---|---|---|
 | CAP-COM-01 | Page de connexion « Audit interne ONEA », bouton « Se connecter » | `/connexion` | aucun (déconnecté) | aucune |
-| CAP-COM-02 | Menu utilisateur ouvert (nom, adresse, rôle, « Se déconnecter ») | n'importe quelle page, ex. `/` | `rai` | aucune |
+| CAP-COM-02 | Menu utilisateur ouvert (nom, adresse, rôle, « Mon compte », « Changer mon mot de passe », « Se déconnecter ») | n'importe quelle page, ex. `/` | `rai` | aucune |
 
 ## RAI (25)
 

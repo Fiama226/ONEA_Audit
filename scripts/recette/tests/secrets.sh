@@ -21,7 +21,7 @@ affirmer ".env.recette ne contient aucune valeur de secret applicatif" \
     '! grep -qFf "$MOTIFS" "$RECETTE_ENV"'
 
 # docker inspect : Config.Env, Cmd, Entrypoint, Healthcheck, Labels... (tout le JSON).
-for service in web worker beat migrate db redis meilisearch; do
+for service in web worker worker-auth beat migrate db redis meilisearch; do
     ids=$(compose_recette ps -a -q "$service")
     affirmer "$service : conteneur trouve" '[ -n "$ids" ]'
     for id in $ids; do
@@ -48,7 +48,7 @@ affirmer "redis : repond avec le mot de passe du fichier" \
 affirmer "meilisearch : refuse sans cle" \
     '[ "$(compose_recette exec -T meilisearch curl -s -o /dev/null -w "%{http_code}" http://localhost:7700/keys)" = 401 ]'
 
-# L'application fonctionne avec les secrets en fichiers (base, Redis, Meilisearch, Keycloak).
+# L'application fonctionne avec les secrets en fichiers (base, Redis, Meilisearch).
 affirmer "API prete (/api/v1/health/ready/)" \
     'curl_recette -fs "https://$PUBLIC_HOST/api/v1/health/ready/"'
 

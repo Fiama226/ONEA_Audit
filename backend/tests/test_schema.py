@@ -8,8 +8,7 @@ from django.conf import settings
 from django.contrib.staticfiles import finders
 from rest_framework.test import APIClient
 
-from apps.core.schema import OIDCBearerAuthenticationScheme
-from apps.users.authentication import OIDCBearerAuthentication
+from apps.users.authentication import SessionAuthentication401
 from config import __version__
 
 _ASSET_REF = re.compile(r"""<(?:script|link)\s[^>]*?\b(?:src|href)=["']([^"']+)["']""")
@@ -42,6 +41,8 @@ def test_schema_exposes_me_component_with_expected_fields(api_client: APIClient)
         "direction_code",
         "fonction",
         "tutoriel",
+        "otp_connexion_actif",
+        "gestion_comptes",
     }
 
 
@@ -76,9 +77,11 @@ def test_audit_log_endpoints_reference_api_error(api_client: APIClient) -> None:
         assert ref("/api/v1/audit-log/{id}/", code) == expected
 
 
-def test_me_documents_auth_service_unavailable(api_client: APIClient) -> None:
+def test_me_documents_no_auth_service_outage(api_client: APIClient) -> None:
+    """The session login needs no external service: /me no longer documents a 503."""
     responses = _schema(api_client)["paths"]["/api/v1/me/"]["get"]["responses"]
-    ref = responses["503"]["content"]["application/json"]["schema"]["$ref"]
+    assert "503" not in responses
+    ref = responses["401"]["content"]["application/json"]["schema"]["$ref"]
     assert ref == "#/components/schemas/ApiError"
 
 
@@ -95,24 +98,38 @@ def test_docs_page_loads_assets_locally(api_client: APIClient) -> None:
     assert finders.find(relative), f"{relative} not found by staticfiles finders"
 
 
-def test_schema_documents_bearer_only(api_client: APIClient) -> None:
+def test_schema_documents_session_cookie(api_client: APIClient) -> None:
     schemes = _schema(api_client)["components"]["securitySchemes"]
-    assert "cookieAuth" not in schemes
+    assert schemes["cookieAuth"]["type"] == "apiKey"
+    assert schemes["cookieAuth"]["in"] == "cookie"
 
 
-def test_bearer_auth_extension_targets_existing_class(api_client: APIClient) -> None:
-    # Same as the cookie guard: generate the schema first so the dotted target is resolved.
+def test_session_cookie_is_the_only_security_scheme(api_client: APIClient) -> None:
     schemes = _schema(api_client)["components"]["securitySchemes"]
-    assert schemes["bearerAuth"]["type"] == "http"
-    assert schemes["bearerAuth"]["scheme"] == "bearer"
-    assert schemes["bearerAuth"]["bearerFormat"] == "JWT"
-    target: object = OIDCBearerAuthenticationScheme.target_class
-    assert target is OIDCBearerAuthentication
-    dotted = f"{OIDCBearerAuthentication.__module__}.{OIDCBearerAuthentication.__qualname__}"
-    assert dotted == "apps.users.authentication.OIDCBearerAuthentication"
+    assert set(schemes) == {"cookieAuth"}
+    dotted = f"{SessionAuthentication401.__module__}.{SessionAuthentication401.__qualname__}"
+    assert dotted == "apps.users.authentication.SessionAuthentication401"
 
 
 def test_version_has_a_single_source() -> None:
     pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
     declared = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
     assert declared == __version__
+
+
+def test_throttled_auth_endpoints_document_429(api_client: APIClient) -> None:
+    """Every rate-limited authentication endpoint documents its 429 (final review M3)."""
+    paths = _schema(api_client)["paths"]
+    for path in (
+        "/api/v1/auth/login/",
+        "/api/v1/auth/login/otp/",
+        "/api/v1/auth/password/forgot/",
+        "/api/v1/auth/password/reset/",
+        "/api/v1/auth/password/change/",
+        "/api/v1/auth/otp/disable/",
+    ):
+        reponse = paths[path]["post"]["responses"]["429"]
+        schema = reponse["content"]["application/json"]["schema"]["$ref"]
+        assert schema == "#/components/schemas/ApiError", path
+    audit = _schema(api_client)["components"]["schemas"]["AuditLog"]["properties"]
+    assert audit["action_metier"]["nullable"] is True

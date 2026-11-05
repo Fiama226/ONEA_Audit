@@ -88,7 +88,9 @@ export function DataTable<T extends RowData>({
   const colSpan = columns.length;
 
   return (
-    <div className="rounded-lg border border-border bg-surface">
+    // min-w-0 : sans lui, dans une grille ou un flex, la largeur minimale du tableau élargit toute
+    // la page au lieu de laisser le conteneur ci-dessous défiler.
+    <div className="min-w-0 rounded-lg border border-border bg-surface">
       {/* overflow-x-auto : un tableau plus large que l'écran défile au lieu d'être tronqué (WCAG 1.4.10) ;
           le conteneur est focusable pour le défilement au clavier. */}
       <div

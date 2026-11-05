@@ -4,7 +4,10 @@
 
 export type RoleDemo = "ADMIN" | "RAI" | "AUDITEUR" | "AUDITE" | "DG";
 
-/** Comptes de démonstration (profil `formation`, mot de passe onea2026). */
+/**
+ * Comptes e2e, créés par `manage.py creer_comptes_e2e` (scripts/e2e.sh) : le mot de passe commun
+ * est E2E_PASSWORD (voir ./session.ts), sans changement forcé à la première connexion.
+ */
 export const COMPTES: Readonly<Record<RoleDemo, string>> = {
   ADMIN: "admin",
   RAI: "rai",
@@ -12,6 +15,12 @@ export const COMPTES: Readonly<Record<RoleDemo, string>> = {
   AUDITE: "audite1",
   DG: "dg",
 };
+
+/**
+ * Compte non administrateur (AUDITEUR) qui détient tous les droits délégués de gestion des
+ * comptes : il parcourt les routes marquées `delegue`.
+ */
+export const COMPTE_DELEGUE = "delegue1";
 
 export const TOUS: readonly RoleDemo[] = ["ADMIN", "RAI", "AUDITEUR", "AUDITE", "DG"];
 
@@ -38,6 +47,11 @@ export type EntreeRoute = {
   roles: readonly RoleDemo[];
   /** Paramètres à résoudre par l'API de démonstration, dans l'ordre d'apparition. */
   parametres?: readonly Ressource[];
+  /**
+   * Route aussi ouverte, quel que soit son rôle, à l'agent qui détient un droit délégué de gestion
+   * des comptes (RequireAccountManager) : parcourue en plus avec COMPTE_DELEGUE.
+   */
+  delegue?: true;
   /** Paramètres à valeur fixe (ex. numéro d'étape). */
   fixes?: Readonly<Record<string, string>>;
 };
@@ -46,6 +60,7 @@ const MISSIONS = ["RAI", "AUDITEUR", "AUDITE"] as const;
 const PROGRAMME = ["ADMIN", "RAI", "AUDITEUR", "DG"] as const;
 const RECO = ["RAI", "AUDITEUR", "AUDITE", "DG"] as const;
 const ADMIN_LECTURE = ["ADMIN", "RAI"] as const;
+const GOUVERNANCE = ["ADMIN", "RAI", "DG"] as const;
 
 const M = "/missions/:id";
 export const ROUTES: readonly EntreeRoute[] = [
@@ -103,18 +118,31 @@ export const ROUTES: readonly EntreeRoute[] = [
   { motif: "/rapports/:id", roles: RECO, parametres: ["rapport"] },
   { motif: "/documents", roles: MISSIONS },
   { motif: "/documents/:id", roles: MISSIONS, parametres: ["document"] },
-  { motif: "/administration", roles: ["ADMIN"] },
-  { motif: "/administration/utilisateurs", roles: ["ADMIN"] },
-  { motif: "/administration/utilisateurs/:id", roles: ["ADMIN"], parametres: ["utilisateur"] },
+  { motif: "/administration", roles: ["ADMIN"], delegue: true },
+  { motif: "/administration/utilisateurs", roles: ["ADMIN"], delegue: true },
+  {
+    motif: "/administration/utilisateurs/:id",
+    roles: ["ADMIN"],
+    delegue: true,
+    parametres: ["utilisateur"],
+  },
   { motif: "/administration/documents", roles: ADMIN_LECTURE },
   { motif: "/administration/documents/numerotation", roles: ADMIN_LECTURE },
   { motif: "/administration/documents/:type", roles: ADMIN_LECTURE, parametres: ["gabarit"] },
   { motif: "/administration/signatures", roles: ADMIN_LECTURE },
+  { motif: "/administration/gouvernance", roles: GOUVERNANCE },
+  { motif: "/journal-audit", roles: GOUVERNANCE },
   { motif: "/mon-compte", roles: TOUS },
+  { motif: "/mot-de-passe/changer", roles: TOUS },
 ];
 
-/** Pages publiques hors coque (sans rôle). */
-export const PAGES_PUBLIQUES = ["/connexion", "/erreur"] as const;
+/** Pages publiques hors coque (sans rôle, visiteur anonyme). */
+export const PAGES_PUBLIQUES = [
+  "/connexion",
+  "/mot-de-passe-oublie",
+  "/mot-de-passe/reinitialiser",
+  "/erreur",
+] as const;
 
 export type EntreeDialogue = {
   /** Motif de l'écran qui porte le déclencheur (doit figurer dans ROUTES). */

@@ -59,6 +59,50 @@ describe("useVersion", () => {
   });
 });
 
+describe("en-tête d'arrière-plan des interrogations", () => {
+  it("useVersion : le premier chargement est celui de l'agent, les relectures d'interrogation sont d'arrière-plan", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const recus: (string | null)[] = [];
+    server.use(
+      http.get(`${API_URL}/api/v1/document-versions/${VERSION_ID}/`, ({ request }) => {
+        recus.push(request.headers.get("X-Onea-Arriere-Plan"));
+        return HttpResponse.json(
+          recus.length < 3
+            ? aVersion({ statut: "EN_COURS", statut_pdf: "NON_DEMANDE" })
+            : aVersion(),
+        );
+      }),
+    );
+    const { Wrapper } = queryWrapper();
+    renderHook(() => useVersion(VERSION_ID), { wrapper: Wrapper });
+    await waitFor(() => expect(recus).toHaveLength(1));
+    await act(() => vi.advanceTimersByTimeAsync(2100));
+    await waitFor(() => expect(recus).toHaveLength(2));
+    await act(() => vi.advanceTimersByTimeAsync(2100));
+    await waitFor(() => expect(recus).toHaveLength(3));
+    expect(recus).toEqual([null, "1", "1"]);
+  });
+
+  it("useAvailableDocuments : relance manuelle = requête de l'agent", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const recus: (string | null)[] = [];
+    server.use(
+      http.get(`${API_URL}/api/v1/documents/available/`, ({ request }) => {
+        recus.push(request.headers.get("X-Onea-Arriere-Plan"));
+        return HttpResponse.json([aDisponible({ en_cours: true })]);
+      }),
+    );
+    const { Wrapper } = queryWrapper();
+    const { result } = renderHook(() => useAvailableDocuments(MISSION_ID), { wrapper: Wrapper });
+    await waitFor(() => expect(recus).toHaveLength(1));
+    await act(() => vi.advanceTimersByTimeAsync(2100));
+    await waitFor(() => expect(recus).toHaveLength(2));
+    await act(async () => result.current.restartPolling());
+    await waitFor(() => expect(recus.length).toBeGreaterThanOrEqual(3));
+    expect(recus.slice(0, 3)).toEqual([null, "1", null]);
+  });
+});
+
 describe("polling budget", () => {
   it("polls again after a timeout once the version was regenerated on the same hook", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

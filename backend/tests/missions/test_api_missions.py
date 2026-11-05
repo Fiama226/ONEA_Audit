@@ -144,8 +144,12 @@ def test_audite_champs_internes_nuls_et_403_sur_etapes(
     assert corps["motif_annulation"] is None
     assert all(a["declaration"] is None for a in corps["equipe"])
     assert corps["mes_droits"]["contribuer"] is False
+    # Les étapes sont lisibles (plan d'actions) mais sans charges ni journal.
+    etapes = api_client.get(f"/api/v1/mission-steps/?mission={m.id}")
+    assert etapes.status_code == 200
+    assert all(e["charge_prevue_jours"] is None for e in etapes.json())
+    assert all(e["charge_reelle_jours"] is None for e in etapes.json())
     for route in (
-        f"/api/v1/mission-steps/?mission={m.id}",
         f"/api/v1/missions/{m.id}/tracking/",
         f"/api/v1/missions/{m.id}/risk-matrix/",
         f"/api/v1/mission-risks/?mission={m.id}",

@@ -12,6 +12,7 @@ import { useAuditPlan, useAuditPlanLines } from "../api";
 import { AuditPlanCalendar } from "../components/AuditPlanCalendar";
 import { DeletePlanDialog } from "../components/DeletePlanDialog";
 import { EditPlanDialog } from "../components/EditPlanDialog";
+import { PlanApprovalPanel } from "../components/PlanApprovalPanel";
 import { PlanExportButtons } from "../components/PlanExportButtons";
 import { PlanFilters, type PlanFilterValues } from "../components/PlanFilters";
 import { PlanFrozenBanner } from "../components/PlanFrozenBanner";
@@ -234,6 +235,7 @@ export function AuditPlanDetailPage() {
         )}
 
         {frozen && <PlanFrozenBanner plan={data} />}
+        <PlanApprovalPanel plan={data} />
 
         <PlanSummary planId={id} />
 

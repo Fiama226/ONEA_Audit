@@ -1,5 +1,6 @@
 {
   "reponse": {
+    "degrade": "bool",
     "plus": "bool",
     "resultats": [
       {

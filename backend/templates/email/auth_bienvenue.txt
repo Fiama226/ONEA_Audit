@@ -1,0 +1,11 @@
+{% extends "email/base.txt" %}{% block content %}Bonjour {{ name }},
+
+Bienvenue sur la plateforme d'audit interne de l'ONEA. Votre compte vient d'être créé.
+
+Adresse de connexion : {{ url }}
+Identifiant : {{ identifiant }}
+Mot de passe temporaire : {{ mot_de_passe }}
+
+Ce mot de passe est à usage unique : vous devrez en choisir un nouveau dès votre première connexion. Ne le communiquez à personne.
+
+Nous vous souhaitons la bienvenue parmi nous.{% endblock %}

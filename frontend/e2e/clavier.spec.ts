@@ -1,21 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { COMPTES } from "./inventaire";
+import { logIn } from "./session";
 
 // Audit clavier : lien d'évitement, ordre de tabulation, focus visible (style calculé), piège et
 // retour du focus dans les dialogues, Échap, absence de piège clavier. Base peuplée (profil formation).
-const PASSWORD = "onea2026";
-const BASE = `http://localhost:${process.env.WEB_PORT ?? "5174"}`;
 const STRICT = process.env.A11Y_STRICT === "1";
-
-async function seConnecter(page: Page, compte: string) {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Se connecter" }).click();
-  await page.waitForURL(/\/realms\/onea\/protocol\/openid-connect\/auth/);
-  await page.locator("#username").fill(compte);
-  await page.locator("#password").fill(PASSWORD);
-  await page.locator("#kc-login").click();
-  await page.waitForURL(`${BASE}/`);
-}
 
 /** En mode rapport (A11Y_STRICT=0) un constat est consigné en annotation au lieu de faire échouer. */
 function constat(
@@ -44,7 +33,7 @@ async function focusVisible(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await seConnecter(page, COMPTES.RAI);
+  await logIn(page, COMPTES.RAI);
 });
 
 test("lien d'évitement : premier arrêt de tabulation, visible, amène au contenu", async ({

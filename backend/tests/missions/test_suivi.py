@@ -55,7 +55,10 @@ def test_fiche_de_suivi_totaux_et_requetes(
         charge_prevue_jours=Decimal("2"),
         charge_reelle_jours=Decimal("2.5"),
     )
-    forcer_etapes(mission_lancee, {3: StatutEtape.A_FAIRE})
+    forcer_etapes(
+        mission_lancee,
+        {1: StatutEtape.TERMINEE, 2: StatutEtape.TERMINEE, 3: StatutEtape.A_FAIRE},
+    )
     demarrer_etape(mission_lancee.etapes.get(numero=3), by=rai)
     with django_assert_max_num_queries(3):
         fiche = fiche_de_suivi(mission_lancee)

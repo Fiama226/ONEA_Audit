@@ -1,0 +1,810 @@
+"""In-app authentication: password login with lockout, one-time codes, temporary passwords."""
+
+import copy
+import logging
+import secrets
+import string
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import StrEnum
+
+from auditlog.context import disable_auditlog
+from auditlog.diff import model_instance_diff
+from auditlog.models import LogEntry
+from django.conf import settings
+from django.contrib.auth import SESSION_KEY
+from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.sessions.backends.db import SessionStore
+from django.contrib.sessions.models import Session
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.utils import timezone
+
+from apps.core.exceptions import RegleMetierError
+
+from .models import CodeOtp, ObjetOtp, User
+
+# Security log: failed logins and locks. Never a password, never the typed identifier
+# (users often type their password in the identifier field); the account id only.
+logger_securite = logging.getLogger("onea.securite")
+
+OTP_VALIDITE = timedelta(minutes=10)
+OTP_ESSAIS_MAX = 5
+OTP_PURGE_APRES = timedelta(hours=24)
+MOT_DE_PASSE_TEMPORAIRE_LONGUEUR = 16
+ECHECS_AVANT_VERROUILLAGE = 5
+DUREE_VERROUILLAGE = timedelta(minutes=15)
+# At most this many RESET codes per account per window (each code allows 5 guesses).
+CODES_REINITIALISATION_MAX = 10
+CODES_REINITIALISATION_FENETRE = timedelta(hours=24)
+# Wrong RESET codes of an account, whatever the code, are capped over this window
+# (settings.AUTH_REINITIALISATION_ECHECS_MAX, 15 by default): AUTH-02.
+ECHECS_REINITIALISATION_FENETRE = timedelta(hours=24)
+# Login codes mailed per account over this window (settings.AUTH_CODES_CONNEXION_MAX): N6.
+CODES_CONNEXION_FENETRE = timedelta(minutes=15)
+# How many replaced, still unexpired codes a wrong code is compared with (N6).
+CODES_REMPLACES_VERIFIES = 3
+# Session key of a login waiting for its OTP step: the account id.
+CLE_OTP_COMPTE = "onea_otp_compte"
+
+# Values of `additional_data["action"]` on the audit entries of the owner's own actions.
+ACTION_CHANGEMENT_MOT_DE_PASSE = "changement_mot_de_passe"
+ACTION_CHANGEMENT_IMPOSE = "changement_mot_de_passe_impose"
+ACTION_REINITIALISATION_PAR_CODE = "reinitialisation_par_code"
+ACTION_ACTIVATION_OTP = "activation_otp"
+ACTION_DESACTIVATION_OTP = "desactivation_otp"  # same label as the administration's
+
+MEME_MOT_DE_PASSE = "Le nouveau mot de passe doit être différent de l'actuel."
+ENVOI_COURRIEL_NON_CONFIGURE = "Envoi de courriels non configuré"
+COMPTE_SANS_COURRIEL = "Aucune adresse de courriel n'est enregistrée sur votre compte."
+
+
+class OtpImpossible(RegleMetierError):
+    """The login code cannot be turned on: no email could reach the account."""
+
+    status_http = 409
+
+
+class Etape(StrEnum):
+    """What the client must do after a successful password check."""
+
+    OK = "OK"
+    OTP = "OTP"
+    CHANGER_MOT_DE_PASSE = "CHANGER_MOT_DE_PASSE"
+
+
+class Comptage(StrEnum):
+    """How a refusal counts in the per-address failure caps (never shown to the client).
+
+    The decision never depends on whether the secret was right when the account cannot be
+    used anyway (D1): otherwise the counter would tell an attacker which password is right.
+    """
+
+    SECRET_FAUX = "SECRET_FAUX"  # noqa: S105 - a label. Usable account, wrong secret: each
+    COMPTE_INUTILISABLE = "COMPTE_INUTILISABLE"  # locked, disabled, expired, blocked: once
+    INCONNU = "INCONNU"  # unknown identifier: each one, up to 5 per identifier
+    AUCUN = "AUCUN"  # a code replaced by a newer one: not counted
+
+
+@dataclass(frozen=True)
+class Resultat:
+    """Outcome of `authentifier`. `etape is None` means refused (the reason is never exposed).
+
+    ``comptage`` and ``compte_id`` (refusals only, never shown to the client) tell the
+    per-address failure caps how to count the refusal (`Comptage`).
+    """
+
+    user: User | None = None
+    etape: Etape | None = None
+    comptage: Comptage | None = None
+    compte_id: int | None = None
+
+
+class VerificationCode(StrEnum):
+    """Outcome of a one-time code check."""
+
+    JUSTE = "JUSTE"
+    FAUX = "FAUX"  # wrong code against a live one: an attempt is spent
+    AUCUN = "AUCUN"  # no live code (none, expired, exhausted): nothing could match
+    REMPLACE = "REMPLACE"  # a code replaced by a newer one: refused, not a wrong attempt
+
+
+def trouver_compte(identifiant: str) -> User | None:
+    """Account by username, else by email, both case-insensitive; None when unknown or
+    ambiguous.
+
+    Mobile keyboards capitalize the first letter (« Admin »): the username is matched
+    without case, as Keycloak did. New usernames are unique without case (`services`), but
+    legacy accounts may differ by case only: such an identifier matches several accounts
+    and is refused like an unknown one (never the "first" account), logged with the
+    account ids so that the operator renames them.
+    """
+    identifiant = identifiant.strip()
+    if not identifiant:
+        return None
+    homonymes = list(User.objects.filter(username__iexact=identifiant).order_by("pk")[:2])
+    if len(homonymes) == 1:
+        return homonymes[0]
+    if homonymes:
+        logger_securite.warning(
+            "Identifiant correspondant à plusieurs comptes (casse ignorée), refusé : comptes=%s",
+            ",".join(str(c.pk) for c in homonymes),
+        )
+        return None
+    if "@" not in identifiant:
+        return None
+    # email is not unique on AbstractUser: an ambiguous address must never pick an account.
+    candidats = list(User.objects.filter(email__iexact=identifiant)[:2])
+    return candidats[0] if len(candidats) == 1 else None
+
+
+def _verifier_mot_de_passe(compte: User | None, mot_de_passe: str) -> bool:
+    """Password check that always costs one hash (unknown account, unusable password)."""
+    if compte is None or not compte.has_usable_password():
+        make_password(mot_de_passe)  # same work as a real check: no timing oracle
+        return False
+    return compte.check_password(mot_de_passe)
+
+
+def _journaliser_refus(motif: str, compte: User | None, adresse: str | None) -> None:
+    logger_securite.warning(
+        "Échec de connexion : motif=%s compte=%s adresse=%s",
+        motif,
+        compte.pk if compte is not None else "inconnu",
+        adresse or "inconnue",
+    )
+
+
+def etape_apres_mot_de_passe(compte: User) -> Etape:
+    if compte.otp_connexion_actif:
+        return Etape.OTP
+    return etape_apres_second_facteur(compte)
+
+
+def etape_apres_second_facteur(compte: User) -> Etape:
+    return Etape.CHANGER_MOT_DE_PASSE if compte.doit_changer_mot_de_passe else Etape.OK
+
+
+def compte_utilisable(compte: User, now: datetime | None = None) -> str | None:
+    """Reason why this account cannot open a session now, or None."""
+    now = now or timezone.now()
+    if compte.verrouille_jusqu_a is not None and compte.verrouille_jusqu_a > now:
+        return "verrouille"
+    if not compte.is_active:
+        return "desactive"
+    if compte.mot_de_passe_expire_le is not None and compte.mot_de_passe_expire_le <= now:
+        return "mot_de_passe_temporaire_expire"
+    return None
+
+
+def _compter_echec(verrou: User, now: datetime, motif: str, adresse: str | None) -> None:
+    """Count a failure on the row-locked, usable account; the 5th one locks it for 15 min.
+
+    The counter restarts at zero when the lock is set: 5 new attempts once the lock ends.
+    """
+    verrou.echecs_connexion += 1
+    champs = ["echecs_connexion"]
+    if verrou.echecs_connexion >= ECHECS_AVANT_VERROUILLAGE:
+        verrou.echecs_connexion = 0
+        verrou.verrouille_jusqu_a = now + DUREE_VERROUILLAGE
+        champs.append("verrouille_jusqu_a")
+    verrou.save(update_fields=champs)
+    _journaliser_refus(motif, verrou, adresse)
+    if "verrouille_jusqu_a" in champs:
+        logger_securite.warning(
+            "Compte verrouillé %s minutes après %s échecs : compte=%s",
+            int(DUREE_VERROUILLAGE.total_seconds() // 60),
+            ECHECS_AVANT_VERROUILLAGE,
+            verrou.pk,
+        )
+
+
+def _conclure(
+    compte_id: int,
+    secret_ok: bool,
+    *,
+    motif_echec: str,
+    etape_de: Callable[[User], Etape],
+    adresse: str | None,
+) -> Resultat:
+    """Decide on the account row as it is NOW (row-locked), after the slow secret check.
+
+    Lock, active flag and temporary-password expiry are read again under
+    ``select_for_update``: deciding on the row read before the hash would let a concurrent
+    request clear a lock set meanwhile, or count a right password as a failure when the lock
+    ended meanwhile. An unusable account gets the uniform refusal without counting or
+    resetting anything (a failure while locked never extends the lock), and the same
+    ``Comptage`` whatever the secret (D1). A wrong secret on a usable account counts; a
+    right one resets the counter, except when the next step is the OTP (the counter is then
+    kept until the code is checked).
+    """
+    inutilisable = Resultat(comptage=Comptage.COMPTE_INUTILISABLE, compte_id=compte_id)
+    with transaction.atomic():
+        verrou = User.objects.select_for_update(no_key=True).filter(pk=compte_id).first()
+        if verrou is None:
+            return inutilisable
+        now = timezone.now()
+        motif = compte_utilisable(verrou, now)
+        if motif is not None:
+            _journaliser_refus(motif, verrou, adresse)
+            return inutilisable
+        if not secret_ok:
+            _compter_echec(verrou, now, motif_echec, adresse)
+            return Resultat(comptage=Comptage.SECRET_FAUX, compte_id=compte_id)
+        etape = etape_de(verrou)
+        if etape is not Etape.OTP:
+            verrou.echecs_connexion = 0
+            verrou.verrouille_jusqu_a = None
+            champs = ["echecs_connexion", "verrouille_jusqu_a"]
+            if verrou.premiere_connexion_le is None:
+                verrou.premiere_connexion_le = now
+                champs.append("premiere_connexion_le")
+            verrou.save(update_fields=champs)
+        return Resultat(user=verrou, etape=etape)
+
+
+def authentifier(identifiant: str, mot_de_passe: str, *, adresse: str | None = None) -> Resultat:
+    """Check a login. Every refusal looks the same to the caller (and costs one hash).
+
+    Refused: unknown or ambiguous identifier, wrong password, locked, disabled, expired
+    temporary password. Only a wrong password on a usable account counts as a failure.
+    """
+    compte = trouver_compte(identifiant)
+    mot_de_passe_ok = _verifier_mot_de_passe(compte, mot_de_passe)
+    if compte is None:
+        _journaliser_refus("compte_inconnu", None, adresse)
+        return Resultat(comptage=Comptage.INCONNU)
+    return _conclure(
+        compte.pk,
+        mot_de_passe_ok,
+        motif_echec="mot_de_passe",
+        etape_de=etape_apres_mot_de_passe,
+        adresse=adresse,
+    )
+
+
+def authentifier_code(user_id: int, code: str, *, adresse: str | None = None) -> Resultat:
+    """Second step of a login with OTP. A wrong code counts as a login failure, except a
+    code replaced by a newer one (refused, but the agent only typed the older email's code)."""
+    compte = User.objects.filter(pk=user_id).first()
+    if compte is None:
+        return Resultat(comptage=Comptage.COMPTE_INUTILISABLE, compte_id=user_id)
+    # An account already unusable burns no code attempt; _conclure re-checks in any case.
+    if compte_utilisable(compte) is not None:
+        return _conclure(
+            compte.pk,
+            False,
+            motif_echec="code_otp",
+            etape_de=etape_apres_second_facteur,
+            adresse=adresse,
+        )
+    etat = _verifier_otp(compte, ObjetOtp.LOGIN, code)
+    if etat is VerificationCode.REMPLACE:
+        _journaliser_refus("code_remplace", compte, adresse)
+        return Resultat(comptage=Comptage.AUCUN, compte_id=compte.pk)
+    return _conclure(
+        compte.pk,
+        etat is VerificationCode.JUSTE,
+        motif_echec="code_otp",
+        etape_de=etape_apres_second_facteur,
+        adresse=adresse,
+    )
+
+
+# No look-alike characters (0/O, 1/l/I) since the password is read from an email.
+_ALPHABET_MDP = "".join(c for c in string.ascii_letters + string.digits if c not in "0O1lI")
+_BACKENDS_SANS_SMTP = ("console", "locmem")
+
+
+def emettre_otp(user: User, objet: str) -> str:
+    """Create a fresh code and return it in clear (only time it exists in clear).
+
+    The active code of (user, objet) leaves the unique active slot first: deleted when
+    expired, else marked replaced (``remplace_le``), so that typing it later is refused
+    without counting as a wrong attempt (N6).
+    """
+    code = "".join(secrets.choice(string.digits) for _ in range(6))
+    with transaction.atomic():
+        # Lock the user row so concurrent issuances for the same user serialize
+        # (otherwise both delete, both insert, and the unique active slot raises).
+        User.objects.select_for_update(no_key=True).get(pk=user.pk)
+        now = timezone.now()
+        en_attente = CodeOtp.objects.filter(user=user, objet=objet, utilise_le__isnull=True)
+        en_attente.filter(expire_le__lte=now).delete()
+        en_attente.update(utilise_le=now, remplace_le=now)
+        CodeOtp.objects.create(
+            user=user,
+            objet=objet,
+            code_hash=make_password(code),
+            expire_le=timezone.now() + OTP_VALIDITE,
+        )
+    return code
+
+
+HACHAGES_PAR_REFUS = 1 + CODES_REMPLACES_VERIFIES
+
+
+def _hachages_factices(code: str, nombre: int) -> None:
+    """The same work as real checks (D2): every refusal of a code costs as many hashes."""
+    for _ in range(nombre):
+        make_password(code)
+
+
+def _code_remplace(user: User, objet: str, code: str, now: datetime) -> tuple[bool, int]:
+    """``(match, dummy hashes owed)``: the code matches one of the latest codes replaced by
+    a newer one, still unexpired.
+
+    Every replaced code is checked (no short-circuit) and the missing ones are owed as dummy
+    hashes, so that a refusal always costs ``CODES_REMPLACES_VERIFIES`` hashes here (D2).
+    The caller pays the debt outside any row lock.
+    """
+    remplaces = list(
+        CodeOtp.objects.filter(
+            user=user, objet=objet, remplace_le__isnull=False, expire_le__gt=now
+        ).order_by("-created_at")[:CODES_REMPLACES_VERIFIES]
+    )
+    trouve = False
+    for ancien in remplaces:
+        trouve = check_password(code, ancien.code_hash) or trouve
+    return trouve, CODES_REMPLACES_VERIFIES - len(remplaces)
+
+
+def _verifier_otp_sans_bourrage(user: User, objet: str, code: str) -> tuple[VerificationCode, int]:
+    """Check the active code (consumed when right): ``(outcome, dummy hashes owed)``.
+
+    An attempt is spent only on a live code (not expired, not exhausted) and not by a
+    replaced code. With the dummy hashes owed, every refusal costs exactly
+    ``HACHAGES_PAR_REFUS`` hashes (D2); a right code costs one. The caller pays the debt
+    (`_hachages_factices`) once out of every transaction holding a row lock: a flood of
+    refusals must not hold the account row while it hashes (round 4).
+    """
+    with transaction.atomic():
+        actif = (
+            CodeOtp.objects.select_for_update()
+            .filter(user=user, objet=objet, utilise_le__isnull=True)
+            .first()
+        )
+        now = timezone.now()
+        if actif is None or actif.expire_le <= now or actif.essais >= OTP_ESSAIS_MAX:
+            # The same work as a real refusal: "no pending code" is no oracle.
+            return VerificationCode.AUCUN, HACHAGES_PAR_REFUS
+        if check_password(code, actif.code_hash):
+            actif.essais += 1
+            actif.utilise_le = now
+            actif.save(update_fields=["essais", "utilise_le"])
+            return VerificationCode.JUSTE, 0
+        remplace, dette = _code_remplace(user, objet, code, now)
+        if remplace:
+            return VerificationCode.REMPLACE, dette
+        actif.essais += 1
+        actif.save(update_fields=["essais"])
+        return VerificationCode.FAUX, dette
+
+
+def _verifier_otp(user: User, objet: str, code: str) -> VerificationCode:
+    """`_verifier_otp_sans_bourrage`, the dummy hashes paid after its transaction."""
+    etat, dette = _verifier_otp_sans_bourrage(user, objet, code)
+    _hachages_factices(code, dette)
+    return etat
+
+
+def verifier_otp(user: User, objet: str, code: str) -> bool:
+    """Check and consume the active code. A wrong code spends an attempt."""
+    return _verifier_otp(user, objet, code) is VerificationCode.JUSTE
+
+
+def generer_mot_de_passe_temporaire() -> str:
+    return "".join(secrets.choice(_ALPHABET_MDP) for _ in range(MOT_DE_PASSE_TEMPORAIRE_LONGUEUR))
+
+
+def envoi_courriel_actif() -> bool:
+    """True when an email can actually go out (SMTP host set, or console backend in dev).
+
+    Never with the dummy backend, whatever host its URL carries (N9): the temporary
+    passwords are then shown to the operator.
+    """
+    if "dummy" in settings.EMAIL_BACKEND:
+        return False
+    if getattr(settings, "EMAIL_HOST", ""):
+        return True
+    return any(nom in settings.EMAIL_BACKEND for nom in _BACKENDS_SANS_SMTP)
+
+
+def _fenetre_ouverte(depuis: datetime | None, fenetre: timedelta, now: datetime) -> bool:
+    return depuis is not None and depuis + fenetre > now
+
+
+def quota_codes_reinitialisation(compte_id: int) -> bool:
+    """Count one RESET code for this account; False past the cap of the 24 h window.
+
+    Silent server-side cap (the forgot answer never changes): the per-identifier throttle
+    keys on the typed text, so an account reachable by username and by email would get
+    twice the codes, and every new code brings 5 fresh guesses. Kept on the account row,
+    under its lock (AUTH-02): a cache outage or eviction cannot lift it (fails closed).
+    """
+    return _quota_compte(
+        compte_id,
+        "codes_reinitialisation",
+        CODES_REINITIALISATION_FENETRE,
+        CODES_REINITIALISATION_MAX,
+    )
+
+
+def quota_codes_connexion(compte_id: int) -> bool:
+    """Count one LOGIN code mailed to this account; False past the cap of the 15 min window.
+
+    Whoever knows the password can start as many logins as the address limits allow: the
+    owner's mailbox gets at most ``AUTH_CODES_CONNEXION_MAX`` codes per window (N6). In the
+    database, under the row lock: fails closed whatever the cache.
+    """
+    return _quota_compte(
+        compte_id,
+        "codes_connexion",
+        CODES_CONNEXION_FENETRE,
+        int(settings.AUTH_CODES_CONNEXION_MAX),
+    )
+
+
+def _quota_compte(compte_id: int, prefixe: str, fenetre: timedelta, maximum: int) -> bool:
+    """Count one event in the ``<prefixe>_emis`` / ``<prefixe>_depuis`` window of the
+    row-locked account; False (nothing counted) once ``maximum`` is reached."""
+    nombre, depuis = f"{prefixe}_emis", f"{prefixe}_depuis"
+    with transaction.atomic():
+        verrou = User.objects.select_for_update(no_key=True).filter(pk=compte_id).first()
+        if verrou is None:
+            return False
+        now = timezone.now()
+        if not _fenetre_ouverte(getattr(verrou, depuis), fenetre, now):
+            setattr(verrou, nombre, 0)
+            setattr(verrou, depuis, now)
+        if getattr(verrou, nombre) >= maximum:
+            return False
+        setattr(verrou, nombre, getattr(verrou, nombre) + 1)
+        verrou.save(update_fields=[nombre, depuis])
+        return True
+
+
+def echecs_reinitialisation_max() -> int:
+    return int(settings.AUTH_REINITIALISATION_ECHECS_MAX)
+
+
+def reinitialisation_bloquee(compte: User, now: datetime | None = None) -> bool:
+    """True while the account's wrong RESET codes of the current window reach the cap."""
+    now = now or timezone.now()
+    fenetre = ECHECS_REINITIALISATION_FENETRE
+    return (
+        _fenetre_ouverte(compte.echecs_reinitialisation_depuis, fenetre, now)
+        and compte.echecs_reinitialisation >= echecs_reinitialisation_max()
+    )
+
+
+def _compter_echec_reinitialisation(verrou: User, now: datetime, adresse: str | None) -> None:
+    """Count a wrong RESET code on the row-locked account, whatever the code (AUTH-02).
+
+    Reaching the cap drops the pending RESET code and logs an error: no code is then issued
+    nor accepted for the account until the window ends.
+    """
+    if not _fenetre_ouverte(
+        verrou.echecs_reinitialisation_depuis, ECHECS_REINITIALISATION_FENETRE, now
+    ):
+        verrou.echecs_reinitialisation = 0
+        verrou.echecs_reinitialisation_depuis = now
+    verrou.echecs_reinitialisation += 1
+    verrou.save(update_fields=["echecs_reinitialisation", "echecs_reinitialisation_depuis"])
+    if verrou.echecs_reinitialisation == echecs_reinitialisation_max():
+        CodeOtp.objects.filter(user=verrou, objet=ObjetOtp.RESET, utilise_le__isnull=True).delete()
+        logger_securite.error(
+            "Réinitialisation par code bloquée 24 h après %s codes faux : compte=%s adresse=%s",
+            verrou.echecs_reinitialisation,
+            verrou.pk,
+            adresse or "inconnue",
+        )
+
+
+def terminer_sessions(compte_id: int, *, sauf: str | None = None) -> int:
+    """Delete every live session of this account, except ``sauf``. Returns the number deleted.
+
+    Covers logged-in sessions (``_auth_user_id``) and logins waiting for their OTP step. The
+    database store keeps the session data signed and serialized, so the rows cannot be
+    filtered in SQL: the unexpired ones are decoded in chunks (expired rows can no longer be
+    loaded and are left to the daily purge). Django's session hash check already refuses a
+    session after a password change on its next request; this removes the rows outright.
+    """
+    store = SessionStore()
+    cible = str(compte_id)
+    cles: list[str] = []
+    lignes = (
+        Session.objects.filter(expire_date__gt=timezone.now())
+        .values_list("session_key", "session_data")
+        .iterator(chunk_size=500)
+    )
+    for cle, donnees in lignes:
+        if cle == sauf:
+            continue
+        session = store.decode(donnees)
+        if session.get(SESSION_KEY) == cible or session.get(CLE_OTP_COMPTE) == compte_id:
+            cles.append(cle)
+    supprimees, _ = Session.objects.filter(session_key__in=cles).delete()
+    return supprimees
+
+
+@contextmanager
+def _action_du_titulaire(compte: User, action: str) -> Iterator[None]:
+    """Write ONE audit entry naming an action of the owner on its own account.
+
+    django-auditlog only logs a save that changes a tracked field, and the password is
+    never tracked: a plain change or a reset by code would leave no trace (final review I1).
+    The saves of the block are not logged on their own; a single entry carries their
+    tracked changes (never the password), the action and the owner as actor, in the same
+    transaction as the change.
+    """
+    avant = copy.copy(compte)
+    with transaction.atomic():
+        with disable_auditlog():
+            yield
+        changements = model_instance_diff(
+            avant,
+            compte,
+            use_json_for_changes=getattr(settings, "AUDITLOG_STORE_JSON_CHANGES", False),
+        )
+        LogEntry.objects.log_create(
+            compte,
+            force_log=True,
+            action=LogEntry.Action.UPDATE,
+            changes=changements or {},
+            actor=compte,
+            additional_data={"action": action},
+        )
+
+
+def _appliquer_mot_de_passe(verrou: User, nouveau: str, *, action: str) -> None:
+    """Set the password on the row-locked account and lift every login hindrance.
+
+    Codes still pending were issued under the old password (a login waiting for its OTP
+    step, an earlier reset request): they are dropped. The account's active flag is never
+    touched here. One audit entry names ``action`` (`_action_du_titulaire`).
+    """
+    with _action_du_titulaire(verrou, action):
+        verrou.set_password(nouveau)
+        verrou.doit_changer_mot_de_passe = False
+        verrou.mot_de_passe_expire_le = None
+        verrou.echecs_connexion = 0
+        verrou.verrouille_jusqu_a = None
+        verrou.save(
+            update_fields=[
+                "password",
+                "doit_changer_mot_de_passe",
+                "mot_de_passe_expire_le",
+                "echecs_connexion",
+                "verrouille_jusqu_a",
+            ]
+        )
+    CodeOtp.objects.filter(user=verrou, utilise_le__isnull=True).delete()
+
+
+def reinitialiser_mot_de_passe(
+    identifiant: str, code: str, nouveau: str, *, adresse: str | None = None
+) -> User | None:
+    """Reset a forgotten password with the RESET code. None = refused (reason never exposed).
+
+    See `reinitialiser_mot_de_passe_detail`.
+    """
+    return reinitialiser_mot_de_passe_detail(identifiant, code, nouveau, adresse=adresse)[0]
+
+
+def reinitialiser_mot_de_passe_detail(
+    identifiant: str, code: str, nouveau: str, *, adresse: str | None = None
+) -> tuple[User | None, Comptage | None, int | None]:
+    """Reset a forgotten password with the RESET code: ``(account or None, comptage,
+    account id)``.
+
+    Refused alike: unknown or ambiguous identifier, disabled account, no code, wrong,
+    expired, used, exhausted or replaced code, and an account whose wrong codes reached the
+    24 h cap (AUTH-02: no code is accepted then). Every refusal costs exactly
+    ``HACHAGES_PAR_REFUS`` hashes (D2). A wrong code checked against a live one counts
+    towards that cap; a success clears the count. ``comptage`` (never shown to the client)
+    tells the per-address failure cap how to count the refusal (`Comptage`, D1/D3).
+
+    The new password is checked first without the account (raises ``ValidationError``: the
+    answer cannot depend on the account), then against the account once the code is right;
+    a password refused there rolls the code check back, so the code is not burnt. On
+    success all the sessions of the account end and the login lock, failure count and
+    forced change go.
+    """
+    validate_password(nouveau)
+    compte = trouver_compte(identifiant)
+    if compte is None:
+        _hachages_factices(code, HACHAGES_PAR_REFUS)
+        _journaliser_reinitialisation_refusee("compte_inconnu", None, adresse)
+        return None, Comptage.INCONNU, None
+    refus, dette = _reinitialiser_sous_verrou(compte, code, nouveau, adresse)
+    # Dummy hashes paid once the account row is released (round 4): flooding the reset of
+    # someone's identifier never delays that person's own login, which waits on the row.
+    _hachages_factices(code, dette)
+    if refus is not None:
+        return refus
+    verrou = compte
+    sessions = terminer_sessions(verrou.pk)
+    logger_securite.info(
+        "Mot de passe réinitialisé par code : compte=%s adresse=%s sessions_terminees=%s",
+        verrou.pk,
+        adresse or "inconnue",
+        sessions,
+    )
+    return verrou, None, verrou.pk
+
+
+_Refus = tuple[None, Comptage, int]
+
+
+def _reinitialiser_sous_verrou(
+    compte: User, code: str, nouveau: str, adresse: str | None
+) -> tuple[_Refus | None, int]:
+    """The locked part of a reset: ``(refusal or None, dummy hashes owed)``. On success the
+    new password is set on ``compte`` (refreshed from the locked row)."""
+    inutilisable: _Refus = (None, Comptage.COMPTE_INUTILISABLE, compte.pk)
+    with transaction.atomic():
+        verrou = User.objects.select_for_update(no_key=True).filter(pk=compte.pk).first()
+        if verrou is None or not verrou.is_active:
+            _journaliser_reinitialisation_refusee("desactive", compte, adresse)
+            return inutilisable, HACHAGES_PAR_REFUS
+        now = timezone.now()
+        if reinitialisation_bloquee(verrou, now):
+            _journaliser_reinitialisation_refusee("bloque", verrou, adresse)
+            return inutilisable, HACHAGES_PAR_REFUS
+        etat, dette = _verifier_otp_sans_bourrage(verrou, ObjetOtp.RESET, code)
+        if etat is VerificationCode.REMPLACE:
+            _journaliser_reinitialisation_refusee("code_remplace", verrou, adresse)
+            return (None, Comptage.AUCUN, verrou.pk), dette
+        if etat is not VerificationCode.JUSTE:
+            if etat is VerificationCode.FAUX:
+                _compter_echec_reinitialisation(verrou, now, adresse)
+            _journaliser_reinitialisation_refusee("code", verrou, adresse)
+            return (None, Comptage.SECRET_FAUX, verrou.pk), dette
+        validate_password(nouveau, verrou)  # raising rolls back the code consumption
+        _appliquer_mot_de_passe(verrou, nouveau, action=ACTION_REINITIALISATION_PAR_CODE)
+        if verrou.echecs_reinitialisation or verrou.echecs_reinitialisation_depuis:
+            verrou.echecs_reinitialisation = 0
+            verrou.echecs_reinitialisation_depuis = None
+            verrou.save(update_fields=["echecs_reinitialisation", "echecs_reinitialisation_depuis"])
+    compte.refresh_from_db()
+    return None, 0
+
+
+def _journaliser_reinitialisation_refusee(
+    motif: str, compte: User | None, adresse: str | None
+) -> None:
+    logger_securite.warning(
+        "Échec de réinitialisation du mot de passe : motif=%s compte=%s adresse=%s",
+        motif,
+        compte.pk if compte is not None else "inconnu",
+        adresse or "inconnue",
+    )
+
+
+def _reconfirmer(
+    compte: User, mot_de_passe: str, *, motif: str, adresse: str | None
+) -> User | None:
+    """Re-check the password of a logged-in account before a sensitive change.
+
+    Returns the row-locked account (call inside ``transaction.atomic`` to keep the lock for
+    the change), or None. A wrong password counts as a login failure (5 lock the account for
+    15 min) and a locked account is refused even with the right one: an open session cannot
+    be used to guess the password.
+    """
+    mot_de_passe_ok = _verifier_mot_de_passe(compte, mot_de_passe)
+    return _conclure(
+        compte.pk,
+        mot_de_passe_ok,
+        motif_echec=motif,
+        etape_de=etape_apres_second_facteur,
+        adresse=adresse,
+    ).user
+
+
+def changer_mot_de_passe(
+    compte: User, ancien: str, nouveau: str, *, adresse: str | None = None
+) -> User | None:
+    """Change the password of a logged-in account. None = current password refused.
+
+    The new password is validated first (``ValidationError``, no hash spent), then the
+    current one re-checked (``_reconfirmer``). The caller ends the other sessions and keeps
+    the current one.
+    """
+    if nouveau == ancien:
+        raise ValidationError(MEME_MOT_DE_PASSE, code="password_unchanged")
+    validate_password(nouveau, compte)
+    with transaction.atomic():
+        verrou = _reconfirmer(compte, ancien, motif="ancien_mot_de_passe", adresse=adresse)
+        if verrou is None:
+            return None
+        impose = verrou.doit_changer_mot_de_passe  # temporary password at its first login
+        action = ACTION_CHANGEMENT_IMPOSE if impose else ACTION_CHANGEMENT_MOT_DE_PASSE
+        _appliquer_mot_de_passe(verrou, nouveau, action=action)
+    logger_securite.info(
+        "Mot de passe changé par son titulaire : compte=%s adresse=%s",
+        verrou.pk,
+        adresse or "inconnue",
+    )
+    return verrou
+
+
+def _enregistrer_otp_connexion(compte: User, actif: bool, adresse: str | None) -> None:
+    """Save the flag (one audit entry naming the action, the owner as actor) and log the
+    event. Setting the flag to its current value changes nothing and writes no entry."""
+    if compte.otp_connexion_actif != actif:
+        action = ACTION_ACTIVATION_OTP if actif else ACTION_DESACTIVATION_OTP
+        with _action_du_titulaire(compte, action):
+            compte.otp_connexion_actif = actif
+            compte.save(update_fields=["otp_connexion_actif"])
+    logger_securite.info(
+        "Code de connexion par courriel %s : compte=%s adresse=%s",
+        "activé" if actif else "désactivé",
+        compte.pk,
+        adresse or "inconnue",
+    )
+
+
+def _exiger_courriel_operationnel(compte: User) -> None:
+    if not envoi_courriel_actif():
+        raise OtpImpossible(ENVOI_COURRIEL_NON_CONFIGURE)
+    if not compte.email:
+        raise OtpImpossible(COMPTE_SANS_COURRIEL)
+
+
+def demander_code_activation_otp(compte: User) -> bool:
+    """Check that a code can be mailed to the caller's own account, before queuing it.
+
+    The code proves that the address receives the mails: without it, a wrong address would
+    lock the agent out at his next login. Raises `OtpImpossible` when no email can go out.
+    Returns False when the option is already on (nothing to confirm).
+    """
+    _exiger_courriel_operationnel(compte)
+    return not compte.otp_connexion_actif
+
+
+def activer_otp_connexion(compte: User, code: str, *, adresse: str | None = None) -> bool:
+    """Turn the login code on for the caller's own account, on the code mailed to it.
+
+    It needs a working email (and an address on the account) and the proof that the address
+    receives the mails (the ACTIVATION code): the account would otherwise be locked out at
+    its next login. Already on: nothing to confirm. False = code refused (a wrong code
+    spends one of the 5 attempts of the active code).
+    """
+    if compte.otp_connexion_actif:
+        return True
+    _exiger_courriel_operationnel(compte)
+    if not verifier_otp(compte, ObjetOtp.ACTIVATION, code):
+        logger_securite.info(
+            "Code d'activation refusé : compte=%s adresse=%s", compte.pk, adresse or "inconnue"
+        )
+        return False
+    _enregistrer_otp_connexion(compte, True, adresse)
+    return True
+
+
+def desactiver_otp_connexion(
+    compte: User, mot_de_passe: str, *, adresse: str | None = None
+) -> User | None:
+    """Turn the login code off for the caller's own account, on its current password.
+
+    A stolen session must not be enough to remove the second factor: the password is
+    re-checked like for a password change (``_reconfirmer``). None = password refused.
+    Works without email (the way out of a login code that no longer arrives).
+    """
+    with transaction.atomic():
+        verrou = _reconfirmer(compte, mot_de_passe, motif="confirmation_otp", adresse=adresse)
+        if verrou is None:
+            return None
+        _enregistrer_otp_connexion(verrou, False, adresse)
+    return verrou
+
+
+def purger_codes_expires() -> int:
+    """Delete codes that expired more than 24 h ago. Returns the number deleted."""
+    limite = timezone.now() - OTP_PURGE_APRES
+    supprimes, _ = CodeOtp.objects.filter(expire_le__lt=limite).delete()
+    return supprimes

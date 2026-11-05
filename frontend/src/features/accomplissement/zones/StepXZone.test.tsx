@@ -4,15 +4,23 @@ import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 import { axe } from "vitest-axe";
 import { aStep } from "@/features/missions/testUtils";
+import type { paths } from "@/api/schema";
 import { API_URL } from "@/test/msw";
-import { aMission, baseHandlers, page, renderWithClient } from "../testUtils";
+import { aMission, baseHandlers, renderWithClient } from "../testUtils";
 import { StepXZone } from "./StepXZone";
 
 const NO_CONTRAST = { rules: { "color-contrast": { enabled: false } } };
 const step = aStep({ numero: 10, statut: "EN_COURS" });
 const HASH = "3f2a" + "0".repeat(56) + "9c1b";
 
-const snapshots = page([
+/**
+ * Réponse réelle de l'API : un tableau nu (vue non paginée), typé sur le schéma OpenAPI pour que
+ * le mock ne puisse plus diverger du contrat (un mock paginé masquait le plantage de l'étape X).
+ */
+type SnapshotList =
+  paths["/api/v1/work-programs/snapshots/"]["get"]["responses"][200]["content"]["application/json"];
+
+const snapshots: SnapshotList = [
   {
     id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
     valide_par: {
@@ -26,9 +34,9 @@ const snapshots = page([
     valide_le: "2026-10-27T10:00:00Z",
     empreinte: HASH,
   },
-]);
+];
 
-function handlers(list = snapshots) {
+function handlers(list: SnapshotList = snapshots) {
   return [
     http.get(`${API_URL}/api/v1/work-programs/snapshots/`, () => HttpResponse.json(list)),
     ...baseHandlers(),
@@ -48,7 +56,7 @@ describe("StepXZone", () => {
   });
 
   it("says so when no snapshot exists yet", async () => {
-    renderWithClient(<StepXZone mission={aMission()} step={step} />, handlers(page([])));
+    renderWithClient(<StepXZone mission={aMission()} step={step} />, handlers([]));
     expect(await screen.findByText(/Aucune version du programme/)).toBeInTheDocument();
   });
 

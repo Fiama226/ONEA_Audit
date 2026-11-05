@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { DocumentInline } from "@/features/documents/components/DocumentInline";
 import { fr } from "@/i18n/fr";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { useMarkMeetingHeld } from "../api";
@@ -71,10 +72,13 @@ export function MeetingCard({ mission, type, meeting, stepClosed = false }: Prop
 
       {closed && <p className="mt-3 text-sm text-text-muted">{t.readOnlyClosed}</p>}
 
-      {/* LOT4-SLOT: le lot 4 remplace cette mention par le document PV généré. */}
-      <p className="mt-3 text-sm text-text-muted" data-slot="lot4-pv">
-        {t.pvLater}
-      </p>
+      {meeting && type === "OUVERTURE" ? (
+        <div className="mt-3" data-slot="pv">
+          <DocumentInline typeDocument="PV_OUVERTURE" objetId={meeting.id} missionId={mission.id} />
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-text-muted">{t.pvNone}</p>
+      )}
 
       {canWrite && (
         <div className="mt-4 flex flex-wrap gap-2 print:hidden">

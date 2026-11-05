@@ -26,10 +26,39 @@ la clôture.
 
 ### 1.1 Se connecter
 
-1. Ouvrez l'adresse de la plateforme dans Chrome ou Edge. La page affiche « Audit interne ONEA » et
+1. Ouvrez l'adresse de la plateforme dans Chrome ou Edge. La page « Connexion » s'affiche, avec
    « Connectez-vous avec votre compte ONEA pour accéder à la plateforme ».
-2. Cliquez sur « Se connecter » : vous êtes redirigé vers le service d'authentification de l'ONEA.
-3. Saisissez votre identifiant et votre mot de passe. Vous revenez sur votre tableau de bord.
+2. Saisissez votre « Identifiant ou courriel professionnel » et votre « Mot de passe », puis cliquez sur
+   « Se connecter ».
+3. Vous arrivez sur votre tableau de bord.
+
+**Première connexion.** Votre compte est créé par l'administrateur, qui vous communique (ou vous envoie par
+courriel) un mot de passe temporaire valable 72 heures. À la première connexion, la plateforme affiche
+« Changer le mot de passe » : saisissez le mot de passe temporaire dans « Mot de passe actuel », choisissez un
+nouveau mot de passe d'au moins 12 caractères (évitez un mot de passe courant ou proche de votre identifiant),
+confirmez-le, puis cliquez sur « Changer le mot de passe ». Vous accédez ensuite à la plateforme. Passé les 72
+heures, le mot de passe temporaire n'est plus accepté : demandez à l'administrateur de le réinitialiser.
+
+**Mot de passe oublié.** Sur la page « Connexion », cliquez sur « Mot de passe oublié ? », indiquez votre
+identifiant ou votre courriel professionnel, puis cliquez sur « Recevoir un code ». Si un compte correspond, un
+code à 6 chiffres vous est envoyé par courriel (valable 10 minutes) ; le message affiché est le même que le
+compte existe ou non. Cliquez sur « Saisir le code reçu », saisissez le code et un nouveau mot de passe, puis
+« Enregistrer le mot de passe ». Si aucun courriel n'arrive, adressez-vous à l'administrateur : il peut
+réinitialiser votre mot de passe. Après 15 codes erronés en 24 heures, plus aucun code n'est accepté pour votre
+compte jusqu'à la fin de ces 24 heures (le message reste « Code invalide ou expiré. ») : demandez alors une
+réinitialisation à l'administrateur.
+
+**Connexion refusée.** Le message « Identifiant ou mot de passe incorrect. » est le même quelle que soit la cause
+(mot de passe erroné, compte inconnu, désactivé ou verrouillé). Après cinq échecs consécutifs, la connexion est
+bloquée pendant 15 minutes ; l'administrateur peut la rétablir plus tôt en réinitialisant votre mot de passe. Le
+message « Trop de tentatives, réessayez dans quelques minutes. » signifie que trop d'essais sont venus de votre
+réseau (par exemple de tout votre site) : patientez le temps indiqué, au plus 15 minutes, puis réessayez.
+
+**Durée de la session.** Votre session se ferme après 8 heures, ou après 30 minutes sans activité : « Votre
+session a expiré. Veuillez vous reconnecter. » Tant que vous tapez ou cliquez dans un onglet visible de la
+plateforme, la session reste ouverte, même pendant une longue saisie sans enregistrement. **Enregistrez avant de
+vous absenter** : après plus de 30 minutes sans frappe ni clic, une saisie non enregistrée est perdue. Pour la
+déconnexion et l'usage de plusieurs onglets, voir [Session, déconnexion et onglets](README.md#session-déconnexion-et-onglets).
 
 [Capture à insérer : CAP-COM-01 — Page de connexion]
 [Capture à insérer : CAP-RAI-01 — Tableau de bord du RAI]
@@ -60,10 +89,19 @@ L'entrée « Administration » n'est pas proposée au RAI : elle est réservée 
 
 ### 1.3 Votre profil et le menu utilisateur
 
-En haut à droite, le menu utilisateur affiche votre nom, votre adresse électronique et votre rôle. Il ne
-propose que « Se déconnecter ». Le nom, l'adresse et le rôle viennent de l'annuaire de l'ONEA ; la
-direction, la fonction et le matricule sont modifiés par l'administrateur. Vous ne les modifiez pas
-vous-même.
+En haut à droite, le menu utilisateur affiche votre nom, votre adresse et votre rôle. Il propose
+« Mon compte », « Changer mon mot de passe », « Visite guidée de la plateforme » et « Se déconnecter ».
+Dans « Mon compte », vous pouvez changer votre mot de passe (vos autres sessions ouvertes sont alors fermées) et
+activer ou désactiver, **vous seul**, le réglage facultatif « Demander un code par courriel à chaque connexion »
+(désactivé par défaut). Activé, ce réglage ajoute après le mot de passe l'étape « Vérification en deux étapes » :
+saisissez le code à 6 chiffres reçu par courriel (valable 10 minutes), puis « Valider le code ». Il ne peut être
+activé que si l'envoi de courriels est configuré et si une adresse de courriel est enregistrée sur votre compte ;
+pour le désactiver, confirmez avec votre mot de passe actuel. Si le code ne vous parvient plus, l'administrateur
+peut le désactiver pour vous (mais jamais l'activer à votre place).
+
+Le nom, l'adresse, le rôle, la direction, la fonction et le matricule sont renseignés par l'administrateur
+(seul un administrateur gère un compte RAI : un délégué de la gestion des comptes n'y a pas accès) ; vous ne les
+modifiez pas vous-même.
 
 [Capture à insérer : CAP-COM-02 — Menu utilisateur ouvert]
 
@@ -420,6 +458,25 @@ consultables mais pas modifiables : « Lecture seule : seul l'administrateur peu
 
 [Capture à insérer : CAP-RAI-23 — Gabarits de documents en lecture seule]
 [Capture à insérer : CAP-RAI-24 — Mode de signature en lecture seule]
+
+### 7.6 Règles de gouvernance et décisions attendues
+
+« Paramétrage », « Règles de gouvernance » : lecture seule (seul l'administrateur les modifie, avec un motif
+s'il assouplit un contrôle ; vous en êtes notifié). Ce qu'elles changent pour vous, aux valeurs de référence :
+
+- **Programme** : après votre validation, le DG puis le Conseil (enregistré par le DG) approuvent le
+  programme ; une mission du programme ne se lance qu'une fois le programme de son année approuvé.
+- **Création d'une mission du programme** : cochez au moins un « Risque couvert » (risques des processus cochés).
+- **Équipe** : un auditeur relevant d'une entité auditée, audité de la même entité ou auteur d'une mission de
+  conseil sur elle depuis moins de 12 mois n'est pas affectable (en mode avertissement : alerte sous sa ligne).
+- **Acceptations de risque** : vous validez celles des risques faibles et moyens (tableau de bord, « Décisions de
+  gouvernance attendues », motif obligatoire) ; le DG celles des risques élevés.
+- **Réponse de l'audité** : XIII exige la position de chaque entité sur les résultats des tests (onglet
+  « Constats » de l'audité), XIV la position de l'audité sur chaque constat validé, XVI une réponse au rapport
+  provisoire ou le délai échu. Sans réponse, « Déroger » dans « Décisions de gouvernance attendues », avec un
+  motif écrit au journal de l'étape (la dérogation tombe si l'étape est rouverte).
+
+« Journal d'audit » : toutes les entrées, filtre « Règles de gouvernance ».
 
 ---
 

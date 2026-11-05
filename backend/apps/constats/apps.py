@@ -31,6 +31,12 @@ class ConstatsConfig(AppConfig):
         for numero, controles in CONTROLES_ETAPE.items():
             enregistrer_controles(numero, controles)
 
+        from apps.missions.services.derogations import enregistrer_controle_audite
+
+        from .controles import controle_positions_audite
+
+        enregistrer_controle_audite(14, "findings_agreed", controle_positions_audite)
+
         from .documents import enregistrer_types
 
         enregistrer_types()

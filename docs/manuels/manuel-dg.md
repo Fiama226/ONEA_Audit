@@ -24,9 +24,37 @@ recommandations et votre tableau de bord de synthèse. Vous ne modifiez rien.
 
 ### 1.1 Se connecter
 
-1. Ouvrez la plateforme ; cliquez sur « Se connecter ».
-2. Saisissez votre identifiant et votre mot de passe sur la page d'authentification de l'ONEA.
+1. Ouvrez la plateforme : la page « Connexion » s'affiche.
+2. Saisissez votre « Identifiant ou courriel professionnel » et votre « Mot de passe », puis cliquez sur « Se connecter ».
 3. Vous arrivez sur « Synthèse de l'audit interne ».
+
+**Première connexion.** Votre compte est créé par l'administrateur, qui vous communique (ou vous envoie par
+courriel) un mot de passe temporaire valable 72 heures. À la première connexion, la plateforme affiche
+« Changer le mot de passe » : saisissez le mot de passe temporaire dans « Mot de passe actuel », choisissez un
+nouveau mot de passe d'au moins 12 caractères (évitez un mot de passe courant ou proche de votre identifiant),
+confirmez-le, puis cliquez sur « Changer le mot de passe ». Vous accédez ensuite à la plateforme. Passé les 72
+heures, le mot de passe temporaire n'est plus accepté : demandez à l'administrateur de le réinitialiser.
+
+**Mot de passe oublié.** Sur la page « Connexion », cliquez sur « Mot de passe oublié ? », indiquez votre
+identifiant ou votre courriel professionnel, puis cliquez sur « Recevoir un code ». Si un compte correspond, un
+code à 6 chiffres vous est envoyé par courriel (valable 10 minutes) ; le message affiché est le même que le
+compte existe ou non. Cliquez sur « Saisir le code reçu », saisissez le code et un nouveau mot de passe, puis
+« Enregistrer le mot de passe ». Si aucun courriel n'arrive, adressez-vous à l'administrateur : il peut
+réinitialiser votre mot de passe. Après 15 codes erronés en 24 heures, plus aucun code n'est accepté pour votre
+compte jusqu'à la fin de ces 24 heures (le message reste « Code invalide ou expiré. ») : demandez alors une
+réinitialisation à l'administrateur.
+
+**Connexion refusée.** Le message « Identifiant ou mot de passe incorrect. » est le même quelle que soit la cause
+(mot de passe erroné, compte inconnu, désactivé ou verrouillé). Après cinq échecs consécutifs, la connexion est
+bloquée pendant 15 minutes ; l'administrateur peut la rétablir plus tôt en réinitialisant votre mot de passe. Le
+message « Trop de tentatives, réessayez dans quelques minutes. » signifie que trop d'essais sont venus de votre
+réseau (par exemple de tout votre site) : patientez le temps indiqué, au plus 15 minutes, puis réessayez.
+
+**Durée de la session.** Votre session se ferme après 8 heures, ou après 30 minutes sans activité : « Votre
+session a expiré. Veuillez vous reconnecter. » Tant que vous tapez ou cliquez dans un onglet visible de la
+plateforme, la session reste ouverte, même pendant une longue saisie sans enregistrement. **Enregistrez avant de
+vous absenter** : après plus de 30 minutes sans frappe ni clic, une saisie non enregistrée est perdue. Pour la
+déconnexion et l'usage de plusieurs onglets, voir [Session, déconnexion et onglets](README.md#session-déconnexion-et-onglets).
 
 [Capture à insérer : CAP-COM-01 — Page de connexion]
 [Capture à insérer : CAP-DG-01 — Tableau de bord de la DG]
@@ -45,8 +73,17 @@ Les entrées « Missions », « Documents » et « Administration » ne sont pas
 
 ### 1.3 Profil, aide, déconnexion
 
-Le menu utilisateur affiche votre nom, votre adresse et votre rôle (« DG ») ; il propose « Se déconnecter ». Aucune entrée « Aide »
-n'existe à ce jour.
+Le menu utilisateur affiche votre nom, votre adresse et votre rôle (« DG »). Il propose
+« Mon compte », « Changer mon mot de passe », « Visite guidée de la plateforme » et « Se déconnecter ».
+Dans « Mon compte », vous pouvez changer votre mot de passe (vos autres sessions ouvertes sont alors fermées) et
+activer ou désactiver, **vous seul**, le réglage facultatif « Demander un code par courriel à chaque connexion »
+(désactivé par défaut). Activé, ce réglage ajoute après le mot de passe l'étape « Vérification en deux étapes » :
+saisissez le code à 6 chiffres reçu par courriel (valable 10 minutes), puis « Valider le code ». Il ne peut être
+activé que si l'envoi de courriels est configuré et si une adresse de courriel est enregistrée sur votre compte ;
+pour le désactiver, confirmez avec votre mot de passe actuel. Si le code ne vous parvient plus, l'administrateur
+peut le désactiver pour vous (mais jamais l'activer à votre place).
+
+Aucune entrée « Aide » n'existe à ce jour.
 
 ### 1.4 Notifications et recherche
 
@@ -103,6 +140,32 @@ Aucune action de modification n'est offerte.
 - « Programme annuel » : vues « Liste » et « Calendrier », filtres par processus, type, trimestre, et synthèse (Assurance/Conseil, missions par trimestre, charge totale). Lecture seule. Un programme validé est figé.
 - « Référentiel » : onglet « Cartographies » (matrice 5 × 5 ; niveaux faible de 1 à 7, moyen de 8 à 14, élevé de 15 à 25 ; « Comparer avec… » deux versions),
   « Processus », « Directions », « Objets auditables ». Mention « Votre rôle donne un accès en lecture seule ».
+
+### 5.1 Approuver le programme annuel (règles de gouvernance)
+
+Selon la règle « Approbation du programme annuel » (par défaut : Direction générale puis Conseil),
+l'encadré « Approbation du programme » d'un programme **validé par le RAI** vous propose :
+
+1. « Enregistrer l'approbation de la DG » : date de la décision (aujourd'hui par défaut), commentaire facultatif ;
+2. puis « Enregistrer la décision du Conseil » : le Conseil n'a pas de compte, vous reportez sa décision avec
+   la **référence de la délibération** (obligatoire) et sa date.
+
+Une approbation ne se modifie ni ne se supprime. Tant que le programme de l'année n'est pas approuvé, le RAI
+ne peut pas lancer une mission inscrite au programme. Vous êtes notifié quand le RAI valide un programme.
+
+### 5.2 Décisions de gouvernance et règles assouplies
+
+Votre tableau de bord affiche :
+
+- **Décisions de gouvernance attendues** : les acceptations de risque que les règles vous confient (risque
+  élevé par défaut, ou décision du Conseil que vous reportez avec la référence de la délibération) :
+  « Valider » ou « Refuser », motif obligatoire ; un refus retire l'acceptation. Si la règle « Réponse de
+  l'audité » vous désigne, les étapes bloquées faute de réponse de l'audité, avec « Déroger » (motif).
+- **Règles de gouvernance assouplies** : l'état courant des règles affaiblies par l'administrateur, avec
+  leur motif. Vous recevez une notification à chaque assouplissement.
+
+« Paramétrage », « Règles de gouvernance » (lecture seule) et « Journal d'audit » (changements des règles,
+valeurs avant et après, motif) complètent ce suivi.
 
 [Capture à insérer : CAP-DG-07 — Programme annuel en lecture]
 [Capture à insérer : CAP-DG-08 — Cartographie des risques en lecture]

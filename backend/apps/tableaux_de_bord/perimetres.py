@@ -22,5 +22,10 @@ def missions_de_l_annee(qs: QuerySet[Mission], annee: int) -> QuerySet[Mission]:
 
 
 def suivis_diffuses_de_l_annee(suivis: QuerySet[SuiviAction], annee: int) -> QuerySet[SuiviAction]:
-    """Suivis des missions dont le rapport a été diffusé dans l'année (R12)."""
-    return suivis.filter(diffuse_le__year=annee, mission__statut__in=STATUTS_MISSION_SUIVI)
+    """Suivis des missions de l'année dont le rapport a été diffusé.
+
+    Même règle d'année que `missions_de_l_annee` (année de la mission, jamais celle de la
+    diffusion) : les rapports, les taux et les risques d'un même tableau restent cohérents.
+    """
+    missions = missions_de_l_annee(Mission.objects.filter(statut__in=STATUTS_MISSION_SUIVI), annee)
+    return suivis.filter(mission__in=missions.values("pk"))

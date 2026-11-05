@@ -1,5 +1,5 @@
 #!/bin/sh
-# Sauvegarde de la pile de production (lot 9, T18, D8) : dumps PostgreSQL (application, Keycloak),
+# Sauvegarde de la pile de production (lot 9, T18, D8) : dumps PostgreSQL (application),
 # archive du volume des pièces justificatives (onea-fichiers), archive du dossier des documents,
 # manifeste SHA-256, vérification de chaque artefact, copie hors serveur chiffrée (restic).
 #
@@ -96,7 +96,6 @@ dump() { # <service> <préfixe>
   mv "$_tmp" "$DEST/$2-$STAMP.dump"
 }
 dump db onea
-dump keycloak-db keycloak
 
 # Crochet de test : écrire un fichier entre les dumps et les archives (devient un orphelin).
 if [ -n "${ONEA_SAUVEGARDE_PAUSE:-}" ] && [ -f "$ONEA_SAUVEGARDE_PAUSE" ]; then
@@ -127,7 +126,7 @@ archiver documents "$rc" "$DEST/documents-$STAMP.tar.gz.tmp"
 # --- Manifeste SHA-256 (écrit en dernier) et contre-vérification ------------------------------------
 (
   cd "$DEST"
-  sha256sum "onea-$STAMP.dump" "keycloak-$STAMP.dump" "fichiers-$STAMP.tar.gz" \
+  sha256sum "onea-$STAMP.dump" "fichiers-$STAMP.tar.gz" \
     "documents-$STAMP.tar.gz" > "manifeste-$STAMP.sha256.tmp"
   sha256sum -c "manifeste-$STAMP.sha256.tmp" >/dev/null
   mv "manifeste-$STAMP.sha256.tmp" "manifeste-$STAMP.sha256"
@@ -135,13 +134,22 @@ archiver documents "$rc" "$DEST/documents-$STAMP.tar.gz.tmp"
 SUCCES=1
 
 # --- Conservation locale : 14 jeux ------------------------------------------------------------------
-for prefix in onea keycloak; do
+for prefix in onea; do
   ls -1t "$DEST"/"$prefix"-*.dump 2>/dev/null | tail -n +15 | while read -r old; do rm -f "$old"; done
 done
 for prefix in documents fichiers; do
   ls -1t "$DEST"/"$prefix"-*.tar.gz 2>/dev/null | tail -n +15 | while read -r old; do rm -f "$old"; done
 done
 ls -1t "$DEST"/manifeste-*.sha256 2>/dev/null | tail -n +15 | while read -r old; do rm -f "$old"; done
+# Jeux antérieurs au retrait de Keycloak : plus aucun keycloak-<h>.dump n'est écrit, le compte des 14
+# ne les ferait jamais sortir. Chacun part avec le manifeste de son jeu (il contient les empreintes
+# des mots de passe Keycloak des agents).
+for old in "$DEST"/keycloak-*.dump; do
+  [ -e "$old" ] || continue
+  h=${old##*/keycloak-}
+  h=${h%.dump}
+  [ -f "$DEST/manifeste-$h.sha256" ] || rm -f "$old"
+done
 
 echo "OK : sauvegarde $STAMP écrite et vérifiée dans $DEST (manifeste-$STAMP.sha256)."
 
