@@ -266,7 +266,7 @@ def _notifier_approbation_attendue(programme: ProgrammeAnnuel) -> None:
             f"Le RAI a validé le programme annuel {programme.annee}. Les règles de gouvernance "
             "prévoient son approbation avant le lancement des missions."
         ),
-        lien=f"/programme-annuel?annee={programme.annee}",
+        lien=f"/programme-annuel/{programme.pk}",
         objet=programme,
         cle=f"programme-a-approuver:{programme.pk}",
     )
