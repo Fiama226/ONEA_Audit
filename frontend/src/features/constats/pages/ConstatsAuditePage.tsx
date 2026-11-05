@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { ALERT_CLASS } from "@/components/form/FormField";
+import { ResultsAgreementCard } from "@/features/accomplissement/components/ResultsAgreementCard";
 import { fr } from "@/i18n/fr";
 import { useFindings } from "../api";
 import { ConstatsTable } from "../components/ConstatsTable";
@@ -53,6 +54,7 @@ export function ConstatsAuditePage() {
           {t.auditeeFilter}
         </label>
       </div>
+      {id && <ResultsAgreementCard missionId={id} />}
       {body}
     </section>
   );

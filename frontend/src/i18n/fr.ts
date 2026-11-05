@@ -1761,6 +1761,14 @@ export const fr = {
     acceptRisk: "Accepter le risque",
     withdrawAcceptance: "Retirer l'acceptation",
     accepted: "Risque accepté le {date} par {auteur} : {motif}",
+    acceptancePending:
+      "Acceptation en attente de validation par {autorite} (règle de gouvernance) : elle ne couvre pas encore la recommandation.",
+    acceptanceValidated: "Acceptation validée par {qui} le {date}.",
+    acceptanceAuthorities: {
+      RAI: "le responsable de l'audit interne",
+      DG: "la Direction générale",
+      BOARD: "le Conseil (décision enregistrée par le DG)",
+    } as Record<string, string>,
     // Dialogue d'action
     actionDialogTitleNew: "Ajouter une action",
     actionDialogTitleEdit: "Modifier l'action {reference}",
@@ -2182,6 +2190,17 @@ export const fr = {
       SIGNATURE_ELECTRONIQUE: "Signature électronique (PAdES)",
       CONFIRMATION_ET_SIGNATURE: "Confirmation et signature électronique",
     },
+  },
+  accordResultats: {
+    title: "Résultats des tests : position de votre entité",
+    help: "Étape XIII : les résultats des tests sont validés avec les audités. Donnez votre accord, ou un désaccord motivé ; votre position est conservée dans le dossier de la mission.",
+    positionLegend: (entite: string) => `Position de l'entité ${entite}`,
+    agree: "Accord",
+    disagree: "Désaccord",
+    comment: "Commentaire (obligatoire en cas de désaccord)",
+    commentRequired: "Motivez le désaccord.",
+    submit: "Enregistrer la position",
+    line: (entite: string, position: string, date: string) => `${entite} : ${position}, le ${date}`,
   },
   journalAuditAdmin: {
     title: "Piste d'audit : contenu des missions",
@@ -2692,7 +2711,7 @@ export const fr = {
     searchUnavailable: "La recherche est momentanément indisponible. Réessayez plus tard.",
     searchRateLimited: "Trop de recherches en peu de temps : patientez une minute.",
     searchDegraded:
-      "Le moteur de recherche est indisponible : seules les missions sont cherchées (référence et titre). Les constats, actions et documents reviendront dès son rétablissement.",
+      "Le moteur de recherche est indisponible : la recherche se limite aux références et titres des missions (et des constats si les règles de gouvernance l'étendent). Les autres résultats reviendront dès son rétablissement.",
     searchRetry: "Réessayer",
     searchMore: "D'autres résultats existent : précisez la recherche.",
     // Pièces et exports
