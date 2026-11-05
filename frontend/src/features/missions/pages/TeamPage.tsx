@@ -88,7 +88,16 @@ export function TeamPage() {
       id: "declaration",
       header: m.colDeclaration,
       enableSorting: false,
-      cell: ({ row }) => declarationText(row.original),
+      cell: ({ row }) => (
+        <>
+          {declarationText(row.original)}
+          {row.original.alerte_objectivite && (
+            <span role="note" className="mt-1 block max-w-md text-xs text-warning-text">
+              {row.original.alerte_objectivite}
+            </span>
+          )}
+        </>
+      ),
     },
     {
       id: "actions",

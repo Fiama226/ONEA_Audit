@@ -412,6 +412,11 @@ export const fr = {
     sectionObjectives: "Objectifs et livrables",
     fieldProcesses: "Processus audités",
     fieldEntities: "Entités auditées",
+    fieldRisks: "Risques couverts",
+    fieldRisksHelp:
+      "Risques de la cartographie de référence que la mission couvre, parmi ceux des processus cochés. Exigé pour une mission inscrite au programme annuel quand la règle de gouvernance « lien programme ↔ risque » le prévoit.",
+    fieldRisksNoProcess:
+      "Cochez d'abord les processus de la mission pour choisir les risques couverts.",
     fieldTrigger: "Événement déclencheur",
     fieldTriggerNone: "Non précisé",
     fieldTriggerDetail: "Précision sur l'événement déclencheur",

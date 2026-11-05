@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useRef, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { applyApiErrors } from "@/api/formErrors";
 import { isApiError } from "@/api/errors";
@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRole } from "@/auth/useRole";
 import { fr } from "@/i18n/fr";
 import { useAllDirections, useAllProcesses } from "@/features/referentiel/allPages";
+import { useCoveredRiskChoices } from "../coveredRisks";
 import { useMission, useSaveMission, useSteps } from "../api";
 import { CheckGroup } from "../components/CheckGroup";
 import { EVENEMENT_DECLENCHEUR_LABELS, TYPE_MISSION_LABELS } from "../labels";
@@ -40,6 +41,7 @@ function defaultsOf(mission?: Mission): MissionFormValues {
     type: mission?.type ?? ("" as TypeMission),
     processus: mission?.processus_detail.map((p) => p.id) ?? [],
     entites: mission?.entites_detail.map((e) => e.id) ?? [],
+    risques_couverts: mission?.risques_couverts_detail.map((r) => r.id) ?? [],
     evenement_declencheur: mission?.evenement_declencheur ?? "",
     evenement_precision: mission?.evenement_precision ?? "",
     periode_debut: mission?.periode_debut ?? "",
@@ -108,6 +110,8 @@ function MissionForm({ mission, frozen }: { mission?: Mission; frozen: boolean }
     resolver: zodResolver(missionSchema),
     defaultValues: defaultsOf(mission),
   });
+  const selectedProcesses = useWatch({ control, name: "processus" });
+  const risks = useCoveredRiskChoices(mission?.cartographie?.id);
 
   async function onSubmit(values: MissionFormValues) {
     setFormError(null);
@@ -249,6 +253,33 @@ function MissionForm({ mission, frozen }: { mission?: Mission; frozen: boolean }
                 groupRef={field.ref}
               />
             )}
+          />
+          <Controller
+            control={control}
+            name="risques_couverts"
+            render={({ field }) => {
+              const choices = risks.items.filter(
+                (r) => selectedProcesses.includes(r.processus) || field.value.includes(r.id),
+              );
+              return (
+                <CheckGroup
+                  legend={m.fieldRisks}
+                  items={choices}
+                  count={choices.length}
+                  isLoading={risks.isLoading}
+                  isError={risks.isError}
+                  value={field.value}
+                  onChange={field.onChange}
+                  readOnly={lock("risques_couverts")}
+                  help={
+                    helpFor("risques_couverts") ??
+                    (selectedProcesses.length === 0 ? m.fieldRisksNoProcess : m.fieldRisksHelp)
+                  }
+                  error={errors.risques_couverts?.message}
+                  groupRef={field.ref}
+                />
+              );
+            }}
           />
           <FormField
             label={m.fieldTrigger}
