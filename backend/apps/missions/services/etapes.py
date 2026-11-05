@@ -11,6 +11,7 @@ from django.utils import timezone
 from apps.core.audit import actor_scope
 from apps.core.exceptions import RegleMetierError
 from apps.core.services import appliquer, enregistrer, refuser, relire
+from apps.gouvernance import regles_gouvernance
 from apps.users.models import Role, User
 
 from .. import acces
@@ -174,9 +175,12 @@ def contexte_actions(
 def predecesseurs_ouverts(
     etape: EtapeMission, *, statuts: dict[int, str] | None = None
 ) -> list[int]:
-    """Étapes à clore avant de démarrer `etape` (un jalon doit être validé, pas terminé)."""
+    """Étapes à clore avant de démarrer `etape` (un jalon doit être validé, pas terminé).
+
+    Règle de gouvernance « ordre des étapes » : en mode libre, aucune étape n'est exigée.
+    """
     requis = PREDECESSEURS.get(etape.numero, ())
-    if not requis:
+    if not requis or not regles_gouvernance.step_order_strict():
         return []
     if statuts is None:
         statuts = dict(
