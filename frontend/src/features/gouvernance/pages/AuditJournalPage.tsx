@@ -4,6 +4,7 @@ import { FormField } from "@/components/form/FormField";
 import { NativeSelect } from "@/components/form/NativeSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -126,7 +127,10 @@ export function AuditJournalPage() {
     const pages = Math.max(1, Math.ceil(query.data.count / PAGE_SIZE));
     body = (
       <>
-        <div className="min-w-0 overflow-x-auto rounded-lg border border-border bg-surface">
+        <ScrollRegion
+          label={t.journal.caption}
+          className="min-w-0 rounded-lg border border-border bg-surface"
+        >
           <Table>
             <TableCaption className="sr-only">{t.journal.caption}</TableCaption>
             <TableHeader>
@@ -166,7 +170,7 @@ export function AuditJournalPage() {
               })}
             </TableBody>
           </Table>
-        </div>
+        </ScrollRegion>
         <nav aria-label={t.journal.page(page)} className="flex items-center gap-3 text-sm">
           <Button
             type="button"

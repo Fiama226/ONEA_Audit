@@ -60,6 +60,7 @@ const MISSIONS = ["RAI", "AUDITEUR", "AUDITE"] as const;
 const PROGRAMME = ["ADMIN", "RAI", "AUDITEUR", "DG"] as const;
 const RECO = ["RAI", "AUDITEUR", "AUDITE", "DG"] as const;
 const ADMIN_LECTURE = ["ADMIN", "RAI"] as const;
+const GOUVERNANCE = ["ADMIN", "RAI", "DG"] as const;
 
 const M = "/missions/:id";
 export const ROUTES: readonly EntreeRoute[] = [
@@ -129,6 +130,8 @@ export const ROUTES: readonly EntreeRoute[] = [
   { motif: "/administration/documents/numerotation", roles: ADMIN_LECTURE },
   { motif: "/administration/documents/:type", roles: ADMIN_LECTURE, parametres: ["gabarit"] },
   { motif: "/administration/signatures", roles: ADMIN_LECTURE },
+  { motif: "/administration/gouvernance", roles: GOUVERNANCE },
+  { motif: "/journal-audit", roles: GOUVERNANCE },
   { motif: "/mon-compte", roles: TOUS },
   { motif: "/mot-de-passe/changer", roles: TOUS },
 ];
