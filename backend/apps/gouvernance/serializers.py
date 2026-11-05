@@ -1,0 +1,46 @@
+from typing import Any
+
+from rest_framework import serializers
+
+from apps.users.models import User
+
+
+class AuteurRegleSerializer(serializers.Serializer[User]):
+    id = serializers.IntegerField()
+    nom_complet = serializers.CharField()
+
+
+class RegleGouvernanceSerializer(serializers.Serializer[Any]):
+    """État d'une règle de gouvernance (lecture ADMIN, RAI, DG)."""
+
+    cle = serializers.CharField()
+    libelle = serializers.CharField()
+    description = serializers.CharField()
+    reference = serializers.CharField(help_text="Norme ou fiche dont la règle est issue.")
+    issue_des_normes = serializers.BooleanField(
+        help_text="Règle issue des Normes IIA : assouplie, elle reste signalée en permanence."
+    )
+    valeur = serializers.DictField(child=serializers.JSONField(), help_text="Valeur effective.")
+    defaut = serializers.DictField(
+        child=serializers.JSONField(), help_text="Valeur de référence (la plus prudente)."
+    )
+    assouplie = serializers.BooleanField(
+        help_text="La valeur effective est plus faible que la valeur de référence."
+    )
+    modifie_le = serializers.DateTimeField(allow_null=True)
+    modifie_par = AuteurRegleSerializer(allow_null=True)
+    motif = serializers.CharField(allow_blank=True)
+
+
+class RegleGouvernanceEcritureSerializer(serializers.Serializer[dict[str, Any]]):
+    valeur = serializers.DictField(
+        child=serializers.JSONField(),
+        help_text="Champs à changer (les autres gardent leur valeur). Validés par le service.",
+    )
+    motif = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=1000,
+        default="",
+        help_text="Obligatoire quand le changement assouplit un contrôle.",
+    )

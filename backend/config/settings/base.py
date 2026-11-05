@@ -96,6 +96,7 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.recherche",
     "apps.tableaux_de_bord",
+    "apps.gouvernance",
 ]
 
 AUTH_USER_MODEL = "users.User"
