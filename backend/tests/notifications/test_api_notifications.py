@@ -1,6 +1,10 @@
 """API des notifications : isolement par destinataire, lecture, compteur, pagination."""
 
+from datetime import timedelta
+from unittest import mock
+
 import pytest
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.notifications.models import Notification
@@ -16,8 +20,12 @@ URL = "/api/v1/notifications/"
 
 
 def test_liste_limitee_aux_siennes_du_plus_recent_au_plus_ancien(user: User, rai: User) -> None:
-    ancienne = creer_notification(destinataire=user, titre="Ancienne")
-    recente = creer_notification(destinataire=user, titre="Recente")
+    # created_at fixé : deux créations dans la même milliseconde ne départagent pas le tri
+    maintenant = timezone.now()
+    with mock.patch("django.utils.timezone.now", return_value=maintenant - timedelta(hours=1)):
+        ancienne = creer_notification(destinataire=user, titre="Ancienne")
+    with mock.patch("django.utils.timezone.now", return_value=maintenant):
+        recente = creer_notification(destinataire=user, titre="Recente")
     creer_notification(destinataire=rai, titre="Autrui")
     corps = client_de(user).get(URL).json()
     assert [n["titre"] for n in corps["results"]] == ["Recente", "Ancienne"]
