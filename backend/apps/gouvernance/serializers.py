@@ -44,3 +44,25 @@ class RegleGouvernanceEcritureSerializer(serializers.Serializer[dict[str, Any]])
         default="",
         help_text="Obligatoire quand le changement assouplit un contrôle.",
     )
+
+
+class EtapeADerogerSerializer(serializers.Serializer[Any]):
+    """Étape ouverte bloquée par l'absence de réponse de l'audité (dérogation possible)."""
+
+    etape = serializers.UUIDField(source="etape.pk")
+    numero = serializers.IntegerField(source="etape.numero")
+    romain = serializers.CharField()
+    mission_id = serializers.UUIDField(source="etape.mission_id")
+    mission_reference = serializers.CharField(source="etape.mission.reference")
+    mission_titre = serializers.CharField(source="etape.mission.titre")
+    manquants = serializers.ListField(child=serializers.CharField())
+
+
+class DerogationSerializer(serializers.Serializer[Any]):
+    motif = serializers.CharField(
+        max_length=2000,
+        allow_blank=True,
+        required=False,
+        default="",
+        help_text="Obligatoire quand la règle de gouvernance l'exige.",
+    )

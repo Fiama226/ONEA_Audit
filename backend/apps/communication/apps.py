@@ -36,6 +36,14 @@ class CommunicationConfig(AppConfig):
         for numero, controles in (*CONTROLES_PROVISOIRE.items(), *CONTROLES_ETAPE.items()):
             enregistrer_controles(numero, controles)
 
+        from apps.missions.services.derogations import enregistrer_controle_audite
+
+        from .controles.reponses import ETAPE_REPONSES, controle_reponses_provisoire
+
+        enregistrer_controle_audite(
+            ETAPE_REPONSES, "response_or_deadline", controle_reponses_provisoire
+        )
+
         from apps.missions.services.etapes import ActionEtape, reserver_actions
 
         from . import recepteurs

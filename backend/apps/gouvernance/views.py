@@ -2,19 +2,29 @@
 revérifie le droit en base, aucune délégation ne le donne)."""
 
 from typing import cast
+from uuid import UUID
 
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
+from rest_framework import status
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core.schema import ERROR_400, ERROR_404, ERROR_RESPONSES
+from apps.core.schema import ERROR_400, ERROR_404, ERROR_422, ERROR_RESPONSES
+from apps.missions.models import EtapeMission
+from apps.missions.services import derogations
 from apps.users.models import Role, User
 from apps.users.permissions import HasRole, IsAdmin
 
 from . import regles_gouvernance as rg
-from .serializers import RegleGouvernanceEcritureSerializer, RegleGouvernanceSerializer
+from .serializers import (
+    DerogationSerializer,
+    EtapeADerogerSerializer,
+    RegleGouvernanceEcritureSerializer,
+    RegleGouvernanceSerializer,
+)
 
 TAG = "Règles de gouvernance"
 LectureRegles = HasRole(Role.ADMIN, Role.RAI, Role.DG)
@@ -74,3 +84,41 @@ class RegleGouvernanceDetailView(APIView):
             by=cast(User, request.user),
         )
         return Response(RegleGouvernanceSerializer(_etat(cle)).data)
+
+
+class DerogationsReponseAuditeView(APIView):
+    """Étapes XIII, XIV et XVI bloquées par l'absence de réponse de l'audité : file de
+    l'autorité désignée par la règle « réponse de l'audité » (RAI ou DG)."""
+
+    permission_classes = [HasRole(Role.RAI, Role.DG)]
+
+    @extend_schema(
+        tags=[TAG],
+        operation_id="auditee_response_waivers_list",
+        summary="Étapes en attente d'une dérogation (réponse de l'audité)",
+        responses={200: EtapeADerogerSerializer(many=True), **ERROR_RESPONSES},
+    )
+    def get(self, request: Request) -> Response:
+        attendues = derogations.etapes_a_deroger(cast(User, request.user))
+        return Response(EtapeADerogerSerializer(attendues, many=True).data)
+
+
+class DerogerView(APIView):
+    permission_classes = [HasRole(Role.RAI, Role.DG)]
+
+    @extend_schema(
+        tags=[TAG],
+        operation_id="auditee_response_waivers_waive",
+        summary="Déroger à l'absence de réponse de l'audité (motif journalisé)",
+        request=DerogationSerializer,
+        responses={204: None, **ERROR_400, **ERROR_RESPONSES, **ERROR_404, **ERROR_422},
+    )
+    def post(self, request: Request, etape_id: UUID) -> Response:
+        etape = get_object_or_404(
+            EtapeMission.objects.filter(numero__in=derogations.ETAPES_REPONSE_AUDITE),
+            pk=etape_id,
+        )
+        corps = DerogationSerializer(data=request.data)
+        corps.is_valid(raise_exception=True)
+        derogations.deroger(etape, motif=corps.validated_data["motif"], by=cast(User, request.user))
+        return Response(status=status.HTTP_204_NO_CONTENT)

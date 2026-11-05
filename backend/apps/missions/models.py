@@ -93,6 +93,7 @@ class TypeEvenementEtape(models.TextChoices):
     A_REVALIDER = "A_REVALIDER", "Marquée à revalider"
     NON_APPLICABLE = "NON_APPLICABLE", "Marquée non applicable"
     RETABLIE = "RETABLIE", "Rétablie"
+    DEROGATION = "DEROGATION", "Dérogation (réponse de l'audité)"
 
 
 class StatutDeclaration(models.TextChoices):

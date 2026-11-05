@@ -13,6 +13,7 @@ from django.db.models import Max, QuerySet
 from apps.constats.models import Constat, StatutConstat
 from apps.core.exceptions import RegleMetierError
 from apps.core.services import enregistrer, refuser, relire
+from apps.gouvernance import regles_gouvernance
 from apps.missions.acces import (
     declaration_levee,
     est_chef,
@@ -141,9 +142,14 @@ def _peut_transmettre(user: User, mission: Mission) -> bool:
 
 @transaction.atomic
 def transmettre_provisoire(
-    rapport: Rapport, *, by: User, delai_jours: int = 15
+    rapport: Rapport, *, by: User, delai_jours: int | None = None
 ) -> RapportProvisoire:
-    """Fige l'instantané provisoire et ouvre la période de réponse (XV ouverte, réunion tenue)."""
+    """Fige l'instantané provisoire et ouvre la période de réponse (XV ouverte, réunion tenue).
+
+    Sans délai explicite, celui de la règle de gouvernance « réponse de l'audité ».
+    """
+    if delai_jours is None:
+        delai_jours = int(regles_gouvernance.auditee_response()["delay_days"])
     mission = ouvrir_mission(rapport.mission_id)
     if not _peut_transmettre(by, mission):
         raise PermissionDenied(MSG_DROIT)

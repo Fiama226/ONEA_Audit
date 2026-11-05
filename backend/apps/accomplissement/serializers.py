@@ -20,11 +20,13 @@ from apps.analyse.services.objectifs import code_objectif
 from apps.missions.models import Mission, RisqueMission
 from apps.missions.serializers import CleRelation
 from apps.missions.services.etapes import ContexteActions, contexte_actions
+from apps.referentiel.models import Direction
 from apps.users.models import User
 from apps.users.serializers import UtilisateurResumeSerializer
 
 from . import droits, droits_fiches, gardes
 from .models import (
+    AccordResultats,
     ConclusionTest,
     EvenementFiche,
     FicheDeTest,
@@ -407,3 +409,27 @@ class FicheDeTestSerializer(FicheDeTestListeSerializer):
 
     class Meta(FicheDeTestListeSerializer.Meta):
         fields = [*FicheDeTestListeSerializer.Meta.fields, "pieces", "evenements"]
+
+
+class AccordResultatsSerializer(serializers.ModelSerializer[AccordResultats]):
+    """Position de l'entité auditée sur les résultats des tests (étape XIII)."""
+
+    mission = CleRelation(queryset=Mission.objects.all())
+    entite = CleRelation(queryset=Direction.objects.all())
+    entite_libelle = serializers.CharField(source="entite.libelle", read_only=True)
+    auteur = UtilisateurResumeSerializer(read_only=True)
+    commentaire = serializers.CharField(required=False, allow_blank=True, default="")
+
+    class Meta:
+        model = AccordResultats
+        fields = (
+            "id",
+            "mission",
+            "entite",
+            "entite_libelle",
+            "auteur",
+            "position",
+            "commentaire",
+            "created_at",
+        )
+        read_only_fields = ("id", "auteur", "created_at")
