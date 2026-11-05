@@ -48,6 +48,7 @@ export function aMission(overrides: Partial<Mission> = {}): Mission {
     ma_declaration_en_attente: false,
     processus_detail: [],
     entites_detail: [],
+    risques_couverts_detail: [],
     evenement_declencheur: "",
     evenement_precision: "",
     periode_debut: null,

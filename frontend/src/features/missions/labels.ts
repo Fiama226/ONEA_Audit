@@ -108,4 +108,5 @@ export const TYPE_EVENEMENT_ETAPE_LABELS: Record<TypeEvenementEtape, string> = {
   A_REVALIDER: "À revalider",
   NON_APPLICABLE: "Marquée non applicable",
   RETABLIE: "Étape rétablie",
+  DEROGATION: "Dérogation à la réponse de l'audité",
 };

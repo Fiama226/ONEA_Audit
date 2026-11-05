@@ -15,6 +15,8 @@ function entry(changes: AuditLog["changes"]): AuditLog {
     object_repr: "auditeur2",
     changes,
     action_metier: null,
+    motif: null,
+    affaiblissement: null,
   };
 }
 

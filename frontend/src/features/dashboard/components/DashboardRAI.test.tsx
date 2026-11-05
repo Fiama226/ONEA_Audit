@@ -102,7 +102,8 @@ describe("DashboardRAI", () => {
   it("annonce le chargement", () => {
     server.use(http.get(URL_RAI, () => new Promise(() => {})));
     renderWithAuth(<DashboardRAI />, "RAI");
-    expect(screen.getByRole("status")).toHaveTextContent(t.loading);
+    // Le bloc « Décisions de gouvernance attendues » annonce aussi son propre chargement.
+    expect(screen.getAllByRole("status").at(-1)).toHaveTextContent(t.loading);
   });
 
   it("n'a aucune violation d'accessibilité", async () => {

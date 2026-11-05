@@ -1,5 +1,14 @@
-import { FileText, FolderTree, PenLine, Users, type LucideIcon } from "lucide-react";
+import {
+  FileText,
+  FolderTree,
+  PenLine,
+  Scale,
+  ScrollText,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { Link } from "react-router-dom";
+import { RelaxedRulesCard } from "@/features/gouvernance/components/RelaxedRulesCard";
 import { useUserAccounts } from "@/features/utilisateurs/api";
 import { fr } from "@/i18n/fr";
 import { PageHeader } from "./preview";
@@ -23,6 +32,18 @@ const SHORTCUTS: Shortcut[] = [
     icon: PenLine,
   },
   { to: "/referentiel", label: d.adminReferential, hint: d.adminReferentialHint, icon: FolderTree },
+  {
+    to: "/administration/gouvernance",
+    label: fr.nav.governanceRules,
+    hint: d.adminGovernanceHint,
+    icon: Scale,
+  },
+  {
+    to: "/journal-audit",
+    label: fr.nav.auditJournal,
+    hint: d.adminJournalHint,
+    icon: ScrollText,
+  },
 ];
 
 function PendingAccounts() {
@@ -67,6 +88,7 @@ export function DashboardAdmin() {
           <p className="mt-1 max-w-2xl text-sm text-text-muted">{fr.shell.adminText}</p>
         </div>
         <PendingAccounts />
+        <RelaxedRulesCard />
         <ul className="grid gap-4 sm:grid-cols-2">
           {SHORTCUTS.map(({ to, label, hint, icon: Icon }) => (
             <li key={to}>
