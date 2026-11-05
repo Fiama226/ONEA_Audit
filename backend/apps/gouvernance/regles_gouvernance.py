@@ -315,7 +315,9 @@ def _valeur_de_ligne(definition: Regle, ligne: RegleGouvernance | None) -> dict[
         complete = {**definition.defaut, **ligne.valeur}
         if not _erreurs(definition, complete):
             return complete
-        logger.error("Règle de gouvernance %s invalide en base : valeur par défaut.", definition.cle)
+        logger.error(
+            "Règle de gouvernance %s invalide en base : valeur par défaut.", definition.cle
+        )
     return dict(definition.defaut)
 
 
