@@ -28,6 +28,7 @@ from django.db import transaction
 # signatures (rien à créer : produites par les services de mission) -> documents.
 ORDRE: tuple[str, ...] = (
     "users",
+    "gouvernance",
     "referentiel",
     "programmation",
     "missions",
