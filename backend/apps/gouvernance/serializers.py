@@ -58,7 +58,7 @@ class EtapeADerogerSerializer(serializers.Serializer[Any]):
     manquants = serializers.ListField(child=serializers.CharField())
 
 
-class DerogationSerializer(serializers.Serializer[Any]):
+class DerogationReponseAuditeSerializer(serializers.Serializer[Any]):
     motif = serializers.CharField(
         max_length=2000,
         allow_blank=True,

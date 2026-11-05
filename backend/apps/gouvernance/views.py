@@ -20,7 +20,7 @@ from apps.users.permissions import HasRole, IsAdmin
 
 from . import regles_gouvernance as rg
 from .serializers import (
-    DerogationSerializer,
+    DerogationReponseAuditeSerializer,
     EtapeADerogerSerializer,
     RegleGouvernanceEcritureSerializer,
     RegleGouvernanceSerializer,
@@ -110,7 +110,7 @@ class DerogerView(APIView):
         tags=[TAG],
         operation_id="auditee_response_waivers_waive",
         summary="Déroger à l'absence de réponse de l'audité (motif journalisé)",
-        request=DerogationSerializer,
+        request=DerogationReponseAuditeSerializer,
         responses={204: None, **ERROR_400, **ERROR_RESPONSES, **ERROR_404, **ERROR_422},
     )
     def post(self, request: Request, etape_id: UUID) -> Response:
@@ -118,7 +118,7 @@ class DerogerView(APIView):
             EtapeMission.objects.filter(numero__in=derogations.ETAPES_REPONSE_AUDITE),
             pk=etape_id,
         )
-        corps = DerogationSerializer(data=request.data)
+        corps = DerogationReponseAuditeSerializer(data=request.data)
         corps.is_valid(raise_exception=True)
         derogations.deroger(etape, motif=corps.validated_data["motif"], by=cast(User, request.user))
         return Response(status=status.HTTP_204_NO_CONTENT)
