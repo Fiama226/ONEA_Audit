@@ -6,7 +6,7 @@ import django_filters
 from auditlog.models import LogEntry
 from django import forms
 from django.apps import apps
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.utils import timezone
 from rest_framework.filters import OrderingFilter
 from rest_framework.request import Request
@@ -49,6 +49,19 @@ class ModelLabelFilter(django_filters.CharFilter):
 
 
 ISO_DATE = ["%Y-%m-%d"]
+# Catégories du journal visible (filtre `categorie`) : modèles (app_label, model) concernés.
+CATEGORIES: dict[str, tuple[tuple[str, str], ...]] = {
+    "gouvernance": (("gouvernance", "reglegouvernance"),),
+}
+
+
+def filtre_categorie(queryset: QuerySet[LogEntry], categorie: str) -> QuerySet[LogEntry]:
+    condition = Q()
+    for app_label, model in CATEGORIES[categorie]:
+        condition |= Q(content_type__app_label=app_label, content_type__model=model)
+    return queryset.filter(condition)
+
+
 UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$")
 MAX_ACTOR_ID = 2**31 - 1
 
@@ -87,6 +100,11 @@ class AuditLogFilter(django_filters.FilterSet):
         max_value=MAX_ACTOR_ID,
         help_text="Id of the user who made the change",
     )
+    categorie = django_filters.ChoiceFilter(
+        choices=[(name, name) for name in CATEGORIES],
+        method="filter_categorie",
+        help_text="gouvernance : changements des règles de gouvernance",
+    )
     action = django_filters.ChoiceFilter(
         choices=[(name, name) for name in ACTIONS],
         method="filter_action",
@@ -115,6 +133,11 @@ class AuditLogFilter(django_filters.FilterSet):
         self, queryset: QuerySet[LogEntry], name: str, value: str
     ) -> QuerySet[LogEntry]:
         return queryset.filter(object_pk=value.lower() if UUID_RE.match(value) else value)
+
+    def filter_categorie(
+        self, queryset: QuerySet[LogEntry], name: str, value: str
+    ) -> QuerySet[LogEntry]:
+        return filtre_categorie(queryset, value)
 
     def filter_action(
         self, queryset: QuerySet[LogEntry], name: str, value: str
