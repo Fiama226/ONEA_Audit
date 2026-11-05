@@ -285,9 +285,12 @@ services:
   # clamd (TCP 3310, INSTREAM) is reachable from web and worker only (network av, internal); the only
   # route out is freshclam's signature update (network av-out, nobody else attached). Signatures live
   # in a volume so a restart does not download them again. The image runs clamd/freshclam as the
-  # unprivileged `clamav` user; it needs no capability once started (cap_drop ALL from `hardening`).
+  # unprivileged `clamav` user. Its entrypoint starts as root, chowns /var/lib/clamav, then drops
+  # privileges: with `cap_drop ALL` alone the chown fails ("Operation not permitted") and the
+  # container restarts in a loop (seen on a real Linux host), hence the minimal cap_add below.
   clamav:
     <<: *hardening
+    cap_add: [CHOWN, SETUID, SETGID, FOWNER, DAC_OVERRIDE]
     image: clamav/clamav:1.4.3
     environment:
       CLAMAV_NO_MILTERD: "true"
