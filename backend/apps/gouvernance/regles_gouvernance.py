@@ -309,6 +309,16 @@ def _depuis_base() -> dict[str, dict[str, Any]]:
     return valeurs
 
 
+def _valeur_de_ligne(definition: Regle, ligne: RegleGouvernance | None) -> dict[str, Any]:
+    """Valeur effective d'une ligne lue en base (défaut si absente ou invalide)."""
+    if ligne is not None and isinstance(ligne.valeur, dict):
+        complete = {**definition.defaut, **ligne.valeur}
+        if not _erreurs(definition, complete):
+            return complete
+        logger.error("Règle de gouvernance %s invalide en base : valeur par défaut.", definition.cle)
+    return dict(definition.defaut)
+
+
 def _toutes() -> dict[str, dict[str, Any]]:
     try:
         en_cache = cache.get(CLE_CACHE)
@@ -469,7 +479,8 @@ def modifier(cle: str, partiel: Any, *, motif: str, by: User) -> RegleGouvernanc
     if inconnus:
         raise RegleInvalideError("Données invalides.", inconnus)
     ligne = RegleGouvernance.objects.select_for_update().filter(cle=cle).first()
-    actuelle = valeur(cle)
+    # « Avant » = la ligne verrouillée, jamais le cache (qui peut être périmé).
+    actuelle = _valeur_de_ligne(definition, ligne)
     nouvelle = {**actuelle, **partiel}
     erreurs = _erreurs(definition, nouvelle)
     if erreurs:

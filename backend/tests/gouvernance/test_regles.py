@@ -302,3 +302,17 @@ def test_weakening_without_reason_is_refused_by_the_api(admin: User) -> None:
     )
     assert reponse.status_code in (400, 422)
     assert "motif" in reponse.json()["errors"]
+
+
+def test_before_value_comes_from_the_locked_row_not_a_stale_cache(admin: User) -> None:
+    rg.modifier(rg.STEP_ORDER, {"mode": "FREE"}, motif="Mission pilote", by=admin)
+    # Cache périmé : il affirme encore STRICT alors que la base dit FREE.
+    perime = {cle: dict(r.defaut) for cle, r in rg.REGLES.items()}
+    cache.set(rg.CLE_CACHE, perime, rg.DUREE_CACHE)
+    rg.modifier(rg.STEP_ORDER, {"mode": "STRICT"}, motif="", by=admin)
+    ligne = RegleGouvernance.objects.get(cle=rg.STEP_ORDER)
+    assert ligne.valeur == {"mode": "STRICT"}  # le changement n'a pas été pris pour un no-op
+    entree = LogEntry.objects.get_for_object(ligne).order_by("-timestamp", "-id").first()
+    assert entree is not None
+    avant, apres = entree.changes_dict["valeur"]
+    assert "FREE" in avant and "STRICT" in apres
