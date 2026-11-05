@@ -6,6 +6,10 @@ d'acces doit declarer son budget. Les budgets valent pour une page de 10 comme d
 """
 
 BUDGETS_REQUETES: dict[str, int] = {
+    "/api/v1/auditee-response-waivers/": 8,
+    "/api/v1/governance-rules/": 3,
+    "/api/v1/governance-rules/{cle}/": 2,
+    "/api/v1/risk-acceptance-validations/": 3,
     "/api/v1/action-plan-commitments/": 5,
     "/api/v1/action-plan-commitments/texte/": 5,
     "/api/v1/action-plans/summary/": 7,
@@ -133,6 +137,7 @@ BUDGETS_REQUETES: dict[str, int] = {
     "/api/v1/templates/{id}/": 5,
     "/api/v1/templates/{id}/file/": 5,
     "/api/v1/templates/{id}/preview/": 5,
+    "/api/v1/test-results-agreements/": 4,
     "/api/v1/test-sheets/": 7,
     "/api/v1/test-sheets/{id}/": 8,
     "/api/v1/user-accounts/": 5,
