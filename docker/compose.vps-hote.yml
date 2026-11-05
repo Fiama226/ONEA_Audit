@@ -1,0 +1,38 @@
+# Surcouche "derrière un Nginx de l'hôte" (VPS qui héberge déjà d'autres services).
+# À AJOUTER à docker/compose.prod.yml, jamais seule. Procédure : docs/deploiement-vps-existant.md.
+#
+#   docker compose --env-file .env.prod \
+#     -f docker/compose.prod.yml -f docker/compose.vps-hote.yml up -d --build
+#
+# Effet, et rien d'autre :
+#   - le Nginx de l'application publie UNIQUEMENT 127.0.0.1:${PORT_HOTE:-8080} (plus de 80/443 sur l'hôte) ;
+#   - il parle HTTP en clair (le TLS est terminé par le Nginx de l'hôte) : conf docker/nginx/prod-hote.conf ;
+#   - le réseau `edge` reçoit un sous-réseau fixe, pour que Nginx n'y croie X-Forwarded-For que du
+#     Nginx de l'hôte (passerelle du pont Docker) : TRUSTED_UPSTREAM_CIDRS.
+# Django ne change pas : CSRF_TRUSTED_ORIGINS=https://PUBLIC_HOST, SESSION_COOKIE_SECURE=true,
+# SECURE_PROXY_SSL_HEADER et TRUSTED_PROXY_CIDRS (= ONEA_NGINX_IP, le Nginx du conteneur) restent ceux
+# de compose.prod.yml. TLS_CERT_DIR reste exigé par compose.prod.yml (interpolation) mais n'est plus
+# monté : pointer vers un dossier vide.
+# `!override` / `!reset` exigent Docker Compose >= 2.24.4 (le dépôt officiel Docker fournit mieux).
+services:
+  nginx:
+    ports: !override
+      - "127.0.0.1:${PORT_HOTE:-8080}:80"
+    environment:
+      # Plage du réseau edge (voir plus bas) : seul le Nginx de l'hôte y est l'émetteur de X-Forwarded-For.
+      TRUSTED_UPSTREAM_CIDRS: ${ONEA_SUBNET_EDGE:-172.30.11.0/28}
+    volumes: !override
+      - ./nginx/prod-hote.conf:/etc/nginx/templates/default.conf.template:ro
+      - ./nginx/20-realip.sh:/docker-entrypoint.d/20-realip.sh:ro
+      - static:/var/www/static:ro
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t >/dev/null 2>&1 && wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: ${ONEA_SUBNET_EDGE:-172.30.11.0/28}
