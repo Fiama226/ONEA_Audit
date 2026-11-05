@@ -295,6 +295,13 @@ class MissionListeSerializer(serializers.ModelSerializer[Mission]):
         )
 
 
+class RisqueCouvertSerializer(serializers.Serializer[Any]):
+    id = serializers.UUIDField()
+    code = serializers.CharField()
+    libelle = serializers.CharField()
+    niveau = serializers.ChoiceField(choices=NiveauRisque.choices)
+
+
 class MissionSerializer(MissionListeSerializer):
     evenement_declencheur = serializers.ChoiceField(
         choices=EvenementDeclencheur.choices, required=False, allow_blank=True
@@ -308,6 +315,17 @@ class MissionSerializer(MissionListeSerializer):
         many=True, queryset=Direction.objects.all(), required=False, write_only=True
     )
     entites_detail = serializers.SerializerMethodField()
+    risques_couverts = CleRelation(
+        many=True,
+        queryset=Risque.objects.all(),
+        required=False,
+        write_only=True,
+        help_text=(
+            "Risques de la cartographie de référence couverts par la mission ; au moins un pour "
+            "une mission du programme annuel quand la règle « lien programme ↔ risque » l'exige."
+        ),
+    )
+    risques_couverts_detail = serializers.SerializerMethodField()
     budget_jours = serializers.DecimalField(
         max_digits=6, decimal_places=1, min_value=0, required=False, allow_null=True
     )
@@ -339,6 +357,8 @@ class MissionSerializer(MissionListeSerializer):
             "processus_detail",
             "entites",
             "entites_detail",
+            "risques_couverts",
+            "risques_couverts_detail",
             "evenement_declencheur",
             "evenement_precision",
             "periode_debut",
@@ -388,6 +408,15 @@ class MissionSerializer(MissionListeSerializer):
         return [
             dict(DirectionResumeSerializer(d).data)
             for d in sorted(obj.entites.all(), key=lambda d: d.code)
+        ]
+
+    @extend_schema_field(RisqueCouvertSerializer(many=True))
+    def get_risques_couverts_detail(self, obj: Mission) -> list[dict[str, Any]]:
+        if _est_audite(self):
+            return []
+        return [
+            {"id": str(r.pk), "code": r.code, "libelle": r.libelle, "niveau": r.niveau}
+            for r in sorted(obj.risques_couverts.all(), key=lambda r: r.code)
         ]
 
     @extend_schema_field(ConfirmationResumeSerializer(allow_null=True))

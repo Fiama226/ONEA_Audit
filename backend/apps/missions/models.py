@@ -139,6 +139,16 @@ class Mission(BaseModel):
     entites = models.ManyToManyField(
         Direction, verbose_name="entités auditées", blank=True, related_name="missions"
     )
+    risques_couverts = models.ManyToManyField(
+        "referentiel.Risque",
+        verbose_name="risques couverts",
+        blank=True,
+        related_name="missions_couvrantes",
+        help_text=(
+            "Risques de la cartographie de référence que la mission couvre (règle de "
+            "gouvernance « lien programme ↔ risque »)."
+        ),
+    )
     evenement_declencheur = models.CharField(
         "événement déclencheur",
         max_length=24,

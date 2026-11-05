@@ -11,7 +11,8 @@ from django.utils import timezone
 from apps.core.audit import actor_scope
 from apps.core.exceptions import RegleMetierError
 from apps.core.services import appliquer, enregistrer, refuser
-from apps.referentiel.models import Direction, Processus
+from apps.gouvernance import regles_gouvernance
+from apps.referentiel.models import Direction, Processus, Risque
 from apps.referentiel.services import version_courante
 from apps.signatures.models import Confirmation, TypeDocumentSignable
 from apps.signatures.services import confirmer
@@ -22,6 +23,7 @@ from ..gardes import verrouiller_mission
 from ..models import (
     ROLES_INTERVENANTS,
     EtapeMission,
+    EvenementDeclencheur,
     EvenementEtape,
     Mission,
     RoleMission,
@@ -54,8 +56,9 @@ CHAMPS_MODIFIABLES = {
     "livrables_attendus",
     "processus",
     "entites",
+    "risques_couverts",
 }
-M2M = frozenset({"processus", "entites"})
+M2M = frozenset({"processus", "entites", "risques_couverts"})
 SUSPENDABLES = frozenset(
     {
         StatutMission.PLANIFIEE,
@@ -120,7 +123,32 @@ def _verifier_dates(mission: Mission) -> None:
         raise RegleMetierError("Données invalides.", erreurs)
 
 
-def _poser_m2m(mission: Mission, champ: str, valeurs: Iterable[Processus | Direction]) -> None:
+MSG_RISQUES_REQUIS = (
+    "Une mission inscrite au programme annuel doit désigner au moins un risque de la "
+    "cartographie qu'elle couvre (règle de gouvernance « lien programme ↔ risque »)."
+)
+MSG_RISQUE_AUTRE_CARTOGRAPHIE = (
+    "Les risques couverts doivent appartenir à la cartographie de référence de la mission."
+)
+
+
+def _verifier_risques(mission: Mission, risques: list[Risque]) -> None:
+    """Risques de la cartographie de la mission ; au moins un pour une mission du programme
+    quand la règle de gouvernance l'exige (lue au moment de l'action, jamais rétroactive)."""
+    if any(r.version_id != mission.cartographie_id for r in risques):
+        msg = MSG_RISQUE_AUTRE_CARTOGRAPHIE
+        raise refuser(msg, risques_couverts=msg)
+    if (
+        not risques
+        and mission.evenement_declencheur == EvenementDeclencheur.PROGRAMME_ANNUEL
+        and regles_gouvernance.program_risk_link_required()
+    ):
+        raise refuser(MSG_RISQUES_REQUIS, risques_couverts=MSG_RISQUES_REQUIS)
+
+
+def _poser_m2m(
+    mission: Mission, champ: str, valeurs: Iterable[Processus | Direction | Risque]
+) -> None:
     cibles = {v.pk for v in valeurs}
     relation = getattr(mission, champ)
     if {o.pk for o in relation.all()} != cibles:
@@ -135,6 +163,7 @@ def creer_mission(
     by: User,
     processus: Iterable[Processus] = (),
     entites: Iterable[Direction] = (),
+    risques_couverts: Iterable[Risque] = (),
     **champs: Any,
 ) -> Mission:
     version = version_courante()
@@ -146,12 +175,15 @@ def creer_mission(
         raise refuser(msg, cartographie=msg)
     mission = Mission(titre=titre, type=type, cartographie=version)
     appliquer(mission, champs, CHAMPS_MODIFIABLES - M2M)
+    risques = list(risques_couverts)
+    _verifier_risques(mission, risques)
     _verifier_et_enregistrer(mission, by)
     for definition in ETAPES:
         etape = EtapeMission(mission=mission, numero=definition.numero)
         enregistrer(etape, by=by, creation=True)
     _poser_m2m(mission, "processus", processus)
     _poser_m2m(mission, "entites", entites)
+    _poser_m2m(mission, "risques_couverts", risques)
     return mission
 
 
@@ -167,6 +199,9 @@ def modifier_mission(mission: Mission, *, by: User, **changes: Any) -> Mission:
     mission = verrouiller_mission(mission)
     appliquer(mission, changes, CHAMPS_MODIFIABLES, m2m=M2M)
     _verifier_dates(mission)
+    if "risques_couverts" in changes:
+        changes["risques_couverts"] = list(changes["risques_couverts"])
+        _verifier_risques(mission, changes["risques_couverts"])
     enregistrer(mission, by=by)
     for champ in M2M & set(changes):
         _poser_m2m(mission, champ, changes[champ])

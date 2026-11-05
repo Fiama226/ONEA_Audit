@@ -23,7 +23,7 @@ class MissionsConfig(AppConfig):
             RisqueMission,
         )
 
-        register(Mission, m2m_fields={"processus", "entites"})
+        register(Mission, m2m_fields={"processus", "entites", "risques_couverts"})
         register(AffectationMission)
         register(DeclarationIndependance)
         register(EtapeMission)
@@ -69,7 +69,11 @@ def _connecter_gardes_m2m() -> None:
             gardes.controler_m2m_mission(mission, d17=True)
 
     def sender_missions(instance: object, sender: type) -> list[Mission]:
-        champ = "processus" if sender is Mission.processus.through else "entites"
+        champ = {
+            Mission.processus.through: "processus",
+            Mission.entites.through: "entites",
+            Mission.risques_couverts.through: "risques_couverts",
+        }[sender]
         return list(Mission.all_objects.filter(**{champ: instance}))
 
     def garde_enfant(
@@ -78,7 +82,11 @@ def _connecter_gardes_m2m() -> None:
         if action in _ACTIONS_GARDEES and not reverse:
             gardes.controler_ecriture(instance)
 
-    de_mission: tuple[Any, ...] = (Mission.processus.through, Mission.entites.through)
+    de_mission: tuple[Any, ...] = (
+        Mission.processus.through,
+        Mission.entites.through,
+        Mission.risques_couverts.through,
+    )
     d_enfants: tuple[Any, ...] = (
         Reunion.participants.through,
         Entretien.auditeurs.through,
