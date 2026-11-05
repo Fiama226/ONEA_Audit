@@ -273,6 +273,14 @@ class AffectationMission(MissionEnfantModel):
             "service d'équipe : la direction vient du compte, pas de l'affectation)."
         ),
     )
+    alerte_objectivite = models.TextField(
+        "alerte d'objectivité",
+        blank=True,
+        help_text=(
+            "Situation détectée par le contrôle d'objectivité (Normes IIA 2.2) quand la règle "
+            "de gouvernance est en mode avertissement ; vide sinon."
+        ),
+    )
 
     class Meta:
         verbose_name = "affectation"

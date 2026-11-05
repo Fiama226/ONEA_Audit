@@ -200,6 +200,12 @@ class AffectationSerializer(serializers.ModelSerializer[AffectationMission]):
         ),
     )
     declaration = serializers.SerializerMethodField()
+    alerte_objectivite = serializers.SerializerMethodField(
+        help_text=(
+            "Situation relevée par le contrôle d'objectivité en mode avertissement (vide sinon, "
+            "et toujours vide pour un audité)."
+        )
+    )
 
     class Meta:
         model = AffectationMission
@@ -211,8 +217,12 @@ class AffectationSerializer(serializers.ModelSerializer[AffectationMission]):
             "role_mission",
             "responsable_entite",
             "declaration",
+            "alerte_objectivite",
         )
         read_only_fields = ("id",)
+
+    def get_alerte_objectivite(self, obj: AffectationMission) -> str:
+        return "" if _est_audite(self) else obj.alerte_objectivite
 
     @extend_schema_field(DeclarationResumeSerializer(allow_null=True))
     def get_declaration(self, obj: AffectationMission) -> dict[str, Any] | None:

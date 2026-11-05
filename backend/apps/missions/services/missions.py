@@ -30,7 +30,7 @@ from ..models import (
     TypeEvenementEtape,
 )
 from ..notifications import notifier_ordre_emis
-from . import LOCK_REFERENCE_MISSION, aujourd_hui
+from . import LOCK_REFERENCE_MISSION, aujourd_hui, objectivite
 from .declarations import nom_complet
 
 MSG_DIFFUSION = (
@@ -291,6 +291,7 @@ def emettre_ordre_mission(
     }
     if erreurs:
         raise RegleMetierError("Des informations obligatoires manquent.", erreurs)
+    objectivite.controler_equipe(mission, by=by)
 
     texte = _TEXTE_ORDRE.format(
         nom_complet=nom_complet(by), reference=mission.reference, titre=mission.titre
