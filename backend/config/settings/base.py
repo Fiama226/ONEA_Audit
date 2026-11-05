@@ -381,6 +381,8 @@ SPECTACULAR_SETTINGS = {
         "ModeSignatureParametreEnum": "apps.signatures.models.ModeSignatureParametre.choices",
         "OrigineCompteEnum": "apps.users.models.OrigineCompte.choices",
         "StatutProgrammeEnum": "apps.programmation.models.StatutProgramme.choices",
+        "NiveauApprobationEnum": "apps.programmation.models.NiveauApprobation.choices",
+        "ApprobateurProgrammeEnum": ["NONE", "DG", "DG_AND_BOARD"],
         # programmation.TypeIntervention a les mêmes choix que missions.TypeMission
         # (ASSURANCE / CONSEIL) : drf-spectacular les fusionne sous TypeMissionEnum.
         "StatutGabaritEnum": "apps.documents.models.StatutGabarit.choices",

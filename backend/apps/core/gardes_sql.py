@@ -64,6 +64,7 @@ TABLES_AJOUT_SEUL: frozenset[str] = frozenset(
         "communication.evenementrapport",
         "recommandations.engagementplanactions",
         "suivi.evenementsuivi",
+        "programmation.approbationprogramme",
     }
 )
 

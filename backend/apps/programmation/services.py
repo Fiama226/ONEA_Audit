@@ -7,6 +7,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
+from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Max, Q, Sum
 from django.http import Http404
@@ -15,12 +16,17 @@ from django.utils import timezone
 from apps.core.audit import actor_scope
 from apps.core.exceptions import RegleMetierError
 from apps.core.services import appliquer, enregistrer, refuser, relire
+from apps.gouvernance import regles_gouvernance
+from apps.notifications.models import TypeNotification
+from apps.notifications.services import notifier
 from apps.referentiel.models import Direction, ObjetAuditable, Processus
-from apps.users.models import User
+from apps.users.models import Role, User
 
 from .exceptions import ProgrammeFigeError
 from .models import (
+    ApprobationProgramme,
     LigneProgramme,
+    NiveauApprobation,
     ProgrammeAnnuel,
     StatutProgramme,
     TypeIntervention,
@@ -129,7 +135,141 @@ def valider_programme(programme: ProgrammeAnnuel, *, by: User) -> ProgrammeAnnue
     locked.updated_by = by
     with actor_scope(by):
         locked.save()
+    _notifier_approbation_attendue(locked)
     return locked
+
+
+# --------------------------------------------------------------------------- approbation
+
+MSG_APPROBATION_DROIT = (
+    "Seul le DG enregistre l'approbation du programme (la sienne et celle du Conseil)."
+)
+MSG_APPROBATION_BROUILLON = "Le programme doit d'abord être validé par le RAI."
+MSG_APPROBATION_AUCUNE = (
+    "Les règles de gouvernance ne prévoient pas d'approbation du programme annuel."
+)
+MSG_APPROBATION_CONSEIL_NON_PREVUE = (
+    "Les règles de gouvernance ne prévoient pas l'approbation du Conseil."
+)
+MSG_APPROBATION_DG_DABORD = "Enregistrez d'abord l'approbation de la Direction générale."
+MSG_APPROBATION_DEJA = "Cette approbation est déjà enregistrée."
+MSG_APPROBATION_REFERENCE = "Indiquez la référence de la délibération du Conseil."
+MSG_APPROBATION_DATE = "La date de la décision ne peut pas être dans le futur."
+
+
+def niveaux_requis(approbateur: str | None = None) -> list[str]:
+    """Niveaux d'approbation exigés par la règle de gouvernance (dans l'ordre)."""
+    if approbateur is None:
+        approbateur = regles_gouvernance.program_approval()["approver"]
+    niveaux: dict[str, list[str]] = {
+        "NONE": [],
+        "DG": [NiveauApprobation.DG],
+        "DG_AND_BOARD": [NiveauApprobation.DG, NiveauApprobation.BOARD],
+    }
+    return niveaux[approbateur]
+
+
+def etat_approbation(programme: ProgrammeAnnuel) -> dict[str, Any]:
+    """État d'approbation du programme selon la règle courante (lue au moment de l'appel)."""
+    approbateur = regles_gouvernance.program_approval()["approver"]
+    requis = niveaux_requis(approbateur)
+    # `approbations` préchargées par la vue de liste (requêtes bornées), sinon lues ici.
+    approbations = sorted(programme.approbations.all(), key=lambda a: a.approuve_le)
+    obtenus = {a.niveau for a in approbations}
+    manquantes = [n for n in requis if n not in obtenus]
+    valide = programme.statut == StatutProgramme.VALIDE
+    return {
+        "approbateur": approbateur,
+        "requise": bool(requis),
+        "approuve": valide and not manquantes,
+        "manquantes": [str(n) for n in manquantes] if valide else [str(n) for n in requis],
+        "approbations": [
+            {
+                "niveau": a.niveau,
+                "niveau_libelle": a.get_niveau_display(),
+                "approuve_par": a.approuve_par,
+                "approuve_le": a.approuve_le,
+                "date_decision": a.date_decision,
+                "reference": a.reference,
+                "commentaire": a.commentaire,
+            }
+            for a in approbations
+        ],
+    }
+
+
+def programme_approuve_pour(annee: int | None) -> bool:
+    """Programme de l'année validé et approuvé selon la règle (lancement des missions)."""
+    if annee is None:
+        return False
+    programme = ProgrammeAnnuel.objects.filter(annee=annee).first()
+    return programme is not None and bool(etat_approbation(programme)["approuve"])
+
+
+@transaction.atomic
+def approuver_programme(
+    programme: ProgrammeAnnuel,
+    *,
+    niveau: str,
+    by: User,
+    date_decision: date | None = None,
+    reference: str = "",
+    commentaire: str = "",
+) -> ApprobationProgramme:
+    if by.role != Role.DG or not by.is_active:
+        raise PermissionDenied(MSG_APPROBATION_DROIT)
+    locked = ProgrammeAnnuel.objects.select_for_update().filter(pk=programme.pk).first()
+    if locked is None:
+        raise Http404("Non trouvé.")
+    if locked.statut != StatutProgramme.VALIDE:
+        raise refuser(MSG_APPROBATION_BROUILLON, statut=MSG_APPROBATION_BROUILLON)
+    requis = niveaux_requis()
+    if not requis:
+        raise refuser(MSG_APPROBATION_AUCUNE, niveau=MSG_APPROBATION_AUCUNE)
+    if niveau not in requis:
+        raise refuser(MSG_APPROBATION_CONSEIL_NON_PREVUE, niveau=MSG_APPROBATION_CONSEIL_NON_PREVUE)
+    obtenus = set(
+        ApprobationProgramme.objects.filter(programme=locked).values_list("niveau", flat=True)
+    )
+    if niveau in obtenus:
+        raise refuser(MSG_APPROBATION_DEJA, niveau=MSG_APPROBATION_DEJA)
+    if niveau == NiveauApprobation.BOARD and NiveauApprobation.DG not in obtenus:
+        raise refuser(MSG_APPROBATION_DG_DABORD, niveau=MSG_APPROBATION_DG_DABORD)
+    reference = reference.strip()
+    if niveau == NiveauApprobation.BOARD and not reference:
+        raise refuser(MSG_APPROBATION_REFERENCE, reference=MSG_APPROBATION_REFERENCE)
+    aujourd_hui = timezone.localdate()
+    date_decision = date_decision or aujourd_hui
+    if date_decision > aujourd_hui:
+        raise refuser(MSG_APPROBATION_DATE, date_decision=MSG_APPROBATION_DATE)
+    approbation = ApprobationProgramme(
+        programme=locked,
+        niveau=niveau,
+        approuve_par=by,
+        approuve_le=timezone.now(),
+        date_decision=date_decision,
+        reference=reference,
+        commentaire=commentaire.strip(),
+    )
+    enregistrer(approbation, by=by, creation=True)
+    return approbation
+
+
+def _notifier_approbation_attendue(programme: ProgrammeAnnuel) -> None:
+    if not niveaux_requis():
+        return
+    notifier(
+        User.objects.filter(role=Role.DG, is_active=True),
+        type=TypeNotification.PROGRAMME_A_APPROUVER,
+        titre=f"Programme annuel {programme.annee} à approuver",
+        message=(
+            f"Le RAI a validé le programme annuel {programme.annee}. Les règles de gouvernance "
+            "prévoient son approbation avant le lancement des missions."
+        ),
+        lien=f"/programme-annuel?annee={programme.annee}",
+        objet=programme,
+        cle=f"programme-a-approuver:{programme.pk}",
+    )
 
 
 # --------------------------------------------------------------------------- lignes

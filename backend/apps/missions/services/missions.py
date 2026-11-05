@@ -263,6 +263,25 @@ def _etape(mission: Mission, numero: int) -> EtapeMission:
     return etape
 
 
+def _verifier_programme_approuve(mission: Mission) -> None:
+    """Mission du programme annuel : programme de l'année approuvé avant le lancement, quand la
+    règle de gouvernance « approbation du programme annuel » l'exige (Normes IIA 9.4)."""
+    if mission.evenement_declencheur != EvenementDeclencheur.PROGRAMME_ANNUEL:
+        return
+    regle = regles_gouvernance.program_approval()
+    if regle["approver"] == "NONE" or not regle["required_before_launch"]:
+        return
+    from apps.programmation.services import programme_approuve_pour
+
+    if not programme_approuve_pour(mission.annee):
+        approbateur = "le DG et le Conseil" if regle["approver"] == "DG_AND_BOARD" else "le DG"
+        msg = (
+            f"Le programme annuel {mission.annee} n'est pas approuvé par {approbateur} : "
+            "la mission ne peut pas être lancée (règle de gouvernance)."
+        )
+        raise refuser(msg, programme=msg)
+
+
 @transaction.atomic
 def lancer_mission(mission: Mission, *, by: User) -> Mission:
     mission = verrouiller_mission(mission)
@@ -270,6 +289,7 @@ def lancer_mission(mission: Mission, *, by: User) -> Mission:
         raise _pas_possible(mission, "lancer la mission")
     if not mission.affectations.filter(role_mission=RoleMission.CHEF_MISSION).exists():
         raise refuser(MSG_CHEF, chef_mission=MSG_CHEF)
+    _verifier_programme_approuve(mission)
     mission.statut = StatutMission.EN_PLANIFICATION
     enregistrer(mission, by=by)
     etape = _etape(mission, 1)
