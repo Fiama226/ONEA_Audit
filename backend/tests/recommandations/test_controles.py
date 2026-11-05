@@ -6,12 +6,20 @@ from apps.constats.models import Recommandation
 from apps.core.exceptions import RegleMetierError
 from apps.missions.models import Mission, StatutEtape
 from apps.missions.services.etapes import terminer_etape
-from apps.recommandations.services.acceptations import accepter_risque
+from apps.recommandations.models import AcceptationRisque
+from apps.recommandations.services.acceptations import accepter_risque, decider_acceptation
 from apps.recommandations.services.actions import creer_action
-from apps.users.models import User
+from apps.users.models import Role, User
+from tests.factories import make_user
 from tests.missions.conftest import forcer_etapes
 
 pytestmark = pytest.mark.django_db
+
+
+def _valider_acceptation(acceptation: AcceptationRisque) -> None:
+    """Règle de gouvernance par défaut : l'acceptation est validée par l'autorité désignée."""
+    role = Role.RAI if acceptation.validation_requise == "RAI" else Role.DG
+    decider_acceptation(acceptation, decision="VALIDEE", motif="ok", by=make_user(role))
 
 
 def _livrables(mission: Mission, chef: User) -> list[str]:
@@ -45,7 +53,8 @@ def test_terminer_xvi_action_incomplete_puis_complete(
     creer_action(
         recommandations[1], libelle="N", by=chef, responsable=audite_entite_a, indicateur="i"
     )
-    accepter_risque(recommandations[2], justification="x", by=audite_entite_b)
+    acceptation = accepter_risque(recommandations[2], justification="x", by=audite_entite_b)
+    _valider_acceptation(acceptation)
     manquants = _livrables(mission_en_communication, chef)
     assert manquants == [
         "L'action A-01 n'a pas de responsable, d'échéance ou d'indicateur.",
@@ -70,6 +79,7 @@ def test_terminer_xvi_passe_quand_le_plan_est_complet(
             indicateur="i",
             echeance=datetime.date.today() + datetime.timedelta(days=10),
         )
-    accepter_risque(recommandations[2], justification="x", by=audite_entite_b)
+    acceptation = accepter_risque(recommandations[2], justification="x", by=audite_entite_b)
+    _valider_acceptation(acceptation)
     etape = terminer_etape(mission_en_communication.etapes.get(numero=16), by=chef)
     assert etape.statut == StatutEtape.TERMINEE
